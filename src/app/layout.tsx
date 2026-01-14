@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Advanced Car Dealership Management",
 };
 
+import { AuthProvider } from "@/context/AuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,9 +29,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <main className="flex-1 overflow-hidden bg-background">
-          {children}
-        </main>
+        <AuthProvider>
+          <main className="flex-1 overflow-hidden bg-background">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

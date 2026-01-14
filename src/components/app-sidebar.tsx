@@ -33,6 +33,17 @@ import {
     SidebarRail,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/context/AuthContext"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { LogOut, User as UserIcon, Settings as SettingsIcon } from "lucide-react"
 
 const data = {
     navMain: [
@@ -123,6 +134,8 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname()
+    const { user, logout } = useAuth()
+
     return (
         <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
             <SidebarHeader className="h-16 border-b flex items-center px-6">
@@ -184,11 +197,58 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarFooter className="p-4 border-t">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton className="h-10 border bg-background group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
-                            <PlusCircle className="size-4 mr-2 group-data-[collapsible=icon]:mr-0" />
-                            <span className="group-data-[collapsible=icon]:hidden">Add Products</span>
-                            <Badge variant="secondary" className="ml-auto bg-green-500 text-white hover:bg-green-600 group-data-[collapsible=icon]:hidden">New!</Badge>
-                        </SidebarMenuButton>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <SidebarMenuButton className="h-12 w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+                                    <Avatar className="h-8 w-8 rounded-lg">
+                                        <AvatarImage src={user?.avatar} alt={user?.name} />
+                                        <AvatarFallback className="rounded-lg">
+                                            {user?.name?.substring(0, 2).toUpperCase() || "US"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                                        <span className="truncate font-semibold">{user?.name}</span>
+                                        <span className="truncate text-xs">{user?.email}</span>
+                                    </div>
+                                    <ChevronRight className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+                                </SidebarMenuButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                                side="bottom"
+                                align="end"
+                                sideOffset={4}
+                            >
+                                <DropdownMenuLabel className="p-0 font-normal">
+                                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                                        <Avatar className="h-8 w-8 rounded-lg">
+                                            <AvatarImage src={user?.avatar} alt={user?.name} />
+                                            <AvatarFallback className="rounded-lg">
+                                                {user?.name?.substring(0, 2).toUpperCase() || "US"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="grid flex-1 text-left text-sm leading-tight">
+                                            <span className="truncate font-semibold">{user?.name}</span>
+                                            <span className="truncate text-xs">{user?.email}</span>
+                                        </div>
+                                    </div>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem>
+                                    <UserIcon className="mr-2 size-4" />
+                                    Account
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <SettingsIcon className="mr-2 size-4" />
+                                    Settings
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => logout()}>
+                                    <LogOut className="mr-2 size-4" />
+                                    Log out
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarFooter>

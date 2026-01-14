@@ -20,27 +20,28 @@ import { useAuth } from "@/context/AuthContext"
 import { Alert, AlertDescription } from "../../components/ui/alert"
 import Link from "next/link"
 
-export default function Page() {
+export default function SignupPage() {
     return (
         <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
             <div className="w-full max-w-sm">
-                <LoginForm />
+                <SignupForm />
             </div>
         </div>
     )
 }
 
-export function LoginForm({
+export function SignupForm({
     className,
 }: React.ComponentProps<"div">) {
-    const { login, error, isLoading } = useAuth();
+    const { register, error, isLoading } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [name, setName] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await login({ email, password });
+            await register({ email, password, name });
         } catch (err) {
             // Error is handled by context state
         }
@@ -50,9 +51,9 @@ export function LoginForm({
         <div className={cn("flex flex-col gap-6", className)} >
             <Card>
                 <CardHeader>
-                    <CardTitle>Login to your account</CardTitle>
+                    <CardTitle>Create an account</CardTitle>
                     <CardDescription>
-                        Enter your email below to login to your account
+                        Enter your details below to create your account
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -63,6 +64,17 @@ export function LoginForm({
                     )}
                     <form onSubmit={handleSubmit}>
                         <FieldGroup>
+                            <Field>
+                                <FieldLabel htmlFor="name">Full Name</FieldLabel>
+                                <Input
+                                    id="name"
+                                    type="text"
+                                    placeholder="John Doe"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    required
+                                />
+                            </Field>
                             <Field>
                                 <FieldLabel htmlFor="email">Email</FieldLabel>
                                 <Input
@@ -75,15 +87,7 @@ export function LoginForm({
                                 />
                             </Field>
                             <Field>
-                                <div className="flex items-center">
-                                    <FieldLabel htmlFor="password">Password</FieldLabel>
-                                    <a
-                                        href="#"
-                                        className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                                    >
-                                        Forgot your password?
-                                    </a>
-                                </div>
+                                <FieldLabel htmlFor="password">Password</FieldLabel>
                                 <Input
                                     id="password"
                                     type="password"
@@ -94,15 +98,12 @@ export function LoginForm({
                             </Field>
                             <Field>
                                 <Button type="submit" disabled={isLoading} className="w-full">
-                                    {isLoading ? "Logging in..." : "Login"}
-                                </Button>
-                                <Button variant="outline" type="button" className="w-full">
-                                    Login with Google
+                                    {isLoading ? "Creating account..." : "Sign up"}
                                 </Button>
                                 <div className="text-center text-sm text-muted-foreground">
-                                    Don&apos;t have an account?{" "}
-                                    <Link href="/signup" className="underline underline-offset-4">
-                                        Sign up
+                                    Already have an account?{" "}
+                                    <Link href="/login" className="underline underline-offset-4">
+                                        Login
                                     </Link>
                                 </div>
                             </Field>
