@@ -232,7 +232,7 @@ export default function InventoryPage() {
   }, [sortBy])
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/20">
       {/* Header */}
       <div className="border-b bg-background">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
@@ -261,7 +261,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Grid */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-8xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
           {sortedVehicles.map((vehicle) => (
             <CarInventoryCard
