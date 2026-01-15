@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { AUTH_COOKIE_NAME } from './lib/cookies';
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
@@ -20,12 +21,16 @@ export function middleware(request: NextRequest) {
     }
 
     // Check for the access token cookie
+    const allCookies = request.cookies.getAll();
     const token = request.cookies.get('auth_token_frontend')?.value;
 
-    console.log(`[Middleware] Path: ${pathname}, Token present: ${!!token}`);
+    console.log(`[Middleware] Path: ${pathname}`);
+    console.log(`[Middleware] All Cookies: ${allCookies.map(c => `${c.name}=${c.value.substring(0, 10)}...`).join(', ')}`);
+    console.log(`[Middleware] Target Cookie '${'auth_token_frontend'}': ${token ? 'FOUND' : 'MISSING'}`);
 
     // 1. If no token and trying to access a protected route (anything not public)
-    if (!token && !isPublicRoute) {
+    const hasRefreshToken = request.cookies.has('refreshToken');
+    if (!token && !hasRefreshToken && !isPublicRoute) {
         // Exclude static assets and api routes if necessary, but matcher usually handles this
         console.log(`[Middleware] Unauthorized access to ${pathname}. Redirecting to /login`);
         return NextResponse.redirect(new URL('/login', request.url));

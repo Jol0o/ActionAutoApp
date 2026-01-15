@@ -43,8 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // -------------------------
 
         if (!token) {
-            setIsLoading(false);
-            return;
+            console.log('[AuthContext] No access token found. Attempting to recover session via refresh token...');
         }
 
         // Only fetch if we don't have a user yet

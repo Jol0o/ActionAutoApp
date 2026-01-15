@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
     BarChart3,
@@ -154,10 +155,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     {data.navMain.map((item) => (
                         <SidebarMenuItem key={item.title}>
                             <SidebarMenuButton asChild tooltip={item.title} isActive={pathname === item.url}>
-                                <a href={item.url}>
+                                <Link href={item.url}>
                                     <item.icon />
                                     <span>{item.title}</span>
-                                </a>
+                                </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     ))}
@@ -184,10 +185,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     tooltip={item.title}
                                     isActive={pathname === item.url}
                                 >
-                                    <a href={item.url}>
+                                    <Link href={item.url}>
                                         <item.icon />
                                         <span>{item.title}</span>
-                                    </a>
+                                    </Link>
                                 </SidebarMenuButton>
                             )}
                         </SidebarMenuItem>
