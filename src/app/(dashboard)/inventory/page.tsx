@@ -254,28 +254,6 @@ export default function InventoryPublicPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Header */}
-            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <div className="text-center space-y-4">
-                        <h1 className="text-4xl font-bold tracking-tight">
-                            Premium Pre-Owned Vehicles
-                        </h1>
-                        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                            Explore our curated selection of quality vehicles. Get instant shipping quotes to your location.
-                        </p>
-                        <div className="pt-4">
-                            <Button
-                                size="lg"
-                                onClick={handleCalculateAll}
-                                className="gap-2 shadow-lg hover:shadow-xl transition-all"
-                            >
-                                <TruckIcon className="w-5 h-5" />
-                                Calculate Shipping Quote
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -53,7 +53,7 @@ export default function Dashboard() {
         </div>
 
         <Card className="overflow-hidden border-none shadow-md p-0">
-          <div className="relative h-full min-h-[240px] bg-muted flex items-center justify-center">
+          <div className="relative h-full bg-muted flex items-center justify-center">
             {/* Simplified Map Placeholder */}
             <div className="absolute inset-0 bg-muted flex flex-col items-center justify-center gap-2">
               <MapPin className="size-10 text-primary animate-bounce" />
@@ -68,7 +68,7 @@ export default function Dashboard() {
             </div>
             <div className="absolute bottom-10 right-3 flex flex-col gap-0.5 bg-card rounded shadow-sm border overflow-hidden">
               <button className="p-1 px-2 border-b hover:bg-secondary text-xl leading-none">+</button>
-              <button className="p-1 px-2 hover:bg-secondary text-xl leading-none">−</button>
+              <button className="p-1 px-2 hover:bg-secondary text-xl leading-none">-</button>
             </div>
           </div>
         </Card>
@@ -202,7 +202,7 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground">Regional dealer performance for all dealers</p>
           </div>
 
-          <div className="w-[180px]">
+          <div>
             <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Dealer Type</label>
             <div className="border bg-white rounded px-3 py-1.5 flex justify-between items-center text-sm">
               All Dealers <ChevronDown className="size-4" />
