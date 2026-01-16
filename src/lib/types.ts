@@ -40,3 +40,45 @@ export interface AuthState {
     isLoading: boolean;
     error: string | null;
 }
+
+// --- Dashboard & Vehicle Types ---
+
+export type VehicleStatus = 'In Recon' | 'Ready for Sale' | 'Sold';
+export type VehicleStep = 'Inspection' | 'Mechanical' | 'Body / Paint' | 'Detail' | 'Photography' | 'Ready';
+
+export interface Note {
+    text: string;
+    author: string | User; // ID or populated User object
+    date: string; // ISO date string
+    _id?: string;
+}
+
+export interface IVehicle {
+    _id: string;
+    vin: string;
+    year: number;
+    make: string;
+    modelName: string;
+    trim?: string;
+    color?: string;
+    stockNumber?: string;
+    status: VehicleStatus;
+    currentStep: VehicleStep;
+    assignedTo?: string | User;
+    reconStartDate?: string;
+    stepEnteredAt?: string;
+    notes: Note[];
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface DashboardMetrics {
+    inventoryOverview: {
+        totalActive: number;
+        inRecon: number;
+        readyForSale: number;
+    };
+    reconStatus: Record<VehicleStep, number>;
+    needsAttention: IVehicle[];
+    recentActivity: Partial<IVehicle>[];
+}
