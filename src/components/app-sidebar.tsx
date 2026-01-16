@@ -145,9 +145,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <Car className="size-5" />
                     </div>
                     <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-                        <span className="font-bold text-lg tracking-tight">ACTION AUTO</span>
-                        <span className="text-[10px] uppercase tracking-[0.2em] font-medium text-muted-foreground">UTAH</span>
+                        <span className="font-bold text-base tracking-tight">ACTION AUTO UTAH</span>
+                        <span className="text-[10px] font-extrabold text-green-600 uppercase tracking-widest">
+                            Powered by Supra AI
+                        </span>
                     </div>
+
+
                 </div>
             </SidebarHeader>
             <SidebarContent className="p-2">
