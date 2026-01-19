@@ -54,16 +54,6 @@ const data = {
             icon: LayoutDashboard,
         },
         {
-            title: "My Work",
-            url: "/my-work",
-            icon: ClipboardList,
-        },
-        {
-            title: "Needs Attention",
-            url: "/needs-attention",
-            icon: AlertCircle,
-        },
-        {
             title: "All Inventory",
             url: "/inventory",
             icon: Car,
@@ -71,34 +61,9 @@ const data = {
     ],
     services: [
         {
-            title: "Auto Finder",
-            url: "/auto-finder",
-            icon: Search,
-        },
-        {
-            title: "Appraisals",
-            url: "/appraisals",
-            icon: Tag,
-        },
-        {
             title: "Transportation",
             url: "/transportation",
             icon: Truck,
-        },
-        {
-            title: "Recon/Workflow",
-            url: "/recon",
-            icon: Settings,
-        },
-        {
-            title: "Inventory Pricing",
-            url: "/pricing",
-            icon: DollarSign,
-        },
-        {
-            title: "Dealer Analytics",
-            url: "/analytics",
-            icon: BarChart3,
         },
         {
             title: "Reports",
