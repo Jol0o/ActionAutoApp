@@ -11,6 +11,7 @@ export const apiClient = axios.create({
     withCredentials: true, // Crucial for refresh token cookies from backend
 });
 
+
 // Request interceptor: Attach access token from cookie to every request
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
