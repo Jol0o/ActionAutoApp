@@ -18,20 +18,18 @@ export interface Vehicle {
 }
 
 export interface ShippingQuoteFormData {
-    // Customer Information
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-
-    // Destination
-    zipCode: string;
-    units: number;
-    fullAddress: string;
-
-    // Transport Options
-    enclosedTrailer: boolean;
-    vehicleInoperable: boolean;
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
+    zipCode: string          
+    units: number
+    fullAddress: string     
+    enclosedTrailer: boolean
+    vehicleInoperable: boolean
+    fromZip: string          
+    fromAddress: string      
+    vehicleId?: string      
 }
 
 export interface ShippingQuote {

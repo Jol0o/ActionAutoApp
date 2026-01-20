@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { X, MapPin, User, Mail, Phone, MapPinned, Package, Loader2 } from "lucide-react"
+import { X, MapPin, User, Mail, Phone, MapPinned, Package, Loader2, ChevronDown } from "lucide-react"
 import {
     Dialog,
     DialogContent,
@@ -17,17 +17,18 @@ import { Vehicle, ShippingQuoteFormData } from "@/types/inventory"
 interface ShippingQuoteModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    vehicle?: Vehicle | null
-    onCalculate: (formData: ShippingQuoteFormData) => void
+    vehicles: Vehicle[]
+    onCalculate: (formData: ShippingQuoteFormData) => Promise<void>
 }
 
 export function ShippingQuoteModal({
     open,
     onOpenChange,
-    vehicle,
+    vehicles,
     onCalculate,
 }: ShippingQuoteModalProps) {
     const [isCalculating, setIsCalculating] = React.useState(false)
+    const [selectedVehicle, setSelectedVehicle] = React.useState<Vehicle | null>(null)
     const [formData, setFormData] = React.useState<ShippingQuoteFormData>({
         firstName: "",
         lastName: "",
@@ -38,9 +39,23 @@ export function ShippingQuoteModal({
         fullAddress: "",
         enclosedTrailer: false,
         vehicleInoperable: false,
+        fromZip: "",
+        fromAddress: "",
     })
 
     const [errors, setErrors] = React.useState<Partial<Record<keyof ShippingQuoteFormData, string>>>({})
+
+    // ✅ Debug: Log vehicles prop
+    React.useEffect(() => {
+        console.log('📦 Modal received vehicles:', vehicles?.length || 0, vehicles)
+    }, [vehicles])
+
+    // ✅ Debug: Log when modal opens
+    React.useEffect(() => {
+        if (open) {
+            console.log('🔓 Modal opened with vehicles:', vehicles?.length || 0)
+        }
+    }, [open, vehicles])
 
     const validateForm = (): boolean => {
         const newErrors: Partial<Record<keyof ShippingQuoteFormData, string>> = {}
@@ -60,14 +75,24 @@ export function ShippingQuoteModal({
             newErrors.phone = "Invalid phone number"
         }
 
+        if (!formData.fromZip.trim()) {
+            newErrors.fromZip = "Origin ZIP code is required"
+        } else if (!/^\d{5}(-\d{4})?$/.test(formData.fromZip)) {
+            newErrors.fromZip = "Invalid ZIP code"
+        }
+
+        if (!formData.fromAddress.trim()) {
+            newErrors.fromAddress = "Origin address is required"
+        }
+
         if (!formData.zipCode.trim()) {
-            newErrors.zipCode = "ZIP code is required"
+            newErrors.zipCode = "Destination ZIP code is required"
         } else if (!/^\d{5}(-\d{4})?$/.test(formData.zipCode)) {
             newErrors.zipCode = "Invalid ZIP code"
         }
 
         if (!formData.fullAddress.trim()) {
-            newErrors.fullAddress = "Full address is required"
+            newErrors.fullAddress = "Destination address is required"
         }
 
         setErrors(newErrors)
@@ -80,34 +105,49 @@ export function ShippingQuoteModal({
         if (!validateForm()) return
 
         setIsCalculating(true)
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500))
-
-        onCalculate(formData)
-        setIsCalculating(false)
-        onOpenChange(false)
-
-        // Reset form
-        setFormData({
-            firstName: "",
-            lastName: "",
-            email: "",
-            phone: "",
-            zipCode: "",
-            units: 1,
-            fullAddress: "",
-            enclosedTrailer: false,
-            vehicleInoperable: false,
-        })
-        setErrors({})
+        
+        try {
+            await onCalculate({
+                ...formData,
+                vehicleId: selectedVehicle?.id
+            })
+            onOpenChange(false)
+            
+            // Reset form
+            setFormData({
+                firstName: "",
+                lastName: "",
+                email: "",
+                phone: "",
+                zipCode: "",
+                units: 1,
+                fullAddress: "",
+                enclosedTrailer: false,
+                vehicleInoperable: false,
+                fromZip: "",
+                fromAddress: "",
+            })
+            setSelectedVehicle(null)
+            setErrors({})
+        } catch (error) {
+            console.error('Error submitting quote:', error)
+        } finally {
+            setIsCalculating(false)
+        }
     }
 
     const updateField = (field: keyof ShippingQuoteFormData, value: string | number | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }))
-        // Clear error when user starts typing
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }))
         }
+    }
+
+    const handleVehicleSelect = (vehicleId: string) => {
+        console.log('🚙 Vehicle selected:', vehicleId)
+        const vehicle = vehicles.find(v => v.id === vehicleId)
+        console.log('🚙 Found vehicle:', vehicle)
+        setSelectedVehicle(vehicle || null)
     }
 
     return (
@@ -115,60 +155,79 @@ export function ShippingQuoteModal({
             <DialogContent className="max-w-[500px] max-h-[90vh] overflow-y-auto bg-card border-border text-card-foreground">
                 <button
                     onClick={() => onOpenChange(false)}
-                    className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                    className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
                 >
                     <X className="h-4 w-4 text-muted-foreground" />
                     <span className="sr-only">Close</span>
                 </button>
 
                 <DialogHeader className="space-y-3 pb-4 border-b border-border">
-                    {vehicle && (
-                        <div className="flex items-start gap-3">
-                            <div className="w-16 h-12 rounded overflow-hidden bg-muted">
-                                <img
-                                    src={vehicle.image}
-                                    alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                            <div className="flex-1">
-                                <DialogTitle className="text-lg font-bold">
-                                    Get Quote for {vehicle.year} {vehicle.make} {vehicle.model}
-                                </DialogTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Premium shipping quote from Utah to your destination
-                                </p>
-                                <div className="flex gap-3 mt-2">
-                                    <span className="text-xs bg-secondary px-2 py-1 rounded text-secondary-foreground">
-                                        {vehicle.make} {vehicle.model}
-                                    </span>
-                                    <span className="text-xs bg-secondary px-2 py-1 rounded text-secondary-foreground">
-                                        ${vehicle.price.toLocaleString()} Value
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {!vehicle && (
-                        <div>
-                            <DialogTitle className="text-lg font-bold">
-                                Calculate Shipping Quote
-                            </DialogTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Get shipping quotes for all vehicles from Utah to your destination
-                            </p>
-                        </div>
-                    )}
+                    <div>
+                        <DialogTitle className="text-lg font-bold">
+                            Calculate Shipping Quote
+                        </DialogTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Get shipping quotes from your origin to destination
+                        </p>
+                    </div>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6 pt-4">
-                    {/* Shipping From */}
-                    <div className="bg-muted/50 p-4 rounded-lg border border-border">
-                        <div className="flex items-center gap-2 text-primary mb-2">
-                            <MapPin className="w-4 h-4" />
-                            <span className="text-sm font-semibold">Shipping From</span>
+                    {/* Vehicle Selection */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-primary mb-3">
+                            <Package className="w-4 h-4" />
+                            <span className="text-sm font-semibold">Vehicle Selection (Optional)</span>
                         </div>
-                        <p className="text-sm">Utah, United States (84791)</p>
+
+                        {/* ✅ Debug info */}
+                        {vehicles.length === 0 && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-xs text-yellow-800">
+                                ⚠️ No vehicles available. Check console for details.
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label htmlFor="vehicle" className="text-xs">
+                                Select Vehicle ({vehicles.length} available)
+                            </Label>
+                            <div className="relative">
+                                <select
+                                    id="vehicle"
+                                    className="w-full h-10 px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none pr-10"
+                                    onChange={(e) => handleVehicleSelect(e.target.value)}
+                                    value={selectedVehicle?.id || ""}
+                                >
+                                    <option value="">Select a vehicle...</option>
+                                    {vehicles.map((vehicle) => (
+                                        <option key={vehicle.id} value={vehicle.id}>
+                                            {vehicle.year} {vehicle.make} {vehicle.model} - {vehicle.stockNumber}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {selectedVehicle && (
+                            <div className="bg-muted/50 p-3 rounded-lg border border-border">
+                                <div className="flex gap-3">
+                                    <div className="w-20 h-16 rounded overflow-hidden bg-muted">
+                                        <img
+                                            src={selectedVehicle.image}
+                                            alt={`${selectedVehicle.year} ${selectedVehicle.make}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div className="flex-1 text-xs">
+                                        <p><strong>Stock:</strong> {selectedVehicle.stockNumber}</p>
+                                        <p><strong>VIN:</strong> {selectedVehicle.vin}</p>
+                                        <p><strong>Location:</strong> {selectedVehicle.location}</p>
+                                        <p><strong>Price:</strong> ${selectedVehicle.price.toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Customer Information */}
@@ -185,9 +244,8 @@ export function ShippingQuoteModal({
                                     id="firstName"
                                     value={formData.firstName}
                                     onChange={(e) => updateField("firstName", e.target.value)}
-                                    className={`bg-background border-input ${errors.firstName ? "border-destructive" : ""
-                                        }`}
-                                    placeholder="John Loyd"
+                                    className={errors.firstName ? "border-destructive" : ""}
+                                    placeholder="John"
                                 />
                                 {errors.firstName && <p className="text-xs text-destructive">{errors.firstName}</p>}
                             </div>
@@ -198,9 +256,8 @@ export function ShippingQuoteModal({
                                     id="lastName"
                                     value={formData.lastName}
                                     onChange={(e) => updateField("lastName", e.target.value)}
-                                    className={`bg-background border-input ${errors.lastName ? "border-destructive" : ""
-                                        }`}
-                                    placeholder="Belen"
+                                    className={errors.lastName ? "border-destructive" : ""}
+                                    placeholder="Doe"
                                 />
                                 {errors.lastName && <p className="text-xs text-destructive">{errors.lastName}</p>}
                             </div>
@@ -215,9 +272,8 @@ export function ShippingQuoteModal({
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => updateField("email", e.target.value)}
-                                    className={`pl-10 bg-background border-input ${errors.email ? "border-destructive" : ""
-                                        }`}
-                                    placeholder="jloyd9836@gmail.com"
+                                    className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
+                                    placeholder="john@example.com"
                                 />
                             </div>
                             {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
@@ -232,12 +288,57 @@ export function ShippingQuoteModal({
                                     type="tel"
                                     value={formData.phone}
                                     onChange={(e) => updateField("phone", e.target.value)}
-                                    className={`pl-10 bg-background border-input ${errors.phone ? "border-destructive" : ""
-                                        }`}
-                                    placeholder="9991502898"
+                                    className={`pl-10 ${errors.phone ? "border-destructive" : ""}`}
+                                    placeholder="(555) 123-4567"
                                 />
                             </div>
                             {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+                        </div>
+                    </div>
+
+                    {/* Shipping From */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-primary mb-3">
+                            <MapPin className="w-4 h-4" />
+                            <span className="text-sm font-semibold">Shipping From</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label htmlFor="fromZip" className="text-xs">Origin ZIP Code</Label>
+                                <Input
+                                    id="fromZip"
+                                    value={formData.fromZip}
+                                    onChange={(e) => updateField("fromZip", e.target.value)}
+                                    className={errors.fromZip ? "border-destructive" : ""}
+                                    placeholder="84791"
+                                />
+                                {errors.fromZip && <p className="text-xs text-destructive">{errors.fromZip}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="units" className="text-xs">Units</Label>
+                                <Input
+                                    id="units"
+                                    type="number"
+                                    min="1"
+                                    max="5"
+                                    value={formData.units}
+                                    onChange={(e) => updateField("units", parseInt(e.target.value) || 1)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="fromAddress" className="text-xs">Full Origin Address</Label>
+                            <Input
+                                id="fromAddress"
+                                value={formData.fromAddress}
+                                onChange={(e) => updateField("fromAddress", e.target.value)}
+                                className={errors.fromAddress ? "border-destructive" : ""}
+                                placeholder="123 Main St, Orem, UT"
+                            />
+                            {errors.fromAddress && <p className="text-xs text-destructive">{errors.fromAddress}</p>}
                         </div>
                     </div>
 
@@ -248,31 +349,16 @@ export function ShippingQuoteModal({
                             <span className="text-sm font-semibold">Destination</span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                                <Label htmlFor="zipCode" className="text-xs">ZIP Code</Label>
-                                <Input
-                                    id="zipCode"
-                                    value={formData.zipCode}
-                                    onChange={(e) => updateField("zipCode", e.target.value)}
-                                    className={`bg-background border-input ${errors.zipCode ? "border-destructive" : ""
-                                        }`}
-                                    placeholder="90210"
-                                />
-                                {errors.zipCode && <p className="text-xs text-destructive">{errors.zipCode}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="units" className="text-xs">Units</Label>
-                                <Input
-                                    id="units"
-                                    type="number"
-                                    min="1"
-                                    value={formData.units}
-                                    onChange={(e) => updateField("units", parseInt(e.target.value) || 1)}
-                                    className="bg-background border-input"
-                                />
-                            </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="zipCode" className="text-xs">Destination ZIP Code</Label>
+                            <Input
+                                id="zipCode"
+                                value={formData.zipCode}
+                                onChange={(e) => updateField("zipCode", e.target.value)}
+                                className={errors.zipCode ? "border-destructive" : ""}
+                                placeholder="90210"
+                            />
+                            {errors.zipCode && <p className="text-xs text-destructive">{errors.zipCode}</p>}
                         </div>
 
                         <div className="space-y-2">
@@ -281,9 +367,8 @@ export function ShippingQuoteModal({
                                 id="address"
                                 value={formData.fullAddress}
                                 onChange={(e) => updateField("fullAddress", e.target.value)}
-                                className={`bg-background border-input ${errors.fullAddress ? "border-destructive" : ""
-                                    }`}
-                                placeholder="456 Oak St, City, State"
+                                className={errors.fullAddress ? "border-destructive" : ""}
+                                placeholder="456 Oak St, Los Angeles, CA"
                             />
                             {errors.fullAddress && <p className="text-xs text-destructive">{errors.fullAddress}</p>}
                         </div>
@@ -309,7 +394,7 @@ export function ShippingQuoteModal({
                                         Enclosed Trailer
                                     </Label>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Extra protection for your vehicle (additional cost)
+                                        Extra protection for your vehicle (+40% cost)
                                     </p>
                                 </div>
                             </div>
@@ -326,7 +411,7 @@ export function ShippingQuoteModal({
                                         Vehicle is inoperable
                                     </Label>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Vehicle doesn&apos;t run or drive (additional cost)
+                                        Vehicle doesn&apos;t run or drive (+20% cost)
                                     </p>
                                 </div>
                             </div>
@@ -355,7 +440,7 @@ export function ShippingQuoteModal({
                                     Calculating...
                                 </>
                             ) : (
-                                "Calculate"
+                                "Calculate Quote"
                             )}
                         </Button>
                     </div>
