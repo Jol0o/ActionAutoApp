@@ -45,12 +45,12 @@ export function ShippingQuoteModal({
 
     const [errors, setErrors] = React.useState<Partial<Record<keyof ShippingQuoteFormData, string>>>({})
 
-    // ✅ Debug: Log vehicles prop
+
     React.useEffect(() => {
         console.log('📦 Modal received vehicles:', vehicles?.length || 0, vehicles)
     }, [vehicles])
 
-    // ✅ Debug: Log when modal opens
+
     React.useEffect(() => {
         if (open) {
             console.log('🔓 Modal opened with vehicles:', vehicles?.length || 0)
@@ -144,9 +144,9 @@ export function ShippingQuoteModal({
     }
 
     const handleVehicleSelect = (vehicleId: string) => {
-        console.log('🚙 Vehicle selected:', vehicleId)
+        console.log('Vehicle selected:', vehicleId)
         const vehicle = vehicles.find(v => v.id === vehicleId)
-        console.log('🚙 Found vehicle:', vehicle)
+        console.log('Found vehicle:', vehicle)
         setSelectedVehicle(vehicle || null)
     }
 
@@ -180,10 +180,10 @@ export function ShippingQuoteModal({
                             <span className="text-sm font-semibold">Vehicle Selection (Optional)</span>
                         </div>
 
-                        {/* ✅ Debug info */}
+           
                         {vehicles.length === 0 && (
                             <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-xs text-yellow-800">
-                                ⚠️ No vehicles available. Check console for details.
+                                No vehicles available. Check console for details.
                             </div>
                         )}
 

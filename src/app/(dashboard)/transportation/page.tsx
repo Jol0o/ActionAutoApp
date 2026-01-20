@@ -102,10 +102,9 @@ export default function TransportationPage() {
                 apiClient.get('/api/shipments'),
                 apiClient.get('/api/quotes'),
                 apiClient.get('/api/vehicles'),
-                apiClient.get('/api/shipments/stats') // ✅ FIXED: Use correct stats endpoint
+                apiClient.get('/api/shipments/stats')
             ])
 
-            // ✅ FIXED: Handle ApiResponse structure consistently
             const extractData = (response: any) => {
                 // Handle both { data: { data: [...] } } and { data: [...] }
                 if (response.data?.data !== undefined) {
@@ -117,14 +116,14 @@ export default function TransportationPage() {
             setShipments(extractData(shipmentsRes) || [])
             setQuotes(extractData(quotesRes) || [])
             
-            // ✅ FIXED: Transform vehicles to match frontend interface
+  
             const vehicleData = extractData(vehiclesRes) || []
             const transformedVehicles = vehicleData.map((v: any) => ({
                 id: v.id || v._id?.toString() || v._id,
                 stockNumber: v.stockNumber || 'N/A',
                 year: v.year,
                 make: v.make,
-                model: v.model || v.modelName, // ✅ Handle both model and modelName
+                model: v.model || v.modelName, 
                 trim: v.trim || '',
                 price: v.price || 0,
                 mileage: v.mileage || 0,
@@ -136,10 +135,10 @@ export default function TransportationPage() {
                 fuelType: v.fuelType || 'Gasoline'
             }))
             
-            console.log('✅ Vehicles loaded:', transformedVehicles.length, transformedVehicles)
+            console.log('Vehicles loaded:', transformedVehicles.length, transformedVehicles)
             setVehicles(transformedVehicles)
 
-            // ✅ FIXED: Handle stats properly
+  
             const statsData = extractData(statsRes)
             if (statsData && typeof statsData === 'object') {
                 setStats(statsData)
@@ -172,7 +171,7 @@ export default function TransportationPage() {
                 vehicleInoperable: formData.vehicleInoperable
             })
 
-            // ✅ FIXED: Handle response structure
+
             const data = response.data?.data || response.data
             await fetchData() // Refresh data
             alert(`Quote created! Rate: $${data.rate}, ETA: ${data.eta.min}-${data.eta.max} days`)
@@ -221,7 +220,6 @@ export default function TransportationPage() {
         return filtered
     }, [shipments, selectedStatus, searchQuery])
 
-    // ✅ FIXED: Better error state
     if (error && !isLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
