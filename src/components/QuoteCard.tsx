@@ -10,7 +10,7 @@ import { useAlert } from "@/components/AlertDialog"
 
 interface QuoteCardProps {
     quote: Quote
-    onCreateShipment: (id: string) => Promise<void>
+    onCreateShipment: (id: string) => Promise<boolean | void>
     onDelete: (id: string) => void
 }
 
@@ -18,17 +18,17 @@ export function QuoteCard({ quote, onCreateShipment, onDelete }: QuoteCardProps)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isCreatingShipment, setIsCreatingShipment] = useState(false)
     const { showAlert, hideAlert, AlertComponent } = useAlert()
-    
+
     const vehicle = quote.vehicleId
-    const vehicleName = vehicle 
+    const vehicleName = vehicle
         ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
         : quote.vehicleName || 'N/A'
 
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric' 
+        return new Date(dateString).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
         })
     }
 
@@ -104,18 +104,18 @@ export function QuoteCard({ quote, onCreateShipment, onDelete }: QuoteCardProps)
                                 Ready
                             </Badge>
                         </div>
-                        
+
                         {quote.vehicleImage && (
                             <div className="mb-4 relative group">
-                                <img 
-                                    src={quote.vehicleImage} 
+                                <img
+                                    src={quote.vehicleImage}
                                     alt={vehicleName}
                                     className="w-full h-40 object-cover rounded-lg shadow-sm group-hover:shadow-md transition-shadow"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             </div>
                         )}
-                        
+
                         <div className="space-y-3">
                             <div>
                                 <p className="text-base font-semibold text-gray-900">{vehicleName}</p>
@@ -172,7 +172,7 @@ export function QuoteCard({ quote, onCreateShipment, onDelete }: QuoteCardProps)
                                 Pending Assignment
                             </Badge>
                         </div>
-                        
+
                         <div className="space-y-5">
                             {/* Customer & Route Info */}
                             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
@@ -262,21 +262,21 @@ export function QuoteCard({ quote, onCreateShipment, onDelete }: QuoteCardProps)
 
                             {/* Action Buttons */}
                             <div className="flex items-center gap-3 pt-2">
-                                <Button 
+                                <Button
                                     className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm"
                                     onClick={handleCreateShipment}
                                     disabled={isCreatingShipment || isDeleting}
                                 >
                                     {isCreatingShipment ? 'Creating...' : 'Create Shipment'}
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="outline"
                                     className="border-gray-300 hover:bg-gray-50"
                                     disabled={isCreatingShipment || isDeleting}
                                 >
                                     Edit Quote
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="ghost"
                                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                     onClick={handleDelete}

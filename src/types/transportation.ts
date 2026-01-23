@@ -35,7 +35,8 @@ export interface Quote {
 
 export interface Shipment {
     _id: string
-    quoteId: Quote
+    quoteId?: Quote
+    preservedQuoteData?: Quote
     status: 'Available for Pickup' | 'Cancelled' | 'Delivered' | 'Dispatched' | 'In-Route'
     origin: string
     destination: string
