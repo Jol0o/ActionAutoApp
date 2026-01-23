@@ -39,6 +39,7 @@ export async function login(data: LoginData): Promise<{ user: User; accessToken:
     setAuthCookie(accessToken);
     return { user, accessToken };
 }
+
 /**
  * Register new user
  */
