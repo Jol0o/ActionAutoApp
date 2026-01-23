@@ -13,6 +13,7 @@ export interface RegisterData {
     name: string;
 }
 
+
 /**
  * Login user and store access token in cookie
  */
