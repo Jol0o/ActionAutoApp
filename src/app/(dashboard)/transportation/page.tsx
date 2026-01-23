@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ShippingQuoteModal } from "@/components/shipping-quote-modal"
+import { QuoteResultModal } from "@/components/QuoteResultModal"
 import { TransportationSidebar } from "@/components/TransportationSidebar"
 import { ShipmentCard } from "@/components/ShipmentCard"
 import { QuoteCard } from "@/components/QuoteCard"
 import { useTransportationData } from "@/hooks/useTransportationData"
+import { useAlert } from "@/components/AlertDialog"
+import { Quote } from "@/types/transportation"
 
 export default function TransportationPage() {
     const [activeTab, setActiveTab] = React.useState("shipments")
@@ -17,6 +20,10 @@ export default function TransportationPage() {
     const [selectedStatus, setSelectedStatus] = React.useState("all")
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false)
     const [isQuoteModalOpen, setIsQuoteModalOpen] = React.useState(false)
+    const [isQuoteResultModalOpen, setIsQuoteResultModalOpen] = React.useState(false)
+    const [calculatedQuote, setCalculatedQuote] = React.useState<Quote | null>(null)
+    
+    const { showAlert, AlertComponent } = useAlert()
 
     const {
         isLoading,
@@ -27,13 +34,58 @@ export default function TransportationPage() {
         stats,
         fetchData,
         handleCalculateQuote,
-        handleCreateShipment
+        handleCreateShipment,
+        handleDeleteQuote,
+        handleDeleteShipment
     } = useTransportationData()
 
     React.useEffect(() => {
         fetchData()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    const handleCalculateQuoteWrapper = async (formData: any) => {
+        try {
+            const quote = await handleCalculateQuote(formData)
+            setCalculatedQuote(quote)
+            setIsQuoteModalOpen(false)
+            setIsQuoteResultModalOpen(true)
+        } catch (error) {
+            showAlert({
+                type: "error",
+                title: "Error Creating Quote",
+                message: error instanceof Error ? error.message : "Failed to create quote. Please try again."
+            })
+        }
+    }
+
+    const handleCreateShipmentFromQuote = async () => {
+        if (!calculatedQuote) return
+        
+        try {
+            await handleCreateShipment(calculatedQuote._id)
+            setIsQuoteResultModalOpen(false)
+            setCalculatedQuote(null)
+            setActiveTab("shipments")
+            showAlert({
+                type: "success",
+                title: "Shipment Created",
+                message: "The shipment has been created successfully and is now available in the shipments list."
+            })
+        } catch (error) {
+            showAlert({
+                type: "error",
+                title: "Error Creating Shipment",
+                message: error instanceof Error ? error.message : "Failed to create shipment. Please try again."
+            })
+        }
+    }
+
+    const handleViewQuoteDetails = () => {
+        setIsQuoteResultModalOpen(false)
+        setCalculatedQuote(null)
+        setActiveTab("drafts")
+    }
 
     const filteredShipments = React.useMemo(() => {
         let filtered = shipments
@@ -77,6 +129,7 @@ export default function TransportationPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
+            <AlertComponent />
             {/* Header */}
             <div className="bg-white border-b px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                 <div className="flex flex-col gap-3 sm:gap-4">
@@ -180,7 +233,11 @@ export default function TransportationPage() {
                         ) : (
                             <div className="space-y-3 sm:space-y-4">
                                 {filteredShipments.map((shipment) => (
-                                    <ShipmentCard key={shipment._id} shipment={shipment} />
+                                    <ShipmentCard 
+                                        key={shipment._id} 
+                                        shipment={shipment}
+                                        onDelete={handleDeleteShipment}
+                                    />
                                 ))}
                             </div>
                         )
@@ -205,6 +262,7 @@ export default function TransportationPage() {
                                         key={quote._id} 
                                         quote={quote}
                                         onCreateShipment={handleCreateShipment}
+                                        onDelete={handleDeleteQuote}
                                     />
                                 ))
                             )}
@@ -217,7 +275,15 @@ export default function TransportationPage() {
                 open={isQuoteModalOpen}
                 onOpenChange={setIsQuoteModalOpen}
                 vehicles={vehicles}
-                onCalculate={handleCalculateQuote}
+                onCalculate={handleCalculateQuoteWrapper}
+            />
+
+            <QuoteResultModal
+                open={isQuoteResultModalOpen}
+                onOpenChange={setIsQuoteResultModalOpen}
+                quote={calculatedQuote}
+                onCreateShipment={handleCreateShipmentFromQuote}
+                onViewQuote={handleViewQuoteDetails}
             />
         </div>
     )

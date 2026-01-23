@@ -1,17 +1,24 @@
 // components/QuoteCard.tsx
 
-import { Check, ChevronDown, MapPin, Calendar, Package, Clock } from "lucide-react"
+import { Check, ChevronDown, MapPin, Calendar, Package, Clock, Trash2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Quote } from "@/types/transportation"
+import { useState } from "react"
+import { useAlert } from "@/components/AlertDialog"
 
 interface QuoteCardProps {
     quote: Quote
-    onCreateShipment: (id: string) => void
+    onCreateShipment: (id: string) => Promise<void>
+    onDelete: (id: string) => void
 }
 
-export function QuoteCard({ quote, onCreateShipment }: QuoteCardProps) {
+export function QuoteCard({ quote, onCreateShipment, onDelete }: QuoteCardProps) {
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [isCreatingShipment, setIsCreatingShipment] = useState(false)
+    const { showAlert, hideAlert, AlertComponent } = useAlert()
+    
     const vehicle = quote.vehicleId
     const vehicleName = vehicle 
         ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
@@ -25,8 +32,67 @@ export function QuoteCard({ quote, onCreateShipment }: QuoteCardProps) {
         })
     }
 
+    const handleCreateShipment = async () => {
+        showAlert({
+            type: "confirm",
+            title: "Create Shipment",
+            message: `Are you sure you want to create a shipment for ${quote.firstName} ${quote.lastName}? This quote will be moved to shipments and removed from the quotes list.`,
+            confirmText: "Yes, Create Shipment",
+            cancelText: "No, Cancel",
+            onConfirm: async () => {
+                setIsCreatingShipment(true)
+                try {
+                    await onCreateShipment(quote._id)
+                    showAlert({
+                        type: "success",
+                        title: "Shipment Created",
+                        message: "The shipment has been created successfully and the quote has been moved to shipments."
+                    })
+                } catch (error) {
+                    console.error('Error creating shipment:', error)
+                    showAlert({
+                        type: "error",
+                        title: "Error",
+                        message: "Failed to create shipment. Please try again."
+                    })
+                    setIsCreatingShipment(false)
+                }
+            }
+        })
+    }
+
+    const handleDelete = async () => {
+        showAlert({
+            type: "confirm",
+            title: "Delete Quote",
+            message: `Are you sure you want to delete this quote for ${quote.firstName} ${quote.lastName}? This action cannot be undone.`,
+            confirmText: "Yes, Delete",
+            cancelText: "No, Keep Quote",
+            onConfirm: async () => {
+                setIsDeleting(true)
+                try {
+                    await onDelete(quote._id)
+                    showAlert({
+                        type: "success",
+                        title: "Quote Deleted",
+                        message: "The quote has been successfully deleted."
+                    })
+                } catch (error) {
+                    console.error('Error deleting quote:', error)
+                    showAlert({
+                        type: "error",
+                        title: "Error",
+                        message: "Failed to delete quote. Please try again."
+                    })
+                    setIsDeleting(false)
+                }
+            }
+        })
+    }
+
     return (
         <Card className="border border-gray-200 hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+            <AlertComponent />
             <CardContent className="p-0">
                 <div className="grid grid-cols-12">
                     {/* Left Section - Vehicle Info */}
@@ -198,21 +264,26 @@ export function QuoteCard({ quote, onCreateShipment }: QuoteCardProps) {
                             <div className="flex items-center gap-3 pt-2">
                                 <Button 
                                     className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm"
-                                    onClick={() => onCreateShipment(quote._id)}
+                                    onClick={handleCreateShipment}
+                                    disabled={isCreatingShipment || isDeleting}
                                 >
-                                    Create Shipment
+                                    {isCreatingShipment ? 'Creating...' : 'Create Shipment'}
                                 </Button>
                                 <Button 
                                     variant="outline"
                                     className="border-gray-300 hover:bg-gray-50"
+                                    disabled={isCreatingShipment || isDeleting}
                                 >
                                     Edit Quote
                                 </Button>
                                 <Button 
                                     variant="ghost"
                                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={handleDelete}
+                                    disabled={isDeleting || isCreatingShipment}
                                 >
-                                    Cancel
+                                    <Trash2 className="w-4 h-4 mr-1" />
+                                    {isDeleting ? 'Deleting...' : 'Delete'}
                                 </Button>
                             </div>
                         </div>

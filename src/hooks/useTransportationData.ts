@@ -1,5 +1,3 @@
-// hooks/useTransportationData.ts
-
 import * as React from "react"
 import { apiClient } from "@/lib/api-client"
 import { AxiosError } from "axios"
@@ -42,12 +40,7 @@ export function useTransportationData() {
                 vehicleId = `temp-${Math.random()}`
             }
 
-            React.useEffect(() => {
-        fetchData()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
-    return {
+            return {
                 id: vehicleId,
                 stockNumber: v.stockNumber || 'N/A',
                 year: v.year || 0,
@@ -142,27 +135,74 @@ export function useTransportationData() {
             const response = await apiClient.post('/api/quotes', payload)
             const data = response.data?.data || response.data
             await fetchData()
-            alert(`Quote created! Rate: $${data.rate}, ETA: ${data.eta.min}-${data.eta.max} days`)
+            
+            // Return the quote data instead of showing alert
+            return data
         } catch (error) {
             console.error('❌ Error creating quote:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
-            alert('Failed to create quote: ' + errorMessage)
+            throw new Error('Failed to create quote: ' + errorMessage)
         }
     }, [vehicles, fetchData])
 
     const handleCreateShipment = React.useCallback(async (quoteId: string) => {
         try {
             await apiClient.post('/api/shipments', { quoteId })
+            
+            // Remove quote from state and add shipment
+            setQuotes(prev => prev.filter(q => q._id !== quoteId))
+            
+            // Refresh data to get the new shipment
             await fetchData()
-            alert('Shipment created successfully!')
+            
+            return true
         } catch (error) {
             console.error('Error creating shipment:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
-            alert('Failed to create shipment: ' + errorMessage)
+            throw new Error('Failed to create shipment: ' + errorMessage)
         }
     }, [fetchData])
+
+    const handleDeleteQuote = React.useCallback(async (quoteId: string) => {
+        try {
+            await apiClient.delete(`/api/quotes/${quoteId}`)
+            
+            // Remove the quote from state immediately for better UX
+            setQuotes(prev => prev.filter(q => q._id !== quoteId))
+            
+            alert('Quote deleted successfully!')
+        } catch (error) {
+            console.error('❌ Error deleting quote:', error)
+            const axiosError = error as AxiosError
+            const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
+            alert('Failed to delete quote: ' + errorMessage)
+            throw error // Re-throw so QuoteCard can handle loading state
+        }
+    }, [])
+
+    const handleDeleteShipment = React.useCallback(async (shipmentId: string) => {
+        try {
+            await apiClient.delete(`/api/shipments/${shipmentId}`)
+            
+            // Remove the shipment from state immediately for better UX
+            setShipments(prev => prev.filter(s => s._id !== shipmentId))
+            
+            // Update stats
+            setStats(prev => ({
+                ...prev,
+                all: Math.max(0, prev.all - 1)
+            }))
+            
+            return true
+        } catch (error) {
+            console.error('❌ Error deleting shipment:', error)
+            const axiosError = error as AxiosError
+            const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
+            throw new Error('Failed to delete shipment: ' + errorMessage)
+        }
+    }, [])
 
     return {
         isLoading,
@@ -173,6 +213,8 @@ export function useTransportationData() {
         stats,
         fetchData,
         handleCalculateQuote,
-        handleCreateShipment
+        handleCreateShipment,
+        handleDeleteQuote,
+        handleDeleteShipment
     }
 }

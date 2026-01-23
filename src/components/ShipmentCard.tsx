@@ -1,17 +1,24 @@
 // components/ShipmentCard.tsx
 
-import { MapPin, Truck, Download, Package, Calendar, CheckCircle, Clock, ArrowRight } from "lucide-react"
+import { MapPin, Truck, Download, Package, Calendar, CheckCircle, Clock, ArrowRight, Trash2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Shipment } from "@/types/transportation"
+import { useState } from "react"
+import { useAlert } from "@/components/AlertDialog"
 
 interface ShipmentCardProps {
     shipment: Shipment
+    onDelete: (id: string) => void
 }
 
-export function ShipmentCard({ shipment }: ShipmentCardProps) {
-    const quote = shipment.quoteId
+export function ShipmentCard({ shipment, onDelete }: ShipmentCardProps) {
+    const [isDeleting, setIsDeleting] = useState(false)
+    const { showAlert, hideAlert, AlertComponent } = useAlert()
+    
+    // Get quote data from either the quote reference or preserved data
+    const quote = shipment.quoteId || shipment.preservedQuoteData
     const vehicle = quote?.vehicleId
     const vehicleName = vehicle 
         ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
@@ -23,6 +30,36 @@ export function ShipmentCard({ shipment }: ShipmentCardProps) {
             month: 'short', 
             day: 'numeric', 
             year: 'numeric' 
+        })
+    }
+
+    const handleDelete = async () => {
+        const customerName = quote ? `${quote.firstName} ${quote.lastName}` : 'this customer'
+        showAlert({
+            type: "confirm",
+            title: "Delete Shipment",
+            message: `Are you sure you want to delete the shipment for ${customerName}? This action cannot be undone and the quote will be restored to "accepted" status.`,
+            confirmText: "Yes, Delete",
+            cancelText: "No, Keep Shipment",
+            onConfirm: async () => {
+                setIsDeleting(true)
+                try {
+                    await onDelete(shipment._id)
+                    showAlert({
+                        type: "success",
+                        title: "Shipment Deleted",
+                        message: "The shipment has been successfully deleted and the quote has been restored."
+                    })
+                } catch (error) {
+                    console.error('Error deleting shipment:', error)
+                    showAlert({
+                        type: "error",
+                        title: "Error",
+                        message: "Failed to delete shipment. Please try again."
+                    })
+                    setIsDeleting(false)
+                }
+            }
         })
     }
 
@@ -71,6 +108,7 @@ export function ShipmentCard({ shipment }: ShipmentCardProps) {
 
     return (
         <div className="flex justify-center">
+            <AlertComponent />
             <Card className="border border-gray-200 hover:shadow-2xl transition-all duration-500 overflow-hidden group max-w-5xl w-full">
                 <CardContent className="p-0">
                     <div className="grid grid-cols-12">
@@ -276,6 +314,16 @@ export function ShipmentCard({ shipment }: ShipmentCardProps) {
                                     size="lg"
                                 >
                                     View History
+                                </Button>
+                                <Button 
+                                    variant="ghost"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    size="lg"
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                >
+                                    <Trash2 className="w-4 h-4 mr-1" />
+                                    {isDeleting ? 'Deleting...' : 'Delete'}
                                 </Button>
                             </div>
                         </div>

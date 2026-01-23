@@ -53,7 +53,7 @@ export function TransportationSidebar({
                         <span>SHIPMENTS</span>
                     </TabsTrigger>
                     <TabsTrigger value="drafts" className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2">
-                        QUOTES
+                        DRAFTS
                     </TabsTrigger>
                 </TabsList>
             </Tabs>
