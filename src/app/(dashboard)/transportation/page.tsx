@@ -12,7 +12,7 @@ import { ShipmentCard } from "@/components/ShipmentCard"
 import { QuoteCard } from "@/components/QuoteCard"
 import { useTransportationData } from "@/hooks/useTransportationData"
 import { useAlert } from "@/components/AlertDialog"
-import { Quote } from "@/types/transportation"
+import { Quote, Shipment } from "@/types/transportation"
 
 export default function TransportationPage() {
     const [activeTab, setActiveTab] = React.useState("shipments")
@@ -36,7 +36,9 @@ export default function TransportationPage() {
         handleCalculateQuote,
         handleCreateShipment,
         handleDeleteQuote,
-        handleDeleteShipment
+        handleDeleteShipment,
+        handleUpdateQuote,
+        handleUpdateShipment
     } = useTransportationData()
 
     React.useEffect(() => {
@@ -237,6 +239,7 @@ export default function TransportationPage() {
                                         key={shipment._id} 
                                         shipment={shipment}
                                         onDelete={handleDeleteShipment}
+                                        onUpdate={handleUpdateShipment}
                                     />
                                 ))}
                             </div>
@@ -263,6 +266,7 @@ export default function TransportationPage() {
                                         quote={quote}
                                         onCreateShipment={handleCreateShipment}
                                         onDelete={handleDeleteQuote}
+                                        onUpdate={handleUpdateQuote}
                                     />
                                 ))
                             )}
