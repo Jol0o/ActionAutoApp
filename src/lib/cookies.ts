@@ -34,6 +34,7 @@ export function getAuthCookie(): string | null {
   return null;
 }
 
+
 export function deleteAuthCookie() {
   if (typeof document !== 'undefined') {
     document.cookie = `${AUTH_COOKIE_NAME}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax;`;
