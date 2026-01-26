@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Deploy Hook
-        run: curl -X POST ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: curl -v -f -X POST ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}

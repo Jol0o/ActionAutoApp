@@ -33,6 +33,7 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
         })
     }
 
+
     const handleCreateShipment = async () => {
         showAlert({
             type: "confirm",
