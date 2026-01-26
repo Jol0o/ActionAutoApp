@@ -3,7 +3,6 @@ import { apiClient } from "@/lib/api-client"
 import { AxiosError } from "axios"
 import { Vehicle, ShippingQuoteFormData } from "@/types/inventory"
 import { Shipment, Quote, ShipmentStats } from "@/types/transportation"
-import { MOCK_VEHICLES } from "@/data/mockVehicles"
 
 export function useTransportationData() {
     const [isLoading, setIsLoading] = React.useState(true)
@@ -64,36 +63,43 @@ export function useTransportationData() {
         setError(null)
         
         try {
+            console.log('[TransportationData] Fetching all data...')
+            
             const [shipmentsRes, quotesRes, vehiclesRes, statsRes] = await Promise.all([
                 apiClient.get('/api/shipments'),
                 apiClient.get('/api/quotes'),
-                apiClient.get('/api/vehicles'),
+                apiClient.get('/api/vehicles', { params: { status: 'all', limit: 0 } }),
                 apiClient.get('/api/shipments/stats')
             ])
 
-            setShipments(extractData(shipmentsRes) || [])
-            setQuotes(extractData(quotesRes) || [])
-            
-            const vehicleData = extractData(vehiclesRes) || []
-            
-            if (!vehicleData || vehicleData.length === 0) {
-                console.log('No vehicles from API, using MOCK DATA')
-                setVehicles(MOCK_VEHICLES)
-            } else {
-                setVehicles(transformVehicles(vehicleData))
-            }
-
+            const shipmentsData = extractData(shipmentsRes) || []
+            const quotesData = extractData(quotesRes) || []
+            const vehiclesResponse = extractData(vehiclesRes)
+            const vehicleData = vehiclesResponse?.vehicles || vehiclesResponse || []
             const statsData = extractData(statsRes)
+
+            console.log('[TransportationData] Fetched:', {
+                shipments: shipmentsData.length,
+                quotes: quotesData.length,
+                vehicles: vehicleData.length
+            })
+
+            setShipments(shipmentsData)
+            setQuotes(quotesData)
+            setVehicles(transformVehicles(vehicleData))
+
             if (statsData && typeof statsData === 'object') {
                 setStats(statsData)
             }
 
         } catch (error) {
-            console.error('❌ Error fetching data:', error)
+            console.error('[TransportationData] Error fetching data:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Failed to load data'
             setError(errorMessage)
-            setVehicles(MOCK_VEHICLES)
+            setShipments([])
+            setQuotes([])
+            setVehicles([])
         } finally {
             setIsLoading(false)
         }
@@ -101,6 +107,8 @@ export function useTransportationData() {
 
     const handleCalculateQuote = React.useCallback(async (formData: ShippingQuoteFormData) => {
         try {
+            console.log('[TransportationData] Creating quote...')
+            
             const isValidMongoId = formData.vehicleId && /^[0-9a-fA-F]{24}$/.test(formData.vehicleId)
             
             const payload: any = {
@@ -134,11 +142,13 @@ export function useTransportationData() {
             
             const response = await apiClient.post('/api/quotes', payload)
             const data = response.data?.data || response.data
+            
+            console.log('[TransportationData] Quote created successfully')
             await fetchData()
             
             return data
         } catch (error) {
-            console.error('❌ Error creating quote:', error)
+            console.error('[TransportationData] Error creating quote:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
             throw new Error('Failed to create quote: ' + errorMessage)
@@ -147,15 +157,22 @@ export function useTransportationData() {
 
     const handleCreateShipment = React.useCallback(async (quoteId: string) => {
         try {
-            await apiClient.post('/api/shipments', { quoteId })
+            console.log('[TransportationData] Creating shipment for quote:', quoteId)
+            
+            await apiClient.post('/api/shipments', { 
+                quoteId,
+                requestedPickupDate: new Date(),
+                autoDeleteQuote: true
+            })
             
             setQuotes(prev => prev.filter(q => q._id !== quoteId))
             
+            console.log('[TransportationData] Shipment created successfully')
             await fetchData()
             
             return true
         } catch (error) {
-            console.error('Error creating shipment:', error)
+            console.error('[TransportationData] Error creating shipment:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
             throw new Error('Failed to create shipment: ' + errorMessage)
@@ -164,34 +181,36 @@ export function useTransportationData() {
 
     const handleDeleteQuote = React.useCallback(async (quoteId: string) => {
         try {
-            await apiClient.delete(`/api/quotes/${quoteId}`)
+            console.log('[TransportationData] Deleting quote:', quoteId)
             
+            await apiClient.delete(`/api/quotes/${quoteId}`)
             setQuotes(prev => prev.filter(q => q._id !== quoteId))
             
-            alert('Quote deleted successfully!')
+            console.log('[TransportationData] Quote deleted successfully')
         } catch (error) {
-            console.error('Error deleting quote:', error)
+            console.error('[TransportationData] Error deleting quote:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
-            alert('Failed to delete quote: ' + errorMessage)
-            throw error
+            throw new Error('Failed to delete quote: ' + errorMessage)
         }
     }, [])
 
     const handleDeleteShipment = React.useCallback(async (shipmentId: string) => {
         try {
+            console.log('[TransportationData] Deleting shipment:', shipmentId)
+            
             await apiClient.delete(`/api/shipments/${shipmentId}`)
             
             setShipments(prev => prev.filter(s => s._id !== shipmentId))
-            
             setStats(prev => ({
                 ...prev,
                 all: Math.max(0, prev.all - 1)
             }))
             
+            console.log('[TransportationData] Shipment deleted successfully')
             return true
         } catch (error) {
-            console.error('Error deleting shipment:', error)
+            console.error('[TransportationData] Error deleting shipment:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
             throw new Error('Failed to delete shipment: ' + errorMessage)
@@ -200,6 +219,8 @@ export function useTransportationData() {
 
     const handleUpdateQuote = React.useCallback(async (quoteId: string, updatedQuote: Partial<Quote>) => {
         try {
+            console.log('[TransportationData] Updating quote:', quoteId)
+            
             const response = await apiClient.put(`/api/quotes/${quoteId}`, updatedQuote)
             const data = extractData(response)
             
@@ -209,11 +230,12 @@ export function useTransportationData() {
                 )
             )
             
+            console.log('[TransportationData] Quote updated successfully')
             await fetchData()
             
             return data
         } catch (error) {
-            console.error('Error updating quote:', error)
+            console.error('[TransportationData] Error updating quote:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
             throw new Error('Failed to update quote: ' + errorMessage)
@@ -222,6 +244,8 @@ export function useTransportationData() {
 
     const handleUpdateShipment = React.useCallback(async (shipmentId: string, updatedShipment: Partial<Shipment>) => {
         try {
+            console.log('[TransportationData] Updating shipment:', shipmentId)
+            
             const response = await apiClient.put(`/api/shipments/${shipmentId}`, updatedShipment)
             const data = extractData(response)
             
@@ -231,11 +255,12 @@ export function useTransportationData() {
                 )
             )
             
+            console.log('[TransportationData] Shipment updated successfully')
             await fetchData()
             
             return data
         } catch (error) {
-            console.error('Error updating shipment:', error)
+            console.error('[TransportationData] Error updating shipment:', error)
             const axiosError = error as AxiosError
             const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
             throw new Error('Failed to update shipment: ' + errorMessage)

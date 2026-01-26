@@ -1,208 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, RefreshCw } from "lucide-react"
 import { CarInventoryCard } from "@/components/car-inventory-card"
 import { ShippingQuoteModal } from "@/components/shipping-quote-modal"
 import type { Vehicle, ShippingQuoteFormData } from "@/types/inventory"
 import { apiClient } from "@/lib/api-client"
 import { AxiosError } from "axios"
-
-// Mock data fallback
-const MOCK_VEHICLES: Vehicle[] = [
-  {
-    id: "1",
-    stockNumber: "L20294",
-    year: 2022,
-    make: "Acura",
-    model: "MDX",
-    trim: "SH-AWD W/TECH",
-    price: 45990,
-    mileage: 46870,
-    vin: "5J8YD4H86NL123456",
-    image: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&h=600&fit=crop",
-    location: "Orem, UT",
-    color: "White",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "2",
-    stockNumber: "L21163",
-    year: 2024,
-    make: "Mercedes-Benz",
-    model: "S-Class",
-    trim: "S 580 4MATIC",
-    price: 110000,
-    mileage: 12483,
-    vin: "WDDUX8GB8PA123456",
-    image: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800&h=600&fit=crop",
-    location: "Lehi, UT",
-    color: "Black",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "3",
-    stockNumber: "L20694",
-    year: 2021,
-    make: "Acura",
-    model: "RDX",
-    trim: "SH-AWD W/A-SPEC",
-    price: 38500,
-    mileage: 96441,
-    vin: "5J8TC2H51ML123456",
-    image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&h=600&fit=crop",
-    location: "Orem, UT",
-    color: "Silver",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "4",
-    stockNumber: "L21009",
-    year: 2020,
-    make: "Audi",
-    model: "A6",
-    trim: "Premium Plus",
-    price: 32900,
-    mileage: 41629,
-    vin: "WAUC2AF28LN123456",
-    image: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800&h=600&fit=crop",
-    location: "Lehi, UT",
-    color: "Blue",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "5",
-    stockNumber: "L20615",
-    year: 2019,
-    make: "BMW",
-    model: "X5",
-    trim: "xDrive40i",
-    price: 42000,
-    mileage: 38076,
-    vin: "5UXCR6C09KL123456",
-    image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800&h=600&fit=crop",
-    location: "Orem, UT",
-    color: "White",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "6",
-    stockNumber: "L21143",
-    year: 2018,
-    make: "Chevrolet",
-    model: "Silverado 1500",
-    trim: "LT Crew Cab",
-    price: 28900,
-    mileage: 116639,
-    vin: "1GCUKREC0JZ123456",
-    image: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=800&h=600&fit=crop",
-    location: "Lehi, UT",
-    color: "Red",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "7",
-    stockNumber: "L20893",
-    year: 2021,
-    make: "Honda",
-    model: "CR-V",
-    trim: "Hybrid Sport",
-    price: 29500,
-    mileage: 55997,
-    vin: "7FARW2H89ME123456",
-    image: "https://images.unsplash.com/photo-1590362891991-f776e747a588?w=800&h=600&fit=crop",
-    location: "Orem, UT",
-    color: "Gray",
-    transmission: "Automatic",
-    fuelType: "Hybrid"
-  },
-  {
-    id: "8",
-    stockNumber: "L20846",
-    year: 2020,
-    make: "Toyota",
-    model: "RAV4",
-    trim: "XLE Premium",
-    price: 27800,
-    mileage: 65399,
-    vin: "2T3N1RFV4LC123456",
-    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&h=600&fit=crop",
-    location: "Lehi, UT",
-    color: "Silver",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "9",
-    stockNumber: "M21027",
-    year: 2019,
-    make: "Ford",
-    model: "F-150",
-    trim: "Lariat SuperCrew",
-    price: 38900,
-    mileage: 163076,
-    vin: "1FTEW1E89KF123456",
-    image: "https://www.automotiveaddicts.com/wp-content/uploads/2019/10/2019-ford-f-150-limited.jpg",
-    location: "Orem, UT",
-    color: "Black",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "10",
-    stockNumber: "M19928",
-    year: 2022,
-    make: "Tesla",
-    model: "Model 3",
-    trim: "Long Range AWD",
-    price: 42500,
-    mileage: 76762,
-    vin: "5YJ3E1EA8NF123456",
-    image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800&h=600&fit=crop",
-    location: "Lehi, UT",
-    color: "Blue",
-    transmission: "Automatic",
-    fuelType: "Electric"
-  },
-  {
-    id: "11",
-    stockNumber: "L21076",
-    year: 2020,
-    make: "Lexus",
-    model: "RX 350",
-    trim: "F Sport",
-    price: 41200,
-    mileage: 63225,
-    vin: "2T2BZMCA4LC123456",
-    image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800&h=600&fit=crop",
-    location: "Orem, UT",
-    color: "White",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  },
-  {
-    id: "12",
-    stockNumber: "L20301",
-    year: 2021,
-    make: "Jeep",
-    model: "Grand Cherokee",
-    trim: "Limited 4WD",
-    price: 36900,
-    mileage: 69682,
-    vin: "1C4RJFBG9MC123456",
-    image: "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800&h=600&fit=crop",
-    location: "Lehi, UT",
-    color: "Gray",
-    transmission: "Automatic",
-    fuelType: "Gasoline"
-  }
-]
 
 type SortOption =
   | "make-asc"
@@ -218,9 +22,7 @@ export default function InventoryPage() {
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [useMockData, setUseMockData] = React.useState(false)
 
-  // Fetch vehicles on mount
   React.useEffect(() => {
     fetchVehicles()
   }, [])
@@ -230,22 +32,30 @@ export default function InventoryPage() {
     setError(null)
     
     try {
-      const response = await apiClient.get('/api/vehicles')
+      console.log('[Inventory] Fetching vehicles from API...')
       
-      // Handle ApiResponse structure
-      const data = response.data?.data || response.data || []
+      const response = await apiClient.get('/api/vehicles', {
+        params: {
+          status: 'all',
+          limit: 1000,
+          sortBy: 'createdAt',
+          sortOrder: 'desc'
+        }
+      })
       
-      // If no data from API, use mock data
-      if (!data || data.length === 0) {
-        console.log('⚠️ No vehicles from API, using mock data')
-        setVehicles(MOCK_VEHICLES)
-        setUseMockData(true)
-        setIsLoading(false)
-        return
+      console.log('[Inventory] API Response:', response.data)
+      
+      const responseData = response.data?.data || response.data
+      const vehiclesData = responseData.vehicles || responseData || []
+      
+      if (!Array.isArray(vehiclesData)) {
+        console.error('[Inventory] Invalid response format:', responseData)
+        throw new Error('Invalid response format from server')
       }
       
-      // Transform backend data to frontend Vehicle interface
-      const transformedVehicles: Vehicle[] = data.map((v: any) => ({
+      console.log(`[Inventory] Found ${vehiclesData.length} vehicles`)
+      
+      const transformedVehicles: Vehicle[] = vehiclesData.map((v: any) => ({
         id: v.id || v._id,
         stockNumber: v.stockNumber || 'N/A',
         year: v.year,
@@ -263,17 +73,14 @@ export default function InventoryPage() {
       }))
       
       setVehicles(transformedVehicles)
-      setUseMockData(false)
+      console.log('[Inventory] Vehicles loaded successfully')
     } catch (err) {
-      console.error('Error fetching vehicles:', err)
+      console.error('[Inventory] Error fetching vehicles:', err)
       const axiosError = err as AxiosError
-      const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Failed to load vehicles'
-      
-      // Fallback to mock data on error
-      console.log('⚠️ API error, using mock data')
-      setVehicles(MOCK_VEHICLES)
-      setUseMockData(true)
-      setError(null) // Don't show error if we have mock data
+      const apiErrorData = axiosError.response?.data as any
+      const errorMessage = apiErrorData?.message || axiosError.message || 'Failed to load vehicles'
+      setError(errorMessage)
+      setVehicles([])
     } finally {
       setIsLoading(false)
     }
@@ -281,6 +88,8 @@ export default function InventoryPage() {
 
   const handleCalculateQuote = async (formData: ShippingQuoteFormData) => {
     try {
+      console.log('[Quote] Submitting quote request:', formData)
+      
       const response = await apiClient.post('/api/quotes', {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -297,11 +106,14 @@ export default function InventoryPage() {
       })
 
       const data = response.data?.data || response.data
+      console.log('[Quote] Quote created successfully:', data)
+      
       alert(`Quote created successfully! Rate: $${data.rate}, ETA: ${data.eta.min}-${data.eta.max} days`)
     } catch (error) {
-      console.error('Error creating quote:', error)
+      console.error('[Quote] Error creating quote:', error)
       const axiosError = error as AxiosError
-      const errorMessage = (axiosError.response?.data as any)?.message || axiosError.message || 'Unknown error'
+      const apiErrorData = axiosError.response?.data as any
+      const errorMessage = apiErrorData?.message || axiosError.message || 'Unknown error'
       alert('Failed to create quote: ' + errorMessage)
     }
   }
@@ -337,20 +149,42 @@ export default function InventoryPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Inventory</h2>
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={fetchVehicles}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry Loading
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-muted/20">
-      {/* Header */}
       <div className="border-b bg-background">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <p className="text-sm">
               <span className="font-bold">RESULTS:</span> {vehicles.length}
             </p>
-            {useMockData && (
-              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                Using Mock Data
-              </span>
-            )}
+            <button
+              onClick={fetchVehicles}
+              disabled={isLoading}
+              className="text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+              title="Refresh inventory"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -374,17 +208,22 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Grid */}
       <div className="max-w-8xl mx-auto px-4 py-8">
         {vehicles.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-lg text-gray-600">No vehicles found in inventory.</p>
-            <button
-              onClick={fetchVehicles}
-              className="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              Retry Loading
-            </button>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 max-w-md mx-auto">
+              <p className="text-lg text-gray-600 mb-4">No vehicles found in inventory.</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Import vehicles through the FTP server or add them manually through the admin dashboard.
+              </p>
+              <button
+                onClick={fetchVehicles}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh Inventory
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
@@ -399,7 +238,6 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Shipping Quote Modal */}
       <ShippingQuoteModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
