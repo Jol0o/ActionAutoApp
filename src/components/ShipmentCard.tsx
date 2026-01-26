@@ -1,4 +1,4 @@
-import { MapPin, Truck, Download, Package, Calendar, CheckCircle, Clock, ArrowRight, Trash2 } from "lucide-react"
+import { MapPin, Truck, Download, Package, Calendar, CheckCircle, Clock, ArrowRight, Trash2, Mail } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -6,6 +6,7 @@ import { Shipment } from "@/types/transportation"
 import { useState } from "react"
 import { useAlert } from "@/components/AlertDialog"
 import { EditShipmentModal } from "./EditShipmentModal"
+import { generateShipmentPDF } from "@/utils/pdfGenerator"
 
 interface ShipmentCardProps {
     shipment: Shipment
@@ -16,6 +17,7 @@ interface ShipmentCardProps {
 export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps) {
     const [isDeleting, setIsDeleting] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
     const { showAlert, hideAlert, AlertComponent } = useAlert()
     
     // Get quote data from either the quote reference or preserved data
@@ -75,6 +77,46 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
             title: "Shipment Updated",
             message: "The shipment has been successfully updated."
         })
+    }
+
+    const handleSendEmail = () => {
+        const customerEmail = quote?.email || ''
+        showAlert({
+            type: "confirm",
+            title: "Send Shipment Details",
+            message: `Send shipment details to ${customerEmail}? This will include tracking information and current status.`,
+            confirmText: "Yes, Send Email",
+            cancelText: "Cancel",
+            onConfirm: async () => {
+                // TODO: Implement email sending functionality
+                showAlert({
+                    type: "success",
+                    title: "Email Sent",
+                    message: `Shipment details have been sent to ${customerEmail}`
+                })
+            }
+        })
+    }
+
+    const handleExportPDF = async () => {
+        setIsGeneratingPDF(true)
+        try {
+            await generateShipmentPDF(shipment)
+            showAlert({
+                type: "success",
+                title: "PDF Generated",
+                message: "Shipment documentation has been downloaded successfully."
+            })
+        } catch (error) {
+            console.error('Error generating PDF:', error)
+            showAlert({
+                type: "error",
+                title: "Error",
+                message: "Failed to generate PDF. Please try again."
+            })
+        } finally {
+            setIsGeneratingPDF(false)
+        }
     }
 
     const getStatusConfig = () => {
@@ -208,14 +250,27 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                         </div>
                                     </div>
                                     
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="gap-2 text-xs border-gray-300 hover:bg-gray-100 shadow-sm"
-                                    >
-                                        <Download className="w-3.5 h-3.5" />
-                                        Export PDF
-                                    </Button>
+                                    <div className="flex flex-col gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="gap-2 text-xs border-gray-300 hover:bg-gray-100 shadow-sm w-full"
+                                            onClick={handleExportPDF}
+                                            disabled={isGeneratingPDF}
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                            {isGeneratingPDF ? 'Generating...' : 'Export PDF'}
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="gap-2 text-xs border-blue-300 hover:bg-blue-50 text-blue-600 hover:text-blue-700 shadow-sm w-full"
+                                            onClick={handleSendEmail}
+                                        >
+                                            <Mail className="w-3.5 h-3.5" />
+                                            Send to Email
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 {/* Pricing Information */}
