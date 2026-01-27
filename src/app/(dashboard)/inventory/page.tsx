@@ -19,7 +19,8 @@ type SortOption =
   | "year-desc"
   | "createdAt-desc"
 
-export default function InventoryPage() {
+
+function InventoryContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -126,6 +127,11 @@ export default function InventoryPage() {
     setPage(1) // Reset to first page on filter change
   }
 
+  const handleBulkFilterChange = (newFilters: any) => {
+    setFilters((prev: any) => ({ ...prev, ...newFilters }))
+    setPage(1)
+  }
+
   const handleClearFilters = () => {
     setFilters({
       search: "",
@@ -229,6 +235,7 @@ export default function InventoryPage() {
           <InventoryFilters
             filters={filters}
             onFilterChange={handleFilterChange}
+            onBulkFilterChange={handleBulkFilterChange}
             onClearFilters={handleClearFilters}
           />
 
@@ -322,5 +329,20 @@ export default function InventoryPage() {
         onCalculate={handleCalculateQuote}
       />
     </div>
+  )
+}
+
+export default function InventoryPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-r-transparent" />
+          <p className="text-muted-foreground">Loading inventory...</p>
+        </div>
+      </div>
+    }>
+      <InventoryContent />
+    </React.Suspense>
   )
 }
