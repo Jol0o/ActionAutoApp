@@ -1,5 +1,6 @@
 // Type definitions for car inventory and shipping quotes
 
+
 export interface Vehicle {
     id: string;
     stockNumber: string;
@@ -15,6 +16,35 @@ export interface Vehicle {
     color?: string;
     transmission?: string;
     fuelType?: string;
+    exteriorColor?: string;
+    interiorColor?: string;
+    status?: string;
+    daysOnLot?: number;
+    images?: string[];
+    bodyStyle?: string;
+    driveTrain?: string;
+}
+
+export interface FilterOptions {
+    makes: string[];
+    models: string[];
+    years: number[];
+    locations: string[];
+    bodyStyles: string[];
+    driveTrains: string[];
+}
+
+export interface Pagination {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+}
+
+export interface InventoryResponse {
+    vehicles: Vehicle[];
+    total: number;
+    pagination: Pagination;
 }
 
 export interface ShippingQuoteFormData {
@@ -22,14 +52,14 @@ export interface ShippingQuoteFormData {
     lastName: string
     email: string
     phone: string
-    zipCode: string          
+    zipCode: string
     units: number
-    fullAddress: string     
+    fullAddress: string
     enclosedTrailer: boolean
     vehicleInoperable: boolean
-    fromZip: string          
-    fromAddress: string      
-    vehicleId?: string      
+    fromZip: string
+    fromAddress: string
+    vehicleId?: string
 }
 
 export interface ShippingQuote {

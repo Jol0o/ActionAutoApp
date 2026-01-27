@@ -7,89 +7,172 @@ import { ShippingQuoteModal } from "@/components/shipping-quote-modal"
 import type { Vehicle, ShippingQuoteFormData } from "@/types/inventory"
 import { apiClient } from "@/lib/api-client"
 import { AxiosError } from "axios"
+import { InventoryFilters } from "@/components/inventory-filters"
+import { InventoryPagination } from "@/components/inventory-pagination"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 
 type SortOption =
-  | "make-asc"
-  | "price-low"
-  | "price-high"
-  | "mileage-low"
-  | "mileage-high"
-  | "year-latest"
+  | "price-asc"
+  | "price-desc"
+  | "mileage-asc"
+  | "mileage-desc"
+  | "year-desc"
+  | "createdAt-desc"
 
 export default function InventoryPage() {
-  const [sortBy, setSortBy] = React.useState<SortOption>("price-high")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const [isModalOpen, setIsModalOpen] = React.useState(false)
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
+  // Pagination State
+  const [page, setPage] = React.useState(Number(searchParams.get("page")) || 1)
+  const [limit, setLimit] = React.useState(Number(searchParams.get("limit")) || 12)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(1)
+
+  // Filter State
+  const [filters, setFilters] = React.useState<any>({
+    search: searchParams.get("search") || "",
+    make: searchParams.get("make") || undefined,
+    model: searchParams.get("model") || undefined,
+    status: searchParams.get("status") || "all",
+    year: searchParams.get("year") ? Number(searchParams.get("year")) : undefined,
+    minPrice: searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : undefined,
+    maxPrice: searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined,
+    minMileage: searchParams.get("minMileage") ? Number(searchParams.get("minMileage")) : undefined,
+    maxMileage: searchParams.get("maxMileage") ? Number(searchParams.get("maxMileage")) : undefined,
+    sortBy: searchParams.get("sortBy") || "createdAt",
+    sortOrder: searchParams.get("sortOrder") || "desc"
+  })
+
+  // Debounced search term to avoid rapid API calls
+  const [debouncedSearch, setDebouncedSearch] = React.useState(filters.search)
+
   React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filters.search)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [filters.search])
+
+  React.useEffect(() => {
+    // Update URL when state changes
+    const params = new URLSearchParams()
+    params.set("page", page.toString())
+    params.set("limit", limit.toString())
+
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== "" && filters[key] !== "all") {
+        params.set(key, filters[key])
+      }
+    })
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+
     fetchVehicles()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, debouncedSearch, filters.make, filters.model, filters.status, filters.year, filters.minPrice, filters.maxPrice, filters.minMileage, filters.maxMileage, filters.sortBy, filters.sortOrder])
 
   const fetchVehicles = async () => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      console.log('[Inventory] Fetching vehicles from API...')
-      
+      console.log('[Inventory] Fetching vehicles with params:', {
+        page, limit, ...filters, search: debouncedSearch
+      })
+
       const response = await apiClient.get('/api/vehicles', {
         params: {
-          status: 'all',
-          limit: 1000,
-          sortBy: 'createdAt',
-          sortOrder: 'desc'
+          page,
+          limit,
+          ...filters,
+          search: debouncedSearch,
+          // Map frontend sort option to API params if needed, or keeping it simple
+          // The API expects sortBy and sortOrder separately which we are managing in filters state
         }
       })
-      
-      console.log('[Inventory] API Response:', response.data)
-      
+
       const responseData = response.data?.data || response.data
-      const vehiclesData = responseData.vehicles || responseData || []
-      
-      if (!Array.isArray(vehiclesData)) {
-        console.error('[Inventory] Invalid response format:', responseData)
-        throw new Error('Invalid response format from server')
-      }
-      
-      console.log(`[Inventory] Found ${vehiclesData.length} vehicles`)
-      
-      const transformedVehicles: Vehicle[] = vehiclesData.map((v: any) => ({
-        id: v.id || v._id,
-        stockNumber: v.stockNumber || 'N/A',
-        year: v.year,
-        make: v.make,
-        model: v.model || v.modelName,
-        trim: v.trim || '',
-        price: v.price || 0,
-        mileage: v.mileage || 0,
-        vin: v.vin,
-        image: v.image || 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&h=600&fit=crop',
-        location: v.location || 'Unknown',
-        color: v.color || 'N/A',
-        transmission: v.transmission || 'Automatic',
-        fuelType: v.fuelType || 'Gasoline'
-      }))
-      
-      setVehicles(transformedVehicles)
-      console.log('[Inventory] Vehicles loaded successfully')
+      const vehiclesData = responseData.vehicles || []
+      const paginationData = responseData.pagination || { total: 0, totalPages: 1 }
+
+      setVehicles(vehiclesData)
+      setTotal(paginationData.total)
+      setTotalPages(paginationData.totalPages)
+
     } catch (err) {
       console.error('[Inventory] Error fetching vehicles:', err)
       const axiosError = err as AxiosError
-      const apiErrorData = axiosError.response?.data as any
-      const errorMessage = apiErrorData?.message || axiosError.message || 'Failed to load vehicles'
-      setError(errorMessage)
-      setVehicles([])
+      // Only set error if it's not a cancellation
+      if (axiosError.code !== "ERR_CANCELED") {
+        const apiErrorData = axiosError.response?.data as any
+        const errorMessage = apiErrorData?.message || axiosError.message || 'Failed to load vehicles'
+        setError(errorMessage)
+        setVehicles([])
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters((prev: any) => ({ ...prev, [key]: value }))
+    setPage(1) // Reset to first page on filter change
+  }
+
+  const handleClearFilters = () => {
+    setFilters({
+      search: "",
+      make: undefined,
+      model: undefined,
+      status: "all",
+      year: undefined,
+      minPrice: undefined,
+      maxPrice: undefined,
+      minMileage: undefined,
+      maxMileage: undefined,
+      sortBy: "createdAt",
+      sortOrder: "desc"
+    })
+    setPage(1)
+  }
+
+  const handleSortChange = (value: SortOption) => {
+    let sortBy = "createdAt"
+    let sortOrder = "desc"
+
+    switch (value) {
+      case "price-asc": sortBy = "price"; sortOrder = "asc"; break;
+      case "price-desc": sortBy = "price"; sortOrder = "desc"; break;
+      case "mileage-asc": sortBy = "mileage"; sortOrder = "asc"; break;
+      case "mileage-desc": sortBy = "mileage"; sortOrder = "desc"; break;
+      case "year-desc": sortBy = "year"; sortOrder = "desc"; break;
+      case "createdAt-desc": sortBy = "createdAt"; sortOrder = "desc"; break;
+    }
+
+    setFilters((prev: any) => ({ ...prev, sortBy, sortOrder }))
+  }
+
+  const currentSortValue = React.useMemo(() => {
+    if (filters.sortBy === 'price' && filters.sortOrder === 'asc') return 'price-asc';
+    if (filters.sortBy === 'price' && filters.sortOrder === 'desc') return 'price-desc';
+    if (filters.sortBy === 'mileage' && filters.sortOrder === 'asc') return 'mileage-asc';
+    if (filters.sortBy === 'mileage' && filters.sortOrder === 'desc') return 'mileage-desc';
+    if (filters.sortBy === 'year' && filters.sortOrder === 'desc') return 'year-desc';
+    return 'createdAt-desc';
+  }, [filters.sortBy, filters.sortOrder])
+
   const handleCalculateQuote = async (formData: ShippingQuoteFormData) => {
+    // ... Existing logic ...
     try {
       console.log('[Quote] Submitting quote request:', formData)
-      
+
       const response = await apiClient.post('/api/quotes', {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -107,7 +190,7 @@ export default function InventoryPage() {
 
       const data = response.data?.data || response.data
       console.log('[Quote] Quote created successfully:', data)
-      
+
       alert(`Quote created successfully! Rate: $${data.rate}, ETA: ${data.eta.min}-${data.eta.max} days`)
     } catch (error) {
       console.error('[Quote] Error creating quote:', error)
@@ -116,37 +199,6 @@ export default function InventoryPage() {
       const errorMessage = apiErrorData?.message || axiosError.message || 'Unknown error'
       alert('Failed to create quote: ' + errorMessage)
     }
-  }
-
-  const sortedVehicles = React.useMemo(() => {
-    const list = [...vehicles]
-    switch (sortBy) {
-      case "make-asc":
-        return list.sort((a, b) => a.make.localeCompare(b.make))
-      case "price-low":
-        return list.sort((a, b) => a.price - b.price)
-      case "price-high":
-        return list.sort((a, b) => b.price - a.price)
-      case "mileage-low":
-        return list.sort((a, b) => a.mileage - b.mileage)
-      case "mileage-high":
-        return list.sort((a, b) => b.mileage - a.mileage)
-      case "year-latest":
-        return list.sort((a, b) => b.year - a.year)
-      default:
-        return list
-    }
-  }, [sortBy, vehicles])
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-4 text-lg">Loading inventory...</p>
-        </div>
-      </div>
-    )
   }
 
   if (error) {
@@ -170,70 +222,95 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      <div className="border-b bg-background">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <p className="text-sm">
-              <span className="font-bold">RESULTS:</span> {vehicles.length}
-            </p>
-            <button
-              onClick={fetchVehicles}
-              disabled={isLoading}
-              className="text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
-              title="Refresh inventory"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+    <div className="min-h-screen bg-muted/20 flex flex-col">
+      <div className="border-b bg-background sticky top-0 z-10 shadow-sm">
+        <div className="max-w-8xl mx-auto px-4 py-4 space-y-4">
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Sort by</span>
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="border rounded px-3 py-1.5 pr-8 text-sm bg-white"
+          <InventoryFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <p className="text-sm font-medium text-muted-foreground">
+                <span className="font-bold text-foreground">{total}</span> Vehicles Found
+              </p>
+              <button
+                onClick={fetchVehicles}
+                disabled={isLoading}
+                className="text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors"
+                title="Refresh inventory"
               >
-                <option value="make-asc">Make Ascending</option>
-                <option value="price-low">Price Low</option>
-                <option value="price-high">Price High</option>
-                <option value="mileage-low">Mileage Low</option>
-                <option value="mileage-high">Mileage High</option>
-                <option value="year-latest">Year Latest</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Sort by</span>
+              <div className="relative">
+                <select
+                  value={currentSortValue}
+                  onChange={(e) => handleSortChange(e.target.value as SortOption)}
+                  className="border rounded px-3 py-1.5 pr-8 text-sm bg-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
+                >
+                  <option value="createdAt-desc">Newest Listings</option>
+                  <option value="year-desc">Year: Newest</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="mileage-low">Mileage: Low to High</option>
+                  <option value="mileage-high">Mileage: High to Low</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-8xl mx-auto px-4 py-8">
-        {vehicles.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 max-w-md mx-auto">
-              <p className="text-lg text-gray-600 mb-4">No vehicles found in inventory.</p>
-              <p className="text-sm text-gray-500 mb-4">
-                Import vehicles through the FTP server or add them manually through the admin dashboard.
+      <div className="flex-1 max-w-8xl mx-auto px-4 py-8 w-full">
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-[400px] bg-gray-200 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : vehicles.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="bg-background border rounded-lg p-12 max-w-lg mx-auto shadow-sm">
+              <p className="text-xl font-semibold text-gray-900 mb-2">No vehicles found</p>
+              <p className="text-gray-500 mb-6">
+                Try adjusting your filters or search terms to find what you're looking for.
               </p>
               <button
-                onClick={fetchVehicles}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                onClick={handleClearFilters}
+                className="inline-flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
               >
-                <RefreshCw className="h-4 w-4" />
-                Refresh Inventory
+                Clear Filters
               </button>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
-            {sortedVehicles.map((vehicle) => (
-              <CarInventoryCard
-                key={vehicle.id}
-                vehicle={vehicle}
-                onGetQuote={() => setIsModalOpen(true)}
-              />
-            ))}
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+              {vehicles.map((vehicle) => (
+                <CarInventoryCard
+                  key={vehicle.id}
+                  vehicle={vehicle}
+                  onGetQuote={() => setIsModalOpen(true)}
+                />
+              ))}
+            </div>
+
+            <InventoryPagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              limit={limit}
+              onLimitChange={setLimit}
+              totalCount={total}
+            />
           </div>
         )}
       </div>
@@ -241,7 +318,7 @@ export default function InventoryPage() {
       <ShippingQuoteModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        vehicles={sortedVehicles}
+        vehicles={vehicles} // Note: This might need to be just the selected vehicle if we move quote logic to card
         onCalculate={handleCalculateQuote}
       />
     </div>
