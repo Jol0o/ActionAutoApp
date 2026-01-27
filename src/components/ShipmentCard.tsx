@@ -166,238 +166,352 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
         <>
             <div className="flex justify-center">
                 <AlertComponent />
-                <Card className="border border-gray-200 hover:shadow-2xl transition-all duration-500 overflow-hidden group max-w-5xl w-full">
+                <Card className="border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden group max-w-4xl w-full">
                     <CardContent className="p-0">
-                        <div className="grid grid-cols-12">
-                            {/* Left Section - Vehicle Image & Info */}
-                            <div className="col-span-12 lg:col-span-5 relative overflow-hidden">
-                                {quote?.vehicleImage ? (
-                                    <div className="relative h-full min-h-[350px]">
-                                        <img 
-                                            src={quote.vehicleImage} 
-                                            alt={vehicleName} 
-                                            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" 
-                                        />
-                                        {/* Multi-layer gradient overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20"></div>
-                                        
-                                        {/* Tracking number badge */}
+                        {/* Top Section - Vehicle Image */}
+                        <div className="relative overflow-hidden w-full">
+                            {quote?.vehicleImage ? (
+                                <div className="relative w-full h-48 sm:h-56 md:h-64">
+                                    <img 
+                                        src={quote.vehicleImage} 
+                                        alt={vehicleName} 
+                                        className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-500" 
+                                    />
+                                    {/* Gradient overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+                                    
+                                    {/* Top badges */}
+                                    <div className="absolute top-3 left-3 right-3 flex items-start justify-between flex-wrap gap-2">
                                         {shipment.trackingNumber && (
-                                            <div className="absolute top-4 left-4">
-                                                <Badge className="bg-white/95 backdrop-blur-sm text-gray-900 px-3 py-1.5 shadow-lg border border-white/20">
-                                                    <Package className="w-3 h-3 mr-1.5" />
-                                                    {shipment.trackingNumber}
-                                                </Badge>
-                                            </div>
+                                            <Badge className="bg-white/90 backdrop-blur-sm text-gray-900 px-2.5 py-1 shadow-lg text-xs">
+                                                <Package className="w-3 h-3 mr-1" />
+                                                {shipment.trackingNumber}
+                                            </Badge>
                                         )}
                                         
-                                        {/* Vehicle info overlay */}
-                                        <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                                            <div className="backdrop-blur-md bg-black/30 rounded-xl p-5 border border-white/10">
-                                                <h2 className="text-2xl font-bold mb-3 flex items-center gap-2">
-                                                    {vehicleName}
-                                                </h2>
-                                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-gray-300 text-xs mb-0.5">VIN Number</span>
-                                                        <span className="font-semibold">{vehicle?.vin || quote?.vin || 'N/A'}</span>
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-gray-300 text-xs mb-0.5">Stock #</span>
-                                                        <span className="font-semibold">{vehicle?.stockNumber || quote?.stockNumber || 'N/A'}</span>
+                                        <Badge className={`${statusConfig.color} text-white px-3 py-1 text-xs font-semibold shadow-lg ml-auto`}>
+                                            <span className="w-1.5 h-1.5 bg-white rounded-full mr-1.5 animate-pulse"></span>
+                                            {shipment.status}
+                                        </Badge>
+                                    </div>
+                                    
+                                    {/* Vehicle info overlay */}
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-white">
+                                        <div className="backdrop-blur-md bg-black/30 rounded-lg p-3 border border-white/10">
+                                            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+                                                <div className="flex-1">
+                                                    <h2 className="text-lg sm:text-xl font-bold mb-2">
+                                                        {vehicleName}
+                                                    </h2>
+                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-gray-300 text-xs">VIN</span>
+                                                            <span className="font-medium truncate">{vehicle?.vin || quote?.vin || 'N/A'}</span>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-gray-300 text-xs">Stock #</span>
+                                                            <span className="font-medium">{vehicle?.stockNumber || quote?.stockNumber || 'N/A'}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 {quote?.vehicleLocation && (
-                                                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/20">
-                                                        <MapPin className="w-4 h-4 text-blue-400" />
-                                                        <span className="text-sm">{quote.vehicleLocation}</span>
+                                                    <div className="flex items-center gap-1.5 sm:pl-3 sm:border-l sm:border-white/20">
+                                                        <MapPin className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                                                        <span className="text-xs">{quote.vehicleLocation}</span>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="h-full min-h-[350px] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                                        <Package className="w-20 h-20 text-gray-400" />
+                                </div>
+                            ) : (
+                                <div className="w-full h-48 sm:h-56 md:h-64 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                                    <Package className="w-16 h-16 text-gray-400" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Bottom Section - Shipment Details */}
+                        <div className="p-4 sm:p-5 bg-gradient-to-br from-white to-gray-50">
+                            {/* Header with Customer Info & Actions */}
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 pb-3 border-b border-gray-200 gap-3">
+                                <div className="flex-1">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-500">Customer:</span>
+                                            <span className="text-sm font-semibold text-gray-900">
+                                                {quote?.firstName} {quote?.lastName}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <Calendar className="w-3 h-3 text-gray-400" />
+                                            <span className="text-xs text-gray-500">
+                                                Added {formatDate(shipment.createdAt)}
+                                            </span>
+                                        </div>
                                     </div>
-                                )}
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="gap-1.5 text-xs"
+                                        onClick={handleExportPDF}
+                                        disabled={isGeneratingPDF}
+                                    >
+                                        <Download className="w-3.5 h-3.5" />
+                                        {isGeneratingPDF ? 'Generating...' : 'Export PDF'}
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                        onClick={handleSendEmail}
+                                    >
+                                        <Mail className="w-3.5 h-3.5" />
+                                        Send Email
+                                    </Button>
+                                </div>
                             </div>
 
-                            {/* Right Section - Shipment Details */}
-                            <div className="col-span-12 lg:col-span-7 p-6 bg-gradient-to-br from-white to-gray-50">
-                                {/* Header with Status & Actions */}
-                                <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
-                                    <div className="flex-1">
-                                        <Badge className={`${statusConfig.color} text-white px-4 py-1.5 text-sm font-semibold shadow-lg mb-3`}>
-                                            <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
-                                            {shipment.status}
-                                        </Badge>
-                                        
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-gray-500">Customer:</span>
-                                                <span className="text-sm font-semibold text-gray-900">
-                                                    {quote?.firstName} {quote?.lastName}
-                                                </span>
+                            {/* Redesigned Layout - Rate, Route, and Timeline */}
+                            <div className="space-y-3 mb-4">
+                                {/* Rate and Transport Method Row */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {/* Pricing Information */}
+                                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border border-green-200 shadow-sm">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Rate</span>
+                                            <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                                        </div>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-2xl font-bold text-green-700">${quote?.rate?.toLocaleString() || 'N/A'}</span>
+                                            <span className="text-xs text-gray-600 font-medium">USD</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Transport Method */}
+                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200 shadow-sm">
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                            <Truck className="w-3.5 h-3.5 text-blue-600" />
+                                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Transport</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm font-bold text-gray-900">
+                                                {quote?.enclosedTrailer ? 'Enclosed Trailer' : 'Open Trailer'}
+                                            </p>
+                                            {quote?.vehicleInoperable && (
+                                                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs font-semibold">
+                                                    Inoperable
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Route and Timeline Row - Route 1/3, Timeline 2/3 */}
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                                    {/* Route Information - Takes 1/3 of space */}
+                                    <div className="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 rounded-lg p-4 border border-blue-200 shadow-sm h-full">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                                                <MapPin className="w-4 h-4 text-white" />
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="w-3 h-3 text-gray-400" />
-                                                <span className="text-xs text-gray-500">
-                                                    Added {formatDate(shipment.createdAt)}
-                                                </span>
+                                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Shipping Route</h3>
+                                        </div>
+                                        
+                                        <div className="flex flex-col h-[calc(100%-3rem)]">
+                                            {/* Origin */}
+                                            <div className="group mb-4">
+                                                <div className="relative">
+                                                    {/* Decorative corner accent */}
+                                                    <div className="absolute -top-2 -left-2 w-6 h-6 border-t-2 border-l-2 border-green-400 rounded-tl-lg"></div>
+                                                    
+                                                    <div className="bg-white/90 backdrop-blur-sm rounded-lg p-4 border-2 border-green-300 shadow-md hover:shadow-lg transition-all">
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg ring-4 ring-green-100">
+                                                                <div className="w-3 h-3 rounded-full bg-white"></div>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-xs font-bold text-green-600 uppercase tracking-wide block">Starting Point</span>
+                                                                <span className="text-xs text-gray-500">Origin Location</span>
+                                                            </div>
+                                                        </div>
+                                                        <p className="font-bold text-gray-900 text-base leading-relaxed pl-1">{shipment.origin}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Animated Route Line */}
+                                            <div className="flex-1 flex justify-center items-center py-2">
+                                                <div className="relative flex flex-col items-center gap-2">
+                                                    {/* Gradient line with animation */}
+                                                    <div className="w-1 h-16 bg-gradient-to-b from-green-400 via-blue-400 to-red-400 rounded-full shadow-lg relative overflow-hidden">
+                                                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white to-transparent opacity-50 animate-pulse"></div>
+                                                    </div>
+                                                    
+                                                    {/* Truck icon in the middle */}
+                                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl ring-4 ring-blue-100 animate-bounce">
+                                                            <Truck className="w-5 h-5 text-white" />
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Decorative dots */}
+                                                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full bg-green-400"></div>
+                                                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full bg-red-400"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Destination */}
+                                            <div className="group mt-4">
+                                                <div className="relative">
+                                                    {/* Decorative corner accent */}
+                                                    <div className="absolute -bottom-2 -right-2 w-6 h-6 border-b-2 border-r-2 border-red-400 rounded-br-lg"></div>
+                                                    
+                                                    <div className="bg-white/90 backdrop-blur-sm rounded-lg p-4 border-2 border-red-300 shadow-md hover:shadow-lg transition-all">
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg ring-4 ring-red-100">
+                                                                <MapPin className="w-5 h-5 text-white" />
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-xs font-bold text-red-600 uppercase tracking-wide block">Final Stop</span>
+                                                                <span className="text-xs text-gray-500">Destination Location</span>
+                                                            </div>
+                                                        </div>
+                                                        <p className="font-bold text-gray-900 text-base leading-relaxed pl-1">{shipment.destination}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <div className="flex flex-col gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="gap-2 text-xs border-gray-300 hover:bg-gray-100 shadow-sm w-full"
-                                            onClick={handleExportPDF}
-                                            disabled={isGeneratingPDF}
-                                        >
-                                            <Download className="w-3.5 h-3.5" />
-                                            {isGeneratingPDF ? 'Generating...' : 'Export PDF'}
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="gap-2 text-xs border-blue-300 hover:bg-blue-50 text-blue-600 hover:text-blue-700 shadow-sm w-full"
-                                            onClick={handleSendEmail}
-                                        >
-                                            <Mail className="w-3.5 h-3.5" />
-                                            Send to Email
-                                        </Button>
-                                    </div>
-                                </div>
 
-                                {/* Pricing Information */}
-                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 mb-4 border border-green-100 shadow-sm">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Transport Rate</span>
-                                        <CheckCircle className="w-4 h-4 text-green-600" />
-                                    </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-3xl font-bold text-green-700">${quote?.rate?.toLocaleString() || 'N/A'}</span>
-                                        <span className="text-sm text-gray-600">USD</span>
-                                    </div>
-                                    <div className="mt-2 text-xs text-gray-600">
-                                        90-Day Trend: <span className="font-semibold text-green-600">${quote?.rate?.toLocaleString() || 'N/A'}</span>
-                                    </div>
-                                </div>
-
-                                {/* Route Information */}
-                                <div className="mb-4">
-                                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                        <MapPin className="w-4 h-4 text-blue-600" />
-                                        Route Details
-                                    </h3>
-                                    
-                                    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex-1">
-                                                <div className="flex items-start gap-3 mb-3">
-                                                    <div className="flex flex-col items-center gap-2 mt-1">
-                                                        <div className="w-3 h-3 rounded-full bg-green-500 ring-4 ring-green-100"></div>
-                                                        <div className="w-0.5 h-8 bg-gradient-to-b from-green-500 to-red-500"></div>
-                                                        <div className="w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-100"></div>
+                                    {/* Timeline - Takes 2/3 of space */}
+                                    <div className="lg:col-span-2 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-lg p-4 border border-indigo-200 shadow-sm h-full">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Clock className="w-4 h-4 text-indigo-600" />
+                                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Shipment Timeline</h3>
+                                        </div>
+                                        
+                                        <div className="relative">
+                                            {/* Timeline vertical line */}
+                                            <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-blue-300 via-purple-300 to-green-300"></div>
+                                            
+                                            {/* Timeline Items */}
+                                            <div className="space-y-3 relative">
+                                                {/* Requested */}
+                                                <div className="relative flex items-start gap-3 group">
+                                                    <div className="relative z-10 flex-shrink-0">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-4 ring-blue-100 group-hover:ring-blue-200 transition-all">
+                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex-1 space-y-4">
-                                                        <div>
-                                                            <p className="text-xs text-gray-500 mb-0.5">Origin</p>
-                                                            <p className="font-semibold text-gray-900">{shipment.origin}</p>
+                                                    <div className="flex-1 bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-blue-200 shadow-sm group-hover:shadow-md transition-all">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <p className="text-sm font-bold text-blue-700">Requested</p>
+                                                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-semibold">Step 1</span>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-xs text-gray-500 mb-0.5">Destination</p>
-                                                            <p className="font-semibold text-gray-900">{shipment.destination}</p>
+                                                        <p className="text-xs font-semibold text-gray-900">{formatDate(shipment.requestedPickupDate)}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Scheduled */}
+                                                <div className="relative flex items-start gap-3 group">
+                                                    <div className="relative z-10 flex-shrink-0">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg ring-4 ring-indigo-100 group-hover:ring-indigo-200 transition-all">
+                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
                                                         </div>
+                                                    </div>
+                                                    <div className="flex-1 bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-indigo-200 shadow-sm group-hover:shadow-md transition-all">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <p className="text-sm font-bold text-indigo-700">Scheduled Pickup</p>
+                                                            <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-semibold">Step 2</span>
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-gray-900">{formatDate(shipment.scheduledPickup)}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Picked Up */}
+                                                <div className="relative flex items-start gap-3 group">
+                                                    <div className="relative z-10 flex-shrink-0">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg ring-4 ring-purple-100 group-hover:ring-purple-200 transition-all">
+                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-purple-200 shadow-sm group-hover:shadow-md transition-all">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <p className="text-sm font-bold text-purple-700">Picked Up</p>
+                                                            <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-semibold">Step 3</span>
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-gray-900">{formatDate(shipment.pickedUp)}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Est. Delivery */}
+                                                <div className="relative flex items-start gap-3 group">
+                                                    <div className="relative z-10 flex-shrink-0">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg ring-4 ring-orange-100 group-hover:ring-orange-200 transition-all">
+                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-orange-200 shadow-sm group-hover:shadow-md transition-all">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <p className="text-sm font-bold text-orange-700">Estimated Delivery</p>
+                                                            <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-semibold">Step 4</span>
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-gray-900">{formatDate(shipment.scheduledDelivery)}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Delivered */}
+                                                <div className="relative flex items-start gap-3 group">
+                                                    <div className="relative z-10 flex-shrink-0">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg ring-4 ring-green-100 group-hover:ring-green-200 transition-all">
+                                                            <CheckCircle className="w-5 h-5 text-white" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-green-200 shadow-sm group-hover:shadow-md transition-all">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <p className="text-sm font-bold text-green-700">Delivered</p>
+                                                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold">Complete</span>
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-gray-900">{formatDate(shipment.delivered)}</p>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Timeline */}
-                                <div className="mb-4">
-                                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                        <Clock className="w-4 h-4 text-indigo-600" />
-                                        Shipment Timeline
-                                    </h3>
-                                    
-                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100 shadow-sm">
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-blue-100">
-                                                <p className="text-xs text-gray-500 mb-1">Requested Pickup</p>
-                                                <p className="text-sm font-semibold text-gray-900">{formatDate(shipment.requestedPickupDate)}</p>
-                                            </div>
-                                            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-blue-100">
-                                                <p className="text-xs text-gray-500 mb-1">Scheduled Pickup</p>
-                                                <p className="text-sm font-semibold text-gray-900">{formatDate(shipment.scheduledPickup)}</p>
-                                            </div>
-                                            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-blue-100">
-                                                <p className="text-xs text-gray-500 mb-1">Picked Up</p>
-                                                <p className="text-sm font-semibold text-gray-900">{formatDate(shipment.pickedUp)}</p>
-                                            </div>
-                                            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-blue-100">
-                                                <p className="text-xs text-gray-500 mb-1">Scheduled Delivery</p>
-                                                <p className="text-sm font-semibold text-gray-900">{formatDate(shipment.scheduledDelivery)}</p>
-                                            </div>
-                                            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-blue-100 col-span-2">
-                                                <p className="text-xs text-gray-500 mb-1">Delivered</p>
-                                                <p className="text-sm font-semibold text-gray-900">{formatDate(shipment.delivered)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Transport Details */}
-                                <div className="flex items-center gap-2 mb-4 bg-white rounded-lg p-3 border border-gray-200">
-                                    <Truck className="w-5 h-5 text-blue-600" />
-                                    <div className="flex-1">
-                                        <p className="text-xs text-gray-500">Transport Method</p>
-                                        <p className="text-sm font-semibold text-gray-900">
-                                            {quote?.enclosedTrailer ? 'Enclosed Trailer' : 'Open Trailer'}
-                                        </p>
-                                    </div>
-                                    {quote?.vehicleInoperable && (
-                                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                                            Inoperable
-                                        </Badge>
-                                    )}
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="flex gap-2">
-                                    <Button 
-                                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300"
-                                        size="lg"
-                                        onClick={() => setIsEditModalOpen(true)}
-                                        disabled={isDeleting || !onUpdate}
-                                    >
-                                        Edit Details
-                                        <ArrowRight className="w-4 h-4 ml-2" />
-                                    </Button>
-                                    <Button 
-                                        variant="outline"
-                                        className="border-gray-300 hover:bg-gray-100"
-                                        size="lg"
-                                    >
-                                        View History
-                                    </Button>
-                                    <Button 
-                                        variant="ghost"
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        size="lg"
-                                        onClick={handleDelete}
-                                        disabled={isDeleting}
-                                    >
-                                        <Trash2 className="w-4 h-4 mr-1" />
-                                        {isDeleting ? 'Deleting...' : 'Delete'}
-                                    </Button>
-                                </div>
+                            {/* Action Buttons - Right aligned on desktop, centered on mobile */}
+                            <div className="flex flex-wrap gap-2 justify-center lg:justify-end">
+                                <Button 
+                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                                    size="sm"
+                                    onClick={() => setIsEditModalOpen(true)}
+                                    disabled={isDeleting || !onUpdate}
+                                >
+                                    <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
+                                    Edit Details
+                                </Button>
+                                <Button 
+                                    variant="outline"
+                                    size="sm"
+                                >
+                                    View History
+                                </Button>
+                                <Button 
+                                    variant="ghost"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    size="sm"
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                >
+                                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                </Button>
                             </div>
                         </div>
                     </CardContent>
