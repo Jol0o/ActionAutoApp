@@ -18,6 +18,25 @@ type SortOption =
   | "mileage-desc"
   | "year-desc"
   | "createdAt-desc"
+  | "year-asc"
+  | "make-asc"
+  | "make-desc"
+  | "model-asc"
+  | "model-desc"
+  | "stockNumber-asc"
+  | "stockNumber-desc"
+  | "location-asc"
+  | "location-desc"
+  | "age-asc"
+  | "age-desc"
+  | "status-asc"
+  | "status-desc"
+  | "created-asc"
+  | "created-desc"
+  | "recent-asc"
+  | "recent-desc"
+  | "cost-asc"
+  | "cost-desc"
 
 
 function InventoryContent() {
@@ -160,6 +179,25 @@ function InventoryContent() {
       case "mileage-desc": sortBy = "mileage"; sortOrder = "desc"; break;
       case "year-desc": sortBy = "year"; sortOrder = "desc"; break;
       case "createdAt-desc": sortBy = "createdAt"; sortOrder = "desc"; break;
+      case "year-asc": sortBy = "year"; sortOrder = "asc"; break;
+      case "make-asc": sortBy = "make"; sortOrder = "asc"; break;
+      case "make-desc": sortBy = "make"; sortOrder = "desc"; break;
+      case "model-asc": sortBy = "model"; sortOrder = "asc"; break;
+      case "model-desc": sortBy = "model"; sortOrder = "desc"; break;
+      case "stockNumber-asc": sortBy = "stockNumber"; sortOrder = "asc"; break;
+      case "stockNumber-desc": sortBy = "stockNumber"; sortOrder = "desc"; break;
+      case "location-asc": sortBy = "location"; sortOrder = "asc"; break;
+      case "location-desc": sortBy = "location"; sortOrder = "desc"; break;
+      case "age-asc": sortBy = "age"; sortOrder = "asc"; break;
+      case "age-desc": sortBy = "age"; sortOrder = "desc"; break;
+      case "status-asc": sortBy = "status"; sortOrder = "asc"; break;
+      case "status-desc": sortBy = "status"; sortOrder = "desc"; break;
+      case "created-asc": sortBy = "created"; sortOrder = "asc"; break;
+      case "created-desc": sortBy = "created"; sortOrder = "desc"; break;
+      case "recent-asc": sortBy = "recent"; sortOrder = "asc"; break;
+      case "recent-desc": sortBy = "recent"; sortOrder = "desc"; break;
+      case "cost-asc": sortBy = "cost"; sortOrder = "asc"; break;
+      case "cost-desc": sortBy = "cost"; sortOrder = "desc"; break;
     }
 
     setFilters((prev: any) => ({ ...prev, sortBy, sortOrder }))
@@ -263,11 +301,18 @@ function InventoryContent() {
                   className="border rounded px-3 py-1.5 pr-8 text-sm bg-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
                 >
                   <option value="createdAt-desc">Newest Listings</option>
+                  <option value="mileage-desc">Mileage: High to Low</option>
+                  <option value="mileage-asc">Mileage: Low to High</option>
                   <option value="year-desc">Year: Newest</option>
+                  <option value="year-asc">Year: Oldest</option>
                   <option value="price-asc">Price: Low to High</option>
                   <option value="price-desc">Price: High to Low</option>
-                  <option value="mileage-asc">Mileage: Low to High</option>
-                  <option value="mileage-desc">Mileage: High to Low</option>
+                  <option value="created-asc">Created: Oldest</option>
+                  <option value="created-desc">Created: Newest</option>
+                  <option value="recent-asc">Recent: Oldest</option>
+                  <option value="recent-desc">Recent: Newest</option>
+                  <option value="cost-asc">Cost: Low to High</option>
+                  <option value="cost-desc">Cost: High to Low</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
               </div>
