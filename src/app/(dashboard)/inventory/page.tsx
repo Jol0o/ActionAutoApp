@@ -264,10 +264,10 @@ function InventoryContent() {
                 >
                   <option value="createdAt-desc">Newest Listings</option>
                   <option value="year-desc">Year: Newest</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="mileage-low">Mileage: Low to High</option>
-                  <option value="mileage-high">Mileage: High to Low</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="mileage-asc">Mileage: Low to High</option>
+                  <option value="mileage-desc">Mileage: High to Low</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
               </div>
