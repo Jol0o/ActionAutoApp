@@ -4,6 +4,7 @@ import * as React from "react"
 import { ChevronDown, RefreshCw } from "lucide-react"
 import { CarInventoryCard } from "@/components/car-inventory-card"
 import { ShippingQuoteModal } from "@/components/shipping-quote-modal"
+import { VehicleDetailsModal } from "@/components/vehicle-details-modal"
 import type { Vehicle, ShippingQuoteFormData } from "@/types/inventory"
 import { apiClient } from "@/lib/api-client"
 import { AxiosError } from "axios"
@@ -45,6 +46,8 @@ function InventoryContent() {
   const searchParams = useSearchParams()
 
   const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const [detailsModalOpen, setDetailsModalOpen] = React.useState(false)
+  const [selectedDetailVehicle, setSelectedDetailVehicle] = React.useState<Vehicle | null>(null)
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -217,8 +220,10 @@ function InventoryContent() {
     return 'make-asc';
   }, [filters.sortBy, filters.sortOrder])
 
+  // NEW State for shipping rates (vehicleId -> rate)
+  const [shippingRates, setShippingRates] = React.useState<Record<string, number>>({})
+
   const handleCalculateQuote = async (formData: ShippingQuoteFormData) => {
-    // ... Existing logic ...
     try {
       console.log('[Quote] Submitting quote request:', formData)
 
@@ -240,13 +245,39 @@ function InventoryContent() {
       const data = response.data?.data || response.data
       console.log('[Quote] Quote created successfully:', data)
 
+      // Store the rate for this vehicle
+      if (formData.vehicleId) {
+        setShippingRates(prev => ({
+          ...prev,
+          [formData.vehicleId!]: data.rate
+        }))
+      }
+
       alert(`Quote created successfully! Rate: $${data.rate}, ETA: ${data.eta.min}-${data.eta.max} days`)
+
+      // Explicitly close the shipping modal (it might do this itself but ensuring here is fine)
+      setIsModalOpen(false)
+
     } catch (error) {
       console.error('[Quote] Error creating quote:', error)
       const axiosError = error as AxiosError
       const apiErrorData = axiosError.response?.data as any
       const errorMessage = apiErrorData?.message || axiosError.message || 'Unknown error'
       alert('Failed to create quote: ' + errorMessage)
+    }
+  }
+
+
+  const handleVehicleClick = (vehicle: Vehicle) => {
+    setSelectedDetailVehicle(vehicle)
+    setDetailsModalOpen(true)
+  }
+
+  const handleQuoteFromDetails = () => {
+    if (selectedDetailVehicle) {
+      // DO NOT close the details modal
+      // setDetailsModalOpen(false) 
+      setIsModalOpen(true)
     }
   }
 
@@ -354,6 +385,7 @@ function InventoryContent() {
                   key={vehicle.id}
                   vehicle={vehicle}
                   onGetQuote={() => setIsModalOpen(true)}
+                  onVehicleClick={handleVehicleClick}
                 />
               ))}
             </div>
@@ -373,8 +405,17 @@ function InventoryContent() {
       <ShippingQuoteModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        vehicles={vehicles} // Note: This might need to be just the selected vehicle if we move quote logic to card
+        vehicles={vehicles}
+        defaultVehicle={selectedDetailVehicle}
         onCalculate={handleCalculateQuote}
+      />
+
+      <VehicleDetailsModal
+        isOpen={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+        vehicle={selectedDetailVehicle}
+        onQuoteClick={handleQuoteFromDetails}
+        shippingQuote={selectedDetailVehicle ? shippingRates[selectedDetailVehicle.id] : null}
       />
     </div>
   )

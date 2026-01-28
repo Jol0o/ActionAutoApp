@@ -3,23 +3,27 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { TruckIcon, GaugeIcon, MapPinIcon, Phone, Play, CheckCircle2, ArrowUpRight } from "lucide-react"
-import Link from "next/link"
 
 interface CarInventoryCardProps {
   vehicle: Vehicle
   shippingPrice?: number
   onGetQuote: (vehicle: Vehicle) => void
+  onVehicleClick?: (vehicle: Vehicle) => void
 }
 
 export function CarInventoryCard({
   vehicle,
   shippingPrice,
-  onGetQuote
+  onGetQuote,
+  onVehicleClick
 }: CarInventoryCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 p-0 h-full flex flex-col group border-transparent hover:border-border/50">
       {/* Vehicle Image */}
-      <Link href={`/inventory/${vehicle.id}`} className="block relative h-64 overflow-hidden bg-muted cursor-pointer">
+      <div
+        onClick={() => onVehicleClick?.(vehicle)}
+        className="block relative h-64 overflow-hidden bg-muted cursor-pointer"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={vehicle.image}
@@ -43,17 +47,20 @@ export function CarInventoryCard({
             Stock #{vehicle.stockNumber}
           </Badge>
         </div>
-      </Link>
+      </div>
 
       {/* Vehicle Details */}
       <div className="p-5 flex flex-col flex-1 space-y-4">
         {/* Title */}
         <div className="text-center relative">
-          <Link href={`/inventory/${vehicle.id}`} className="inline-block group-hover:text-primary transition-colors">
+          <div
+            onClick={() => onVehicleClick?.(vehicle)}
+            className="inline-block group-hover:text-primary transition-colors cursor-pointer"
+          >
             <h3 className="font-bold text-lg leading-tight flex items-center justify-center gap-1">
               {vehicle.year} {vehicle.make} {vehicle.model}
             </h3>
-          </Link>
+          </div>
           {vehicle.trim && (
             <p className="text-sm text-muted-foreground mt-1">{vehicle.trim}</p>
           )}

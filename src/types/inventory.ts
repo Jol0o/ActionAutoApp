@@ -23,6 +23,13 @@ export interface Vehicle {
     images?: string[];
     bodyStyle?: string;
     driveTrain?: string;
+    // Extended fields for dashboard view
+    currentStep?: string;
+    reconStartDate?: string;
+    stepEnteredAt?: string;
+    marketPrice?: number;
+    notes?: any[]; // Keep flexible as we don't know the note structure yet
+    dateAdded?: string;
 }
 
 export interface FilterOptions {

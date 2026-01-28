@@ -19,6 +19,7 @@ interface ShippingQuoteModalProps {
     onOpenChange: (open: boolean) => void
     vehicles: Vehicle[]
     onCalculate: (formData: ShippingQuoteFormData) => Promise<void>
+    defaultVehicle?: Vehicle | null
 }
 
 export function ShippingQuoteModal({
@@ -26,6 +27,7 @@ export function ShippingQuoteModal({
     onOpenChange,
     vehicles,
     onCalculate,
+    defaultVehicle
 }: ShippingQuoteModalProps) {
     const [isCalculating, setIsCalculating] = React.useState(false)
     const [selectedVehicle, setSelectedVehicle] = React.useState<Vehicle | null>(null)
@@ -54,8 +56,12 @@ export function ShippingQuoteModal({
     React.useEffect(() => {
         if (open) {
             console.log('🔓 Modal opened with vehicles:', vehicles?.length || 0)
+            if (defaultVehicle) {
+                console.log('Pre-selecting vehicle:', defaultVehicle.id)
+                setSelectedVehicle(defaultVehicle)
+            }
         }
-    }, [open, vehicles])
+    }, [open, vehicles, defaultVehicle])
 
     const validateForm = (): boolean => {
         const newErrors: Partial<Record<keyof ShippingQuoteFormData, string>> = {}
@@ -105,14 +111,14 @@ export function ShippingQuoteModal({
         if (!validateForm()) return
 
         setIsCalculating(true)
-        
+
         try {
             await onCalculate({
                 ...formData,
                 vehicleId: selectedVehicle?.id
             })
             onOpenChange(false)
-            
+
             // Reset form
             setFormData({
                 firstName: "",
@@ -180,7 +186,7 @@ export function ShippingQuoteModal({
                             <span className="text-sm font-semibold">Vehicle Selection (Optional)</span>
                         </div>
 
-           
+
                         {vehicles.length === 0 && (
                             <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-xs text-yellow-800">
                                 No vehicles available. Check console for details.
