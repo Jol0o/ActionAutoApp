@@ -43,7 +43,10 @@ apiClient.interceptors.response.use(
         console.error(`[Axios Error] ${error.config?.method?.toUpperCase()} ${error.config?.url} | Status: ${status} | Message: ${errorMessage}`);
 
         // If we get a 401 and haven't tried refreshing yet
-        if (status === 401 && !originalRequest._retry) {
+        // ALSO: Skip refresh if the failed request was specifically the login call
+        const isLoginRequest = originalRequest.url?.includes('/api/auth/login');
+
+        if (status === 401 && !originalRequest._retry && !isLoginRequest) {
             console.log(`[Auth] 401 detected. Attempting refresh...`);
             originalRequest._retry = true;
 

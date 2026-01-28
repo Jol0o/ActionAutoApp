@@ -278,6 +278,50 @@ export function InventoryFilters({
                                     />
                                 </div>
                             </div>
+
+                            <Separator />
+
+                            {/* Body Style Filter */}
+                            <div className="space-y-2">
+                                <h4 className="font-medium text-sm">Body Style</h4>
+                                <Select
+                                    value={pendingFilters.bodyStyle || "all"}
+                                    onValueChange={(value: string) => handlePendingChange("bodyStyle", value === "all" ? undefined : value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="All Body Styles" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Styles</SelectItem>
+                                        {filterOptions?.bodyStyles.map((style) => (
+                                            <SelectItem key={style} value={style}>
+                                                {style}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Location Filter */}
+                            <div className="space-y-2">
+                                <h4 className="font-medium text-sm">Location</h4>
+                                <Select
+                                    value={pendingFilters.location || "all"}
+                                    onValueChange={(value: string) => handlePendingChange("location", value === "all" ? undefined : value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="All Locations" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Locations</SelectItem>
+                                        {filterOptions?.locations.map((loc) => (
+                                            <SelectItem key={loc} value={loc}>
+                                                {loc}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div className="py-2 px-6 border-t mt-auto flex gap-2">

@@ -66,8 +66,10 @@ function InventoryContent() {
     maxPrice: searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined,
     minMileage: searchParams.get("minMileage") ? Number(searchParams.get("minMileage")) : undefined,
     maxMileage: searchParams.get("maxMileage") ? Number(searchParams.get("maxMileage")) : undefined,
-    sortBy: searchParams.get("sortBy") || "createdAt",
-    sortOrder: searchParams.get("sortOrder") || "desc"
+    bodyStyle: searchParams.get("bodyStyle") || undefined,
+    location: searchParams.get("location") || undefined,
+    sortBy: searchParams.get("sortBy") || "make",
+    sortOrder: searchParams.get("sortOrder") || "asc"
   })
 
   // Debounced search term to avoid rapid API calls
@@ -162,8 +164,10 @@ function InventoryContent() {
       maxPrice: undefined,
       minMileage: undefined,
       maxMileage: undefined,
-      sortBy: "createdAt",
-      sortOrder: "desc"
+      bodyStyle: undefined,
+      location: undefined,
+      sortBy: "make",
+      sortOrder: "asc"
     })
     setPage(1)
   }
@@ -209,7 +213,8 @@ function InventoryContent() {
     if (filters.sortBy === 'mileage' && filters.sortOrder === 'asc') return 'mileage-asc';
     if (filters.sortBy === 'mileage' && filters.sortOrder === 'desc') return 'mileage-desc';
     if (filters.sortBy === 'year' && filters.sortOrder === 'desc') return 'year-desc';
-    return 'createdAt-desc';
+    if (filters.sortBy === 'make' && filters.sortOrder === 'asc') return 'make-asc';
+    return 'make-asc';
   }, [filters.sortBy, filters.sortOrder])
 
   const handleCalculateQuote = async (formData: ShippingQuoteFormData) => {
@@ -300,19 +305,17 @@ function InventoryContent() {
                   onChange={(e) => handleSortChange(e.target.value as SortOption)}
                   className="border rounded px-3 py-1.5 pr-8 text-sm bg-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
                 >
-                  <option value="createdAt-desc">Newest Listings</option>
-                  <option value="mileage-desc">Mileage: High to Low</option>
-                  <option value="mileage-asc">Mileage: Low to High</option>
-                  <option value="year-desc">Year: Newest</option>
-                  <option value="year-asc">Year: Oldest</option>
+                  <option value="make-asc">Make (A-Z)</option>
+                  <option value="make-desc">Make (Z-A)</option>
                   <option value="price-asc">Price: Low to High</option>
                   <option value="price-desc">Price: High to Low</option>
-                  <option value="created-asc">Created: Oldest</option>
-                  <option value="created-desc">Created: Newest</option>
-                  <option value="recent-asc">Recent: Oldest</option>
-                  <option value="recent-desc">Recent: Newest</option>
-                  <option value="cost-asc">Cost: Low to High</option>
-                  <option value="cost-desc">Cost: High to Low</option>
+                  <option value="mileage-asc">Mileage: Low to High</option>
+                  <option value="mileage-desc">Mileage: High to Low</option>
+                  <option value="year-desc">Year: Newest</option>
+                  <option value="year-asc">Year: Oldest</option>
+                  <option value="age-asc">Newest on Lot</option>
+                  <option value="age-desc">Oldest on Lot</option>
+                  <option value="created-desc">Recently Added</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
               </div>
