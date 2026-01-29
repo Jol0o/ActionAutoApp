@@ -44,7 +44,7 @@ export default function UtilitiesPage() {
             </div>
 
             <Tabs defaultValue="reports" className="w-full">
-                <TabsList className="bg-white border p-1 rounded-lg h-11 w-fit mb-6">
+                <TabsList className="bg-card border p-1 rounded-lg h-11 w-fit mb-6">
                     <TabsTrigger value="reports" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-6 data-[state=active]:bg-secondary shadow-none">
                         <FileText className="size-4" /> Reports
                     </TabsTrigger>
@@ -75,7 +75,7 @@ export default function UtilitiesPage() {
                         />
                     </div>
 
-                    <Card className="border-none shadow-sm bg-white">
+                    <Card className="border-none shadow-sm bg-card">
                         <CardHeader className="border-b">
                             <CardTitle className="text-lg font-bold">Recent Generated Files</CardTitle>
                         </CardHeader>
@@ -101,7 +101,7 @@ export default function UtilitiesPage() {
                         </div>
 
                         <div className="xl:col-span-3 space-y-6">
-                            <Card className="border-none shadow-sm bg-white">
+                            <Card className="border-none shadow-sm bg-card">
                                 <CardHeader>
                                     <CardTitle className="text-lg font-bold">General Settings</CardTitle>
                                     <CardDescription>Configure your primary dealership identity and data syncing.</CardDescription>
@@ -149,7 +149,7 @@ export default function UtilitiesPage() {
 
 function ReportCard({ title, description, count, icon }: { title: string, description: string, count: number, icon: React.ReactNode }) {
     return (
-        <Card className="border-none shadow-sm hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer">
+        <Card className="border-none shadow-sm hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer bg-card">
             <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className="size-10 bg-secondary rounded-lg flex items-center justify-center border shrink-0">
@@ -191,12 +191,12 @@ function FileRow({ name, date, size, type }: { name: string, date: string, size:
 
 function SettingNavItem({ label, icon, active }: { label: string, icon: React.ReactNode, active?: boolean }) {
     return (
-        <div className={`p-3 flex items-center justify-between rounded-lg cursor-pointer transition-colors ${active ? 'bg-primary text-white font-bold shadow-md' : 'hover:bg-secondary font-medium text-muted-foreground'}`}>
+        <div className={`p-3 flex items-center justify-between rounded-lg cursor-pointer transition-colors ${active ? 'bg-primary text-primary-foreground font-bold shadow-md' : 'hover:bg-secondary font-medium text-muted-foreground'}`}>
             <div className="flex items-center gap-3">
                 {icon}
                 <span className="text-xs uppercase tracking-tight leading-none">{label}</span>
             </div>
-            <ChevronRight className={`size-3 ${active ? 'text-white/50' : 'text-muted-foreground'}`} />
+            <ChevronRight className={`size-3 ${active ? 'opacity-50' : 'text-muted-foreground'}`} />
         </div>
     )
 }
