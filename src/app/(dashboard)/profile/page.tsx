@@ -34,7 +34,8 @@ import {
   TrendingUp,
   ChevronRight
 } from 'lucide-react';
-import { UserProfile, NotificationPreferences } from '@/types/user';
+import { UserProfile } from '@/types/user';
+import { NotificationPreferences } from '@/types/notification';
 import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
