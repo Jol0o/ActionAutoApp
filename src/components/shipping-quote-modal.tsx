@@ -63,6 +63,26 @@ export function ShippingQuoteModal({
         }
     }, [open, vehicles, defaultVehicle])
 
+    // Auto-populate origin data when a vehicle is selected (or pre-selected)
+    React.useEffect(() => {
+        if (selectedVehicle) {
+            const isOrem = selectedVehicle.location?.toUpperCase().includes('OREM') || !selectedVehicle.location;
+
+            setFormData(prev => ({
+                ...prev,
+                // Only auto-populate if the field is currently empty or was previous default
+                fromZip: (!prev.fromZip || prev.fromZip === "84791") ? (isOrem ? "84058" : prev.fromZip) : prev.fromZip,
+                fromAddress: (!prev.fromAddress || prev.fromAddress === "123 Main St, Orem, UT") ? (isOrem ? "Action Auto - Orem, UT" : (selectedVehicle.location || prev.fromAddress)) : prev.fromAddress
+            }))
+
+            setErrors(prev => ({
+                ...prev,
+                fromZip: undefined,
+                fromAddress: undefined
+            }))
+        }
+    }, [selectedVehicle])
+
     const validateForm = (): boolean => {
         const newErrors: Partial<Record<keyof ShippingQuoteFormData, string>> = {}
 
@@ -108,13 +128,29 @@ export function ShippingQuoteModal({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
+        // Trim all string values in formData before validation and submission
+        const trimmedFormData = {
+            ...formData,
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            email: formData.email.trim(),
+            phone: formData.phone.trim().replace(/\s+/g, ''),
+            zipCode: formData.zipCode.trim(),
+            fullAddress: formData.fullAddress.trim(),
+            fromZip: formData.fromZip.trim(),
+            fromAddress: formData.fromAddress.trim(),
+        }
+
+        // Update local state with trimmed data so user sees it
+        setFormData(trimmedFormData);
+
         if (!validateForm()) return
 
         setIsCalculating(true)
 
         try {
             await onCalculate({
-                ...formData,
+                ...trimmedFormData,
                 vehicleId: selectedVehicle?.id
             })
             onOpenChange(false)
@@ -317,7 +353,7 @@ export function ShippingQuoteModal({
                                     value={formData.fromZip}
                                     onChange={(e) => updateField("fromZip", e.target.value)}
                                     className={errors.fromZip ? "border-destructive" : ""}
-                                    placeholder="84791"
+                                    placeholder="84058"
                                 />
                                 {errors.fromZip && <p className="text-xs text-destructive">{errors.fromZip}</p>}
                             </div>
@@ -342,7 +378,7 @@ export function ShippingQuoteModal({
                                 value={formData.fromAddress}
                                 onChange={(e) => updateField("fromAddress", e.target.value)}
                                 className={errors.fromAddress ? "border-destructive" : ""}
-                                placeholder="123 Main St, Orem, UT"
+                                placeholder="Action Auto - Orem, UT"
                             />
                             {errors.fromAddress && <p className="text-xs text-destructive">{errors.fromAddress}</p>}
                         </div>

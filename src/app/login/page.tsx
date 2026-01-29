@@ -20,7 +20,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/context/AuthContext"
 import { Alert, AlertDescription } from "../../components/ui/alert"
-import Link from "next/link"
+import Link from "next/link";
+
 
 export default function Page() {
     return (
@@ -79,12 +80,12 @@ export function LoginForm({
                             <Field>
                                 <div className="flex items-center">
                                     <FieldLabel htmlFor="password">Password</FieldLabel>
-                                    <a
-                                        href="#"
+                                    <Link
+                                        href="/forgot-password"
                                         className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                                     >
                                         Forgot your password?
-                                    </a>
+                                    </Link>
                                 </div>
                                 <Input
                                     id="password"

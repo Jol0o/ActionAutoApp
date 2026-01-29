@@ -96,7 +96,7 @@ apiClient.interceptors.response.use(
                     console.warn('[Auth] Redirecting to login page');
                     // We don't use router.push here because we're outside React
                     // But we want to ensure we don't reload if we're in the middle of a signup/login
-                    if (window.location.pathname !== '/signup') {
+                    if (window.location.pathname !== '/signup' && window.location.pathname !== '/reset-password' && window.location.pathname !== '/forgot-password') {
                         window.location.href = '/login';
                     }
                 }
