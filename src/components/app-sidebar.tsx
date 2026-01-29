@@ -17,6 +17,7 @@ import {
     Truck,
     AlertCircle,
     PlusCircle,
+    User,
 } from "lucide-react"
 
 import {
@@ -80,20 +81,17 @@ const data = {
                 },
             ],
         },
+    ],
+    account: [
+        {
+            title: "Profile",
+            url: "/profile",
+            icon: User,
+        },
         {
             title: "Settings",
             url: "/settings",
             icon: Settings,
-            items: [
-                {
-                    title: "General",
-                    url: "#",
-                },
-                {
-                    title: "Team",
-                    url: "#",
-                },
-            ],
         },
     ],
 }
@@ -115,8 +113,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             Powered by Supra AI
                         </span>
                     </div>
-
-
                 </div>
             </SidebarHeader>
             <SidebarContent className="p-2">
@@ -163,6 +159,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         </SidebarMenuItem>
                     ))}
                 </SidebarMenu>
+
+                <div className="px-4 py-2 mt-4 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider group-data-[collapsible=icon]:hidden">
+                    Account
+                </div>
+
+                <SidebarMenu>
+                    {data.account.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton
+                                asChild
+                                tooltip={item.title}
+                                isActive={pathname === item.url}
+                            >
+                                <Link href={item.url}>
+                                    <item.icon />
+                                    <span>{item.title}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    ))}
+                </SidebarMenu>
             </SidebarContent>
             <SidebarFooter className="p-4 border-t">
                 <SidebarMenu>
@@ -204,9 +221,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
                                     <UserIcon className="mr-2 size-4" />
-                                    Account
+                                    Profile
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
                                     <SettingsIcon className="mr-2 size-4" />

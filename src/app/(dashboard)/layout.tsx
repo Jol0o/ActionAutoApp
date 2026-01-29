@@ -3,10 +3,13 @@
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Input } from "@/components/ui/input"
-import { Search, Bell, ChevronDown, Plus } from "lucide-react"
+import { Search, ChevronDown, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/context/AuthContext"
+import { NotificationBell } from "@/components/NotificationBell"
+import { NotificationProvider } from "@/context/NotificationContext"
+import { ThemeProvider } from "@/context/ThemeContext"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -16,7 +19,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export default function DashboardLayout({
+function DashboardLayoutContent({
     children,
 }: Readonly<{
     children: React.ReactNode;
@@ -27,7 +30,7 @@ export default function DashboardLayout({
         <SidebarProvider>
             <AppSidebar />
             <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
+                <header className="flex h-16 shrink-0 items-center justify-between px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="flex items-center gap-4 flex-1">
                         <SidebarTrigger className="-ml-1" />
 
@@ -61,10 +64,10 @@ export default function DashboardLayout({
                         <Button variant="outline" size="icon" className="h-9 w-9 rounded-full">
                             <Plus className="size-5" />
                         </Button>
-                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-full relative">
-                            <Bell className="size-5" />
-                            <span className="absolute top-2 right-2 size-2 bg-destructive/100 rounded-full border-2 border-background"></span>
-                        </Button>
+                        
+                        {/* Notification Bell */}
+                        <NotificationBell />
+                        
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -84,7 +87,9 @@ export default function DashboardLayout({
                                     </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>Profile</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
+                                    Profile
+                                </DropdownMenuItem>
                                 <DropdownMenuItem>Settings</DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => logout()}>Log out</DropdownMenuItem>
@@ -97,5 +102,21 @@ export default function DashboardLayout({
                 </main>
             </SidebarInset>
         </SidebarProvider>
+    );
+}
+
+export default function DashboardLayout({
+    children,
+}: Readonly<{
+    children: React.ReactNode;
+}>) {
+    return (
+        <ThemeProvider>
+            <NotificationProvider>
+                <DashboardLayoutContent>
+                    {children}
+                </DashboardLayoutContent>
+            </NotificationProvider>
+        </ThemeProvider>
     );
 }

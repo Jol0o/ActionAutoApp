@@ -57,13 +57,13 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden border border-gray-100 dark:border-gray-700">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex items-center justify-between">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 text-white p-6 flex items-center justify-between">
                     <h2 className="text-2xl font-bold">Edit Shipment</h2>
                     <button
                         onClick={onClose}
-                        className="text-white/80 hover:text-white transition-colors"
+                        className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg p-2 transition-all"
                     >
                         <X className="w-6 h-6" />
                     </button>
@@ -74,17 +74,17 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                     <div className="p-6 space-y-6">
                         {/* Shipment Status */}
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Shipment Status</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Shipment Status</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Status
                                     </label>
                                     <select
                                         name="status"
                                         value={formData.status}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                         required
                                     >
                                         {statusOptions.map(status => (
@@ -93,22 +93,22 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                                         Tracking Number
-                                        <Lock className="w-3 h-3 text-gray-400" />
+                                        <Lock className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                                     </label>
                                     <div className="relative">
                                         <input
                                             type="text"
                                             value={shipment.trackingNumber || 'Not assigned'}
                                             disabled
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                                            className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed"
                                         />
                                         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                            <Lock className="w-4 h-4 text-gray-400" />
+                                            <Lock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                         </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                         Tracking numbers are automatically generated and cannot be modified
                                     </p>
                                 </div>
@@ -117,10 +117,10 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
 
                         {/* Route Information */}
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Route Information</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Route Information</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Origin
                                     </label>
                                     <input
@@ -128,12 +128,12 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="origin"
                                         value={formData.origin}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Destination
                                     </label>
                                     <input
@@ -141,7 +141,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="destination"
                                         value={formData.destination}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
@@ -150,10 +150,10 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
 
                         {/* Timeline */}
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Shipment Timeline</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Shipment Timeline</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Requested Pickup Date
                                     </label>
                                     <input
@@ -161,11 +161,11 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="requestedPickupDate"
                                         value={formData.requestedPickupDate}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Scheduled Pickup
                                     </label>
                                     <input
@@ -173,11 +173,11 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="scheduledPickup"
                                         value={formData.scheduledPickup}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Picked Up
                                     </label>
                                     <input
@@ -185,11 +185,11 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="pickedUp"
                                         value={formData.pickedUp}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Scheduled Delivery
                                     </label>
                                     <input
@@ -197,11 +197,11 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="scheduledDelivery"
                                         value={formData.scheduledDelivery}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Delivered
                                     </label>
                                     <input
@@ -209,7 +209,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="delivered"
                                         value={formData.delivered}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
                                     />
                                 </div>
                             </div>
@@ -217,13 +217,13 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                     </div>
 
                     {/* Footer */}
-                    <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200">
+                    <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={onClose}
                             disabled={isSaving}
-                            className="border-gray-300"
+                            className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                             Cancel
                         </Button>

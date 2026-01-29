@@ -78,12 +78,12 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-gray-100">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-gray-100 dark:border-gray-700">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-emerald-600 to-green-700 text-white px-8 py-6 flex items-center justify-between">
+                <div className="bg-gradient-to-r from-emerald-600 to-green-700 dark:from-emerald-700 dark:to-green-800 text-white px-8 py-6 flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-semibold tracking-tight">Edit Quote</h2>
-                        <p className="text-emerald-50 text-sm mt-1">Update quote information</p>
+                        <p className="text-emerald-50 dark:text-emerald-100 text-sm mt-1">Update quote information</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -97,14 +97,14 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                 <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-180px)]">
                     <div className="p-8 space-y-8">
                         {/* Customer Information */}
-                        <div className="border-l-4 border-emerald-500 pl-6">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-5 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <div className="border-l-4 border-emerald-500 dark:border-emerald-600 pl-6">
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-5 flex items-center gap-2">
+                                <span className="w-2 h-2 bg-emerald-500 dark:bg-emerald-600 rounded-full"></span>
                                 Customer Information
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         First Name
                                     </label>
                                     <input
@@ -112,12 +112,12 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="firstName"
                                         value={formData.firstName}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Last Name
                                     </label>
                                     <input
@@ -125,12 +125,12 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="lastName"
                                         value={formData.lastName}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Email
                                     </label>
                                     <input
@@ -138,12 +138,12 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="email"
                                         value={formData.email}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Phone
                                     </label>
                                     <input
@@ -151,7 +151,7 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
@@ -159,14 +159,14 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                         </div>
 
                         {/* Vehicle Information */}
-                        <div className="border-l-4 border-emerald-500 pl-6">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-5 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <div className="border-l-4 border-emerald-500 dark:border-emerald-600 pl-6">
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-5 flex items-center gap-2">
+                                <span className="w-2 h-2 bg-emerald-500 dark:bg-emerald-600 rounded-full"></span>
                                 Vehicle Information
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Vehicle Name
                                     </label>
                                     <input
@@ -174,11 +174,11 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="vehicleName"
                                         value={formData.vehicleName}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         VIN
                                     </label>
                                     <input
@@ -186,11 +186,11 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="vin"
                                         value={formData.vin}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Stock Number
                                     </label>
                                     <input
@@ -198,11 +198,11 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="stockNumber"
                                         value={formData.stockNumber}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Vehicle Location
                                     </label>
                                     <input
@@ -210,21 +210,21 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="vehicleLocation"
                                         value={formData.vehicleLocation}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                     />
                                 </div>
                             </div>
                         </div>
 
                         {/* Route Information */}
-                        <div className="border-l-4 border-emerald-500 pl-6">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-5 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <div className="border-l-4 border-emerald-500 dark:border-emerald-600 pl-6">
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-5 flex items-center gap-2">
+                                <span className="w-2 h-2 bg-emerald-500 dark:bg-emerald-600 rounded-full"></span>
                                 Route Information
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         From Address
                                     </label>
                                     <input
@@ -232,12 +232,12 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="fromAddress"
                                         value={formData.fromAddress}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         From Zip Code
                                     </label>
                                     <input
@@ -245,12 +245,12 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="fromZip"
                                         value={formData.fromZip}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         To Address
                                     </label>
                                     <input
@@ -258,12 +258,12 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="toAddress"
                                         value={formData.toAddress}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         To Zip Code
                                     </label>
                                     <input
@@ -271,7 +271,7 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="toZip"
                                         value={formData.toZip}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                     />
                                 </div>
@@ -279,14 +279,14 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                         </div>
 
                         {/* Quote Details */}
-                        <div className="border-l-4 border-emerald-500 pl-6">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-5 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <div className="border-l-4 border-emerald-500 dark:border-emerald-600 pl-6">
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-5 flex items-center gap-2">
+                                <span className="w-2 h-2 bg-emerald-500 dark:bg-emerald-600 rounded-full"></span>
                                 Quote Details
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Rate ($)
                                     </label>
                                     <input
@@ -294,14 +294,14 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="rate"
                                         value={formData.rate}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                         min="0"
                                         step="0.01"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Miles
                                     </label>
                                     <input
@@ -309,13 +309,13 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="miles"
                                         value={formData.miles}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                         min="0"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Units
                                     </label>
                                     <input
@@ -323,13 +323,13 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="units"
                                         value={formData.units}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                         min="1"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         ETA Min (days)
                                     </label>
                                     <input
@@ -337,13 +337,13 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="etaMin"
                                         value={formData.etaMin}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                         min="0"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         ETA Max (days)
                                     </label>
                                     <input
@@ -351,7 +351,7 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="etaMax"
                                         value={formData.etaMax}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all duration-200"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 transition-all duration-200 text-gray-900 dark:text-gray-100"
                                         required
                                         min="0"
                                     />
@@ -360,9 +360,9 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                         </div>
 
                         {/* Transport Options */}
-                        <div className="border-l-4 border-emerald-500 pl-6">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-5 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <div className="border-l-4 border-emerald-500 dark:border-emerald-600 pl-6">
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-5 flex items-center gap-2">
+                                <span className="w-2 h-2 bg-emerald-500 dark:bg-emerald-600 rounded-full"></span>
                                 Transport Options
                             </h3>
                             <div className="flex gap-8">
@@ -372,9 +372,9 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="enclosedTrailer"
                                         checked={formData.enclosedTrailer}
                                         onChange={handleChange}
-                                        className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                                        className="w-5 h-5 text-emerald-600 border-gray-300 dark:border-gray-600 rounded focus:ring-emerald-500 dark:bg-gray-800"
                                     />
-                                    <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-700 transition-colors">
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                                         Enclosed Trailer
                                     </span>
                                 </label>
@@ -384,9 +384,9 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                                         name="vehicleInoperable"
                                         checked={formData.vehicleInoperable}
                                         onChange={handleChange}
-                                        className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                                        className="w-5 h-5 text-emerald-600 border-gray-300 dark:border-gray-600 rounded focus:ring-emerald-500 dark:bg-gray-800"
                                     />
-                                    <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-700 transition-colors">
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                                         Vehicle Inoperable
                                     </span>
                                 </label>
@@ -395,20 +395,20 @@ export function EditQuoteModal({ quote, isOpen, onClose, onSave }: EditQuoteModa
                     </div>
 
                     {/* Footer */}
-                    <div className="bg-gradient-to-r from-gray-50 to-emerald-50/30 px-8 py-5 flex items-center justify-end gap-3 border-t border-gray-200">
+                    <div className="bg-gradient-to-r from-gray-50 to-emerald-50/30 dark:from-gray-800 dark:to-emerald-950/30 px-8 py-5 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={onClose}
                             disabled={isSaving}
-                            className="border-gray-300 hover:bg-gray-100 px-6"
+                            className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 px-6"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
                             disabled={isSaving}
-                            className="bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-lg shadow-emerald-500/30 px-6"
+                            className="bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-lg shadow-emerald-500/30 dark:shadow-emerald-500/20 px-6"
                         >
                             {isSaving ? 'Saving...' : 'Save Changes'}
                         </Button>

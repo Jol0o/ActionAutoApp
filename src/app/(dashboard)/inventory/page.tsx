@@ -118,8 +118,6 @@ function InventoryContent() {
           limit,
           ...filters,
           search: debouncedSearch,
-          // Map frontend sort option to API params if needed, or keeping it simple
-          // The API expects sortBy and sortOrder separately which we are managing in filters state
         }
       })
 
@@ -134,7 +132,6 @@ function InventoryContent() {
     } catch (err) {
       console.error('[Inventory] Error fetching vehicles:', err)
       const axiosError = err as AxiosError
-      // Only set error if it's not a cancellation
       if (axiosError.code !== "ERR_CANCELED") {
         const apiErrorData = axiosError.response?.data as any
         const errorMessage = apiErrorData?.message || axiosError.message || 'Failed to load vehicles'
@@ -148,7 +145,7 @@ function InventoryContent() {
 
   const handleFilterChange = (key: string, value: any) => {
     setFilters((prev: any) => ({ ...prev, [key]: value }))
-    setPage(1) // Reset to first page on filter change
+    setPage(1)
   }
 
   const handleBulkFilterChange = (newFilters: any) => {
@@ -220,7 +217,6 @@ function InventoryContent() {
     return 'make-asc';
   }, [filters.sortBy, filters.sortOrder])
 
-  // NEW State for shipping rates (vehicleId -> rate)
   const [shippingRates, setShippingRates] = React.useState<Record<string, number>>({})
 
   const handleCalculateQuote = async (formData: ShippingQuoteFormData) => {
@@ -245,7 +241,6 @@ function InventoryContent() {
       const data = response.data?.data || response.data
       console.log('[Quote] Quote created successfully:', data)
 
-      // Store the rate for this vehicle
       if (formData.vehicleId) {
         setShippingRates(prev => ({
           ...prev,
@@ -254,8 +249,6 @@ function InventoryContent() {
       }
 
       alert(`Quote created successfully! Rate: $${data.rate}, ETA: ${data.eta.min}-${data.eta.max} days`)
-
-      // Explicitly close the shipping modal (it might do this itself but ensuring here is fine)
       setIsModalOpen(false)
 
     } catch (error) {
@@ -275,22 +268,20 @@ function InventoryContent() {
 
   const handleQuoteFromDetails = () => {
     if (selectedDetailVehicle) {
-      // DO NOT close the details modal
-      // setDetailsModalOpen(false) 
       setIsModalOpen(true)
     }
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Inventory</h2>
-            <p className="text-red-600 mb-4">{error}</p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Inventory</h2>
+            <p className="text-destructive/80 mb-4">{error}</p>
             <button
               onClick={fetchVehicles}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 transition-colors"
             >
               <RefreshCw className="h-4 w-4" />
               Retry Loading
@@ -302,8 +293,8 @@ function InventoryContent() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/20 flex flex-col">
-      <div className="border-b bg-background sticky top-0 z-10 shadow-sm">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="border-b bg-card sticky top-0 z-10 shadow-sm">
         <div className="max-w-8xl mx-auto px-4 py-4 space-y-4">
 
           <InventoryFilters
@@ -321,7 +312,7 @@ function InventoryContent() {
               <button
                 onClick={fetchVehicles}
                 disabled={isLoading}
-                className="text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
                 title="Refresh inventory"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -329,12 +320,12 @@ function InventoryContent() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Sort by</span>
+              <span className="text-sm font-medium text-foreground">Sort by</span>
               <div className="relative">
                 <select
                   value={currentSortValue}
                   onChange={(e) => handleSortChange(e.target.value as SortOption)}
-                  className="border rounded px-3 py-1.5 pr-8 text-sm bg-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
+                  className="border border-border rounded px-3 py-1.5 pr-8 text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:border-transparent outline-none transition-all cursor-pointer"
                 >
                   <option value="make-asc">Make (A-Z)</option>
                   <option value="make-desc">Make (Z-A)</option>
@@ -348,7 +339,7 @@ function InventoryContent() {
                   <option value="age-desc">Oldest on Lot</option>
                   <option value="created-desc">Recently Added</option>
                 </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               </div>
             </div>
           </div>
@@ -359,14 +350,14 @@ function InventoryContent() {
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-[400px] bg-gray-200 rounded-lg animate-pulse" />
+              <div key={i} className="h-[400px] bg-muted rounded-lg animate-pulse" />
             ))}
           </div>
         ) : vehicles.length === 0 ? (
           <div className="text-center py-20">
-            <div className="bg-background border rounded-lg p-12 max-w-lg mx-auto shadow-sm">
-              <p className="text-xl font-semibold text-gray-900 mb-2">No vehicles found</p>
-              <p className="text-gray-500 mb-6">
+            <div className="bg-card border border-border rounded-lg p-12 max-w-lg mx-auto shadow-sm">
+              <p className="text-xl font-semibold text-foreground mb-2">No vehicles found</p>
+              <p className="text-muted-foreground mb-6">
                 Try adjusting your filters or search terms to find what you're looking for.
               </p>
               <button
@@ -424,7 +415,7 @@ function InventoryContent() {
 export default function InventoryPage() {
   return (
     <React.Suspense fallback={
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-r-transparent" />
           <p className="text-muted-foreground">Loading inventory...</p>

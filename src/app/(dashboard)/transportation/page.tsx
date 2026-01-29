@@ -115,12 +115,12 @@ export default function TransportationPage() {
 
     if (error && !isLoading && vehicles.length === 0) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <Card className="max-w-md w-full">
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                <Card className="max-w-md w-full border-border">
                     <CardContent className="p-6 text-center">
-                        <h3 className="text-lg font-medium text-red-600 mb-2">Error Loading Data</h3>
-                        <p className="text-sm text-gray-600 mb-4">{error}</p>
-                        <Button onClick={fetchData} className="bg-green-500 hover:bg-green-600">
+                        <h3 className="text-lg font-medium text-destructive mb-2">Error Loading Data</h3>
+                        <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                        <Button onClick={fetchData} className="bg-green-500 hover:bg-green-600 text-white">
                             Retry
                         </Button>
                     </CardContent>
@@ -130,10 +130,10 @@ export default function TransportationPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-background">
             <AlertComponent />
             {/* Header */}
-            <div className="bg-white border-b px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+            <div className="bg-card border-b border-border px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 sm:gap-3">
@@ -141,11 +141,11 @@ export default function TransportationPage() {
                                 <Truck className="size-4 sm:size-5 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold">
+                                <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold text-foreground">
                                     Transportation Management
                                 </h1>
                                 {vehicles.length > 0 && (
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-xs text-muted-foreground">
                                         {vehicles.length} vehicles available
                                     </p>
                                 )}
@@ -155,14 +155,14 @@ export default function TransportationPage() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="gap-1 sm:gap-2 text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4"
+                                className="gap-1 sm:gap-2 text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4 border-border"
                                 onClick={() => setActiveTab("drafts")}
                             >
                                 <span>VIEW QUOTES</span>
                             </Button>
                             <Button
                                 size="sm"
-                                className="gap-1 sm:gap-2 bg-green-500 hover:bg-green-600 text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4"
+                                className="gap-1 sm:gap-2 bg-green-500 hover:bg-green-600 text-white text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4"
                                 onClick={() => setIsQuoteModalOpen(true)}
                             >
                                 <span>START A QUOTE</span>
@@ -172,10 +172,10 @@ export default function TransportationPage() {
                     
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                         <div className="relative flex-1">
-                            <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-gray-400" />
+                            <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
                             <Input 
                                 placeholder="Search by name, VIN, stock, or tracking number..." 
-                                className="pl-8 sm:pl-10 w-full text-sm h-8 sm:h-10"
+                                className="pl-8 sm:pl-10 w-full text-sm h-8 sm:h-10 bg-background border-border text-foreground"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -188,7 +188,7 @@ export default function TransportationPage() {
                 {/* Mobile Sidebar Overlay */}
                 {isSidebarOpen && (
                     <div 
-                        className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                        className="fixed inset-0 bg-black/50 dark:bg-black/70 z-40 lg:hidden"
                         onClick={() => setIsSidebarOpen(false)}
                     />
                 )}
@@ -204,28 +204,28 @@ export default function TransportationPage() {
                 />
 
                 {/* Main Content */}
-                <div className="flex-1 p-3 sm:p-4 md:p-6">
+                <div className="flex-1 p-3 sm:p-4 md:p-6 bg-background">
                     {activeTab === "shipments" ? (
                         isLoading ? (
-                            <Card>
+                            <Card className="border-border">
                                 <CardContent className="p-12 text-center">
-                                    <p>Loading shipments...</p>
+                                    <p className="text-muted-foreground">Loading shipments...</p>
                                 </CardContent>
                             </Card>
                         ) : filteredShipments.length === 0 ? (
-                            <Card>
+                            <Card className="border-border">
                                 <CardContent className="p-6 sm:p-8 md:p-12 text-center">
-                                    <Truck className="size-10 sm:size-12 md:size-16 text-gray-300 mx-auto mb-3 sm:mb-4" />
-                                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-gray-900 mb-2">
+                                    <Truck className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
+                                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-foreground mb-2">
                                         No Shipments Found
                                     </h3>
-                                    <p className="text-xs sm:text-sm md:text-base text-gray-500 mb-4 sm:mb-6 px-2 sm:px-4">
+                                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground mb-4 sm:mb-6 px-2 sm:px-4">
                                         {searchQuery 
                                             ? "No shipments match your search criteria."
                                             : "You don't have any shipments yet. Start by creating a quote."}
                                     </p>
                                     <Button 
-                                        className="bg-green-500 hover:bg-green-600 text-xs sm:text-sm h-8 sm:h-9 md:h-10"
+                                        className="bg-green-500 hover:bg-green-600 text-white text-xs sm:text-sm h-8 sm:h-9 md:h-10"
                                         onClick={() => setIsQuoteModalOpen(true)}
                                     >
                                         Create New Quote
@@ -247,12 +247,12 @@ export default function TransportationPage() {
                     ) : (
                         <div className="space-y-3 sm:space-y-4">
                             {quotes.length === 0 ? (
-                                <Card>
+                                <Card className="border-border">
                                     <CardContent className="p-12 text-center">
-                                        <h3 className="text-lg font-medium mb-2">No Quotes Found</h3>
-                                        <p className="text-sm text-gray-500 mb-6">Create a new quote to get started.</p>
+                                        <h3 className="text-lg font-medium text-foreground mb-2">No Quotes Found</h3>
+                                        <p className="text-sm text-muted-foreground mb-6">Create a new quote to get started.</p>
                                         <Button 
-                                            className="bg-green-500 hover:bg-green-600"
+                                            className="bg-green-500 hover:bg-green-600 text-white"
                                             onClick={() => setIsQuoteModalOpen(true)}
                                         >
                                             Create Quote
