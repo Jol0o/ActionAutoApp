@@ -18,6 +18,7 @@ import {
     AlertCircle,
     PlusCircle,
     User,
+    Calendar,
 } from "lucide-react"
 
 import {
@@ -59,7 +60,13 @@ const data = {
             url: "/inventory",
             icon: Car,
         },
+        {
+            title: "Appointments", 
+            url: "/appointments",
+            icon: Calendar, 
+        },
     ],
+    
     services: [
         {
             title: "Transportation",
