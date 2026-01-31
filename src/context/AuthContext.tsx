@@ -38,45 +38,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const fetchUser = useCallback(async () => {
         const token = getAuthCookie();
 
-        // --- Storage Diagnostics ---
-        if (token) {
-            console.log('[AuthContext] Token detected during initialization.');
-        } else {
-            console.warn('[AuthContext] No token found in Cookie or LocalStorage.');
-            if (typeof document !== 'undefined') {
-                console.log('[AuthContext] Available cookies:', document.cookie || 'NONE');
-            }
-        }
-        // -------------------------
-
+        // If no token exists, don't try to fetch user
         if (!token) {
-            console.log('[AuthContext] No access token found. Attempting to recover session via refresh token...');
+            console.log('[AuthContext] No token found. User not authenticated.');
+            setUser(null);
+            setIsLoading(false);
+            return;
         }
 
-        // Only fetch if we don't have a user yet
+        // If we already have a user, don't fetch again
         if (user) {
             setIsLoading(false);
             return;
         }
 
         try {
-            console.log('[AuthContext] Fetching user profile...');
+            console.log('[AuthContext] Token found. Fetching user profile...');
             const userData = await authApi.getCurrentUser();
             console.log('[AuthContext] Session initialized for:', userData.name);
             setUser(userData);
         } catch (err: unknown) {
             // If unauthorized, clear invalid session
             if (axios.isAxiosError(err) && err.response?.status === 401) {
-                console.error('[AuthContext] Profile fetch failed:', err.response?.data?.message || err.message);
-                console.warn('[AuthContext] 401 from backend. Token likely invalid.');
+                console.warn('[AuthContext] Invalid or expired token. Clearing session.');
                 deleteAuthCookie();
                 setUser(null);
 
                 // Only redirect if not already on public pages
-                const isPublic = pathname === '/login' || pathname === '/signup' || pathname === '/inventory-public' || pathname === '/reset-password' || pathname === '/forgot-password';
-                if (!isPublic) router.push('/login');
+                const isPublic = pathname === '/login' || 
+                                pathname === '/signup' || 
+                                pathname === '/inventory-public' || 
+                                pathname === '/reset-password' || 
+                                pathname === '/forgot-password';
+                
+                if (!isPublic) {
+                    console.log('[AuthContext] Redirecting to login page');
+                    router.push('/login');
+                }
             } else {
-                console.error('[AuthContext] Profile fetch failed:', err);
+                console.error('[AuthContext] Unexpected error fetching user:', err);
             }
         } finally {
             setIsLoading(false);
@@ -162,7 +162,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const response = await authApi.resetPassword(data);
             setMessage(response.message);
             // On successful password reset, redirect to login after a short delay
-            // to allow the user to see the success message.
             setTimeout(() => {
                 router.push('/login');
             }, 2000);

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, MessageSquare, Users, Clock, Video, Phone, MapPin, Plus, Filter, Search, ChevronRight } from "lucide-react"
+import { Calendar, MessageSquare, Users, Clock, Video, Phone, MapPin, Plus, Search, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,8 +10,10 @@ import { Badge } from "@/components/ui/badge"
 import { useAppointments } from "@/hooks/useAppointments"
 import { useConversations } from "@/hooks/useConversations"
 import { CreateAppointmentModal } from "@/components/CreateAppointmentModal"
+import { CreateConversationModal } from "@/components/CreateConversationModal"
 import { ConversationPanel } from "@/components/ConversationPanel"
 import { AppointmentCalendar } from "@/components/AppointmentCalendar"
+import { useAuth } from "@/context/AuthContext"
 import { format } from "date-fns"
 import { Appointment } from "@/types/appointment"
 
@@ -19,15 +21,15 @@ export default function AppointmentsPage() {
   const [activeTab, setActiveTab] = React.useState("calendar")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
+  const [isCreateConversationOpen, setIsCreateConversationOpen] = React.useState(false)
   const [selectedConversation, setSelectedConversation] = React.useState<string | null>(null)
+  
+  const { user: currentUser } = useAuth()
   
   const { 
     appointments, 
     isLoading: appointmentsLoading,
     createAppointment,
-    updateAppointment,
-    cancelAppointment,
-    deleteAppointment 
   } = useAppointments()
   
   const { 
@@ -35,7 +37,7 @@ export default function AppointmentsPage() {
     isLoading: conversationsLoading,
     createConversation,
     sendMessage,
-    markAsRead 
+    deleteConversation
   } = useConversations()
 
   // Separate conversations with and without appointments
@@ -56,6 +58,30 @@ export default function AppointmentsPage() {
     ),
     [appointments]
   )
+
+  const handleDeleteConversation = async (conversationId: string) => {
+    try {
+      await deleteConversation(conversationId)
+      // Clear selected conversation if it was deleted
+      if (selectedConversation === conversationId) {
+        setSelectedConversation(null)
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error)
+    }
+  }
+
+  const getConversationName = (conversation: any) => {
+    if (conversation.type === 'group') {
+      return conversation.name || 'Group Chat'
+    }
+    
+    const otherParticipant = conversation.participants.find(
+      (p: any) => p._id !== currentUser?._id
+    )
+    
+    return otherParticipant?.name || 'Unknown User'
+  }
 
   const getAppointmentIcon = (type: string) => {
     switch (type) {
@@ -97,6 +123,15 @@ export default function AppointmentsPage() {
               variant="outline"
               size="sm"
               className="gap-2"
+              onClick={() => setIsCreateConversationOpen(true)}
+            >
+              <MessageSquare className="size-4" />
+              New Message
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
               onClick={() => setActiveTab("conversations")}
             >
               <MessageSquare className="size-4" />
@@ -113,7 +148,6 @@ export default function AppointmentsPage() {
           </div>
         </div>
 
-        {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -139,6 +173,11 @@ export default function AppointmentsPage() {
             <TabsTrigger value="conversations" className="gap-2">
               <MessageSquare className="size-4" />
               Conversations
+              {regularConversations.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {regularConversations.length}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="booked" className="gap-2">
               <Users className="size-4" />
@@ -156,9 +195,7 @@ export default function AppointmentsPage() {
             <AppointmentCalendar
               appointments={appointments}
               onCreateAppointment={() => setIsCreateModalOpen(true)}
-              onSelectAppointment={(appointment) => {
-                // Handle appointment selection
-              }}
+              onSelectAppointment={(appointment) => {}}
             />
           </TabsContent>
 
@@ -254,8 +291,17 @@ export default function AppointmentsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-1">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                     <CardTitle className="text-base">Conversations</CardTitle>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setIsCreateConversationOpen(true)}
+                    >
+                      <Plus className="size-4" />
+                      New
+                    </Button>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="divide-y">
@@ -264,8 +310,18 @@ export default function AppointmentsPage() {
                           Loading conversations...
                         </div>
                       ) : regularConversations.length === 0 ? (
-                        <div className="p-8 text-center text-muted-foreground">
-                          No conversations yet
+                        <div className="p-8 text-center">
+                          <MessageSquare className="size-12 text-muted-foreground/50 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground mb-3">
+                            No conversations yet
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsCreateConversationOpen(true)}
+                          >
+                            Start a conversation
+                          </Button>
                         </div>
                       ) : (
                         regularConversations.map((conversation) => (
@@ -286,16 +342,13 @@ export default function AppointmentsPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm truncate">
-                                  {conversation.type === 'group' 
-                                    ? conversation.name 
-                                    : conversation.participants.find(p => p._id !== 'currentUserId')?.name
-                                  }
+                                  {getConversationName(conversation)}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {conversation.lastMessage || 'No messages yet'}
                                 </p>
                               </div>
-                              {conversation.messages.some(m => !m.readBy.includes('currentUserId')) && (
+                              {conversation.messages.some(m => !m.readBy.includes(currentUser?._id || '')) && (
                                 <div className="w-2 h-2 bg-green-500 rounded-full" />
                               )}
                             </div>
@@ -313,6 +366,7 @@ export default function AppointmentsPage() {
                     conversationId={selectedConversation}
                     onSendMessage={sendMessage}
                     onCreateAppointment={() => setIsCreateModalOpen(true)}
+                    onDeleteConversation={handleDeleteConversation}
                   />
                 ) : (
                   <Card>
@@ -321,9 +375,15 @@ export default function AppointmentsPage() {
                       <h3 className="text-lg font-medium text-foreground mb-2">
                         Select a Conversation
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mb-4">
                         Choose a conversation from the list to view messages
                       </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsCreateConversationOpen(true)}
+                      >
+                        Start New Conversation
+                      </Button>
                     </CardContent>
                   </Card>
                 )}
@@ -357,10 +417,7 @@ export default function AppointmentsPage() {
                           </div>
                           <div className="flex-1">
                             <h3 className="font-semibold text-foreground mb-1">
-                              {conversation.type === 'group' 
-                                ? conversation.name 
-                                : `Conversation with ${conversation.participants.find(p => p._id !== 'currentUserId')?.name}`
-                              }
+                              {getConversationName(conversation)}
                             </h3>
                             {conversation.appointmentId && typeof conversation.appointmentId === 'object' && (
                               <div className="space-y-2">
@@ -395,11 +452,18 @@ export default function AppointmentsPage() {
         </Tabs>
       </div>
 
+      {/* Modals */}
       <CreateAppointmentModal
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onCreateAppointment={createAppointment}
         conversations={conversations}
+      />
+
+      <CreateConversationModal
+        open={isCreateConversationOpen}
+        onOpenChange={setIsCreateConversationOpen}
+        onCreateConversation={createConversation}
       />
     </div>
   )

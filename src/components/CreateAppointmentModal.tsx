@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Clock, MapPin, Users, AlertCircle } from "lucide-react"
 import { Conversation } from "@/types/appointment"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { UserSearch } from "@/components/UserSearch"
 
 interface CreateAppointmentModalProps {
   open: boolean
@@ -55,6 +56,13 @@ export function CreateAppointmentModal({
           setIsSubmitting(false)
           return
         }
+      }
+
+      // Validate participants
+      if (formData.participants.length === 0) {
+        setError('Please select at least one participant')
+        setIsSubmitting(false)
+        return
       }
 
       await onCreateAppointment(formData)
@@ -116,6 +124,15 @@ export function CreateAppointmentModal({
               rows={3}
             />
           </div>
+
+          {/* PARTICIPANT SELECTION - NEW */}
+          <UserSearch
+            selectedUsers={formData.participants}
+            onSelectUsers={(userIds) => setFormData({ ...formData, participants: userIds })}
+            label="Participants *"
+            placeholder="Search and select participants..."
+            multiple={true}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

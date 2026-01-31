@@ -34,11 +34,18 @@ export function useConversations() {
     participants: string[];
     name?: string;
   }) => {
-    const response = await apiClient.post('/api/conversations', data);
-    const conversation = response.data?.data || response.data;
-    
-    setConversations(prev => [conversation, ...prev]);
-    return conversation;
+    try {
+      const response = await apiClient.post('/api/conversations', data);
+      const conversation = response.data?.data || response.data;
+      
+      setConversations(prev => [conversation, ...prev]);
+      return conversation;
+    } catch (err) {
+      const axiosError = err as AxiosError;
+      const message = (axiosError.response?.data as any)?.message || 'Failed to create conversation';
+      setError(message);
+      throw new Error(message);
+    }
   }, []);
 
   const sendMessage = useCallback(async (conversationId: string, data: {
@@ -46,32 +53,60 @@ export function useConversations() {
     type?: 'text' | 'file' | 'image' | 'appointment';
     metadata?: any;
   }) => {
-    const response = await apiClient.post(`/api/conversations/${conversationId}/messages`, data);
-    const updated = response.data?.data || response.data;
-    
-    setConversations(prev => 
-      prev.map(c => c._id === conversationId ? updated : c)
-    );
-    return updated;
+    try {
+      const response = await apiClient.post(`/api/conversations/${conversationId}/messages`, data);
+      const updated = response.data?.data || response.data;
+      
+      setConversations(prev => 
+        prev.map(c => c._id === conversationId ? updated : c)
+      );
+      return updated;
+    } catch (err) {
+      const axiosError = err as AxiosError;
+      const message = (axiosError.response?.data as any)?.message || 'Failed to send message';
+      setError(message);
+      throw new Error(message);
+    }
   }, []);
 
   const markAsRead = useCallback(async (conversationId: string) => {
-    await apiClient.post(`/api/conversations/${conversationId}/read`);
-    
-    setConversations(prev => 
-      prev.map(c => {
-        if (c._id === conversationId) {
-          return {
-            ...c,
-            messages: c.messages.map(m => ({
-              ...m,
-              readBy: [...new Set([...m.readBy, 'currentUser'])]
-            }))
-          };
-        }
-        return c;
-      })
-    );
+    try {
+      await apiClient.post(`/api/conversations/${conversationId}/read`);
+      
+      setConversations(prev => 
+        prev.map(c => {
+          if (c._id === conversationId) {
+            return {
+              ...c,
+              messages: c.messages.map(m => ({
+                ...m,
+                readBy: [...new Set([...m.readBy, 'currentUser'])]
+              }))
+            };
+          }
+          return c;
+        })
+      );
+    } catch (err) {
+      const axiosError = err as AxiosError;
+      const message = (axiosError.response?.data as any)?.message || 'Failed to mark as read';
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    try {
+      await apiClient.delete(`/api/conversations/${conversationId}`);
+      
+      // Remove from state
+      setConversations(prev => prev.filter(c => c._id !== conversationId));
+    } catch (err) {
+      const axiosError = err as AxiosError;
+      const message = (axiosError.response?.data as any)?.message || 'Failed to delete conversation';
+      setError(message);
+      throw new Error(message);
+    }
   }, []);
 
   useEffect(() => {
@@ -85,6 +120,7 @@ export function useConversations() {
     fetchConversations,
     createConversation,
     sendMessage,
-    markAsRead
+    markAsRead,
+    deleteConversation
   };
 }

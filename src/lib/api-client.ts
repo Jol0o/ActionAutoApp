@@ -17,11 +17,7 @@ apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         const token = getAuthCookie();
         if (token && config.headers) {
-            // Log for debugging (obfuscated)
-            console.log(`[Axios] Request: ${config.method?.toUpperCase()} ${config.url} | Token: ${token.substring(0, 10)}... (Len: ${token.length})`);
             config.headers.Authorization = `Bearer ${token}`;
-        } else {
-            console.log(`[Axios] Request: ${config.method?.toUpperCase()} ${config.url} | NO Token found in cookies`);
         }
         return config;
     },
@@ -39,20 +35,25 @@ apiClient.interceptors.response.use(
         const status = error.response?.status;
         const errorMessage = apiError?.message || error.message;
 
-        // Log all errors for debugging
-        console.error(`[Axios Error] ${error.config?.method?.toUpperCase()} ${error.config?.url} | Status: ${status} | Message: ${errorMessage}`);
+        // Only log errors that aren't expected auth failures
+        const isAuthEndpoint = originalRequest.url?.includes('/api/auth/');
+        const isExpectedAuthError = status === 401 && isAuthEndpoint;
+
+        if (!isExpectedAuthError) {
+            console.error(`[Axios Error] ${error.config?.method?.toUpperCase()} ${error.config?.url} | Status: ${status} | Message: ${errorMessage}`);
+        }
 
         // If we get a 401 and haven't tried refreshing yet
         // ALSO: Skip refresh if the failed request was specifically the login call
         const isLoginRequest = originalRequest.url?.includes('/api/auth/login');
+        const isMeRequest = originalRequest.url?.includes('/api/auth/me');
 
-        if (status === 401 && !originalRequest._retry && !isLoginRequest) {
+        if (status === 401 && !originalRequest._retry && !isLoginRequest && !isMeRequest) {
             console.log(`[Auth] 401 detected. Attempting refresh...`);
             originalRequest._retry = true;
 
             try {
                 // Call the refresh endpoint
-                // Note: We use axios directly to avoid interceptor recursion
                 const refreshResponse = await axios.post(
                     `${API_URL}/api/auth/refresh`,
                     {},
@@ -75,7 +76,6 @@ apiClient.interceptors.response.use(
                 console.log('[Auth] Refresh successful. Retrying original request.');
 
                 // Update the access token cookie
-                console.log(`[Auth] Updating cookie: ${AUTH_COOKIE_NAME}`);
                 setAuthCookie(newAccessToken);
 
                 // Retry the original request with the new token
@@ -84,19 +84,26 @@ apiClient.interceptors.response.use(
                 }
                 return apiClient(originalRequest);
             } catch (refreshError: any) {
-                const rErr = refreshError.response?.data || refreshError.message;
                 const rStatus = refreshError.response?.status;
-                console.error(`[Auth] Refresh flow FAILED (${rStatus}). Clearing session. Error:`, rErr);
+                
+                // Only log if it's not a 401 (which is expected when refresh token expires)
+                if (rStatus !== 401) {
+                    const rErr = refreshError.response?.data || refreshError.message;
+                    console.error(`[Auth] Refresh flow FAILED (${rStatus}). Error:`, rErr);
+                } else {
+                    console.log('[Auth] Refresh token expired. User needs to log in again.');
+                }
 
                 // Refresh failed (e.g., refresh token expired or missing)
                 deleteAuthCookie();
 
                 // IMPORTANT: If we're already on the login page, don't keep redirecting
                 if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-                    console.warn('[Auth] Redirecting to login page');
                     // We don't use router.push here because we're outside React
                     // But we want to ensure we don't reload if we're in the middle of a signup/login
-                    if (window.location.pathname !== '/signup' && window.location.pathname !== '/reset-password' && window.location.pathname !== '/forgot-password') {
+                    const publicPaths = ['/signup', '/reset-password', '/forgot-password', '/inventory-public'];
+                    if (!publicPaths.includes(window.location.pathname)) {
+                        console.log('[Auth] Redirecting to login page');
                         window.location.href = '/login';
                     }
                 }
