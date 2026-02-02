@@ -1,3 +1,5 @@
+// hooks/useAppointments.ts
+
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { Appointment } from '@/types/appointment';
@@ -10,6 +12,7 @@ export function useAppointments() {
 
   const fetchAppointments = useCallback(async (params?: {
     status?: string;
+    entryType?: string;
     startDate?: Date;
     endDate?: Date;
   }) => {
@@ -30,23 +33,33 @@ export function useAppointments() {
     }
   }, []);
 
+  const getAppointmentById = useCallback(async (id: string) => {
+    try {
+      const response = await apiClient.get(`/api/appointments/${id}`);
+      return response.data?.data || response.data;
+    } catch (err) {
+      const axiosError = err as AxiosError;
+      const message = (axiosError.response?.data as any)?.message || 'Failed to fetch appointment';
+      throw new Error(message);
+    }
+  }, []);
+
   const createAppointment = useCallback(async (data: any) => {
     try {
-      // Sanitize data: remove empty strings and convert to undefined for MongoDB
       const sanitizedData = {
         ...data,
-        // Remove empty string for conversationId - MongoDB expects ObjectId or null/undefined
         conversationId: data.conversationId?.trim() || undefined,
-        // Clean up other optional fields
         location: data.location?.trim() || undefined,
         description: data.description?.trim() || undefined,
-        // Ensure participants is an array, filter out empty values
+        meetingLink: data.meetingLink?.trim() || undefined,
+        notes: data.notes?.trim() || undefined,
         participants: Array.isArray(data.participants) 
           ? data.participants.filter((p: string) => p && p.trim())
           : undefined,
+        guestEmails: Array.isArray(data.guestEmails)
+          ? data.guestEmails.filter((e: string) => e && e.trim())
+          : undefined,
       };
-
-      console.log('[createAppointment] Sending sanitized data:', sanitizedData);
       
       const response = await apiClient.post('/api/appointments', sanitizedData);
       const appointment = response.data?.data || response.data;
@@ -55,37 +68,25 @@ export function useAppointments() {
       return appointment;
     } catch (err) {
       const axiosError = err as AxiosError;
-      
-      // Log detailed error information
-      console.error('[createAppointment] Error details:', {
-        status: axiosError.response?.status,
-        statusText: axiosError.response?.statusText,
-        data: axiosError.response?.data,
-        message: axiosError.message,
-      });
-      
-      // Extract error message
       const errorMessage = (axiosError.response?.data as any)?.message 
         || (axiosError.response?.data as any)?.error
         || axiosError.message 
         || 'Failed to create appointment';
       
-      // Set error state
       setError(errorMessage);
-      
-      // Re-throw with a user-friendly message
       throw new Error(errorMessage);
     }
   }, []);
 
   const updateAppointment = useCallback(async (id: string, data: any) => {
     try {
-      // Sanitize data for updates too
       const sanitizedData = {
         ...data,
         conversationId: data.conversationId?.trim() || undefined,
         location: data.location?.trim() || undefined,
         description: data.description?.trim() || undefined,
+        meetingLink: data.meetingLink?.trim() || undefined,
+        notes: data.notes?.trim() || undefined,
         participants: Array.isArray(data.participants) 
           ? data.participants.filter((p: string) => p && p.trim())
           : undefined,
@@ -110,7 +111,7 @@ export function useAppointments() {
     try {
       await apiClient.post(`/api/appointments/${id}/cancel`);
       setAppointments(prev => 
-        prev.map(a => a._id === id ? { ...a, status: 'cancelled' } : a)
+        prev.map(a => a._id === id ? { ...a, status: 'cancelled' as const } : a)
       );
     } catch (err) {
       const axiosError = err as AxiosError;
@@ -141,6 +142,7 @@ export function useAppointments() {
     isLoading,
     error,
     fetchAppointments,
+    getAppointmentById,
     createAppointment,
     updateAppointment,
     cancelAppointment,

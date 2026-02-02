@@ -1,5 +1,14 @@
 export type AppointmentType = 'in-person' | 'phone' | 'video' | 'other';
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'cancelled' | 'completed';
+export type EntryType = 'event' | 'task' | 'reminder' | 'appointment';
+
+
+export interface GuestResponse {
+  email: string;
+  status: 'pending' | 'accepted' | 'declined';
+  respondedAt?: string;
+  googleCalendarEventId?: string;
+}
 
 export interface Participant {
   _id: string;
@@ -17,9 +26,11 @@ export interface Appointment {
   location?: string;
   type: AppointmentType;
   status: AppointmentStatus;
+  entryType: EntryType;
   
   createdBy: Participant;
   participants: Participant[];
+  guestEmails: GuestResponse[];
   
   conversationId?: string;
   vehicleId?: string;
@@ -28,6 +39,8 @@ export interface Appointment {
   
   reminderSent: boolean;
   reminderTime?: string;
+  googleCalendarEventId?: string;
+  meetingLink?: string;
   notes?: string;
   
   createdAt: string;

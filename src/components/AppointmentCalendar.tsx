@@ -3,13 +3,25 @@
 import * as React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Appointment } from "@/types/appointment"
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns"
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  eachDayOfInterval, 
+  isSameMonth, 
+  isSameDay, 
+  addMonths, 
+  subMonths,
+  startOfWeek,
+  endOfWeek
+} from "date-fns"
 
 interface AppointmentCalendarProps {
   appointments: Appointment[]
-  onCreateAppointment: () => void
+  onCreateAppointment: (date?: Date) => void
   onSelectAppointment: (appointment: Appointment) => void
 }
 
@@ -22,12 +34,25 @@ export function AppointmentCalendar({
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
+  const calendarStart = startOfWeek(monthStart)
+  const calendarEnd = endOfWeek(monthEnd)
+  
+  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
   const getAppointmentsForDay = (day: Date) => {
     return appointments.filter(apt => 
       isSameDay(new Date(apt.startTime), day)
     )
+  }
+
+  const getEntryTypeColor = (entryType: string) => {
+    switch (entryType) {
+      case 'appointment': return 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+      case 'event': return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+      case 'task': return 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
+      case 'reminder': return 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300'
+      default: return 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+    }
   }
 
   return (
@@ -70,34 +95,41 @@ export function AppointmentCalendar({
           {days.map((day) => {
             const dayAppointments = getAppointmentsForDay(day)
             const isToday = isSameDay(day, new Date())
+            const isCurrentMonth = isSameMonth(day, currentMonth)
             
             return (
-              <div
+              <button
                 key={day.toString()}
-                className={`min-h-24 border rounded-lg p-2 ${
-                  !isSameMonth(day, currentMonth) ? 'bg-muted/50' : 'bg-card'
+                onClick={() => onCreateAppointment(day)}
+                className={`min-h-28 border rounded-lg p-2 text-left hover:border-green-500 transition-colors ${
+                  !isCurrentMonth ? 'bg-muted/50 opacity-50' : 'bg-card'
                 } ${isToday ? 'ring-2 ring-green-500' : ''}`}
               >
                 <div className="text-sm font-medium mb-1">
                   {format(day, 'd')}
                 </div>
                 <div className="space-y-1">
-                  {dayAppointments.slice(0, 2).map((apt) => (
-                    <button
-                      key={apt._id}
-                      className="w-full text-left text-xs p-1 rounded bg-green-100 dark:bg-green-950 hover:bg-green-200 dark:hover:bg-green-900 transition-colors truncate"
-                      onClick={() => onSelectAppointment(apt)}
+                  {dayAppointments.slice(0, 3).map((apt) => (
+                    <div
+                     key={apt._id}
+                      className={`w-full text-xs p-1 rounded hover:opacity-80 transition-opacity truncate cursor-pointer ${getEntryTypeColor(apt.entryType)}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                       onSelectAppointment(apt);
+                      }}
                     >
+                      <span className="font-medium">{format(new Date(apt.startTime), 'h:mm a')}</span>
+                      {' '}
                       {apt.title}
-                    </button>
+                    </div>
                   ))}
-                  {dayAppointments.length > 2 && (
-                    <div className="text-xs text-muted-foreground">
-                      +{dayAppointments.length - 2} more
+                  {dayAppointments.length > 3 && (
+                    <div className="text-xs text-muted-foreground pl-1">
+                      +{dayAppointments.length - 3} more
                     </div>
                   )}
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>
