@@ -30,10 +30,13 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { formatCurrency } from "@/utils/format"
 
+import { useAuth } from "@clerk/nextjs"
+
 export default function Dashboard() {
   const [data, setData] = React.useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const { getToken } = useAuth()
 
   React.useEffect(() => {
     fetchDashboardData()
@@ -43,7 +46,10 @@ export default function Dashboard() {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await apiClient.get<DashboardResponse>('/api/dashboard/metrics')
+      const token = await getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const response = await apiClient.get<DashboardResponse>('/api/dashboard/metrics', { headers })
       setData(response.data.data)
     } catch (err: any) {
       console.error('[Dashboard] Error fetching metrics:', err)

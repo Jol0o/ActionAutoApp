@@ -50,7 +50,7 @@ export function CreateAppointmentModal({
       if (formData.startTime && formData.endTime) {
         const start = new Date(formData.startTime)
         const end = new Date(formData.endTime)
-        
+
         if (end <= start) {
           setError('End time must be after start time')
           setIsSubmitting(false)
@@ -67,7 +67,7 @@ export function CreateAppointmentModal({
 
       await onCreateAppointment(formData)
       onOpenChange(false)
-      
+
       // Reset form
       setFormData({
         title: '',
@@ -128,7 +128,7 @@ export function CreateAppointmentModal({
           {/* PARTICIPANT SELECTION - NEW */}
           <UserSearch
             selectedUsers={formData.participants}
-            onSelectUsers={(userIds) => setFormData({ ...formData, participants: userIds })}
+            onSelectUsers={(userIds: string[]) => setFormData({ ...formData, participants: userIds })}
             label="Participants *"
             placeholder="Search and select participants..."
             multiple={true}

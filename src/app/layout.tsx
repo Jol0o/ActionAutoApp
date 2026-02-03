@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Advanced Car Dealership Management",
 };
 
-import { AuthProvider } from "@/context/AuthContext";
+import { ClerkProvider } from '@clerk/nextjs'
 
 export default function RootLayout({
   children,
@@ -25,16 +25,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <AuthProvider>
+    <ClerkProvider appearance={{
+      captcha: {
+        theme: 'auto',
+        size: 'flexible',
+        language: 'en',
+      },
+    }}>
+      <html lang="en">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
           <main className="flex-1 overflow-hidden bg-background">
             {children}
           </main>
-        </AuthProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

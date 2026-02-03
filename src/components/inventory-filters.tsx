@@ -24,6 +24,8 @@ import { Separator } from "@/components/ui/separator"
 import { apiClient } from "@/lib/api-client"
 import type { FilterOptions } from "@/types/inventory"
 
+import { useAuth } from "@clerk/nextjs"
+
 interface InventoryFiltersProps {
     filters: any
     onFilterChange: (key: string, value: any) => void
@@ -39,6 +41,7 @@ export function InventoryFilters({
     const [filterOptions, setFilterOptions] = React.useState<FilterOptions | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
     const [isOpen, setIsOpen] = React.useState(false)
+    const { getToken } = useAuth()
 
     // Local state for pending filter changes
     const [pendingFilters, setPendingFilters] = React.useState(filters)
@@ -46,7 +49,12 @@ export function InventoryFilters({
     React.useEffect(() => {
         const fetchFilters = async () => {
             try {
-                const response = await apiClient.get("/api/vehicles/filters")
+                const token = await getToken()
+                const response = await apiClient.get("/api/vehicles/filters", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                })
                 setFilterOptions(response.data.data)
             } catch (error) {
                 console.error("Failed to fetch filter options:", error)

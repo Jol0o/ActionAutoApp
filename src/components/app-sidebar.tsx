@@ -36,7 +36,7 @@ import {
     SidebarRail,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
-import { useAuth } from "@/context/AuthContext"
+import { useUser, useClerk } from "@clerk/nextjs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     DropdownMenu,
@@ -61,12 +61,12 @@ const data = {
             icon: Car,
         },
         {
-            title: "Appointments", 
+            title: "Appointments",
             url: "/appointments",
-            icon: Calendar, 
+            icon: Calendar,
         },
     ],
-    
+
     services: [
         {
             title: "Transportation",
@@ -105,7 +105,8 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname()
-    const { user, logout } = useAuth()
+    const { user } = useUser()
+    const { signOut } = useClerk()
 
     return (
         <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
@@ -195,14 +196,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             <DropdownMenuTrigger asChild>
                                 <SidebarMenuButton className="h-12 w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
                                     <Avatar className="h-8 w-8 rounded-lg">
-                                        <AvatarImage src={user?.avatar} alt={user?.name} />
+                                        <AvatarImage src={user?.imageUrl} alt={user?.fullName || ''} />
                                         <AvatarFallback className="rounded-lg">
-                                            {user?.name?.substring(0, 2).toUpperCase() || "US"}
+                                            {user?.firstName?.substring(0, 1).toUpperCase() || "US"}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                                        <span className="truncate font-semibold">{user?.name}</span>
-                                        <span className="truncate text-xs">{user?.email}</span>
+                                        <span className="truncate font-semibold">{user?.fullName}</span>
+                                        <span className="truncate text-xs">{user?.primaryEmailAddress?.emailAddress}</span>
                                     </div>
                                     <ChevronRight className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                                 </SidebarMenuButton>
@@ -216,14 +217,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 <DropdownMenuLabel className="p-0 font-normal">
                                     <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                         <Avatar className="h-8 w-8 rounded-lg">
-                                            <AvatarImage src={user?.avatar} alt={user?.name} />
+                                            <AvatarImage src={user?.imageUrl} alt={user?.fullName || ''} />
                                             <AvatarFallback className="rounded-lg">
-                                                {user?.name?.substring(0, 2).toUpperCase() || "US"}
+                                                {user?.firstName?.substring(0, 1).toUpperCase() || "US"}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="grid flex-1 text-left text-sm leading-tight">
-                                            <span className="truncate font-semibold">{user?.name}</span>
-                                            <span className="truncate text-xs">{user?.email}</span>
+                                            <span className="truncate font-semibold">{user?.fullName}</span>
+                                            <span className="truncate text-xs">{user?.primaryEmailAddress?.emailAddress}</span>
                                         </div>
                                     </div>
                                 </DropdownMenuLabel>
@@ -237,7 +238,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     Settings
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => logout()}>
+                                <DropdownMenuItem onClick={() => signOut()}>
                                     <LogOut className="mr-2 size-4" />
                                     Log out
                                 </DropdownMenuItem>

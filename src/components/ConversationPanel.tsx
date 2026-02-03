@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Calendar, Paperclip, Trash2, MoreVertical } from "lucide-react"
 import { useConversations } from "@/hooks/useConversations"
-import { useAuth } from "@/context/AuthContext"
+import { useUser } from "@clerk/nextjs"
 import { format } from "date-fns"
 import {
   DropdownMenu,
@@ -43,7 +43,7 @@ export function ConversationPanel({
   const [isSending, setIsSending] = React.useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
   const { conversations } = useConversations()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser } = useUser()
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
   const conversation = conversations.find(c => c._id === conversationId)
@@ -94,12 +94,14 @@ export function ConversationPanel({
     if (conversation.type === 'group') {
       return conversation.name || 'Group Chat'
     }
-    
+
     // For direct messages, find the other participant
+    // Note: Assuming participants still use MongoDB IDs in the backend. 
+    // This comparison might need adjustment if users are fully migrated to Clerk IDs in backend.
     const otherParticipant = conversation.participants.find(
-      p => p._id !== currentUser?._id
+      p => p._id !== currentUser?.id
     )
-    
+
     return otherParticipant?.name || 'Unknown User'
   }
 
@@ -126,7 +128,7 @@ export function ConversationPanel({
                 <Calendar className="size-4" />
                 Schedule
               </Button>
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm">
@@ -150,8 +152,8 @@ export function ConversationPanel({
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           <div className="space-y-4">
             {conversation.messages.map((msg, idx) => {
-              const sender = typeof msg.sender === 'object' ? msg.sender : null
-              const isCurrentUser = sender?._id === currentUser?._id
+              const sender = conversation.participants.find(p => p._id === msg.senderId)
+              const isCurrentUser = msg.senderId === currentUser?.id
 
               return (
                 <div
@@ -159,11 +161,10 @@ export function ConversationPanel({
                   className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[70%] rounded-lg p-3 ${
-                      isCurrentUser
-                        ? 'bg-green-500 text-white'
-                        : 'bg-muted'
-                    }`}
+                    className={`max-w-[70%] rounded-lg p-3 ${isCurrentUser
+                      ? 'bg-green-500 text-white'
+                      : 'bg-muted'
+                      }`}
                   >
                     {!isCurrentUser && sender && (
                       <p className="text-xs font-medium mb-1">
@@ -210,7 +211,7 @@ export function ConversationPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this conversation with {getConversationTitle()}? 
+              Are you sure you want to delete this conversation with {getConversationTitle()}?
               This action cannot be undone and all messages will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>

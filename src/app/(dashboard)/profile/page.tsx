@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/context/AuthContext';
+// import { useAuth } from '@/context/AuthContext'; // Replaced with Clerk
+import { useClerk, useUser } from "@clerk/nextjs";
 import { useTheme } from '@/context/ThemeContext';
 import { useAlert } from '@/components/AlertDialog';
 import {
@@ -39,27 +40,31 @@ import { NotificationPreferences } from '@/types/notification';
 import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  // const { user, logout } = useAuth(); // Replaced with Clerk
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const logout = signOut;
+
   const { theme, toggleTheme } = useTheme();
   const { showAlert, AlertComponent } = useAlert();
-  
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Password change state
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
-  
+
   // Email change state
   const [emailData, setEmailData] = useState({
     email: '',
     password: '',
   });
-  
+
   // Notification preferences
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
 
@@ -72,7 +77,7 @@ export default function ProfilePage() {
       const response = await fetch('/api/profile', {
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setProfile(data.data);
@@ -88,7 +93,7 @@ export default function ProfilePage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       showAlert({
         type: 'error',
@@ -97,7 +102,7 @@ export default function ProfilePage() {
       });
       return;
     }
-    
+
     if (passwordData.newPassword.length < 8) {
       showAlert({
         type: 'error',
@@ -106,7 +111,7 @@ export default function ProfilePage() {
       });
       return;
     }
-    
+
     setIsSaving(true);
     try {
       const response = await fetch('/api/profile/change-password', {
@@ -115,7 +120,7 @@ export default function ProfilePage() {
         credentials: 'include',
         body: JSON.stringify(passwordData),
       });
-      
+
       if (response.ok) {
         showAlert({
           type: 'success',
@@ -144,7 +149,7 @@ export default function ProfilePage() {
 
   const handleEmailChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     setIsSaving(true);
     try {
       const response = await fetch('/api/profile/email', {
@@ -153,7 +158,7 @@ export default function ProfilePage() {
         credentials: 'include',
         body: JSON.stringify(emailData),
       });
-      
+
       if (response.ok) {
         showAlert({
           type: 'success',
@@ -183,10 +188,10 @@ export default function ProfilePage() {
 
   const handlePreferenceChange = async (key: keyof NotificationPreferences, value: boolean) => {
     if (!preferences) return;
-    
+
     const newPreferences = { ...preferences, [key]: value };
     setPreferences(newPreferences);
-    
+
     try {
       const response = await fetch('/api/profile/notification-preferences', {
         method: 'PATCH',
@@ -194,7 +199,7 @@ export default function ProfilePage() {
         credentials: 'include',
         body: JSON.stringify({ [key]: value }),
       });
-      
+
       if (!response.ok) {
         setPreferences(preferences);
         showAlert({
@@ -232,7 +237,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
       <AlertComponent />
-      
+
       {/* Automotive Pattern Background */}
       <div className="fixed inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none">
         <div className="absolute inset-0" style={{
@@ -246,13 +251,13 @@ export default function ProfilePage() {
         <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-green-600 via-emerald-500 to-teal-600 dark:from-green-700 dark:via-emerald-600 dark:to-teal-700 shadow-xl sm:shadow-2xl">
           {/* Car Silhouette Shadow in Background - Hidden on very small screens */}
           <div className="absolute inset-0 overflow-hidden opacity-20 hidden sm:block">
-            <svg 
-              viewBox="0 0 1200 400" 
+            <svg
+              viewBox="0 0 1200 400"
               className="absolute right-0 bottom-0 w-full h-full"
               preserveAspectRatio="xMaxYMax slice"
             >
-              <path 
-                d="M 100 250 L 200 250 L 200 200 L 250 200 L 280 150 L 400 150 L 450 200 L 800 200 L 850 250 L 1100 250 L 1100 300 L 950 300 Q 950 350 900 350 Q 850 350 850 300 L 350 300 Q 350 350 300 350 Q 250 350 250 300 L 100 300 Z" 
+              <path
+                d="M 100 250 L 200 250 L 200 200 L 250 200 L 280 150 L 400 150 L 450 200 L 800 200 L 850 250 L 1100 250 L 1100 300 L 950 300 Q 950 350 900 350 Q 850 350 850 300 L 350 300 Q 350 350 300 350 Q 250 350 250 300 L 100 300 Z"
                 fill="rgba(255, 255, 255, 0.15)"
                 className="drop-shadow-2xl"
               />
@@ -263,7 +268,7 @@ export default function ProfilePage() {
               <path d="M 285 155 L 320 180 L 380 180 L 390 155 Z" fill="rgba(255, 255, 255, 0.1)" />
             </svg>
           </div>
-          
+
           {/* Animated Road Lines */}
           <div className="absolute inset-0 opacity-10 hidden md:block">
             <div className="absolute inset-0 animate-pulse" style={{
@@ -271,10 +276,10 @@ export default function ProfilePage() {
               animation: 'slideRoad 20s linear infinite',
             }}></div>
           </div>
-          
+
           {/* Glowing Top Border */}
           <div className="absolute top-0 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-transparent via-white to-transparent animate-pulse"></div>
-          
+
           {/* Speed Lines Effect - Hidden on mobile */}
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-full opacity-10 hidden lg:block">
             {[...Array(5)].map((_, i) => (
@@ -291,7 +296,7 @@ export default function ProfilePage() {
               />
             ))}
           </div>
-          
+
           <div className="relative p-4 sm:p-6 md:p-8 lg:p-12">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 md:gap-8">
               {/* Modern Profile Badge */}
@@ -332,7 +337,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-2 sm:mb-3">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight drop-shadow-lg">
@@ -402,7 +407,7 @@ export default function ProfilePage() {
                       className="text-sm sm:text-base border-2 border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-600 rounded-lg sm:rounded-xl h-10 sm:h-12"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="email-password" className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
                       <Lock className="size-3 sm:size-4 text-green-600 dark:text-green-500" />
@@ -418,7 +423,7 @@ export default function ProfilePage() {
                       className="text-sm sm:text-base border-2 border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-600 rounded-lg sm:rounded-xl h-10 sm:h-12"
                     />
                   </div>
-                  
+
                   <Button
                     type="submit"
                     disabled={isSaving}
@@ -473,7 +478,7 @@ export default function ProfilePage() {
                       className="text-sm sm:text-base border-2 border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-600 rounded-lg sm:rounded-xl h-10 sm:h-12"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="new-password" className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
                       New Password
@@ -488,7 +493,7 @@ export default function ProfilePage() {
                       className="text-sm sm:text-base border-2 border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-600 rounded-lg sm:rounded-xl h-10 sm:h-12"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password" className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Confirm New Password
@@ -503,7 +508,7 @@ export default function ProfilePage() {
                       className="text-sm sm:text-base border-2 border-gray-200 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-600 rounded-lg sm:rounded-xl h-10 sm:h-12"
                     />
                   </div>
-                  
+
                   <div className="bg-green-50 dark:bg-green-950 border-2 border-green-200 dark:border-green-800 rounded-lg sm:rounded-xl p-3 sm:p-4">
                     <div className="flex items-start gap-2 sm:gap-3">
                       <Zap className="size-4 sm:size-5 text-green-600 dark:text-green-500 flex-shrink-0 mt-0.5" />
@@ -517,7 +522,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <Button
                     type="submit"
                     disabled={isSaving}
@@ -688,7 +693,7 @@ export default function ProfilePage() {
                       </Badge>
                     </div>
                   </div>
-                  
+
                   {profile?.subscription?.startDate && (
                     <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
                       <div className="flex items-center gap-2">
@@ -700,9 +705,9 @@ export default function ProfilePage() {
                       </span>
                     </div>
                   )}
-                  
+
                   <Separator className="bg-green-200 dark:bg-green-800" />
-                  
+
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 mb-2 sm:mb-3">
                       <Award className="size-3 sm:size-4 text-green-600 dark:text-green-500" />
@@ -719,7 +724,7 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   </div>
-                  
+
                   <Button
                     variant="outline"
                     className="w-full h-9 sm:h-11 border-2 border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-950 hover:border-green-300 dark:hover:border-green-700 text-green-700 dark:text-green-400 font-semibold rounded-lg sm:rounded-xl transition-all text-xs sm:text-sm"
