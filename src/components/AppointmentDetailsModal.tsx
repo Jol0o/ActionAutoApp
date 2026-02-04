@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,7 +23,8 @@ import {
   Ban,
   CheckCircle,
   AlertCircle,
-  Link as LinkIcon
+  Link as LinkIcon,
+  RefreshCw
 } from "lucide-react"
 import { Appointment } from "@/types/appointment"
 import { format } from "date-fns"
@@ -31,6 +32,10 @@ import { useUser } from "@clerk/nextjs"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { UserSearch } from "@/components/UserSearch"
+import { GuestEmailInput } from "@/components/GuestEmailInput"
+import { useAppointmentPolling } from "@/hooks/useAppointmentPolling"
+import { useNotifications } from "@/context/NotificationContext"
 
 interface AppointmentDetailsModalProps {
   open: boolean
@@ -44,17 +49,95 @@ interface AppointmentDetailsModalProps {
 export function AppointmentDetailsModal({
   open,
   onOpenChange,
-  appointment,
+  appointment: initialAppointment,
   onUpdate,
   onCancel,
   onDelete
 }: AppointmentDetailsModalProps) {
   const { user: currentUser } = useUser()
+  const { fetchNotifications } = useNotifications()
+  const [appointment, setAppointment] = React.useState<Appointment | null>(initialAppointment)
   const [isEditing, setIsEditing] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-
   const [editData, setEditData] = React.useState<any>({})
+
+  // Real-time polling for RSVP updates
+  const handleAppointmentUpdate = React.useCallback((updatedAppointment: Appointment) => {
+    console.log('[AppointmentDetailsModal] Received appointment update');
+    setAppointment(updatedAppointment);
+    // Refresh notifications to show new RSVP notifications
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  useAppointmentPolling({
+    appointmentId: appointment?._id || null,
+    onUpdate: handleAppointmentUpdate,
+    enabled: open && !isEditing, // Only poll when modal is open and not editing
+    intervalMs: 10000, // Poll every 10 seconds
+  });
+
+  // Update local state when prop changes
+  React.useEffect(() => {
+    if (initialAppointment) {
+      setAppointment(initialAppointment);
+    }
+  }, [initialAppointment]);
+
+  // FIXED: Check if user is a registered participant (not a guest)
+  const isRegisteredParticipant = React.useMemo(() => {
+    if (!currentUser?.id || !appointment?.participants) return false
+    
+    const currentUserId = currentUser.id
+    const currentUserEmail = currentUser.primaryEmailAddress?.emailAddress || currentUser.emailAddresses?.[0]?.emailAddress
+    
+    return appointment.participants.some(participant => {
+      const participantId = participant._id || participant.id || participant.clerkId || ''
+      const participantEmail = participant.email || ''
+      
+      // Check by ID or email
+      return (
+        String(participantId) === String(currentUserId) ||
+        (participantEmail && currentUserEmail && participantEmail.toLowerCase() === currentUserEmail.toLowerCase())
+      )
+    })
+  }, [currentUser, appointment])
+
+  // FIXED: More comprehensive user ID comparison with email fallback
+  const isCreator = React.useMemo(() => {
+    if (!currentUser?.id || !appointment?.createdBy) {
+      return false
+    }
+    
+    // Extract creator ID from various possible formats
+    const createdBy = appointment.createdBy
+    const creatorId = typeof createdBy === 'string' 
+      ? createdBy 
+      : (createdBy._id || createdBy.id || createdBy.clerkId || '')
+    
+    const currentUserId = currentUser.id
+    const currentUserEmail = currentUser.primaryEmailAddress?.emailAddress || currentUser.emailAddresses?.[0]?.emailAddress
+    const creatorEmail = typeof createdBy === 'string' ? '' : (createdBy.email || '')
+    
+    // Multiple comparison methods
+    // 1. Direct ID match
+    if (String(creatorId) === String(currentUserId)) return true
+    
+    // 2. Clerk ID match
+    if (createdBy.clerkId && createdBy.clerkId === currentUserId) return true
+    
+    // 3. Email match (fallback for same user with different auth methods)
+    if (currentUserEmail && creatorEmail && currentUserEmail.toLowerCase() === creatorEmail.toLowerCase()) {
+      return true
+    }
+    
+    return false
+  }, [currentUser, appointment])
+
+  // FIXED: Both creators and registered participants can edit everything
+  const canEdit = isCreator || isRegisteredParticipant
+  const canCancel = isCreator && (appointment?.status !== 'cancelled')
+  const canDelete = isCreator
 
   React.useEffect(() => {
     if (appointment) {
@@ -68,17 +151,23 @@ export function AppointmentDetailsModal({
         location: appointment.location || '',
         type: appointment.type,
         meetingLink: appointment.meetingLink || '',
-        notes: appointment.notes || ''
+        notes: appointment.notes || '',
+        participants: appointment.participants.map(p => p._id || p.id),
+        // Store full guest objects for reference
+        guestEmailsData: appointment.guestEmails || [],
+        // Extract just email strings, ensuring we handle different formats
+        guestEmails: appointment.guestEmails?.map(g => {
+          if (typeof g === 'string') return g
+          if (typeof g === 'object' && g.email) return g.email
+          return ''
+        }).filter(Boolean) || []
       })
+      setIsEditing(false)
+      setError(null)
     }
   }, [appointment])
 
   if (!appointment) return null
-
-  const isCreator = appointment.createdBy._id === currentUser?.id
-  const canEdit = isCreator
-  const canCancel = isCreator && appointment.status !== 'cancelled'
-  const canDelete = isCreator
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -128,6 +217,31 @@ export function AppointmentDetailsModal({
         return
       }
 
+      // Validate that at least one participant or guest exists
+      if (editData.participants.length === 0 && editData.guestEmails.length === 0) {
+        setError('At least one participant or guest is required')
+        setIsSubmitting(false)
+        return
+      }
+
+      // Format guestEmails properly - merge new emails with existing guest data
+      const formattedGuestEmails = editData.guestEmails.length > 0 
+        ? editData.guestEmails.map((email: string) => {
+            // Find existing guest data for this email
+            const existingGuest = editData.guestEmailsData?.find((g: any) => g.email === email)
+            
+            // If we have existing data, keep it; otherwise create new guest object
+            if (existingGuest) {
+              return existingGuest
+            } else {
+              return {
+                email: email,
+                status: 'pending'
+              }
+            }
+          })
+        : undefined
+
       await onUpdate(appointment._id, {
         title: editData.title,
         description: editData.description || undefined,
@@ -136,7 +250,9 @@ export function AppointmentDetailsModal({
         location: editData.location || undefined,
         type: editData.type,
         meetingLink: editData.meetingLink || undefined,
-        notes: editData.notes || undefined
+        notes: editData.notes || undefined,
+        participants: editData.participants,
+        guestEmails: formattedGuestEmails
       })
 
       setIsEditing(false)
@@ -185,23 +301,42 @@ export function AppointmentDetailsModal({
               {isEditing ? 'Edit ' : ''}
               {appointment.entryType.charAt(0).toUpperCase() + appointment.entryType.slice(1)} Details
             </DialogTitle>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Badge className={getEntryTypeColor(appointment.entryType)}>
                 {appointment.entryType}
               </Badge>
               <Badge className={getStatusColor(appointment.status)}>
                 {appointment.status}
               </Badge>
+              {!isEditing && (
+                <RefreshCw className="size-4 text-muted-foreground animate-pulse" title="Auto-refreshing RSVP status" />
+              )}
             </div>
           </div>
+          <DialogDescription className="sr-only">
+            View and manage appointment details, including time, location, participants, and status.
+          </DialogDescription>
         </DialogHeader>
 
         {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+          <Alert variant="destructive" className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/50">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex-shrink-0">
+                <div className="rounded-full bg-red-100 dark:bg-red-900 p-1">
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h5 className="font-semibold text-red-900 dark:text-red-100 text-sm mb-1">
+                  Error
+                </h5>
+                <AlertDescription className="text-red-800 dark:text-red-200 text-sm">
+                  {error}
+                </AlertDescription>
+              </div>
+            </div>
           </Alert>
-        )}
+        )}  
 
         <div className="space-y-6">
           {/* Title */}
@@ -365,52 +500,94 @@ export function AppointmentDetailsModal({
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Users className="size-4" />
-              Participants ({appointment.participants.length})
+              Participants ({isEditing ? editData.participants.length : appointment.participants.length})
             </Label>
-            <div className="flex flex-wrap gap-2">
-              {appointment.participants.map((participant) => (
-                <Badge key={participant._id} variant="outline" className="gap-2">
-                  {participant.avatar ? (
-                    <img src={participant.avatar} alt="" className="size-4 rounded-full" />
-                  ) : (
-                    <div className="size-4 rounded-full bg-green-100 dark:bg-green-950" />
-                  )}
-                  {participant.name}
-                  {participant._id === appointment.createdBy._id && (
-                    <span className="text-xs text-muted-foreground">(Organizer)</span>
-                  )}
-                </Badge>
-              ))}
-            </div>
+            {isEditing ? (
+              <UserSearch
+                selectedUsers={editData.participants}
+                onSelectUsers={(userIds) => setEditData({ ...editData, participants: userIds })}
+                label=""
+                placeholder="Search and select participants..."
+                multiple={true}
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {appointment.participants.map((participant) => (
+                  <Badge key={participant._id} variant="outline" className="gap-2">
+                    {participant.avatar ? (
+                      <img src={participant.avatar} alt="" className="size-4 rounded-full" />
+                    ) : (
+                      <div className="size-4 rounded-full bg-green-100 dark:bg-green-950" />
+                    )}
+                    {participant.name}
+                    {participant._id === appointment.createdBy._id && (
+                      <span className="text-xs text-muted-foreground">(Organizer)</span>
+                    )}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Guests */}
-          {appointment.guestEmails.length > 0 && (
+          {/* Guests - WITH REAL-TIME STATUS UPDATES */}
+          {(isEditing || (appointment.guestEmails && appointment.guestEmails.length > 0)) && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Mail className="size-4" />
-                External Guests ({appointment.guestEmails.length})
+                External Guests ({isEditing ? editData.guestEmails.length : appointment.guestEmails?.length || 0})
               </Label>
-              <div className="space-y-2">
-                {appointment.guestEmails.map((guest, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 border rounded-lg">
-                    <span className="text-sm">{guest.email}</span>
-                    <Badge
-                      variant="outline"
-                      className={
-                        guest.status === 'accepted' ? 'border-green-500 text-green-700' :
-                          guest.status === 'declined' ? 'border-red-500 text-red-700' :
-                            'border-gray-300 text-gray-600'
-                      }
-                    >
-                      {guest.status === 'accepted' && <CheckCircle className="size-3 mr-1" />}
-                      {guest.status === 'declined' && <X className="size-3 mr-1" />}
-                      {guest.status === 'pending' && <Clock className="size-3 mr-1" />}
-                      {guest.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+              {isEditing ? (
+                <GuestEmailInput
+                  emails={
+                    // Ensure we always pass strings to GuestEmailInput
+                    Array.isArray(editData.guestEmails) 
+                      ? editData.guestEmails.map((item: any) => 
+                          typeof item === 'string' ? item : item.email
+                        )
+                      : []
+                  }
+                  onChange={(emails) => setEditData({ ...editData, guestEmails: emails })}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {appointment.guestEmails?.map((guest, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium">{guest.email}</span>
+                          {guest.guestName && (
+                            <span className="text-xs text-muted-foreground">({guest.guestName})</span>
+                          )}
+                        </div>
+                        {guest.guestPhone && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Phone className="size-3" />
+                            {guest.guestPhone}
+                          </div>
+                        )}
+                        {guest.respondedAt && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Responded {format(new Date(guest.respondedAt), 'PPp')}
+                          </p>
+                        )}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          guest.status === 'accepted' ? 'border-green-500 text-green-700 bg-green-50 dark:bg-green-950' :
+                            guest.status === 'declined' ? 'border-red-500 text-red-700 bg-red-50 dark:bg-red-950' :
+                              'border-gray-300 text-gray-600'
+                        }
+                      >
+                        {guest.status === 'accepted' && <CheckCircle className="size-3 mr-1" />}
+                        {guest.status === 'declined' && <X className="size-3 mr-1" />}
+                        {guest.status === 'pending' && <Clock className="size-3 mr-1" />}
+                        {guest.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -448,7 +625,7 @@ export function AppointmentDetailsModal({
                   size="sm"
                   onClick={handleDelete}
                   disabled={isSubmitting}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                 >
                   <Trash2 className="size-4 mr-2" />
                   Delete

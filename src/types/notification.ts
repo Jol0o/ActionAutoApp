@@ -5,6 +5,11 @@ export type NotificationType =
   | 'shipment_created'
   | 'shipment_updated'
   | 'shipment_deleted'
+  | 'appointment_created'
+  | 'appointment_updated'
+  | 'appointment_cancelled'
+  | 'appointment_reminder'
+  | 'guest_response' // NEW: For guest RSVP changes
   | 'password_changed'
   | 'email_changed'
   | 'profile_updated';
@@ -18,6 +23,13 @@ export interface Notification {
   metadata?: {
     quoteId?: string;
     shipmentId?: string;
+    appointmentId?: string;
+    guestEmail?: string;
+    guestName?: string;
+    guestPhone?: string;
+    status?: 'accepted' | 'declined' | 'pending';
+    previousStatus?: string;
+    respondedAt?: string;
     vehicleName?: string;
     customerName?: string;
     trackingNumber?: string;

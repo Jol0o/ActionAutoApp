@@ -2,12 +2,13 @@ export type AppointmentType = 'in-person' | 'phone' | 'video' | 'other';
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'cancelled' | 'completed';
 export type EntryType = 'event' | 'task' | 'reminder' | 'appointment';
 
-
 export interface GuestResponse {
   email: string;
   status: 'pending' | 'accepted' | 'declined';
   respondedAt?: string;
   googleCalendarEventId?: string;
+  guestName?: string;
+  guestPhone?: string;
 }
 
 export interface Participant {
@@ -49,10 +50,10 @@ export interface Appointment {
 
 export interface Message {
   _id: string;
-  sender?: Participant | string; // Made optional
-  senderId?: string; // Added to support useConversations
+  sender?: Participant | string;
+  senderId?: string;
   content: string;
-  type?: 'text' | 'file' | 'image' | 'appointment'; // Made optional
+  type?: 'text' | 'file' | 'image' | 'appointment';
   metadata?: any;
   readBy: string[];
   createdAt: string;
@@ -60,13 +61,13 @@ export interface Message {
 
 export interface Conversation {
   _id: string;
-  type: 'direct' | 'group' | 'individual'; // Added individual to support mismatch
+  type: 'direct' | 'group' | 'individual';
   name?: string;
-  participants: Participant[]; // Keep as Participant[], assume data matches
+  participants: Participant[];
   messages: Message[];
 
-  hasAppointment?: boolean; // Made optional
-  appointmentId?: Appointment | string | any; // Relaxed type
+  hasAppointment?: boolean;
+  appointmentId?: Appointment | string | any;
 
   lastMessage?: string;
   lastMessageAt?: string;
@@ -75,9 +76,9 @@ export interface Conversation {
   createdBy?: Participant;
   avatar?: string;
 
-  isArchived?: boolean; // Made optional
-  archivedBy?: string[]; // Made optional
+  isArchived?: boolean;
+  archivedBy?: string[];
 
-  createdAt?: string; // Made optional
+  createdAt?: string;
   updatedAt: string;
 }

@@ -18,7 +18,7 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -31,10 +31,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const { getToken, isLoaded, isSignedIn } = useAuth();
 
     const fetchNotifications = useCallback(async () => {
-        if (!isSignedIn) return;
+        if (!isSignedIn) {
+            setIsLoading(false);
+            return;
+        }
 
         try {
             const token = await getToken();
+            if (!token) {
+                console.log('[NotificationContext] No token available');
+                setIsLoading(false);
+                return;
+            }
+
             const response = await fetch(`${API_URL}/api/notifications`, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -49,9 +58,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 setError(null);
                 pollDelayRef.current = 30000; // Reset delay on success
             } else {
-                const errorText = await response.text();
                 // If unauthorized, stop polling
                 if (response.status === 401) {
+                    console.log('[NotificationContext] Unauthorized, stopping polling');
                     setError(null);
                     if (pollIntervalRef.current) {
                         clearInterval(pollIntervalRef.current);
@@ -88,7 +97,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`, // Added token
+                    'Authorization': `Bearer ${token}`,
                 },
             });
 
@@ -113,7 +122,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`, // Added token
+                    'Authorization': `Bearer ${token}`,
                 },
             });
 
@@ -146,7 +155,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`, // Added token
+                    'Authorization': `Bearer ${token}`,
                 },
             });
 
@@ -170,7 +179,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`, // Added token
+                    'Authorization': `Bearer ${token}`,
                 },
             });
 

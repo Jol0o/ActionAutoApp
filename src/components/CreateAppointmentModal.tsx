@@ -1,5 +1,3 @@
-// components/CreateAppointmentModal.tsx
-
 "use client"
 
 import * as React from "react"
