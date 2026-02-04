@@ -92,7 +92,7 @@ export function AppointmentDetailsModal({
     const currentUserEmail = currentUser.primaryEmailAddress?.emailAddress || currentUser.emailAddresses?.[0]?.emailAddress
     
     return appointment.participants.some(participant => {
-      const participantId = participant._id || participant.id || participant.clerkId || ''
+      const participantId = participant._id || ''
       const participantEmail = participant.email || ''
       
       // Check by ID or email
@@ -109,24 +109,18 @@ export function AppointmentDetailsModal({
       return false
     }
     
-    // Extract creator ID from various possible formats
+    // Extract creator ID and email
     const createdBy = appointment.createdBy
-    const creatorId = typeof createdBy === 'string' 
-      ? createdBy 
-      : (createdBy._id || createdBy.id || createdBy.clerkId || '')
+    const creatorId = createdBy._id || ''
+    const creatorEmail = createdBy.email || ''
     
     const currentUserId = currentUser.id
     const currentUserEmail = currentUser.primaryEmailAddress?.emailAddress || currentUser.emailAddresses?.[0]?.emailAddress
-    const creatorEmail = typeof createdBy === 'string' ? '' : (createdBy.email || '')
     
-    // Multiple comparison methods
-    // 1. Direct ID match
+    // Check by ID or email
     if (String(creatorId) === String(currentUserId)) return true
     
-    // 2. Clerk ID match
-    if (createdBy.clerkId && createdBy.clerkId === currentUserId) return true
-    
-    // 3. Email match (fallback for same user with different auth methods)
+    // Email match (fallback for same user with different auth methods)
     if (currentUserEmail && creatorEmail && currentUserEmail.toLowerCase() === creatorEmail.toLowerCase()) {
       return true
     }
@@ -152,7 +146,7 @@ export function AppointmentDetailsModal({
         type: appointment.type,
         meetingLink: appointment.meetingLink || '',
         notes: appointment.notes || '',
-        participants: appointment.participants.map(p => p._id || p.id),
+        participants: appointment.participants.map(p => p._id),
         // Store full guest objects for reference
         guestEmailsData: appointment.guestEmails || [],
         // Extract just email strings, ensuring we handle different formats
@@ -309,7 +303,7 @@ export function AppointmentDetailsModal({
                 {appointment.status}
               </Badge>
               {!isEditing && (
-                <RefreshCw className="size-4 text-muted-foreground animate-pulse" title="Auto-refreshing RSVP status" />
+                <RefreshCw className="size-4 text-muted-foreground animate-pulse" />
               )}
             </div>
           </div>
