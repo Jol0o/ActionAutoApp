@@ -50,7 +50,7 @@ export function CarInventoryCard({
       </div>
 
       {/* Vehicle Details */}
-      <div className="p-5 flex flex-col flex-1 space-y-4">
+      <div className="p-3 md:p-5 flex flex-col flex-1 space-y-4">
         {/* Title */}
         <div className="text-center relative">
           <div

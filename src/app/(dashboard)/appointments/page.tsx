@@ -18,6 +18,7 @@ import { AppointmentCalendar } from "@/components/AppointmentCalendar"
 import { useUser } from "@clerk/nextjs"
 import { format } from "date-fns"
 import { Appointment } from "@/types/appointment"
+import { cn } from "@/lib/utils"
 
 export default function AppointmentsPage() {
     const [activeTab, setActiveTab] = React.useState("calendar")
@@ -163,41 +164,33 @@ export default function AppointmentsPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Header */}
-            <div className="bg-card border-b border-border px-6 py-4">
-                <div className="flex items-center justify-between mb-4">
+            {/* Header */}
+            <div className="bg-card border-b border-border px-4 sm:px-6 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="bg-green-500 p-2 rounded">
+                        <div className="bg-green-500 p-2 rounded shrink-0">
                             <Calendar className="size-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-semibold text-foreground">Appointments & Calendar</h1>
-                            <p className="text-sm text-muted-foreground">
+                            <h1 className="text-lg sm:text-xl font-semibold text-foreground">Appointments & Calendar</h1>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                                 {upcomingAppointments.length} upcoming {entryTypeFilter !== "all" ? entryTypeFilter + 's' : 'items'}
                             </p>
                         </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button
                             variant="outline"
                             size="sm"
-                            className="gap-2"
+                            className="flex-1 sm:flex-none gap-2 text-xs"
                             onClick={() => setIsCreateConversationOpen(true)}
                         >
                             <MessageSquare className="size-4" />
                             New Message
                         </Button>
                         <Button
-                            variant="outline"
                             size="sm"
-                            className="gap-2"
-                            onClick={() => setActiveTab("conversations")}
-                        >
-                            <MessageSquare className="size-4" />
-                            Messages ({conversations.length})
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="gap-2 bg-green-500 hover:bg-green-600 text-white"
+                            className="flex-1 sm:flex-none gap-2 bg-green-500 hover:bg-green-600 text-white text-xs"
                             onClick={() => handleCreateWithDate()}
                         >
                             <Plus className="size-4" />
@@ -206,20 +199,22 @@ export default function AppointmentsPage() {
                     </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                         <Input
-                            placeholder="Search appointments, events, tasks..."
-                            className="pl-10 bg-background"
+                            placeholder="Search appointments..."
+                            className="pl-10 bg-background text-sm"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                     <Select value={entryTypeFilter} onValueChange={setEntryTypeFilter}>
-                        <SelectTrigger className="w-[180px]">
-                            <Filter className="size-4 mr-2" />
-                            <SelectValue />
+                        <SelectTrigger className="w-full sm:w-[180px] text-sm">
+                            <div className="flex items-center">
+                                <Filter className="size-4 mr-2" />
+                                <SelectValue />
+                            </div>
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Types</SelectItem>
@@ -232,41 +227,33 @@ export default function AppointmentsPage() {
                 </div>
             </div>
 
-            <div className="p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="mb-6">
-                        <TabsTrigger value="calendar" className="gap-2">
-                            <Calendar className="size-4" />
-                            Calendar View
-                        </TabsTrigger>
-                        <TabsTrigger value="list" className="gap-2">
-                            <Clock className="size-4" />
-                            Upcoming
-                            {upcomingAppointments.length > 0 && (
-                                <Badge variant="secondary" className="ml-2">
-                                    {upcomingAppointments.length}
-                                </Badge>
-                            )}
-                        </TabsTrigger>
-                        <TabsTrigger value="conversations" className="gap-2">
-                            <MessageSquare className="size-4" />
-                            Conversations
-                            {regularConversations.length > 0 && (
-                                <Badge variant="secondary" className="ml-2">
-                                    {regularConversations.length}
-                                </Badge>
-                            )}
-                        </TabsTrigger>
-                        <TabsTrigger value="booked" className="gap-2">
-                            <Users className="size-4" />
-                            Booked
-                            {bookedConversations.length > 0 && (
-                                <Badge variant="secondary" className="ml-2">
-                                    {bookedConversations.length}
-                                </Badge>
-                            )}
-                        </TabsTrigger>
-                    </TabsList>
+            <div className="p-3 sm:p-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <div className="overflow-x-auto scrollbar-none -mx-3 px-3 sm:mx-0 sm:px-0">
+                        <TabsList className="mb-6 inline-flex w-auto sm:w-full min-w-full sm:min-w-0">
+                            <TabsTrigger value="calendar" className="gap-2 text-xs sm:text-sm whitespace-nowrap">
+                                <Calendar className="size-4" />
+                                Calendar View
+                            </TabsTrigger>
+                            <TabsTrigger value="list" className="gap-2 text-xs sm:text-sm whitespace-nowrap">
+                                <Clock className="size-4" />
+                                Upcoming
+                                {upcomingAppointments.length > 0 && (
+                                    <Badge variant="secondary" className="ml-2 text-[10px]">
+                                        {upcomingAppointments.length}
+                                    </Badge>
+                                )}
+                            </TabsTrigger>
+                            <TabsTrigger value="conversations" className="gap-2 text-xs sm:text-sm whitespace-nowrap">
+                                <MessageSquare className="size-4" />
+                                Messages
+                            </TabsTrigger>
+                            <TabsTrigger value="booked" className="gap-2 text-xs sm:text-sm whitespace-nowrap">
+                                <Users className="size-4" />
+                                Booked
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
 
                     {/* Calendar View */}
                     <TabsContent value="calendar" className="mt-0">
@@ -314,64 +301,60 @@ export default function AppointmentsPage() {
                                         className="hover:shadow-md transition-shadow cursor-pointer"
                                         onClick={() => handleSelectAppointment(appointment)}
                                     >
-                                        <CardContent className="p-6">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex gap-4 flex-1">
-                                                    <div className="bg-green-100 dark:bg-green-950 p-3 m-8 rounded-lg">
+                                        <CardContent className="p-4 sm:p-6">
+                                            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                                                <div className="flex gap-3 sm:gap-4 flex-1">
+                                                    <div className="bg-green-100 dark:bg-green-950 p-2.5 sm:p-3 rounded-lg flex-shrink-0 self-center">
                                                         {getAppointmentIcon(appointment.type)}
                                                     </div>
-                                                    <div className="flex-1">
+                                                    <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                            <h3 className="font-semibold text-foreground">
+                                                            <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
                                                                 {appointment.title}
                                                             </h3>
-                                                            <Badge className={getEntryTypeColor(appointment.entryType)}>
-                                                                {appointment.entryType}
-                                                            </Badge>
-                                                            <Badge className={getStatusColor(appointment.status)}>
-                                                                {appointment.status}
-                                                            </Badge>
+                                                            <div className="flex gap-1">
+                                                                <Badge className={cn("text-[9px] sm:text-[10px]", getEntryTypeColor(appointment.entryType))}>
+                                                                    {appointment.entryType}
+                                                                </Badge>
+                                                                <Badge className={cn("text-[9px] sm:text-[10px]", getStatusColor(appointment.status))}>
+                                                                    {appointment.status}
+                                                                </Badge>
+                                                            </div>
                                                         </div>
                                                         {appointment.description && (
-                                                            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                                                            <p className="text-[11px] sm:text-sm text-muted-foreground mb-3 line-clamp-2">
                                                                 {appointment.description}
                                                             </p>
                                                         )}
-                                                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                                                            <div className="flex items-center gap-2">
-                                                                <Clock className="size-4" />
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Clock className="size-3.5" />
                                                                 {format(new Date(appointment.startTime), 'PPp')}
                                                             </div>
                                                             {appointment.location && (
-                                                                <div className="flex items-center gap-2">
-                                                                    <MapPin className="size-4" />
-                                                                    <span className="truncate max-w-[200px]">{appointment.location}</span>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <MapPin className="size-3.5" />
+                                                                    <span className="truncate max-w-[150px] sm:max-w-none">{appointment.location}</span>
                                                                 </div>
                                                             )}
-                                                            <div className="flex items-center gap-2">
-                                                                <Users className="size-4" />
-                                                                {appointment.participants.length} participant{appointment.participants.length !== 1 ? 's' : ''}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Users className="size-3.5" />
+                                                                {appointment.participants.length}
                                                             </div>
-                                                            {appointment.guestEmails && appointment.guestEmails.length > 0 && (
-                                                                <div className="flex items-center gap-2">
-                                                                    <Users className="size-4" />
-                                                                    {appointment.guestEmails.length} guest{appointment.guestEmails.length !== 1 ? 's' : ''}
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <Button
-                                                    variant="ghost"
+                                                    variant="secondary"
                                                     size="sm"
-                                                    className="gap-2 flex-shrink-0"
+                                                    className="w-full sm:w-auto gap-2 text-xs"
                                                     onClick={(e) => {
                                                         e.stopPropagation()
                                                         handleSelectAppointment(appointment)
                                                     }}
                                                 >
-                                                    View Details
-                                                    <ChevronRight className="size-4" />
+                                                    View
+                                                    <ChevronRight className="size-3.5" />
                                                 </Button>
                                             </div>
                                         </CardContent>

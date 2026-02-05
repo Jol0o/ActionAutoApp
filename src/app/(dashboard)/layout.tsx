@@ -32,11 +32,11 @@ function DashboardLayoutContent({
         <SidebarProvider>
             <AppSidebar />
             <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center justify-between px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <div className="flex items-center gap-4 flex-1">
+                <header className="flex h-16 shrink-0 items-center justify-between px-2 sm:px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                    <div className="flex items-center gap-2 sm:gap-4 flex-1">
                         <SidebarTrigger className="-ml-1" />
 
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground border-r pr-4 h-8">
+                        <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground border-r pr-4 h-8">
                             <span className="font-medium whitespace-nowrap">Location:</span>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -52,7 +52,7 @@ function DashboardLayoutContent({
                             </DropdownMenu>
                         </div>
 
-                        <div className="relative max-w-md w-full">
+                        <div className="relative max-w-md w-full hidden sm:block">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 type="search"

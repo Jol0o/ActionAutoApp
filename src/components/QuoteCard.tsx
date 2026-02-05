@@ -106,9 +106,9 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
             <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300 overflow-hidden">
                 <AlertComponent />
                 <CardContent className="p-0">
-                    <div className="grid grid-cols-12">
+                    <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-700">
                         {/* Left Section - Vehicle Info */}
-                        <div className="col-span-12 lg:col-span-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-6 border-r border-gray-100 dark:border-gray-700">
+                        <div className="w-full lg:w-1/3 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wider uppercase">Vehicle Info</h3>
                                 <Badge variant="outline" className="bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700 text-xs">
@@ -177,7 +177,7 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                         </div>
 
                         {/* Right Section - Shipment Details */}
-                        <div className="col-span-12 lg:col-span-8 p-6 bg-white dark:bg-gray-800">
+                        <div className="w-full lg:w-2/3 p-4 sm:p-6 bg-white dark:bg-gray-800">
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wider uppercase">Shipment Details</h3>
                                 <Badge className="bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900 border border-yellow-200 dark:border-yellow-700">
@@ -227,22 +227,22 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                                 </div>
 
                                 {/* Shipment Options */}
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Transport Type</p>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 sm:gap-3">
+                                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-2 sm:p-3 border border-gray-100 dark:border-gray-700">
+                                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-0.5 sm:mb-1">Transport Type</p>
+                                        <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
                                             {quote.enclosedTrailer ? 'Enclosed' : 'Open'}
                                         </p>
                                     </div>
-                                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Vehicle Status</p>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-2 sm:p-3 border border-gray-100 dark:border-gray-700">
+                                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-0.5 sm:mb-1">Status</p>
+                                        <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                                             {quote.vehicleInoperable ? 'Inoperable' : 'Operable'}
                                         </p>
                                     </div>
-                                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Units</p>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{quote.units}</p>
+                                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-2 sm:p-3 border border-gray-100 dark:border-gray-700">
+                                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-0.5 sm:mb-1">Units</p>
+                                        <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">{quote.units}</p>
                                     </div>
                                 </div>
 
@@ -273,9 +273,9 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className="flex items-center gap-3 pt-2">
+                                <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 pt-2">
                                     <Button
-                                        className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm"
+                                        className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm h-9 sm:h-10 text-xs sm:text-sm"
                                         onClick={handleCreateShipment}
                                         disabled={isCreatingShipment || isDeleting}
                                     >
@@ -283,20 +283,19 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                                     </Button>
                                     <Button
                                         variant="outline"
-                                        className="border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                        className="border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 h-9 sm:h-10 text-xs sm:text-sm"
                                         onClick={() => setIsEditModalOpen(true)}
                                         disabled={isCreatingShipment || isDeleting}
                                     >
-                                        Edit Quote
+                                        Edit
                                     </Button>
                                     <Button
                                         variant="ghost"
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950 h-9 sm:h-10 text-xs sm:text-sm px-3"
                                         onClick={handleDelete}
                                         disabled={isDeleting || isCreatingShipment}
                                     >
-                                        <Trash2 className="w-4 h-4 mr-1" />
-                                        {isDeleting ? 'Deleting...' : 'Delete'}
+                                        <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>
                             </div>

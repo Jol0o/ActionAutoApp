@@ -19,20 +19,20 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
     const { showAlert, hideAlert, AlertComponent } = useAlert()
-    
+
     // Get quote data from either the quote reference or preserved data
     const quote = shipment.quoteId || shipment.preservedQuoteData
     const vehicle = quote?.vehicleId
-    const vehicleName = vehicle 
+    const vehicleName = vehicle
         ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
         : quote?.vehicleName || 'N/A'
 
     const formatDate = (date?: string) => {
         if (!date) return 'N/A'
-        return new Date(date).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric' 
+        return new Date(date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
         })
     }
 
@@ -120,39 +120,39 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
     }
 
     const getStatusConfig = () => {
-        switch(shipment.status) {
+        switch (shipment.status) {
             case 'Available for Pickup':
-                return { 
+                return {
                     color: 'bg-gradient-to-r from-yellow-500 to-amber-500',
                     dotColor: 'bg-yellow-500',
                     textColor: 'text-yellow-700'
                 }
             case 'Delivered':
-                return { 
+                return {
                     color: 'bg-gradient-to-r from-green-500 to-emerald-500',
                     dotColor: 'bg-green-500',
                     textColor: 'text-green-700'
                 }
             case 'Cancelled':
-                return { 
+                return {
                     color: 'bg-gradient-to-r from-red-500 to-rose-500',
                     dotColor: 'bg-red-500',
                     textColor: 'text-red-700'
                 }
             case 'In-Route':
-                return { 
+                return {
                     color: 'bg-gradient-to-r from-blue-500 to-indigo-500',
                     dotColor: 'bg-blue-500',
                     textColor: 'text-blue-700'
                 }
             case 'Dispatched':
-                return { 
+                return {
                     color: 'bg-gradient-to-r from-purple-500 to-violet-500',
                     dotColor: 'bg-purple-500',
                     textColor: 'text-purple-700'
                 }
             default:
-                return { 
+                return {
                     color: 'bg-gradient-to-r from-gray-500 to-slate-500',
                     dotColor: 'bg-gray-500',
                     textColor: 'text-gray-700'
@@ -171,53 +171,53 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                         {/* Top Section - Vehicle Image */}
                         <div className="relative overflow-hidden w-full">
                             {quote?.vehicleImage ? (
-                                <div className="relative w-full h-48 sm:h-56 md:h-64">
-                                    <img 
-                                        src={quote.vehicleImage} 
-                                        alt={vehicleName} 
-                                        className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-500" 
+                                <div className="relative w-full h-40 sm:h-56 md:h-64">
+                                    <img
+                                        src={quote.vehicleImage}
+                                        alt={vehicleName}
+                                        className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-500"
                                     />
                                     {/* Gradient overlay */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
-                                    
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+
                                     {/* Top badges */}
-                                    <div className="absolute top-3 left-3 right-3 flex items-start justify-between flex-wrap gap-2">
+                                    <div className="absolute top-2 left-2 right-2 flex items-start justify-between flex-wrap gap-1.5">
                                         {shipment.trackingNumber && (
-                                            <Badge className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-gray-900 dark:text-gray-100 px-2.5 py-1 shadow-lg text-xs">
+                                            <Badge className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-gray-900 dark:text-gray-100 px-2 py-0.5 shadow-lg text-[10px] sm:text-xs">
                                                 <Package className="w-3 h-3 mr-1" />
                                                 {shipment.trackingNumber}
                                             </Badge>
                                         )}
-                                        
-                                        <Badge className={`${statusConfig.color} text-white px-3 py-1 text-xs font-semibold shadow-lg ml-auto`}>
-                                            <span className="w-1.5 h-1.5 bg-white rounded-full mr-1.5 animate-pulse"></span>
+
+                                        <Badge className={`${statusConfig.color} text-white px-2 py-0.5 text-[10px] sm:text-xs font-semibold shadow-lg ml-auto`}>
+                                            <span className="w-1 h-1 bg-white rounded-full mr-1 animate-pulse"></span>
                                             {shipment.status}
                                         </Badge>
                                     </div>
-                                    
+
                                     {/* Vehicle info overlay */}
-                                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-white">
-                                        <div className="backdrop-blur-md bg-black/30 rounded-lg p-3 border border-white/10">
-                                            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-                                                <div className="flex-1">
-                                                    <h2 className="text-lg sm:text-xl font-bold mb-2">
+                                    <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 text-white">
+                                        <div className="backdrop-blur-md bg-black/40 rounded-lg p-2 sm:p-3 border border-white/10">
+                                            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 sm:gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <h2 className="text-sm sm:text-lg md:text-xl font-bold mb-1 sm:mb-2 truncate">
                                                         {vehicleName}
                                                     </h2>
-                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                    <div className="grid grid-cols-2 gap-2 text-[10px] sm:text-xs">
                                                         <div className="flex flex-col">
-                                                            <span className="text-gray-300 text-xs">VIN</span>
+                                                            <span className="text-gray-300">VIN</span>
                                                             <span className="font-medium truncate">{vehicle?.vin || quote?.vin || 'N/A'}</span>
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="text-gray-300 text-xs">Stock #</span>
+                                                            <span className="text-gray-300">Stock #</span>
                                                             <span className="font-medium">{vehicle?.stockNumber || quote?.stockNumber || 'N/A'}</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 {quote?.vehicleLocation && (
-                                                    <div className="flex items-center gap-1.5 sm:pl-3 sm:border-l sm:border-white/20">
-                                                        <MapPin className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-                                                        <span className="text-xs">{quote.vehicleLocation}</span>
+                                                    <div className="flex items-center gap-1.5 pt-1 sm:pt-0 sm:pl-3 sm:border-l sm:border-white/20">
+                                                        <MapPin className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                                                        <span className="text-[10px] sm:text-xs truncate">{quote.vehicleLocation}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -225,8 +225,8 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                     </div>
                                 </div>
                             ) : (
-                                <div className="w-full h-48 sm:h-56 md:h-64 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
-                                    <Package className="w-16 h-16 text-gray-400 dark:text-gray-600" />
+                                <div className="w-full h-32 sm:h-56 md:h-64 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+                                    <Package className="w-12 h-12 text-gray-400 dark:text-gray-600" />
                                 </div>
                             )}
                         </div>
@@ -234,43 +234,43 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                         {/* Bottom Section - Shipment Details */}
                         <div className="p-4 sm:p-5 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
                             {/* Header with Customer Info & Actions */}
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700 gap-3">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-200 dark:border-gray-700 gap-2 sm:gap-3">
                                 <div className="flex-1">
-                                    <div className="space-y-1">
+                                    <div className="space-y-0.5 sm:space-y-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">Customer:</span>
-                                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                            <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Customer:</span>
+                                            <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
                                                 {quote?.firstName} {quote?.lastName}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
-                                            <Calendar className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-400 dark:text-gray-500" />
+                                            <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                                                 Added {formatDate(shipment.createdAt)}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div className="flex flex-wrap gap-2">
+
+                                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="gap-1.5 text-xs"
+                                        className="h-7 sm:h-9 px-2 sm:px-4 gap-1 sm:gap-1.5 text-[10px] sm:text-xs"
                                         onClick={handleExportPDF}
                                         disabled={isGeneratingPDF}
                                     >
-                                        <Download className="w-3.5 h-3.5" />
-                                        {isGeneratingPDF ? 'Generating...' : 'Export PDF'}
+                                        <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                        {isGeneratingPDF ? '...' : 'Export'}
                                     </Button>
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
+                                        className="h-7 sm:h-9 px-2 sm:px-4 gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950"
                                         onClick={handleSendEmail}
                                     >
-                                        <Mail className="w-3.5 h-3.5" />
-                                        Send Email
+                                        <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                        Email
                                     </Button>
                                 </div>
                             </div>
@@ -313,74 +313,60 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                 {/* Route and Timeline Row - Route 1/3, Timeline 2/3 */}
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                                     {/* Route Information - Takes 1/3 of space */}
-                                    <div className="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 dark:from-blue-950 dark:via-cyan-950 dark:to-teal-950 rounded-lg p-4 border border-blue-200 dark:border-blue-800 shadow-sm h-full">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
-                                                <MapPin className="w-4 h-4 text-white" />
+                                    <div className="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 dark:from-blue-950 dark:via-cyan-950 dark:to-teal-950 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800 shadow-sm h-full">
+                                        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                                                <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                                             </div>
-                                            <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Shipping Route</h3>
+                                            <h3 className="text-[10px] sm:text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Shipping Route</h3>
                                         </div>
-                                        
-                                        <div className="flex flex-col h-[calc(100%-3rem)]">
+
+                                        <div className="flex flex-col h-auto sm:h-[calc(100%-3rem)]">
                                             {/* Origin */}
-                                            <div className="group mb-4">
+                                            <div className="group mb-2 sm:mb-4">
                                                 <div className="relative">
-                                                    {/* Decorative corner accent */}
-                                                    <div className="absolute -top-2 -left-2 w-6 h-6 border-t-2 border-l-2 border-green-400 dark:border-green-600 rounded-tl-lg"></div>
-                                                    
-                                                    <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 border-2 border-green-300 dark:border-green-700 shadow-md hover:shadow-lg transition-all">
-                                                        <div className="flex items-center gap-3 mb-2">
-                                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg ring-4 ring-green-100 dark:ring-green-900">
-                                                                <div className="w-3 h-3 rounded-full bg-white"></div>
+                                                    <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-2.5 sm:p-4 border-2 border-green-300 dark:border-green-700 shadow-md transition-all">
+                                                        <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                                                            <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg ring-2 sm:ring-4 ring-green-100 dark:ring-green-900">
+                                                                <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded-full bg-white"></div>
                                                             </div>
                                                             <div>
-                                                                <span className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wide block">Starting Point</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400">Origin Location</span>
+                                                                <span className="text-[8px] sm:text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wide block leading-none">Starting Point</span>
                                                             </div>
                                                         </div>
-                                                        <p className="font-bold text-gray-900 dark:text-gray-100 text-base leading-relaxed pl-1">{shipment.origin}</p>
+                                                        <p className="font-bold text-gray-900 dark:text-gray-100 text-xs sm:text-base leading-relaxed pl-1 truncate">{shipment.origin}</p>
                                                     </div>
                                                 </div>
                                             </div>
-                                            
-                                            {/* Animated Route Line */}
-                                            <div className="flex-1 flex justify-center items-center py-2">
-                                                <div className="relative flex flex-col items-center gap-2">
-                                                    {/* Gradient line with animation */}
-                                                    <div className="w-1 h-16 bg-gradient-to-b from-green-400 via-blue-400 to-red-400 rounded-full shadow-lg relative overflow-hidden">
+
+                                            {/* Route Line - Simplified for Mobile */}
+                                            <div className="flex-1 flex justify-center items-center py-1 sm:py-2">
+                                                <div className="relative flex flex-col items-center gap-1 sm:gap-2">
+                                                    <div className="w-0.5 h-8 sm:h-16 bg-gradient-to-b from-green-400 via-blue-400 to-red-400 rounded-full shadow-lg relative overflow-hidden">
                                                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white to-transparent opacity-50 animate-pulse"></div>
                                                     </div>
-                                                    
-                                                    {/* Truck icon in the middle */}
+
                                                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl ring-4 ring-blue-100 dark:ring-blue-900 animate-bounce">
-                                                            <Truck className="w-5 h-5 text-white" />
+                                                        <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl ring-2 sm:ring-4 ring-blue-100 dark:ring-blue-900 animate-bounce">
+                                                            <Truck className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                                                         </div>
                                                     </div>
-                                                    
-                                                    {/* Decorative dots */}
-                                                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full bg-green-400"></div>
-                                                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full bg-red-400"></div>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Destination */}
-                                            <div className="group mt-4">
+                                            <div className="group mt-2 sm:mt-4">
                                                 <div className="relative">
-                                                    {/* Decorative corner accent */}
-                                                    <div className="absolute -bottom-2 -right-2 w-6 h-6 border-b-2 border-r-2 border-red-400 dark:border-red-600 rounded-br-lg"></div>
-                                                    
-                                                    <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 border-2 border-red-300 dark:border-red-700 shadow-md hover:shadow-lg transition-all">
-                                                        <div className="flex items-center gap-3 mb-2">
-                                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg ring-4 ring-red-100 dark:ring-red-900">
-                                                                <MapPin className="w-5 h-5 text-white" />
+                                                    <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-2.5 sm:p-4 border-2 border-red-300 dark:border-red-700 shadow-md transition-all">
+                                                        <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                                                            <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg ring-2 sm:ring-4 ring-red-100 dark:ring-red-900">
+                                                                <MapPin className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                                                             </div>
                                                             <div>
-                                                                <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wide block">Final Stop</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400">Destination Location</span>
+                                                                <span className="text-[8px] sm:text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wide block leading-none">Final Stop</span>
                                                             </div>
                                                         </div>
-                                                        <p className="font-bold text-gray-900 dark:text-gray-100 text-base leading-relaxed pl-1">{shipment.destination}</p>
+                                                        <p className="font-bold text-gray-900 dark:text-gray-100 text-xs sm:text-base leading-relaxed pl-1 truncate">{shipment.destination}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -388,97 +374,42 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                     </div>
 
                                     {/* Timeline - Takes 2/3 of space */}
-                                    <div className="lg:col-span-2 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800 shadow-sm h-full">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                            <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Shipment Timeline</h3>
+                                    <div className="lg:col-span-2 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950 rounded-lg p-3 sm:p-4 border border-indigo-200 dark:border-indigo-800 shadow-sm h-full">
+                                        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                                            <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400" />
+                                            <h3 className="text-[10px] sm:text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Shipment Timeline</h3>
                                         </div>
-                                        
+
                                         <div className="relative">
                                             {/* Timeline vertical line */}
-                                            <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-blue-300 via-purple-300 to-green-300 dark:from-blue-700 dark:via-purple-700 dark:to-green-700"></div>
-                                            
+                                            <div className="absolute left-[15px] sm:left-[19px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-blue-300 via-purple-300 to-green-300 dark:from-blue-700 dark:via-purple-700 dark:to-green-700"></div>
+
                                             {/* Timeline Items */}
-                                            <div className="space-y-3 relative">
-                                                {/* Requested */}
-                                                <div className="relative flex items-start gap-3 group">
-                                                    <div className="relative z-10 flex-shrink-0">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-4 ring-blue-100 dark:ring-blue-900 group-hover:ring-blue-200 dark:group-hover:ring-blue-800 transition-all">
-                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                                            <div className="space-y-2 sm:space-y-3 relative">
+                                                {[
+                                                    { label: "Requested", date: shipment.requestedPickupDate, step: "Step 1", color: "blue" },
+                                                    { label: "Scheduled Pickup", date: shipment.scheduledPickup, step: "Step 2", color: "indigo" },
+                                                    { label: "Picked Up", date: shipment.pickedUp, step: "Step 3", color: "purple" },
+                                                    { label: "Est. Delivery", date: shipment.scheduledDelivery, step: "Step 4", color: "orange" },
+                                                    { label: "Delivered", date: shipment.delivered, step: "Complete", color: "green", icon: true }
+                                                ].map((item, idx) => (
+                                                    <div key={idx} className="relative flex items-center gap-2 sm:gap-3 group">
+                                                        <div className="relative z-10 flex-shrink-0">
+                                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 flex items-center justify-center shadow-md ring-2 sm:ring-4 ring-${item.color}-100 dark:ring-${item.color}-900 group-hover:ring-${item.color}-200 dark:group-hover:ring-${item.color}-800 transition-all`}>
+                                                                {item.icon ? <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white"></div>}
+                                                            </div>
+                                                        </div>
+                                                        <div className={`flex-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-2 sm:p-3 border border-${item.color}-200 dark:border-${item.color}-700 shadow-sm group-hover:shadow-md transition-all flex items-center justify-between`}>
+                                                            <div className="min-w-0">
+                                                                <p className={`text-[10px] sm:text-sm font-bold text-${item.color}-700 dark:text-${item.color}-400 leading-none mb-0.5 truncate`}>{item.label}</p>
+                                                                <p className="text-[9px] sm:text-xs font-semibold text-gray-900 dark:text-gray-100 leading-none">{formatDate(item.date)}</p>
+                                                            </div>
+                                                            <span className={`text-[8px] sm:text-xs px-1.5 sm:px-2 py-0.5 bg-${item.color}-100 dark:bg-${item.color}-900 text-${item.color}-700 dark:text-${item.color}-300 rounded-full font-semibold shrink-0`}>
+                                                                {item.step}
+                                                            </span>
                                                         </div>
                                                     </div>
-                                                    <div className="flex-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 border border-blue-200 dark:border-blue-700 shadow-sm group-hover:shadow-md transition-all">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Requested</p>
-                                                            <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full font-semibold">Step 1</span>
-                                                        </div>
-                                                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{formatDate(shipment.requestedPickupDate)}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Scheduled */}
-                                                <div className="relative flex items-start gap-3 group">
-                                                    <div className="relative z-10 flex-shrink-0">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg ring-4 ring-indigo-100 dark:ring-indigo-900 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-800 transition-all">
-                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 border border-indigo-200 dark:border-indigo-700 shadow-sm group-hover:shadow-md transition-all">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <p className="text-sm font-bold text-indigo-700 dark:text-indigo-400">Scheduled Pickup</p>
-                                                            <span className="text-xs px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full font-semibold">Step 2</span>
-                                                        </div>
-                                                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{formatDate(shipment.scheduledPickup)}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Picked Up */}
-                                                <div className="relative flex items-start gap-3 group">
-                                                    <div className="relative z-10 flex-shrink-0">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg ring-4 ring-purple-100 dark:ring-purple-900 group-hover:ring-purple-200 dark:group-hover:ring-purple-800 transition-all">
-                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 border border-purple-200 dark:border-purple-700 shadow-sm group-hover:shadow-md transition-all">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <p className="text-sm font-bold text-purple-700 dark:text-purple-400">Picked Up</p>
-                                                            <span className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded-full font-semibold">Step 3</span>
-                                                        </div>
-                                                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{formatDate(shipment.pickedUp)}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Est. Delivery */}
-                                                <div className="relative flex items-start gap-3 group">
-                                                    <div className="relative z-10 flex-shrink-0">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg ring-4 ring-orange-100 dark:ring-orange-900 group-hover:ring-orange-200 dark:group-hover:ring-orange-800 transition-all">
-                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 border border-orange-200 dark:border-orange-700 shadow-sm group-hover:shadow-md transition-all">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <p className="text-sm font-bold text-orange-700 dark:text-orange-400">Estimated Delivery</p>
-                                                            <span className="text-xs px-2 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 rounded-full font-semibold">Step 4</span>
-                                                        </div>
-                                                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{formatDate(shipment.scheduledDelivery)}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Delivered */}
-                                                <div className="relative flex items-start gap-3 group">
-                                                    <div className="relative z-10 flex-shrink-0">
-                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg ring-4 ring-green-100 dark:ring-green-900 group-hover:ring-green-200 dark:group-hover:ring-green-800 transition-all">
-                                                            <CheckCircle className="w-5 h-5 text-white" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 border border-green-200 dark:border-green-700 shadow-sm group-hover:shadow-md transition-all">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <p className="text-sm font-bold text-green-700 dark:text-green-400">Delivered</p>
-                                                            <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full font-semibold">Complete</span>
-                                                        </div>
-                                                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{formatDate(shipment.delivered)}</p>
-                                                    </div>
-                                                </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -486,31 +417,32 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                             </div>
 
                             {/* Action Buttons - Right aligned on desktop, centered on mobile */}
-                            <div className="flex flex-wrap gap-2 justify-center lg:justify-end">
-                                <Button 
-                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                            <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center lg:justify-end">
+                                <Button
+                                    className="h-8 sm:h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-[10px] sm:text-xs px-2 sm:px-4"
                                     size="sm"
                                     onClick={() => setIsEditModalOpen(true)}
                                     disabled={isDeleting || !onUpdate}
                                 >
-                                    <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
+                                    <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 sm:mr-1.5" />
                                     Edit Details
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="outline"
                                     size="sm"
+                                    className="h-8 sm:h-10 text-[10px] sm:text-xs px-2 sm:px-4"
                                 >
-                                    View History
+                                    History
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="ghost"
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
+                                    className="h-8 sm:h-10 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950 text-[10px] sm:text-xs px-2 sm:px-4"
                                     size="sm"
                                     onClick={handleDelete}
                                     disabled={isDeleting}
                                 >
-                                    <Trash2 className="w-3.5 h-3.5 mr-1" />
-                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                    <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-0.5 sm:mr-1" />
+                                    {isDeleting ? '...' : 'Delete'}
                                 </Button>
                             </div>
                         </div>
