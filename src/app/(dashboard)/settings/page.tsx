@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
+import { OrganizationProfile } from "@clerk/nextjs"
 
 export default function UtilitiesPage() {
     return (
@@ -50,6 +51,9 @@ export default function UtilitiesPage() {
                     </TabsTrigger>
                     <TabsTrigger value="settings" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-6 data-[state=active]:bg-secondary shadow-none">
                         <SettingsIcon className="size-4" /> Settings
+                    </TabsTrigger>
+                    <TabsTrigger value="dealership" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-6 data-[state=active]:bg-secondary shadow-none">
+                        <MapPin className="size-4" /> Dealership & Team
                     </TabsTrigger>
                 </TabsList>
 
@@ -141,6 +145,30 @@ export default function UtilitiesPage() {
                             </Card>
                         </div>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="dealership" className="m-0">
+                    <Card className="border-none shadow-sm bg-card p-0 overflow-hidden">
+                        <CardHeader className="bg-muted/30 border-b py-4">
+                            <CardTitle className="text-lg font-bold">Dealership Management</CardTitle>
+                            <CardDescription>Manage your dealership profile, invites, and team roles.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0 sm:p-6 min-h-[600px]">
+                            <OrganizationProfile
+                                appearance={{
+                                    elements: {
+                                        rootBox: "w-full",
+                                        card: "shadow-none border border-border rounded-xl w-full bg-transparent",
+                                        navbar: "hidden", // We already have our own navigation layout
+                                        pageScrollable: "p-0",
+                                        headerTitle: "text-xl font-bold",
+                                        organizationProfilePage__organizationSettings: "p-6",
+                                        organizationProfilePage__members: "p-6",
+                                    }
+                                }}
+                            />
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>

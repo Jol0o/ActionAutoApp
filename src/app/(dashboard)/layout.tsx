@@ -1,15 +1,18 @@
 'use client';
 
+import * as React from 'react';
+
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Input } from "@/components/ui/input"
 import { Search, ChevronDown, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useUser, useClerk } from "@clerk/nextjs"
+import { useUser, useClerk, useOrganization } from "@clerk/nextjs"
 import { NotificationBell } from "@/components/NotificationBell"
 import { NotificationProvider } from "@/context/NotificationContext"
 import { ThemeProvider } from "@/context/ThemeContext"
+import { useRouter } from "next/navigation"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -27,6 +30,14 @@ function DashboardLayoutContent({
 }>) {
     const { user } = useUser();
     const { signOut } = useClerk();
+    const { organization, isLoaded } = useOrganization();
+    const router = useRouter();
+
+    React.useEffect(() => {
+        if (isLoaded && !organization) {
+            router.push('/org-selection');
+        }
+    }, [isLoaded, organization, router]);
 
     return (
         <SidebarProvider>
@@ -37,19 +48,12 @@ function DashboardLayoutContent({
                         <SidebarTrigger className="-ml-1" />
 
                         <div className="flex items-center gap-2 text-sm text-muted-foreground border-r pr-4 h-8">
-                            <span className="font-medium whitespace-nowrap">Location:</span>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-8 gap-1 font-normal">
-                                        All Locations <ChevronDown className="size-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                    <DropdownMenuItem>All Locations</DropdownMenuItem>
-                                    <DropdownMenuItem>Lehi, UT</DropdownMenuItem>
-                                    <DropdownMenuItem>Orem, UT</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <span className="font-medium whitespace-nowrap">Dealership:</span>
+                            <div className="h-8 flex items-center px-3 bg-secondary/50 rounded-md border border-border/50">
+                                <span className="font-bold text-foreground">
+                                    {organization?.name || 'Loading...'}
+                                </span>
+                            </div>
                         </div>
 
                         <div className="relative max-w-md w-full">
