@@ -18,6 +18,16 @@ export interface Participant {
   avatar?: string;
 }
 
+export interface CustomerBooking {
+  isCustomerBooking: boolean;
+  customerId?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  bookingSource?: string;
+  bookingNotes?: string;
+}
+
 export interface Appointment {
   _id: string;
   title: string;
@@ -43,6 +53,9 @@ export interface Appointment {
   googleCalendarEventId?: string;
   meetingLink?: string;
   notes?: string;
+
+  // Customer booking information
+  customerBooking?: CustomerBooking;
 
   createdAt: string;
   updatedAt: string;

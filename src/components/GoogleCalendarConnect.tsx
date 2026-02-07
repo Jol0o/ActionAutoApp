@@ -1,57 +1,38 @@
 "use client"
 
 import * as React from "react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Check, X, RefreshCw, ExternalLink } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Calendar, Check, X, Loader2, AlertCircle } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@clerk/nextjs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function GoogleCalendarConnect() {
+  const { getToken } = useAuth()
   const [isConnected, setIsConnected] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
   const [isConnecting, setIsConnecting] = React.useState(false)
-  const { getToken } = useAuth()
+  const [error, setError] = React.useState<string | null>(null)
 
-  // Check connection status on mount
   React.useEffect(() => {
-    checkConnectionStatus()
+    checkConnection()
   }, [])
 
-  // Check for OAuth callback parameters
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const calendarConnected = params.get('calendar_connected')
-    const calendarError = params.get('calendar_error')
-
-    if (calendarConnected === 'true') {
-      setIsConnected(true)
-      setError(null)
-      // Clean up URL
-      window.history.replaceState({}, '', '/appointments')
-    }
-
-    if (calendarError) {
-      setError(decodeURIComponent(calendarError))
-      // Clean up URL
-      window.history.replaceState({}, '', '/appointments')
-    }
-  }, [])
-
-  const checkConnectionStatus = async () => {
+  const checkConnection = async () => {
     try {
       setIsLoading(true)
       const token = await getToken()
       const response = await apiClient.get('/api/google-calendar/status', {
         headers: { Authorization: `Bearer ${token}` }
       })
-      setIsConnected(response.data?.data?.connected || false)
-    } catch (err: any) {
-      console.error('Failed to check calendar status:', err)
-      setError('Failed to check connection status')
+      
+      const data = response.data?.data || response.data
+      setIsConnected(data.connected || false)
+    } catch (error) {
+      console.error('Failed to check Google Calendar connection:', error)
+      setIsConnected(false)
     } finally {
       setIsLoading(false)
     }
@@ -61,55 +42,52 @@ export function GoogleCalendarConnect() {
     try {
       setIsConnecting(true)
       setError(null)
-      const token = await getToken()
       
+      const token = await getToken()
       const response = await apiClient.get('/api/google-calendar/auth', {
         headers: { Authorization: `Bearer ${token}` }
       })
       
-      const authUrl = response.data?.data?.authUrl
+      const data = response.data?.data || response.data
       
-      if (authUrl) {
-        // Redirect to Google OAuth
-        window.location.href = authUrl
+      if (data.authUrl) {
+        window.location.href = data.authUrl
       } else {
-        throw new Error('No authorization URL received')
+        setError('Failed to get authorization URL')
       }
-    } catch (err: any) {
-      console.error('Failed to initiate Google Calendar connection:', err)
-      setError(err.response?.data?.message || 'Failed to connect to Google Calendar')
+    } catch (error: any) {
+      console.error('Failed to connect Google Calendar:', error)
+      setError(error.response?.data?.message || 'Failed to connect to Google Calendar')
       setIsConnecting(false)
     }
   }
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect Google Calendar?')) return
-
     try {
-      setIsLoading(true)
-      const token = await getToken()
+      setIsConnecting(true)
+      setError(null)
       
+      const token = await getToken()
       await apiClient.post('/api/google-calendar/disconnect', {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
       setIsConnected(false)
-      setError(null)
-    } catch (err: any) {
-      console.error('Failed to disconnect Google Calendar:', err)
-      setError(err.response?.data?.message || 'Failed to disconnect')
+    } catch (error: any) {
+      console.error('Failed to disconnect Google Calendar:', error)
+      setError(error.response?.data?.message || 'Failed to disconnect from Google Calendar')
     } finally {
-      setIsLoading(false)
+      setIsConnecting(false)
     }
   }
 
-  if (isLoading && !isConnecting) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center gap-3">
-            <RefreshCw className="size-5 animate-spin text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Checking calendar connection...</span>
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Checking Google Calendar connection...</span>
           </div>
         </CardContent>
       </Card>
@@ -121,100 +99,116 @@ export function GoogleCalendarConnect() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded ${isConnected ? 'bg-green-100 dark:bg-green-950' : 'bg-gray-100 dark:bg-gray-800'}`}>
-              <Calendar className={`size-5 ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`} />
+            <div className="bg-blue-100 dark:bg-blue-950 p-2 rounded-lg">
+              <Calendar className="size-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <CardTitle className="text-base">Google Calendar</CardTitle>
+              <CardTitle className="text-lg">Google Calendar Integration</CardTitle>
               <CardDescription>
                 {isConnected 
-                  ? 'Automatically sync appointments to your Google Calendar'
-                  : 'Connect to automatically add appointments to your calendar'
+                  ? 'Your calendar is synced and up to date'
+                  : 'Connect to sync appointments with Google Calendar'
                 }
               </CardDescription>
             </div>
           </div>
-          <Badge variant={isConnected ? "default" : "secondary"} className="gap-1">
+          <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-green-500" : ""}>
             {isConnected ? (
               <>
-                <Check className="size-3" />
+                <Check className="size-3 mr-1" />
                 Connected
               </>
             ) : (
               <>
-                <X className="size-3" />
+                <X className="size-3 mr-1" />
                 Not Connected
               </>
             )}
           </Badge>
         </div>
       </CardHeader>
-      
-      <CardContent className="space-y-4">
+      <CardContent>
         {error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        {isConnected ? (
-          <div className="space-y-3">
-            <div className="flex items-start gap-2 text-sm">
-              <Check className="size-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <span>New appointments will be automatically added to your Google Calendar</span>
-            </div>
-            <div className="flex items-start gap-2 text-sm">
-              <Check className="size-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <span>External guests can have events added to their calendars when they accept</span>
-            </div>
-            <div className="flex items-start gap-2 text-sm">
-              <Check className="size-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <span>Updates and cancellations will sync automatically</span>
-            </div>
-            
-            <div className="pt-3 border-t">
+        <div className="space-y-4">
+          {isConnected ? (
+            <>
+              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg p-4">
+                <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">Active Features:</h4>
+                <ul className="space-y-1 text-sm text-green-800 dark:text-green-200">
+                  <li className="flex items-center gap-2">
+                    <Check className="size-4" />
+                    Bidirectional sync (App and Google Calendar)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="size-4" />
+                    Auto-sync to participants' calendars
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="size-4" />
+                    Real-time webhook notifications
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="size-4" />
+                    Customer bookings sync
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleDisconnect}
+                  disabled={isConnecting}
+                >
+                  {isConnecting ? (
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      Disconnecting...
+                    </>
+                  ) : (
+                    'Disconnect'
+                  )}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Benefits:</h4>
+                <ul className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
+                  <li>Sync all appointments with Google Calendar</li>
+                  <li>Automatic updates when you make changes</li>
+                  <li>Share events with participants</li>
+                  <li>Get notifications on all your devices</li>
+                </ul>
+              </div>
+
               <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDisconnect}
-                className="text-red-600 hover:text-red-700"
+                onClick={handleConnect}
+                disabled={isConnecting}
+                className="w-full bg-blue-600 hover:bg-blue-700"
               >
-                Disconnect Google Calendar
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="size-4 mr-2" />
+                    Connect Google Calendar
+                  </>
+                )}
               </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-              <p className="mb-2">Benefits of connecting:</p>
-              <ul className="space-y-1 ml-4 list-disc">
-                <li>Automatic calendar sync for all your appointments</li>
-                <li>Guests can add events to their Google Calendars</li>
-                <li>Real-time updates when guests accept or decline</li>
-                <li>Reminders through Google Calendar</li>
-              </ul>
-            </div>
-            
-            <Button
-              onClick={handleConnect}
-              disabled={isConnecting}
-              className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
-            >
-              {isConnecting ? (
-                <>
-                  <RefreshCw className="size-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Calendar className="size-4" />
-                  Connect Google Calendar
-                  <ExternalLink className="size-3" />
-                </>
-              )}
-            </Button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

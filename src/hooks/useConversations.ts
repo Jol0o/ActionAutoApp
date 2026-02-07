@@ -1,112 +1,217 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import { AxiosError } from 'axios';
-import { Conversation, Message } from '@/types/appointment';
+import { useAuth } from '@clerk/nextjs';
 
-
-export function useConversations() {
-    const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const { getToken, isLoaded, isSignedIn } = useAuth();
-
-    const fetchConversations = useCallback(async () => {
-        if (!isSignedIn) return;
-
-        try {
-            setIsLoading(true);
-            const token = await getToken();
-            const response = await apiClient.get('/api/conversations', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = response.data?.data || response.data;
-            setConversations(data || []);
-            setError(null);
-        } catch (err) {
-            const axiosError = err as AxiosError;
-            const message = (axiosError.response?.data as any)?.message || 'Failed to fetch conversations';
-            console.error('Error fetching conversations:', message);
-            setError(message);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [getToken, isSignedIn]);
-
-    const createConversation = useCallback(async (participantIds: string[]) => {
-        try {
-            const token = await getToken();
-            const response = await apiClient.post('/api/conversations', { participantIds }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const newConversation = response.data?.data || response.data;
-            setConversations(prev => [newConversation, ...prev]);
-            return newConversation;
-        } catch (err) {
-            const axiosError = err as AxiosError;
-            const message = (axiosError.response?.data as any)?.message || 'Failed to create conversation';
-            throw new Error(message);
-        }
-    }, [getToken]);
-
-    const sendMessage = useCallback(async (conversationId: string, content: string) => {
-        try {
-            const token = await getToken();
-            const response = await apiClient.post(`/api/conversations/${conversationId}/messages`, { content }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const newMessage = response.data?.data || response.data;
-
-            // Optimistically update conversation with new message
-            setConversations(prev => prev.map(c => {
-                if (c._id === conversationId) {
-                    return {
-                        ...c,
-                        messages: [...c.messages, newMessage],
-                        lastMessage: content,
-                        updatedAt: new Date().toISOString()
-                    };
-                }
-                return c;
-            }));
-
-            return newMessage;
-        } catch (err) {
-            const axiosError = err as AxiosError;
-            const message = (axiosError.response?.data as any)?.message || 'Failed to send message';
-            throw new Error(message);
-        }
-    }, [getToken]);
-
-    const deleteConversation = useCallback(async (conversationId: string) => {
-        try {
-            const token = await getToken();
-            await apiClient.delete(`/api/conversations/${conversationId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setConversations(prev => prev.filter(c => c._id !== conversationId));
-        } catch (err) {
-            const axiosError = err as AxiosError;
-            const message = (axiosError.response?.data as any)?.message || 'Failed to delete conversation';
-            throw new Error(message);
-        }
-    }, [getToken]);
-
-    useEffect(() => {
-        if (isLoaded && isSignedIn) {
-            fetchConversations();
-        } else if (isLoaded && !isSignedIn) {
-            setIsLoading(false);
-        }
-    }, [fetchConversations, isLoaded, isSignedIn]);
-
-    return {
-        conversations,
-        isLoading,
-        error,
-        fetchConversations,
-        createConversation,
-        sendMessage,
-        deleteConversation
-    };
+interface Conversation {
+  _id: string;
+  type: 'direct' | 'group' | 'channel' | 'external';
+  name?: string;
+  participants: Array<{
+    _id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  }>;
+  externalEmails: Array<{
+    email: string;
+    name?: string;
+    addedAt: Date;
+  }>;
+  messages: Array<{
+    _id: string;
+    sender?: any;
+    senderEmail?: string;
+    senderName?: string;
+    content: string;
+    type: string;
+    isFromExternal: boolean;
+    createdAt: Date;
+  }>;
+  lastMessage?: string;
+  lastMessageAt?: Date;
+  gmailThreadId?: string;
+  metadata?: {
+    subject?: string;
+  };
 }
+
+export const useConversations = () => {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch all conversations
+  const {
+    data: conversations = [],
+    isLoading,
+    refetch: refetchConversations,
+  } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: async () => {
+      const token = await getToken();
+      const response = await apiClient.get('/api/conversations', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = response.data?.data || response.data;
+      return data.conversations || [];
+    },
+  });
+
+  // Fetch specific conversation
+  const fetchConversation = async (conversationId: string) => {
+    try {
+      const token = await getToken();
+      const response = await apiClient.get(`/api/conversations/${conversationId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data?.data || response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch conversation:', error);
+      throw error;
+    }
+  };
+
+  // Create conversation mutation
+  const createConversationMutation = useMutation({
+    mutationFn: async (data: {
+      type: string;
+      name?: string;
+      participants: string[];
+      externalEmails?: string[];
+      subject?: string;
+    }) => {
+      const token = await getToken();
+      const response = await apiClient.post('/api/conversations', data, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data?.data || response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: (error: any) => {
+      setError(error.response?.data?.message || 'Failed to create conversation');
+    },
+  });
+
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async ({
+      conversationId,
+      content,
+      type = 'text',
+    }: {
+      conversationId: string;
+      content: string;
+      type?: string;
+    }) => {
+      const token = await getToken();
+      const response = await apiClient.post(
+        `/api/conversations/${conversationId}/messages`,
+        { content, type },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data?.data || response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation', variables.conversationId] });
+    },
+    onError: (error: any) => {
+      setError(error.response?.data?.message || 'Failed to send message');
+    },
+  });
+
+  // Add external email mutation
+  const addExternalEmailMutation = useMutation({
+    mutationFn: async ({
+      conversationId,
+      email,
+    }: {
+      conversationId: string;
+      email: string;
+    }) => {
+      const token = await getToken();
+      const response = await apiClient.post(
+        `/api/conversations/${conversationId}/external-email`,
+        { email },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data?.data || response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['conversation', variables.conversationId] });
+    },
+    onError: (error: any) => {
+      setError(error.response?.data?.message || 'Failed to add external email');
+    },
+  });
+
+  // Mark as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      const token = await getToken();
+      await apiClient.patch(
+        `/api/conversations/${conversationId}/read`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+
+  // Sync Gmail mutation
+  const syncGmailMutation = useMutation({
+    mutationFn: async () => {
+      const token = await getToken();
+      const response = await apiClient.post(
+        '/api/conversations/sync-gmail',
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data?.data || response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: (error: any) => {
+      setError(error.response?.data?.message || 'Failed to sync Gmail');
+    },
+  });
+
+  // Archive conversation mutation
+  const archiveConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      const token = await getToken();
+      await apiClient.patch(
+        `/api/conversations/${conversationId}/archive`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+
+  return {
+    conversations,
+    isLoading,
+    error,
+    fetchConversation,
+    createConversation: createConversationMutation.mutate,
+    isCreatingConversation: createConversationMutation.isPending,
+    sendMessage: sendMessageMutation.mutate,
+    isSendingMessage: sendMessageMutation.isPending,
+    addExternalEmail: addExternalEmailMutation.mutate,
+    isAddingEmail: addExternalEmailMutation.isPending,
+    markAsRead: markAsReadMutation.mutate,
+    syncGmail: syncGmailMutation.mutate,
+    isSyncingGmail: syncGmailMutation.isPending,
+    archiveConversation: archiveConversationMutation.mutate,
+    refetchConversations,
+  };
+};
