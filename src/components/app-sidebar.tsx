@@ -36,7 +36,7 @@ import {
     SidebarRail,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
-import { useUser, useClerk } from "@clerk/nextjs"
+import { useUser, useClerk, useOrganization } from "@clerk/nextjs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     DropdownMenu,
@@ -107,17 +107,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname()
     const { user } = useUser()
     const { signOut } = useClerk()
+    const { organization } = useOrganization()
 
     return (
         <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
             <SidebarHeader className="h-16 border-b flex items-center px-6">
                 <div className="flex items-center gap-2">
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                        <Car className="size-5" />
+                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
+                        {organization?.imageUrl ? (
+                            <img src={organization.imageUrl} alt={organization.name} className="size-full object-cover" />
+                        ) : (
+                            <Car className="size-5" />
+                        )}
                     </div>
                     <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-                        <span className="font-bold text-base tracking-tight">ACTION AUTO UTAH</span>
-                        <span className="text-[10px] font-extrabold text-green-600 uppercase tracking-widest">
+                        <span className="font-bold text-sm tracking-tight uppercase truncate max-w-[140px]">
+                            {organization?.name || "ACTION AUTO UTAH"}
+                        </span>
+                        <span className="text-[9px] font-extrabold text-green-600 uppercase tracking-widest leading-tight">
                             Powered by Supra AI
                         </span>
                     </div>

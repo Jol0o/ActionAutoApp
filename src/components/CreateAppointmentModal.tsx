@@ -1,5 +1,3 @@
-// components/CreateAppointmentModal.tsx
-
 "use client"
 
 import * as React from "react"
@@ -9,14 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, Clock, MapPin, Users, AlertCircle, Video, Link as LinkIcon } from "lucide-react"
-import { Conversation } from "@/types/appointment"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AlertCircle, MapPin, Link as LinkIcon, Loader2 } from "lucide-react"
+import { Conversation } from "@/types/appointment"
 import { UserSearch } from "@/components/UserSearch"
 import { GuestEmailInput } from "@/components/GuestEmailInput"
+import { CustomerBookingForm } from "@/components/CustomerBookingForm"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface CreateAppointmentModalProps {
   open: boolean
@@ -52,10 +51,23 @@ export function CreateAppointmentModal({
     participants: [] as string[],
     guestEmails: [] as string[],
     meetingLink: '',
-    notes: ''
+    notes: '',
+    isCustomerBooking: false,
+    customerBooking: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: ''
+    }
   })
 
-  // Update dates when preselectedDate changes
+  const [customerErrors, setCustomerErrors] = React.useState<{
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
+  }>({})
+
   React.useEffect(() => {
     if (preselectedDate) {
       setFormData(prev => ({
@@ -66,7 +78,6 @@ export function CreateAppointmentModal({
     }
   }, [preselectedDate])
 
-  // Auto-populate preselected conversation
   React.useEffect(() => {
     if (preselectedConversation) {
       setFormData(prev => ({
@@ -75,6 +86,39 @@ export function CreateAppointmentModal({
       }))
     }
   }, [preselectedConversation])
+
+  const validateCustomerBooking = (): boolean => {
+    if (!formData.isCustomerBooking) return true
+
+    const errors: typeof customerErrors = {}
+    let isValid = true
+
+    if (!formData.customerBooking.firstName.trim()) {
+      errors.firstName = 'First name is required'
+      isValid = false
+    }
+
+    if (!formData.customerBooking.lastName.trim()) {
+      errors.lastName = 'Last name is required'
+      isValid = false
+    }
+
+    if (!formData.customerBooking.email.trim()) {
+      errors.email = 'Email is required'
+      isValid = false
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customerBooking.email)) {
+      errors.email = 'Invalid email format'
+      isValid = false
+    }
+
+    if (!formData.customerBooking.phone.trim()) {
+      errors.phone = 'Phone number is required'
+      isValid = false
+    }
+
+    setCustomerErrors(errors)
+    return isValid
+  }
 
   const combineDateTime = (date: Date, timeString: string): string => {
     if (!timeString) return date.toISOString()
@@ -91,7 +135,12 @@ export function CreateAppointmentModal({
     setError(null)
 
     try {
-      // Validate dates and times
+      if (formData.isCustomerBooking && !validateCustomerBooking()) {
+        setError('Please fill in all customer information fields correctly')
+        setIsSubmitting(false)
+        return
+      }
+
       if (!formData.startTime || !formData.endTime) {
         setError('Please select both start and end times')
         setIsSubmitting(false)
@@ -113,15 +162,13 @@ export function CreateAppointmentModal({
         return
       }
 
-      // Validate participants or guests
-      if (formData.participants.length === 0 && formData.guestEmails.length === 0) {
+      if (!formData.isCustomerBooking && formData.participants.length === 0 && formData.guestEmails.length === 0) {
         setError('Please add at least one participant or guest')
         setIsSubmitting(false)
         return
       }
 
-      // Prepare data
-      const appointmentData = {
+      const appointmentData: any = {
         title: formData.title,
         description: formData.description || undefined,
         startTime: startDateTime,
@@ -130,16 +177,25 @@ export function CreateAppointmentModal({
         type: formData.type,
         entryType: formData.entryType,
         conversationId: formData.conversationId || undefined,
-        participants: formData.participants,
-        guestEmails: formData.guestEmails.length > 0 ? formData.guestEmails : undefined,
+        participants: formData.isCustomerBooking ? [] : formData.participants,
+        guestEmails: formData.isCustomerBooking ? [] : (formData.guestEmails.length > 0 ? formData.guestEmails : undefined),
         meetingLink: formData.meetingLink || undefined,
         notes: formData.notes || undefined
+      }
+
+      if (formData.isCustomerBooking) {
+        appointmentData.customerBooking = {
+          firstName: formData.customerBooking.firstName.trim(),
+          lastName: formData.customerBooking.lastName.trim(),
+          email: formData.customerBooking.email.toLowerCase().trim(),
+          phone: formData.customerBooking.phone.trim(),
+          isCustomerBooking: true
+        }
       }
 
       await onCreateAppointment(appointmentData)
       onOpenChange(false)
 
-      // Reset form
       setFormData({
         title: '',
         description: '',
@@ -154,9 +210,17 @@ export function CreateAppointmentModal({
         participants: [],
         guestEmails: [],
         meetingLink: '',
-        notes: ''
+        notes: '',
+        isCustomerBooking: false,
+        customerBooking: {
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: ''
+        }
       })
       setError(null)
+      setCustomerErrors({})
     } catch (error: any) {
       console.error('Failed to create appointment:', error)
       setError(error.message || 'Failed to create appointment. Please try again.')
@@ -180,7 +244,6 @@ export function CreateAppointmentModal({
             </Alert>
           )}
 
-          {/* Entry Type Selection */}
           <div className="space-y-2">
             <Label>Entry Type *</Label>
             <Tabs
@@ -196,6 +259,21 @@ export function CreateAppointmentModal({
               </TabsList>
             </Tabs>
           </div>
+
+          {formData.entryType === 'appointment' && (
+            <CustomerBookingForm
+              isCustomerBooking={formData.isCustomerBooking}
+              onToggle={(checked) => setFormData({ ...formData, isCustomerBooking: checked })}
+              customerData={formData.customerBooking}
+              onChange={(field, value) => 
+                setFormData({
+                  ...formData,
+                  customerBooking: { ...formData.customerBooking, [field]: value }
+                })
+              }
+              errors={customerErrors}
+            />
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>
@@ -223,7 +301,6 @@ export function CreateAppointmentModal({
             />
           </div>
 
-          {/* Date and Time Pickers */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Date *</Label>
@@ -262,28 +339,25 @@ export function CreateAppointmentModal({
             </div>
           </div>
 
-          {/* Participants Section */}
-          <div className="space-y-4 border-t pt-4">
-            <h3 className="font-medium flex items-center gap-2">
-              <Users className="size-4" />
-              Participants & Guests
-            </h3>
+          {!formData.isCustomerBooking && (
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-medium">Participants & Guests</h3>
 
-            <UserSearch
-              selectedUsers={formData.participants}
-              onSelectUsers={(userIds) => setFormData({ ...formData, participants: userIds })}
-              label="Internal Participants (Registered Users)"
-              placeholder="Search and select participants..."
-              multiple={true}
-            />
+              <UserSearch
+                selectedUsers={formData.participants}
+                onSelectUsers={(userIds) => setFormData({ ...formData, participants: userIds })}
+                label="Internal Participants (Registered Users)"
+                placeholder="Search and select participants..."
+                multiple={true}
+              />
 
-            <GuestEmailInput
-              emails={formData.guestEmails}
-              onChange={(emails) => setFormData({ ...formData, guestEmails: emails })}
-            />
-          </div>
+              <GuestEmailInput
+                emails={formData.guestEmails}
+                onChange={(emails) => setFormData({ ...formData, guestEmails: emails })}
+              />
+            </div>
+          )}
 
-          {/* Meeting Details */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="font-medium">Meeting Details</h3>
 
@@ -337,30 +411,30 @@ export function CreateAppointmentModal({
             )}
           </div>
 
-          {/* Optional Fields */}
           <div className="space-y-4 border-t pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="conversation">Link to Conversation (Optional)</Label>
-              <Select
-                value={formData.conversationId || 'none'}
-                onValueChange={(value) => {
-                  // Handle "none" value by setting empty string
-                  setFormData({ ...formData, conversationId: value === 'none' ? '' : value })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a conversation" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {conversations.map((conv) => (
-                    <SelectItem key={conv._id} value={conv._id}>
-                      {conv.type === 'group' ? conv.name : `Chat with ${conv.participants[0]?.name}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!formData.isCustomerBooking && (
+              <div className="space-y-2">
+                <Label htmlFor="conversation">Link to Conversation (Optional)</Label>
+                <Select
+                  value={formData.conversationId || 'none'}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, conversationId: value === 'none' ? '' : value })
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a conversation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {conversations.map((conv) => (
+                      <SelectItem key={conv._id} value={conv._id}>
+                        {conv.type === 'group' ? conv.name : `Chat with ${conv.participants[0]?.name}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
@@ -374,7 +448,6 @@ export function CreateAppointmentModal({
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-2 justify-end border-t pt-4">
             <Button
               type="button"
@@ -389,7 +462,14 @@ export function CreateAppointmentModal({
               disabled={isSubmitting}
               className="bg-green-500 hover:bg-green-600 text-white"
             >
-              {isSubmitting ? 'Creating...' : `Create ${formData.entryType.charAt(0).toUpperCase() + formData.entryType.slice(1)}`}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                `Create ${formData.entryType.charAt(0).toUpperCase() + formData.entryType.slice(1)}`
+              )}
             </Button>
           </div>
         </form>

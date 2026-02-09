@@ -5,169 +5,195 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MessageSquare, Users, AlertCircle } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { UserSearch } from "@/components/UserSearch"
+import { Loader2, AlertCircle, Plus, X } from "lucide-react"
+import { useConversations } from "@/hooks/useConversations"
 
 interface CreateConversationModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreateConversation: (data: any) => Promise<void>
+  onSuccess?: (conversation: any) => void
 }
 
 export function CreateConversationModal({
   open,
   onOpenChange,
-  onCreateConversation
+  onSuccess
 }: CreateConversationModalProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
-  const [conversationType, setConversationType] = React.useState<'direct' | 'group'>('direct')
-  const [formData, setFormData] = React.useState({
-    type: 'direct' as 'direct' | 'group',
-    participants: [] as string[],
-    name: ''
-  })
-
-  React.useEffect(() => {
-    setFormData(prev => ({ ...prev, type: conversationType }))
-  }, [conversationType])
+  const { createConversation, isCreatingConversation, error } = useConversations()
+  
+  const [type, setType] = React.useState<'direct' | 'group' | 'external'>('direct')
+  const [name, setName] = React.useState('')
+  const [subject, setSubject] = React.useState('')
+  const [externalEmails, setExternalEmails] = React.useState<string[]>([])
+  const [emailInput, setEmailInput] = React.useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
-    setError(null)
 
-    try {
-      // Validate participants
-      if (formData.participants.length === 0) {
-        setError('Please select at least one participant')
-        setIsSubmitting(false)
-        return
-      }
-
-      // Validate group name
-      if (formData.type === 'group' && !formData.name.trim()) {
-        setError('Please enter a group name')
-        setIsSubmitting(false)
-        return
-      }
-
-      // For direct messages, ensure only 1 participant is selected
-      if (formData.type === 'direct' && formData.participants.length > 1) {
-        setError('Direct messages can only have one participant')
-        setIsSubmitting(false)
-        return
-      }
-
-      await onCreateConversation({
-        type: formData.type,
-        participants: formData.participants,
-        ...(formData.type === 'group' && { name: formData.name })
-      })
-
-      onOpenChange(false)
-      
-      // Reset form
-      setFormData({
-        type: 'direct',
-        participants: [],
-        name: ''
-      })
-      setConversationType('direct')
-      setError(null)
-    } catch (error: any) {
-      console.error('Failed to create conversation:', error)
-      setError(error.message || 'Failed to create conversation. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+    const data: any = {
+      type,
+      participants: [], // In real app, you'd select internal users
     }
+
+    if (type === 'group' && name) {
+      data.name = name
+    }
+
+    if (type === 'external') {
+      data.externalEmails = externalEmails
+      data.subject = subject || 'Message from Action Auto'
+    }
+
+    createConversation(data, {
+      onSuccess: (conversation: any) => {
+        onSuccess?.(conversation)
+        onOpenChange(false)
+        resetForm()
+      }
+    })
+  }
+
+  const addEmail = () => {
+    if (emailInput && isValidEmail(emailInput)) {
+      setExternalEmails([...externalEmails, emailInput.toLowerCase().trim()])
+      setEmailInput('')
+    }
+  }
+
+  const removeEmail = (email: string) => {
+    setExternalEmails(externalEmails.filter(e => e !== email))
+  }
+
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  }
+
+  const resetForm = () => {
+    setType('direct')
+    setName('')
+    setSubject('')
+    setExternalEmails([])
+    setEmailInput('')
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>New Conversation</DialogTitle>
+          <DialogTitle>Start New Conversation</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={conversationType} onValueChange={(v) => setConversationType(v as 'direct' | 'group')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="direct" className="gap-2">
-              <MessageSquare className="size-4" />
-              Direct Message
-            </TabsTrigger>
-            <TabsTrigger value="group" className="gap-2">
-              <Users className="size-4" />
-              Group Chat
-            </TabsTrigger>
-          </TabsList>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-          <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          <div className="space-y-2">
+            <Label>Conversation Type</Label>
+            <Select value={type} onValueChange={(value: any) => setType(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="direct">Direct Message</SelectItem>
+                <SelectItem value="group">Group Chat</SelectItem>
+                <SelectItem value="external">External Email</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <TabsContent value="direct" className="mt-0 space-y-4">
-              <UserSearch
-                selectedUsers={formData.participants}
-                onSelectUsers={(userIds) => setFormData({ ...formData, participants: userIds })}
-                label="Select User *"
-                placeholder="Search user by name or email..."
-                multiple={false}
+          {type === 'group' && (
+            <div className="space-y-2">
+              <Label htmlFor="name">Group Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter group name"
               />
-              <p className="text-sm text-muted-foreground">
-                Start a one-on-one conversation with another user
-              </p>
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="group" className="mt-0 space-y-4">
+          {type === 'external' && (
+            <>
               <div className="space-y-2">
-                <Label htmlFor="groupName">Group Name *</Label>
+                <Label htmlFor="subject">Email Subject</Label>
                 <Input
-                  id="groupName"
-                  placeholder="e.g., Sales Team"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required={formData.type === 'group'}
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Message subject"
                 />
               </div>
 
-              <UserSearch
-                selectedUsers={formData.participants}
-                onSelectUsers={(userIds) => setFormData({ ...formData, participants: userIds })}
-                label="Add Members *"
-                placeholder="Search users by name or email..."
-                multiple={true}
-              />
-              <p className="text-sm text-muted-foreground">
-                Create a group chat with multiple participants
-              </p>
-            </TabsContent>
+              <div className="space-y-2">
+                <Label>External Email Addresses</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addEmail()
+                      }
+                    }}
+                    placeholder="customer@example.com"
+                  />
+                  <Button type="button" onClick={addEmail} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
 
-            <div className="flex gap-2 justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-green-500 hover:bg-green-600 text-white"
-              >
-                {isSubmitting ? 'Creating...' : 'Start Conversation'}
-              </Button>
-            </div>
-          </form>
-        </Tabs>
+                {externalEmails.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {externalEmails.map((email) => (
+                      <div
+                        key={email}
+                        className="flex items-center gap-2 bg-blue-100 dark:bg-blue-950 px-3 py-1 rounded-full text-sm"
+                      >
+                        <span>{email}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeEmail(email)}
+                          className="hover:text-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isCreatingConversation}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isCreatingConversation || (type === 'external' && externalEmails.length === 0)}>
+              {isCreatingConversation ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Conversation'
+              )}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   )

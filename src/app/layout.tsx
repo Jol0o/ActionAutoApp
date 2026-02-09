@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { QueryProvider } from '../providers/QueryProvider'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,7 @@ export const viewport: Viewport = {
 
 import { ClerkProvider } from '@clerk/nextjs'
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { dark } from '@clerk/themes'
 
 export default function RootLayout({
   children,
@@ -46,6 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider appearance={{
+      baseTheme: dark,
       captcha: {
         theme: 'auto',
         size: 'flexible',
@@ -57,7 +60,9 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <main className="flex-1 overflow-hidden bg-background">
-            {children}
+            <QueryProvider>
+              {children}
+            </QueryProvider>
           </main>
           <InstallPrompt />
         </body>

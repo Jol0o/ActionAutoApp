@@ -1,565 +1,365 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, MessageSquare, Users, Clock, Video, Phone, MapPin, Plus, Search, ChevronRight, Filter } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useAppointments } from "@/hooks/useAppointments"
-import { useConversations } from "@/hooks/useConversations"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar, Clock, Users, Plus, RefreshCw } from "lucide-react"
+import { AppointmentCalendar } from "@/components/AppointmentCalendar"
+import { BookedTab } from "@/components/BookedTab"
+import { ConversationPanelComplete } from "@/components/ConversationPanel"
 import { CreateAppointmentModal } from "@/components/CreateAppointmentModal"
 import { AppointmentDetailsModal } from "@/components/AppointmentDetailsModal"
-import { CreateConversationModal } from "@/components/CreateConversationModal"
-import { ConversationPanel } from "@/components/ConversationPanel"
-import { AppointmentCalendar } from "@/components/AppointmentCalendar"
-import { useUser } from "@clerk/nextjs"
-import { format } from "date-fns"
-import { Appointment } from "@/types/appointment"
-import { cn } from "@/lib/utils"
+import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
+import { GoogleCalendarSyncButton } from "@/components/GoogleCalendarSyncButton"
+import { useQuery } from "@tanstack/react-query"
+import { apiClient } from "@/lib/api-client"
+import { useAuth } from "@clerk/nextjs"
 
 export default function AppointmentsPage() {
-    const [activeTab, setActiveTab] = React.useState("calendar")
-    const [searchQuery, setSearchQuery] = React.useState("")
-    const [entryTypeFilter, setEntryTypeFilter] = React.useState<string>("all")
-    const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
-    const [isDetailsModalOpen, setIsDetailsModalOpen] = React.useState(false)
-    const [selectedAppointment, setSelectedAppointment] = React.useState<Appointment | null>(null)
-    const [preselectedDate, setPreselectedDate] = React.useState<Date | undefined>()
-    const [isCreateConversationOpen, setIsCreateConversationOpen] = React.useState(false)
-    const [selectedConversation, setSelectedConversation] = React.useState<string | null>(null)
+  const { getToken } = useAuth()
+  const [activeTab, setActiveTab] = React.useState("calendar")
+  const [createModalOpen, setCreateModalOpen] = React.useState(false)
+  const [detailsModalOpen, setDetailsModalOpen] = React.useState(false)
+  const [selectedAppointment, setSelectedAppointment] = React.useState<any>(null)
+  const [preselectedDate, setPreselectedDate] = React.useState<Date | undefined>()
+  const [preselectedConversation, setPreselectedConversation] = React.useState<string | undefined>()
 
-    const { user: currentUser } = useUser()
+  // Fetch appointments
+  const {
+    data: appointments = [],
+    isLoading,
+    refetch: refetchAppointments,
+  } = useQuery({
+    queryKey: ['appointments'],
+    queryFn: async () => {
+      const token = await getToken()
+      const response = await apiClient.get('/api/appointments', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = response.data?.data || response.data
+      return data.appointments || []
+    },
+  })
 
-    const {
-        appointments,
-        isLoading: appointmentsLoading,
-        createAppointment,
-        updateAppointment,
-        cancelAppointment,
-        deleteAppointment,
-        getAppointmentById
-    } = useAppointments()
+  // Fetch customer bookings count
+  const { data: customerBookingsCount = 0 } = useQuery({
+    queryKey: ['customer-bookings-count'],
+    queryFn: async () => {
+      const token = await getToken()
+      const response = await apiClient.get('/api/appointments/customer-bookings/list', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = response.data?.data || response.data
+      return data.appointments?.length || 0
+    },
+  })
 
-    const {
-        conversations,
-        isLoading: conversationsLoading,
-        createConversation,
-        sendMessage,
-        deleteConversation
-    } = useConversations()
+  // Fetch conversations count
+  const { data: conversationsCount = 0 } = useQuery({
+    queryKey: ['conversations-count'],
+    queryFn: async () => {
+      const token = await getToken()
+      const response = await apiClient.get('/api/conversations', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = response.data?.data || response.data
+      return data.conversations?.length || 0
+    },
+  })
 
-    // Filter appointments
-    const filteredAppointments = React.useMemo(() => {
-        let filtered = appointments
+  // Calculate statistics
+  const stats = React.useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
 
-        // Filter by entry type
-        if (entryTypeFilter !== "all") {
-            filtered = filtered.filter(a => a.entryType === entryTypeFilter)
-        }
+    const upcoming = appointments.filter((apt: any) => {
+      const start = new Date(apt.startTime)
+      return start >= today && apt.status !== 'cancelled'
+    })
 
-        // Filter by search query
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase()
-            filtered = filtered.filter(a =>
-                a.title.toLowerCase().includes(query) ||
-                a.description?.toLowerCase().includes(query) ||
-                a.location?.toLowerCase().includes(query) ||
-                a.participants.some(p => p.name.toLowerCase().includes(query))
-            )
-        }
+    const todayAppointments = appointments.filter((apt: any) => {
+      const start = new Date(apt.startTime)
+      return start >= today && start < tomorrow && apt.status !== 'cancelled'
+    })
 
-        return filtered
-    }, [appointments, entryTypeFilter, searchQuery])
-
-    // Separate conversations
-    const bookedConversations = React.useMemo(() =>
-        conversations.filter(c => c.hasAppointment),
-        [conversations]
-    )
-
-    const regularConversations = React.useMemo(() =>
-        conversations.filter(c => !c.hasAppointment),
-        [conversations]
-    )
-
-    const upcomingAppointments = React.useMemo(() =>
-        filteredAppointments.filter(a =>
-            new Date(a.startTime) > new Date() &&
-            a.status !== 'cancelled'
-        ),
-        [filteredAppointments]
-    )
-
-    const handleSelectAppointment = async (appointment: Appointment) => {
-        try {
-            // Fetch full details
-            const fullAppointment = await getAppointmentById(appointment._id)
-            setSelectedAppointment(fullAppointment)
-            setIsDetailsModalOpen(true)
-        } catch (error) {
-            console.error('Failed to fetch appointment details:', error)
-        }
+    return {
+      total: appointments.length,
+      upcoming: upcoming.length,
+      today: todayAppointments.length,
+      cancelled: appointments.filter((apt: any) => apt.status === 'cancelled').length,
     }
+  }, [appointments])
 
-    const handleCreateWithDate = (date?: Date) => {
-        setPreselectedDate(date)
-        setIsCreateModalOpen(true)
-    }
+  const handleCreateAppointment = () => {
+    setPreselectedDate(undefined)
+    setPreselectedConversation(undefined)
+    setCreateModalOpen(true)
+  }
 
-    const handleDeleteConversation = async (conversationId: string) => {
-        try {
-            await deleteConversation(conversationId)
-            if (selectedConversation === conversationId) {
-                setSelectedConversation(null)
-            }
-        } catch (error) {
-            console.error('Failed to delete conversation:', error)
-        }
-    }
+  const handleDateClick = (date?: Date) => {
+    setPreselectedDate(date)
+    setPreselectedConversation(undefined)
+    setCreateModalOpen(true)
+  }
 
-    const getConversationName = (conversation: any) => {
-        if (conversation.type === 'group') {
-            return conversation.name || 'Group Chat'
-        }
+  const handleAppointmentClick = (appointment: any) => {
+    setSelectedAppointment(appointment)
+    setDetailsModalOpen(true)
+  }
 
-        const otherParticipant = conversation.participants.find(
-            (p: any) => p._id !== currentUser?.id
-        )
+  const handleCreateFromConversation = (conversationId: string) => {
+    setPreselectedConversation(conversationId)
+    setPreselectedDate(undefined)
+    setCreateModalOpen(true)
+  }
 
-        return otherParticipant?.name || 'Unknown User'
-    }
-
-    const getAppointmentIcon = (type: string) => {
-        switch (type) {
-            case 'video': return <Video className="size-4" />
-            case 'phone': return <Phone className="size-4" />
-            case 'in-person': return <MapPin className="size-4" />
-            default: return <Calendar className="size-4" />
-        }
-    }
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'confirmed': return 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
-            case 'scheduled': return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-            case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-            case 'completed': return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-        }
-    }
-
-    const getEntryTypeColor = (entryType: string) => {
-        switch (entryType) {
-            case 'appointment': return 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
-            case 'event': return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-            case 'task': return 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
-            case 'reminder': return 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300'
-            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-        }
-    }
-
-    return (
-        <div className="min-h-screen bg-background">
-            {/* Header */}
-            {/* Header */}
-            <div className="bg-card border-b border-border px-4 sm:px-6 py-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-green-500 p-2 rounded shrink-0">
-                            <Calendar className="size-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg sm:text-xl font-semibold text-foreground">Appointments & Calendar</h1>
-                            <p className="text-xs sm:text-sm text-muted-foreground">
-                                {upcomingAppointments.length} upcoming {entryTypeFilter !== "all" ? entryTypeFilter + 's' : 'items'}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 sm:flex-none gap-2 text-xs"
-                            onClick={() => setIsCreateConversationOpen(true)}
-                        >
-                            <MessageSquare className="size-4" />
-                            New Message
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="flex-1 sm:flex-none gap-2 bg-green-500 hover:bg-green-600 text-white text-xs"
-                            onClick={() => handleCreateWithDate()}
-                        >
-                            <Plus className="size-4" />
-                            New Entry
-                        </Button>
-                    </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search appointments..."
-                            className="pl-10 bg-background text-sm"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <Select value={entryTypeFilter} onValueChange={setEntryTypeFilter}>
-                        <SelectTrigger className="w-full sm:w-[180px] text-sm">
-                            <div className="flex items-center">
-                                <Filter className="size-4 mr-2" />
-                                <SelectValue />
-                            </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Types</SelectItem>
-                            <SelectItem value="appointment">Appointments</SelectItem>
-                            <SelectItem value="event">Events</SelectItem>
-                            <SelectItem value="task">Tasks</SelectItem>
-                            <SelectItem value="reminder">Reminders</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-
-            <div className="p-3 sm:p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <div className="overflow-x-auto scrollbar-none -mx-3 px-3 sm:mx-0 sm:px-0">
-                        <TabsList className="mb-6 inline-flex w-auto sm:w-full min-w-full sm:min-w-0">
-                            <TabsTrigger value="calendar" className="gap-2 text-xs sm:text-sm whitespace-nowrap">
-                                <Calendar className="size-4" />
-                                Calendar View
-                            </TabsTrigger>
-                            <TabsTrigger value="list" className="gap-2 text-xs sm:text-sm whitespace-nowrap">
-                                <Clock className="size-4" />
-                                Upcoming
-                                {upcomingAppointments.length > 0 && (
-                                    <Badge variant="secondary" className="ml-2 text-[10px]">
-                                        {upcomingAppointments.length}
-                                    </Badge>
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="conversations" className="gap-2 text-xs sm:text-sm whitespace-nowrap">
-                                <MessageSquare className="size-4" />
-                                Messages
-                            </TabsTrigger>
-                            <TabsTrigger value="booked" className="gap-2 text-xs sm:text-sm whitespace-nowrap">
-                                <Users className="size-4" />
-                                Booked
-                            </TabsTrigger>
-                        </TabsList>
-                    </div>
-
-                    {/* Calendar View */}
-                    <TabsContent value="calendar" className="mt-0">
-                        <AppointmentCalendar
-                            appointments={filteredAppointments}
-                            onCreateAppointment={handleCreateWithDate}
-                            onSelectAppointment={handleSelectAppointment}
-                        />
-                    </TabsContent>
-
-                    {/* List View */}
-                    <TabsContent value="list" className="mt-0">
-                        <div className="grid grid-cols-1 gap-4">
-                            {appointmentsLoading ? (
-                                <Card>
-                                    <CardContent className="p-12 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-                                            <p className="text-muted-foreground">Loading appointments...</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ) : upcomingAppointments.length === 0 ? (
-                                <Card>
-                                    <CardContent className="p-12 text-center">
-                                        <Calendar className="size-16 text-muted-foreground/50 mx-auto mb-4" />
-                                        <h3 className="text-lg font-medium text-foreground mb-2">
-                                            No Upcoming Items
-                                        </h3>
-                                        <p className="text-sm text-muted-foreground mb-6">
-                                            {entryTypeFilter !== "all"
-                                                ? `No upcoming ${entryTypeFilter}s found`
-                                                : 'Create your first entry to get started'}
-                                        </p>
-                                        <Button onClick={() => handleCreateWithDate()}>
-                                            <Plus className="size-4 mr-2" />
-                                            Create Entry
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                upcomingAppointments.map((appointment) => (
-                                    <Card
-                                        key={appointment._id}
-                                        className="hover:shadow-md transition-shadow cursor-pointer"
-                                        onClick={() => handleSelectAppointment(appointment)}
-                                    >
-                                        <CardContent className="p-4 sm:p-6">
-                                            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                                                <div className="flex gap-3 sm:gap-4 flex-1">
-                                                    <div className="bg-green-100 dark:bg-green-950 p-2.5 sm:p-3 rounded-lg flex-shrink-0 self-center">
-                                                        {getAppointmentIcon(appointment.type)}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                            <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
-                                                                {appointment.title}
-                                                            </h3>
-                                                            <div className="flex gap-1">
-                                                                <Badge className={cn("text-[9px] sm:text-[10px]", getEntryTypeColor(appointment.entryType))}>
-                                                                    {appointment.entryType}
-                                                                </Badge>
-                                                                <Badge className={cn("text-[9px] sm:text-[10px]", getStatusColor(appointment.status))}>
-                                                                    {appointment.status}
-                                                                </Badge>
-                                                            </div>
-                                                        </div>
-                                                        {appointment.description && (
-                                                            <p className="text-[11px] sm:text-sm text-muted-foreground mb-3 line-clamp-2">
-                                                                {appointment.description}
-                                                            </p>
-                                                        )}
-                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Clock className="size-3.5" />
-                                                                {format(new Date(appointment.startTime), 'PPp')}
-                                                            </div>
-                                                            {appointment.location && (
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <MapPin className="size-3.5" />
-                                                                    <span className="truncate max-w-[150px] sm:max-w-none">{appointment.location}</span>
-                                                                </div>
-                                                            )}
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Users className="size-3.5" />
-                                                                {appointment.participants.length}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    className="w-full sm:w-auto gap-2 text-xs"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        handleSelectAppointment(appointment)
-                                                    }}
-                                                >
-                                                    View
-                                                    <ChevronRight className="size-3.5" />
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                            )}
-                        </div>
-                    </TabsContent>
-
-                    {/* Conversations Tab */}
-                    <TabsContent value="conversations" className="mt-0">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-1">
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                                        <CardTitle className="text-base">Conversations</CardTitle>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="gap-2"
-                                            onClick={() => setIsCreateConversationOpen(true)}
-                                        >
-                                            <Plus className="size-4" />
-                                            New
-                                        </Button>
-                                    </CardHeader>
-                                    <CardContent className="p-0">
-                                        <div className="divide-y max-h-[600px] overflow-y-auto">
-                                            {conversationsLoading ? (
-                                                <div className="p-8 text-center text-muted-foreground">
-                                                    <div className="flex flex-col items-center gap-3">
-                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-                                                        <p className="text-sm">Loading conversations...</p>
-                                                    </div>
-                                                </div>
-                                            ) : regularConversations.length === 0 ? (
-                                                <div className="p-8 text-center">
-                                                    <MessageSquare className="size-12 text-muted-foreground/50 mx-auto mb-2" />
-                                                    <p className="text-sm text-muted-foreground mb-3">
-                                                        No conversations yet
-                                                    </p>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => setIsCreateConversationOpen(true)}
-                                                    >
-                                                        Start a conversation
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                regularConversations.map((conversation) => (
-                                                    <button
-                                                        key={conversation._id}
-                                                        className={`w-full p-4 text-left hover:bg-accent transition-colors ${selectedConversation === conversation._id ? 'bg-accent' : ''
-                                                            }`}
-                                                        onClick={() => setSelectedConversation(conversation._id)}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 bg-green-100 dark:bg-green-950 rounded-full flex items-center justify-center flex-shrink-0">
-                                                                {conversation.type === 'group' ? (
-                                                                    <Users className="size-5 text-green-600 dark:text-green-400" />
-                                                                ) : (
-                                                                    <MessageSquare className="size-5 text-green-600 dark:text-green-400" />
-                                                                )}
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="font-medium text-sm truncate">
-                                                                    {getConversationName(conversation)}
-                                                                </p>
-                                                                <p className="text-xs text-muted-foreground truncate">
-                                                                    {conversation.lastMessage || 'No messages yet'}
-                                                                </p>
-                                                            </div>
-                                                            {conversation.messages.some(m => !m.readBy.includes(currentUser?.id || '')) && (
-                                                                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
-                                                            )}
-                                                        </div>
-                                                    </button>
-                                                ))
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            <div className="lg:col-span-2">
-                                {selectedConversation ? (
-                                    <ConversationPanel
-                                        conversationId={selectedConversation}
-                                        onSendMessage={sendMessage}
-                                        onCreateAppointment={() => setIsCreateModalOpen(true)}
-                                        onDeleteConversation={handleDeleteConversation}
-                                    />
-                                ) : (
-                                    <Card>
-                                        <CardContent className="p-12 text-center">
-                                            <MessageSquare className="size-16 text-muted-foreground/50 mx-auto mb-4" />
-                                            <h3 className="text-lg font-medium text-foreground mb-2">
-                                                Select a Conversation
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground mb-4">
-                                                Choose a conversation from the list to view messages
-                                            </p>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => setIsCreateConversationOpen(true)}
-                                            >
-                                                <Plus className="size-4 mr-2" />
-                                                Start New Conversation
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                )}
-                            </div>
-                        </div>
-                    </TabsContent>
-
-                    {/* Booked Appointments Tab */}
-                    <TabsContent value="booked" className="mt-0">
-                        <div className="grid grid-cols-1 gap-4">
-                            {bookedConversations.length === 0 ? (
-                                <Card>
-                                    <CardContent className="p-12 text-center">
-                                        <Users className="size-16 text-muted-foreground/50 mx-auto mb-4" />
-                                        <h3 className="text-lg font-medium text-foreground mb-2">
-                                            No Booked Appointments
-                                        </h3>
-                                        <p className="text-sm text-muted-foreground">
-                                            Conversations will appear here once appointments are scheduled
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                bookedConversations.map((conversation) => (
-                                    <Card key={conversation._id} className="hover:shadow-md transition-shadow">
-                                        <CardContent className="p-6">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex gap-4 flex-1">
-                                                    <div className="bg-blue-100 dark:bg-blue-950 p-3 rounded-lg">
-                                                        <Calendar className="size-5 text-blue-600 dark:text-blue-400" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h3 className="font-semibold text-foreground mb-1">
-                                                            {getConversationName(conversation)}
-                                                        </h3>
-                                                        {conversation.appointmentId && typeof conversation.appointmentId === 'object' && (
-                                                            <div className="space-y-2">
-                                                                <p className="text-sm text-muted-foreground">
-                                                                    {conversation.appointmentId.title}
-                                                                </p>
-                                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                                    <Clock className="size-4" />
-                                                                    {format(new Date(conversation.appointmentId.startTime), 'PPp')}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedConversation(conversation._id);
-                                                        setActiveTab("conversations");
-                                                    }}
-                                                >
-                                                    <MessageSquare className="size-4 mr-2" />
-                                                    View Chat
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                            )}
-                        </div>
-                    </TabsContent>
-                </Tabs>
-            </div>
-
-            {/* Modals */}
-            <CreateAppointmentModal
-                open={isCreateModalOpen}
-                onOpenChange={(open) => {
-                    setIsCreateModalOpen(open)
-                    if (!open) setPreselectedDate(undefined)
-                }}
-                onCreateAppointment={createAppointment}
-                conversations={conversations}
-                preselectedDate={preselectedDate}
-            />
-
-            <AppointmentDetailsModal
-                open={isDetailsModalOpen}
-                onOpenChange={setIsDetailsModalOpen}
-                appointment={selectedAppointment}
-                onUpdate={updateAppointment}
-                onCancel={cancelAppointment}
-                onDelete={deleteAppointment}
-            />
-
-            <CreateConversationModal
-                open={isCreateConversationOpen}
-                onOpenChange={setIsCreateConversationOpen}
-                onCreateConversation={createConversation}
-            />
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Appointments</h1>
+          <p className="text-muted-foreground">
+            Manage your appointments, events, and conversations
+          </p>
         </div>
-    )
+        <div className="flex items-center gap-2">
+          <GoogleCalendarSyncButton />
+          <Button onClick={handleCreateAppointment}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Appointment
+          </Button>
+        </div>
+      </div>
+
+      {/* Google Calendar Connection */}
+      <GoogleCalendarConnect />
+
+      {/* Statistics */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.today}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.upcoming}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Customer Bookings</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{customerBookingsCount}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="calendar">
+            <Calendar className="mr-2 h-4 w-4" />
+            Calendar View
+          </TabsTrigger>
+          <TabsTrigger value="upcoming">
+            <Clock className="mr-2 h-4 w-4" />
+            Upcoming
+            {stats.upcoming > 0 && (
+              <Badge className="ml-2" variant="secondary">
+                {stats.upcoming}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="booked">
+            <Users className="mr-2 h-4 w-4" />
+            Booked
+            {customerBookingsCount > 0 && (
+              <Badge className="ml-2" variant="secondary">
+                {customerBookingsCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="conversations">
+            Conversations
+            {conversationsCount > 0 && (
+              <Badge className="ml-2" variant="secondary">
+                {conversationsCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Calendar View Tab */}
+        <TabsContent value="calendar" className="space-y-4">
+          <AppointmentCalendar
+            appointments={appointments}
+            onCreateAppointment={handleDateClick}
+            onSelectAppointment={handleAppointmentClick}
+          />
+        </TabsContent>
+
+        {/* Upcoming Appointments Tab */}
+        <TabsContent value="upcoming" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Appointments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : stats.upcoming === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                  <p>No upcoming appointments</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={handleCreateAppointment}
+                  >
+                    Create Appointment
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {appointments
+                    .filter((apt: any) => {
+                      const start = new Date(apt.startTime)
+                      const today = new Date()
+                      today.setHours(0, 0, 0, 0)
+                      return start >= today && apt.status !== 'cancelled'
+                    })
+                    .sort((a: any, b: any) =>
+                      new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+                    )
+                    .slice(0, 10)
+                    .map((appointment: any) => (
+                      <Card
+                        key={appointment._id}
+                        className="hover:shadow-md transition-shadow cursor-pointer"
+                        onClick={() => handleAppointmentClick(appointment)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1 flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold">{appointment.title}</h4>
+                                <Badge
+                                  variant={
+                                    appointment.status === 'confirmed' ? 'default' :
+                                      appointment.status === 'cancelled' ? 'destructive' :
+                                        'secondary'
+                                  }
+                                  className={appointment.status === 'confirmed' ? 'bg-green-500' : ''}
+                                >
+                                  {appointment.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(appointment.startTime).toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}
+                                {' at '}
+                                {new Date(appointment.startTime).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                              {appointment.location && (
+                                <p className="text-sm text-muted-foreground">
+                                  Location: {appointment.location}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Booked (Customer Bookings) Tab */}
+        <TabsContent value="booked" className="space-y-4">
+          <BookedTab />
+        </TabsContent>
+
+        {/* Conversations Tab */}
+        <TabsContent value="conversations" className="space-y-4">
+          <ConversationPanelComplete
+            onCreateAppointment={handleCreateFromConversation}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Create Appointment Modal */}
+      <CreateAppointmentModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        onCreateAppointment={async (data) => {
+          const token = await getToken()
+          await apiClient.post('/api/appointments', data, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          refetchAppointments()
+        }}
+        conversations={[]}
+        preselectedConversation={preselectedConversation}
+        preselectedDate={preselectedDate}
+      />
+
+      {/* Appointment Details Modal */}
+      {selectedAppointment && (
+        <AppointmentDetailsModal
+          open={detailsModalOpen}
+          onOpenChange={setDetailsModalOpen}
+          appointment={selectedAppointment}
+          onUpdate={async (id: string, data: any) => {
+            await refetchAppointments()
+          }}
+          onDelete={async (id: string) => {
+            setDetailsModalOpen(false)
+            await refetchAppointments()
+          }}
+          onCancel={async (id: string) => {
+            await refetchAppointments()
+          }}
+        />
+      )}
+    </div>
+  )
 }

@@ -1,17 +1,25 @@
-// hooks/useAppointments.ts
-
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { Appointment } from '@/types/appointment';
 import { AxiosError } from 'axios';
 import { useAuth } from '@clerk/nextjs';
 
-
 export function useAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+
+  // Helper to get auth headers
+  const getAuthHeaders = async () => {
+    const token = await getToken();
+    console.log('[useAppointments] Token for request:', token ? 'exists' : 'missing');
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+  };
 
   const fetchAppointments = useCallback(async (params?: {
     status?: string;
@@ -19,43 +27,55 @@ export function useAppointments() {
     startDate?: Date;
     endDate?: Date;
   }) => {
-    if (!isSignedIn) return;
+    if (!isSignedIn) {
+      console.log('[fetchAppointments] User not signed in');
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
 
-      const token = await getToken();
-      const response = await apiClient.get('/api/appointments', {
+      const authHeaders = await getAuthHeaders();
+      console.log('[fetchAppointments] Making request with params:', params);
+      
+      const response = await apiClient.get('/api/appointments', { 
         params,
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        ...authHeaders
       });
+      
       const data = response.data?.data || response.data;
-
       setAppointments(data.appointments || []);
+      console.log('[fetchAppointments] Success, got', data.appointments?.length || 0, 'appointments');
     } catch (err) {
       const axiosError = err as AxiosError;
       const message = (axiosError.response?.data as any)?.message || 'Failed to fetch appointments';
+      console.error('[fetchAppointments] Error:', {
+        message,
+        status: axiosError.response?.status,
+        data: axiosError.response?.data
+      });
       setError(message);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isSignedIn, getToken]);
 
   const getAppointmentById = useCallback(async (id: string) => {
     try {
-      const response = await apiClient.get(`/api/appointments/${id}`);
+      const authHeaders = await getAuthHeaders();
+      const response = await apiClient.get(`/api/appointments/${id}`, authHeaders);
       return response.data?.data || response.data;
     } catch (err) {
       const axiosError = err as AxiosError;
       const message = (axiosError.response?.data as any)?.message || 'Failed to fetch appointment';
       throw new Error(message);
     }
-  }, []);
+  }, [getToken]);
 
   const createAppointment = useCallback(async (data: any) => {
+    console.log('[createAppointment] Starting with data:', data);
+    
     try {
       const sanitizedData = {
         ...data,
@@ -72,24 +92,28 @@ export function useAppointments() {
           : undefined,
       };
 
-      const response = await apiClient.post('/api/appointments', sanitizedData);
+      console.log('[createAppointment] Sanitized data:', sanitizedData);
+
+      const authHeaders = await getAuthHeaders();
+      console.log('[createAppointment] Making POST request');
+      
+      const response = await apiClient.post('/api/appointments', sanitizedData, authHeaders);
       const appointment = response.data?.data || response.data;
 
+      console.log('[createAppointment] Success:', appointment);
       setAppointments(prev => [appointment, ...prev]);
       return appointment;
     } catch (err) {
       const axiosError = err as AxiosError;
 
-
-      // Log detailed error information
       console.error('[createAppointment] Error details:', {
         status: axiosError.response?.status,
         statusText: axiosError.response?.statusText,
         data: axiosError.response?.data,
         message: axiosError.message,
+        config: axiosError.config,
       });
 
-      // Extract error message
       const errorMessage = (axiosError.response?.data as any)?.message
         || (axiosError.response?.data as any)?.error
         || axiosError.message
@@ -114,12 +138,8 @@ export function useAppointments() {
           : undefined,
       };
 
-      const token = await getToken();
-      const response = await apiClient.patch(`/api/appointments/${id}`, sanitizedData, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const authHeaders = await getAuthHeaders();
+      const response = await apiClient.patch(`/api/appointments/${id}`, sanitizedData, authHeaders);
       const updated = response.data?.data || response.data;
 
       setAppointments(prev =>
@@ -136,7 +156,8 @@ export function useAppointments() {
 
   const cancelAppointment = useCallback(async (id: string) => {
     try {
-      await apiClient.post(`/api/appointments/${id}/cancel`);
+      const authHeaders = await getAuthHeaders();
+      await apiClient.post(`/api/appointments/${id}/cancel`, {}, authHeaders);
       setAppointments(prev =>
         prev.map(a => a._id === id ? { ...a, status: 'cancelled' as const } : a)
       );
@@ -150,12 +171,8 @@ export function useAppointments() {
 
   const deleteAppointment = useCallback(async (id: string) => {
     try {
-      const token = await getToken();
-      await apiClient.delete(`/api/appointments/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const authHeaders = await getAuthHeaders();
+      await apiClient.delete(`/api/appointments/${id}`, authHeaders);
       setAppointments(prev => prev.filter(a => a._id !== id));
     } catch (err) {
       const axiosError = err as AxiosError;

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, ChevronsUpDown, X, UserPlus, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiClient } from "@/lib/api-client"
+import { useAuth } from "@clerk/nextjs"
 
 interface User {
   _id: string
@@ -38,6 +39,7 @@ export function UserSearch({
   const [isLoading, setIsLoading] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [error, setError] = React.useState<string | null>(null)
+  const { getToken, isSignedIn } = useAuth()
 
   // Fetch users when search query changes
   const fetchUsers = React.useCallback(async (query: string) => {
@@ -47,17 +49,26 @@ export function UserSearch({
       return
     }
 
+    if (!isSignedIn) {
+      setError('Please sign in to search users')
+      return
+    }
+
     try {
       setIsLoading(true)
       setError(null)
       
       console.log('[UserSearch] Searching for:', query)
       
+      const token = await getToken()
       const response = await apiClient.get('/api/users/search', {
         params: { 
           q: query.trim(), 
           limit: 10,
           excludeSelf: excludeCurrentUser ? 'true' : 'false'
+        },
+        headers: {
+          Authorization: `Bearer ${token}`
         }
       })
       
@@ -81,7 +92,7 @@ export function UserSearch({
     } finally {
       setIsLoading(false)
     }
-  }, [excludeCurrentUser])
+  }, [excludeCurrentUser, getToken, isSignedIn])
 
   // Debounce search
   React.useEffect(() => {
@@ -207,13 +218,6 @@ export function UserSearch({
           </Command>
         </PopoverContent>
       </Popover>
-      
-      {/* Debug info in development */}
-      {process.env.NODE_ENV === 'development' && searchQuery && (
-        <div className="text-xs text-muted-foreground">
-          Query: "{searchQuery}" | Users: {users.length} | Loading: {isLoading ? 'Yes' : 'No'}
-        </div>
-      )}
     </div>
   )
 }
