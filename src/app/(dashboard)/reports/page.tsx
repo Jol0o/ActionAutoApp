@@ -19,18 +19,18 @@ import { Input } from "@/components/ui/input"
 
 export default function ReportsPage() {
     return (
-        <div className="p-6 space-y-6 bg-background min-h-screen">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-background min-h-screen">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Operational Reports</h1>
-                    <p className="text-muted-foreground text-sm">Generate and manage digital condition reports, inventory audits, and financial summaries.</p>
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Operational Reports</h1>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Generate and manage digital condition reports, inventory audits, and financial summaries.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="gap-2">
-                        <Share2 className="size-4" /> Share Dashboard
+                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-2 text-xs sm:text-sm">
+                        <Share2 className="size-3.5 sm:size-4" /> Share
                     </Button>
-                    <Button size="sm" className="gap-2 bg-primary">
-                        <Printer className="size-4" /> Bulk Print
+                    <Button size="sm" className="flex-1 sm:flex-none gap-2 bg-primary text-xs sm:text-sm">
+                        <Printer className="size-3.5 sm:size-4" /> Bulk Print
                     </Button>
                 </div>
             </div>
@@ -56,15 +56,15 @@ export default function ReportsPage() {
                 />
             </div>
 
-            <Card className="border-none shadow-sm bg-white">
-                <CardHeader className="flex flex-row items-center justify-between border-b px-6">
+            <Card className="border-none shadow-sm bg-white overflow-hidden">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between border-b px-4 sm:px-6 gap-4 py-4">
                     <div>
-                        <CardTitle className="text-lg font-bold">Recent Files</CardTitle>
-                        <CardDescription>All reports generated in the last 30 days.</CardDescription>
+                        <CardTitle className="text-base sm:text-lg font-bold">Recent Files</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">All reports generated in the last 30 days.</CardDescription>
                     </div>
-                    <div className="relative w-64">
+                    <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Filter by vehicle or date..." className="pl-8 h-9" />
+                        <Input placeholder="Filter by vehicle..." className="pl-8 h-9 text-sm" />
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -83,16 +83,16 @@ export default function ReportsPage() {
 
 function ReportCard({ title, description, count, icon }: { title: string, description: string, count: number, icon: React.ReactNode }) {
     return (
-        <Card className="border-none shadow-sm hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer bg-white">
-            <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="size-10 bg-secondary rounded-lg flex items-center justify-center border shrink-0">
-                        {icon}
+        <Card className="border-none shadow-sm hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer bg-white group">
+            <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="size-8 sm:size-10 bg-secondary rounded-lg flex items-center justify-center border shrink-0">
+                        {React.cloneElement(icon as React.ReactElement<any>, { className: "size-4 sm:size-5 text-primary" })}
                     </div>
-                    <Badge variant="outline" className="h-5 text-[10px] font-bold text-muted-foreground border-border">{count} Files</Badge>
+                    <Badge variant="outline" className="h-5 text-[9px] sm:text-[10px] font-bold text-muted-foreground border-border">{count} Files</Badge>
                 </div>
-                <h3 className="font-bold text-sm text-foreground mb-1">{title}</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed italic">{description}</p>
+                <h3 className="font-bold text-xs sm:text-sm text-foreground mb-1 group-hover:text-primary transition-colors">{title}</h3>
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-relaxed italic line-clamp-2">{description}</p>
             </CardContent>
         </Card>
     )
@@ -100,24 +100,24 @@ function ReportCard({ title, description, count, icon }: { title: string, descri
 
 function FileRow({ name, date, size, type }: { name: string, date: string, size: string, type: string }) {
     return (
-        <div className="p-4 flex items-center justify-between group hover:bg-secondary transition-colors">
-            <div className="flex items-center gap-4">
-                <div className="size-10 bg-secondary rounded flex items-center justify-center text-muted-foreground shrink-0 group-hover:bg-primary/5 group-hover:text-primary transition-colors">
-                    <FileText className="size-5" />
+        <div className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between group hover:bg-secondary transition-colors gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                <div className="size-9 sm:size-10 bg-secondary rounded flex items-center justify-center text-muted-foreground shrink-0 group-hover:bg-primary/5 group-hover:text-primary transition-colors">
+                    <FileText className="size-4 sm:size-5" />
                 </div>
-                <div>
-                    <h4 className="text-sm font-bold text-foreground transition-colors">{name}</h4>
-                    <div className="flex items-center gap-3 mt-0.5 border-none">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{date}</span>
-                        <span className="text-[10px] font-bold text-muted-foreground">{size}</span>
-                        <Badge className="bg-secondary text-muted-foreground hover:bg-secondary h-4 px-1 text-[8px] border-none">{type}</Badge>
+                <div className="min-w-0">
+                    <h4 className="text-xs sm:text-sm font-bold text-foreground transition-colors truncate">{name}</h4>
+                    <div className="flex items-center gap-2 sm:gap-3 mt-0.5">
+                        <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">{date}</span>
+                        <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground">{size}</span>
+                        <Badge className="bg-secondary text-muted-foreground hover:bg-secondary h-4 px-1 text-[7px] sm:text-[8px] border-none">{type}</Badge>
                     </div>
                 </div>
             </div>
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Download className="size-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Share2 className="size-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="size-4" /></Button>
+            <div className="flex items-center justify-end gap-1 sm:gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <Button variant="secondary" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary active:scale-95"><Download className="size-3.5 sm:size-4" /></Button>
+                <Button variant="secondary" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary active:scale-95"><Share2 className="size-3.5 sm:size-4" /></Button>
+                <Button variant="secondary" size="icon" className="h-8 w-8 text-destructive hover:text-white hover:bg-destructive active:scale-95"><Trash2 className="size-3.5 sm:size-4" /></Button>
             </div>
         </div>
     )

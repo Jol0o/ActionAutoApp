@@ -6,8 +6,8 @@ import {
     Settings as SettingsIcon,
     Users,
     MapPin,
-    ShieldCheck,
-    Database,
+    Shield,
+    Zap,
     Bell,
     CreditCard,
     Download,
@@ -15,7 +15,8 @@ import {
     Trash2,
     MoreVertical,
     ChevronRight,
-    Printer
+    Printer,
+    Search
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -28,11 +29,11 @@ import { OrganizationProfile } from "@clerk/nextjs"
 
 export default function UtilitiesPage() {
     return (
-        <div className="p-6 space-y-6 bg-background min-h-screen">
+        <div className="p-4 md:p-6 space-y-6 bg-background min-h-screen">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">System Global</h1>
-                    <p className="text-muted-foreground text-sm">Manage operational reports, team permissions, and platform settings.</p>
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-lg sm:text-xl font-bold truncate">Action Auto Utah</h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground">System Administrator Settings</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="gap-2">
@@ -46,14 +47,14 @@ export default function UtilitiesPage() {
 
             <Tabs defaultValue="reports" className="w-full">
                 <TabsList className="bg-card border p-1 rounded-lg h-11 w-fit mb-6">
-                    <TabsTrigger value="reports" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-6 data-[state=active]:bg-secondary shadow-none">
-                        <FileText className="size-4" /> Reports
+                    <TabsTrigger value="reports" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-2 md:px-6 data-[state=active]:bg-secondary shadow-none">
+                        <FileText className="size-4 hidden md:block" /> Reports
                     </TabsTrigger>
-                    <TabsTrigger value="settings" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-6 data-[state=active]:bg-secondary shadow-none">
-                        <SettingsIcon className="size-4" /> Settings
+                    <TabsTrigger value="settings" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-2 md:px-6 data-[state=active]:bg-secondary shadow-none">
+                        <SettingsIcon className="size-4 hidden md:block" /> Settings
                     </TabsTrigger>
-                    <TabsTrigger value="dealership" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-6 data-[state=active]:bg-secondary shadow-none">
-                        <MapPin className="size-4" /> Dealership & Team
+                    <TabsTrigger value="dealership" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-2 md:px-6 data-[state=active]:bg-secondary shadow-none">
+                        <MapPin className="size-4 hidden md:block" /> Organization
                     </TabsTrigger>
                 </TabsList>
 
@@ -69,7 +70,7 @@ export default function UtilitiesPage() {
                             title="Inventory Health"
                             description="Daily audit of ADOL, pricing efficiency, and status flow."
                             count={12}
-                            icon={<ShieldCheck className="size-5 text-primary" />}
+                            icon={<Shield className="size-5 text-primary" />}
                         />
                         <ReportCard
                             title="Financial Audits"
@@ -95,54 +96,63 @@ export default function UtilitiesPage() {
                 </TabsContent>
 
                 <TabsContent value="settings" className="m-0">
-                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                        <div className="xl:col-span-1 space-y-2">
-                            <SettingNavItem label="Account Details" icon={<Users className="size-4" />} active />
-                            <SettingNavItem label="Locations" icon={<MapPin className="size-4" />} />
-                            <SettingNavItem label="Notifications" icon={<Bell className="size-4" />} />
-                            <SettingNavItem label="Integrations" icon={<Database className="size-4" />} />
-                            <SettingNavItem label="Security / RBAC" icon={<ShieldCheck className="size-4" />} />
+                    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">System Settings</h1>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Manage your dealership profile, security preferences, and global configurations.</p>
                         </div>
 
-                        <div className="xl:col-span-3 space-y-6">
-                            <Card className="border-none shadow-sm bg-card">
-                                <CardHeader>
-                                    <CardTitle className="text-lg font-bold">General Settings</CardTitle>
-                                    <CardDescription>Configure your primary dealership identity and data syncing.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold text-muted-foreground uppercase">Dealership Name</label>
-                                            <Input value="Action Auto Utah" />
+                        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 sm:gap-6">
+                            {/* Settings Navigation */}
+                            <div className="xl:col-span-1 space-y-2">
+                                <SettingNavItem label="Account Details" icon={<Users className="size-4" />} active />
+                                <SettingNavItem label="Locations & Inventory" icon={<MapPin className="size-4" />} />
+                                <SettingNavItem label="Security / RBAC" icon={<Shield className="size-4" />} />
+                                <SettingNavItem label="Notifications" icon={<Bell className="size-4" />} />
+                                <SettingNavItem label="Integrations" icon={<Zap className="size-4" />} />
+                            </div>
+
+                            {/* Main Settings Content */}
+                            <div className="xl:col-span-3 space-y-4 sm:space-y-6">
+                                <Card className="border-none shadow-sm  overflow-hidden">
+                                    <CardHeader>
+                                        <CardTitle className="text-base sm:text-lg">Dealership Profile</CardTitle>
+                                        <CardDescription className="text-xs sm:text-sm">Information about your primary dealership location.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold text-muted-foreground uppercase">Dealership Name</label>
+                                                <Input value="Action Auto Utah" />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold text-muted-foreground uppercase">Primary Location</label>
+                                                <Input value="Lehi, UT" />
+                                            </div>
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold text-muted-foreground uppercase">Primary Location</label>
-                                            <Input value="Lehi, UT" />
+                                        <Separator />
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <h4 className="text-sm font-bold text-foreground">Auto-Sync DMS</h4>
+                                                <p className="text-xs text-muted-foreground">Automatically pull VIN-level data from your dealer management system.</p>
+                                            </div>
+                                            <Switch checked />
                                         </div>
-                                    </div>
-                                    <Separator />
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <h4 className="text-sm font-bold text-foreground">Auto-Sync DMS</h4>
-                                            <p className="text-xs text-muted-foreground">Automatically pull VIN-level data from your dealer management system.</p>
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <h4 className="text-sm font-bold text-foreground">Public Condition Reports</h4>
+                                                <p className="text-xs text-muted-foreground">Make condition reports accessible via public URL for VDP pages.</p>
+                                            </div>
+                                            <Switch checked />
                                         </div>
-                                        <Switch checked />
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <h4 className="text-sm font-bold text-foreground">Public Condition Reports</h4>
-                                            <p className="text-xs text-muted-foreground">Make condition reports accessible via public URL for VDP pages.</p>
+                                        <Separator />
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="outline" size="sm">Cancel</Button>
+                                            <Button size="sm" className="bg-primary px-8">Save Changes</Button>
                                         </div>
-                                        <Switch checked />
-                                    </div>
-                                    <Separator />
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="outline" size="sm">Cancel</Button>
-                                        <Button size="sm" className="bg-primary px-8">Save Changes</Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </div>
                     </div>
                 </TabsContent>
@@ -153,17 +163,28 @@ export default function UtilitiesPage() {
                             <CardTitle className="text-lg font-bold">Dealership Management</CardTitle>
                             <CardDescription>Manage your dealership profile, invites, and team roles.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-0 sm:p-6 min-h-[600px]">
+                        <CardContent className="p-0 sm:p-6 min-h-[400px]">
                             <OrganizationProfile
+                                routing="hash" // Use hash routing to avoid catch-all route requirement
                                 appearance={{
+                                    variables: {
+                                        fontSize: '0.875rem',
+                                        spacingUnit: '0.8rem',
+                                    },
                                     elements: {
                                         rootBox: "w-full",
-                                        card: "shadow-none border border-border rounded-xl w-full bg-transparent",
-                                        navbar: "hidden", // We already have our own navigation layout
+                                        card: "shadow-none border-0 sm:border sm:border-border sm:rounded-xl w-full bg-transparent",
+                                        navbar: "hidden sm:flex flex-col border-r border-border bg-transparent w-auto min-w-[200px]",
+                                        navbarMobileMenuButton: "flex sm:hidden",
+                                        headerTitle: "text-lg font-bold",
+                                        headerSubtitle: "text-xs text-muted-foreground",
                                         pageScrollable: "p-0",
-                                        headerTitle: "text-xl font-bold",
-                                        organizationProfilePage__organizationSettings: "p-6",
-                                        organizationProfilePage__members: "p-6",
+                                        organizationProfilePage__start: "p-0",
+                                        organizationProfilePage__organizationSettings: "p-3 sm:p-6 max-w-full",
+                                        organizationProfilePage__members: "p-3 sm:p-6 max-w-full",
+                                        formButtonPrimary: "text-xs sm:text-sm",
+                                        formFieldInput: "text-xs sm:text-sm h-8 sm:h-9",
+                                        breadcrumbs: "hidden",
                                     }
                                 }}
                             />
@@ -177,15 +198,15 @@ export default function UtilitiesPage() {
 
 function ReportCard({ title, description, count, icon }: { title: string, description: string, count: number, icon: React.ReactNode }) {
     return (
-        <Card className="border-none shadow-sm hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer bg-card">
-            <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
+        <Card className="border-none shadow-sm hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer bg-card p-0 md:p-4">
+            <CardContent className="p-2 md:p-6">
+                <div className="flex gap-2 md:items-center justify-between mb-4">
                     <div className="size-10 bg-secondary rounded-lg flex items-center justify-center border shrink-0">
                         {icon}
                     </div>
                     <Badge variant="outline" className="h-5 text-[10px] font-bold text-muted-foreground">{count} Files</Badge>
                 </div>
-                <h3 className="font-bold text-sm text-foreground mb-1">{title}</h3>
+                <h3 className="font-bold text-xs md:text-sm text-foreground mb-1">{title}</h3>
                 <p className="text-[11px] text-muted-foreground leading-relaxed italic">{description}</p>
             </CardContent>
         </Card>
@@ -194,13 +215,13 @@ function ReportCard({ title, description, count, icon }: { title: string, descri
 
 function FileRow({ name, date, size, type }: { name: string, date: string, size: string, type: string }) {
     return (
-        <div className="p-4 flex items-center justify-between group hover:bg-secondary transition-colors">
-            <div className="flex items-center gap-4">
+        <div className="p-4 flex items-center justify-between group hover:bg-secondary transition-colors overflow-hidden">
+            <div className="flex w-3/4 items-center gap-4 overflow-hidden text-clip ">
                 <div className="size-10 bg-secondary rounded flex items-center justify-center text-muted-foreground shrink-0">
                     <FileText className="size-5" />
                 </div>
-                <div>
-                    <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{name}</h4>
+                <div >
+                    <h4 className="text-sm font-bold overflow-hidden text-foreground group-hover:text-primary transition-colors text-ellipsis md:text-clip">{name}</h4>
                     <div className="flex items-center gap-3 mt-0.5 border-none">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">{date}</span>
                         <span className="text-[10px] font-bold text-muted-foreground">{size}</span>
@@ -208,7 +229,7 @@ function FileRow({ name, date, size, type }: { name: string, date: string, size:
                     </div>
                 </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex  items-center gap-2">
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Download className="size-4" /></Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Share2 className="size-4" /></Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="size-4" /></Button>
@@ -219,12 +240,14 @@ function FileRow({ name, date, size, type }: { name: string, date: string, size:
 
 function SettingNavItem({ label, icon, active }: { label: string, icon: React.ReactNode, active?: boolean }) {
     return (
-        <div className={`p-3 flex items-center justify-between rounded-lg cursor-pointer transition-colors ${active ? 'bg-primary text-primary-foreground font-bold shadow-md' : 'hover:bg-secondary font-medium text-muted-foreground'}`}>
-            <div className="flex items-center gap-3">
+        <button
+            className={`w-full flex items-center gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${active ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-secondary'
+                }`}
+        >
+            <div className={`transition-transform duration-200 ${active ? 'scale-110' : ''}`}>
                 {icon}
-                <span className="text-xs uppercase tracking-tight leading-none">{label}</span>
             </div>
-            <ChevronRight className={`size-3 ${active ? 'opacity-50' : 'text-muted-foreground'}`} />
-        </div>
+            {label}
+        </button>
     )
 }

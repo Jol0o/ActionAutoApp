@@ -94,28 +94,28 @@ export default function AppointmentsPage() {
     }
   }, [appointments])
 
-const handleCreateAppointment = () => {
-  setPreselectedDate(undefined)
-  setPreselectedConversation(undefined)
-  setCreateModalOpen(true)
-}
+  const handleCreateAppointment = () => {
+    setPreselectedDate(undefined)
+    setPreselectedConversation(undefined)
+    setCreateModalOpen(true)
+  }
 
-const handleDateClick = (date?: Date) => {
-  setPreselectedDate(date)
-  setPreselectedConversation(undefined)
-  setCreateModalOpen(true)
-}
+  const handleDateClick = (date?: Date) => {
+    setPreselectedDate(date)
+    setPreselectedConversation(undefined)
+    setCreateModalOpen(true)
+  }
 
-const handleAppointmentClick = (appointment: any) => {
-  setSelectedAppointment(appointment)
-  setDetailsModalOpen(true)
-}
+  const handleAppointmentClick = (appointment: any) => {
+    setSelectedAppointment(appointment)
+    setDetailsModalOpen(true)
+  }
 
-const handleCreateFromConversation = (conversationId: string) => {
-  setPreselectedConversation(conversationId)
-  setPreselectedDate(undefined)
-  setCreateModalOpen(true)
-}
+  const handleCreateFromConversation = (conversationId: string) => {
+    setPreselectedConversation(conversationId)
+    setPreselectedDate(undefined)
+    setCreateModalOpen(true)
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -258,7 +258,7 @@ const handleCreateFromConversation = (conversationId: string) => {
                       today.setHours(0, 0, 0, 0)
                       return start >= today && apt.status !== 'cancelled'
                     })
-                    .sort((a: any, b: any) => 
+                    .sort((a: any, b: any) =>
                       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
                     )
                     .slice(0, 10)
@@ -276,8 +276,8 @@ const handleCreateFromConversation = (conversationId: string) => {
                                 <Badge
                                   variant={
                                     appointment.status === 'confirmed' ? 'default' :
-                                    appointment.status === 'cancelled' ? 'destructive' :
-                                    'secondary'
+                                      appointment.status === 'cancelled' ? 'destructive' :
+                                        'secondary'
                                   }
                                   className={appointment.status === 'confirmed' ? 'bg-green-500' : ''}
                                 >
@@ -342,24 +342,24 @@ const handleCreateFromConversation = (conversationId: string) => {
         preselectedDate={preselectedDate}
       />
 
-    {/* Appointment Details Modal */}
-        {selectedAppointment && (
+      {/* Appointment Details Modal */}
+      {selectedAppointment && (
         <AppointmentDetailsModal
-            open={detailsModalOpen}
-            onOpenChange={setDetailsModalOpen}
-            appointment={selectedAppointment}
-            onUpdate={async (id: string, data: any) => {
+          open={detailsModalOpen}
+          onOpenChange={setDetailsModalOpen}
+          appointment={selectedAppointment}
+          onUpdate={async (id: string, data: any) => {
             await refetchAppointments()
-            }}
-            onDelete={async (id: string) => {
+          }}
+          onDelete={async (id: string) => {
             setDetailsModalOpen(false)
             await refetchAppointments()
-            }}
-            onCancel={async (id: string) => {
+          }}
+          onCancel={async (id: string) => {
             await refetchAppointments()
-            }}
+          }}
         />
-        )}
+      )}
     </div>
   )
 }

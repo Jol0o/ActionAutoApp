@@ -31,6 +31,7 @@ import { Progress } from "@/components/ui/progress"
 import { formatCurrency } from "@/utils/format"
 
 import { useAuth } from "@clerk/nextjs"
+import Link from "next/link"
 
 export default function Dashboard() {
   const [data, setData] = React.useState<DashboardData | null>(null)
@@ -78,12 +79,12 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-8 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-8 max-w-7xl mx-auto">
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard Overview</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground">Dashboard Overview</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
             Real-time business performance and inventory analytics.
           </p>
         </div>
@@ -96,7 +97,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title={isLoading ? '...' : data?.inventory.totalActive.toString() || '0'}
           label="Active Inventory"
@@ -129,19 +130,19 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quote Funnel */}
-        <Card className="lg:col-span-2 border-border shadow-sm overflow-hidden">
-          <CardHeader className="bg-muted/50 border-b border-border pb-4">
-            <div className="flex items-center justify-between">
+        <Card className="lg:col-span-2 p-0 border-border shadow-sm overflow-hidden">
+          <CardHeader className="bg-muted/50 border-b border-border py-2 md:py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <CardTitle className="text-lg">Quote Performance</CardTitle>
-                <CardDescription>Conversion and funnel tracking</CardDescription>
+                <CardTitle className="text-base sm:text-lg">Quote Performance</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Conversion and funnel tracking</CardDescription>
               </div>
-              <Badge className="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950">
+              <Badge className="w-fit text-[10px] sm:text-sm bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950">
                 {data?.quotes.conversionRate}% Conversion
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="py-2 md:py-6">
             {isLoading ? (
               <div className="space-y-6">
                 {[1, 2, 3].map(i => <div key={i} className="h-10 bg-muted animate-pulse rounded" />)}
@@ -168,12 +169,12 @@ export default function Dashboard() {
         </Card>
 
         {/* Recon Pipeline */}
-        <Card className="border-border shadow-sm overflow-hidden">
-          <CardHeader className="bg-muted/50 border-b border-border pb-4">
+        <Card className="border-border shadow-sm overflow-hidden p-0">
+          <CardHeader className="bg-muted/50 border-b border-border py-2 md:py-4">
             <CardTitle className="text-lg">Recon Pipeline</CardTitle>
             <CardDescription>Status distribution</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="py-2 md:py-6">
             {isLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-muted animate-pulse rounded" />)}
@@ -201,68 +202,70 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity Section */}
-      <Card className="border-border shadow-sm overflow-hidden">
-        <CardHeader className="bg-muted/50 border-b border-border py-4">
+      <Card className="border-border shadow-sm overflow-hidden p-0">
+        <CardHeader className="bg-muted/50 border-b border-border py-2 md:py-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Recent Inventory Updates</CardTitle>
-            <button className="text-xs font-semibold text-primary hover:underline flex items-center">
+            <Link href="/inventory" className="text-xs font-semibold text-primary hover:underline flex items-center">
               View All Inventory <ChevronRight className="size-3 ml-1" />
-            </button>
+            </Link>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow className="hover:bg-transparent border-border">
-                <TableHead className="font-semibold text-foreground">Vehicle</TableHead>
-                <TableHead className="font-semibold text-foreground">Price</TableHead>
-                <TableHead className="font-semibold text-foreground">Status</TableHead>
-                <TableHead className="font-semibold text-foreground">Last Updated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                [1, 2, 3].map(i => (
-                  <TableRow key={i} className="border-border">
-                    <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
-                    <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
-                    <TableCell><div className="h-4 w-20 bg-muted animate-pulse rounded" /></TableCell>
-                    <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
-                  </TableRow>
-                ))
-              ) : data?.recentActivity.length ? (
-                data.recentActivity.map((activity, i) => (
-                  <TableRow key={i} className="hover:bg-muted/50 transition-colors cursor-default group border-border">
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span className="text-foreground">{activity.year} {activity.make} {activity.modelName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-bold text-foreground">{formatCurrency(activity.price)}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={getStatusColor(activity.status)}
-                      >
-                        {activity.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {new Date(activity.updatedAt).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow className="border-border">
-                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
-                    No recent activity found.
-                  </TableCell>
+        <CardContent className="p-0 overflow-x-auto scrollbar-thin">
+          <div className="min-w-[600px] md:min-w-full">
+            <Table>
+              <TableHeader className="bg-muted/30">
+                <TableRow className="hover:bg-transparent border-border">
+                  <TableHead className="font-semibold text-foreground">Vehicle</TableHead>
+                  <TableHead className="font-semibold text-foreground">Price</TableHead>
+                  <TableHead className="font-semibold text-foreground">Status</TableHead>
+                  <TableHead className="font-semibold text-foreground">Last Updated</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  [1, 2, 3].map(i => (
+                    <TableRow key={i} className="border-border">
+                      <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
+                      <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
+                      <TableCell><div className="h-4 w-20 bg-muted animate-pulse rounded" /></TableCell>
+                      <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : data?.recentActivity.length ? (
+                  data.recentActivity.map((activity, i) => (
+                    <TableRow key={i} className="hover:bg-muted/50 transition-colors cursor-default group border-border">
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span className="text-foreground">{activity.year} {activity.make} {activity.modelName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-bold text-foreground">{formatCurrency(activity.price)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={getStatusColor(activity.status)}
+                        >
+                          {activity.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {new Date(activity.updatedAt).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow className="border-border">
+                    <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                      No recent activity found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -284,17 +287,17 @@ function MetricCard({
 }) {
   return (
     <Card className="border-border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="p-2.5 bg-muted rounded-lg group-hover:bg-muted/80 transition-colors border border-transparent group-hover:border-border">
-            {icon}
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-2 sm:mb-4">
+          <div className="p-1.5 sm:p-2.5 bg-muted rounded-lg group-hover:bg-muted/80 transition-colors border border-transparent group-hover:border-border">
+            {React.cloneElement(icon as React.ReactElement<any>, { className: "size-4 sm:size-5" })}
           </div>
-          {loading && <Loader2 className="size-4 text-muted-foreground animate-spin" />}
+          {loading && <Loader2 className="size-3 sm:size-4 text-muted-foreground animate-spin" />}
         </div>
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <h3 className="text-2xl font-bold tracking-tight text-foreground">{title}</h3>
-          <p className="text-[11px] text-muted-foreground group-hover:text-muted-foreground/80 transition-colors uppercase font-semibold tracking-wider">{description}</p>
+        <div className="space-y-0.5 sm:space-y-1">
+          <p className="text-[10px] sm:text-sm font-medium text-muted-foreground">{label}</p>
+          <h3 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground">{title}</h3>
+          <p className="text-[9px] sm:text-[11px] text-muted-foreground group-hover:text-muted-foreground/80 transition-colors uppercase font-semibold tracking-wider line-clamp-2">{description}</p>
         </div>
       </CardContent>
     </Card>

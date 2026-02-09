@@ -302,7 +302,7 @@ export default function ProfilePage() {
               {/* Modern Profile Badge */}
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-white/40 via-emerald-300 to-white/40 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-                <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-2 sm:border-4 border-white/40 flex items-center justify-center shadow-2xl overflow-hidden">
+                <div className="relative w-16 h-16 xs:w-20 xs:h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-2 sm:border-4 border-white/40 flex items-center justify-center shadow-2xl overflow-hidden">
                   {/* Speedometer Arc */}
                   <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
                     <circle
@@ -327,42 +327,42 @@ export default function ProfilePage() {
                       style={{ animationDuration: '8s' }}
                     />
                   </svg>
-                  <User className="size-10 sm:size-12 md:size-16 text-white relative z-10" />
+                  <User className="size-8 xs:size-10 sm:size-12 md:size-16 text-white relative z-10" />
                 </div>
                 {/* Animated Status Dot */}
-                <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 flex items-center justify-center">
-                  <div className="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-green-400 rounded-full animate-ping opacity-75"></div>
-                  <div className="relative w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full border-2 sm:border-4 border-white shadow-xl flex items-center justify-center">
-                    <div className="w-2 h-2 sm:w-3 sm:h-3 bg-white rounded-full animate-pulse"></div>
+                <div className="absolute -bottom-0.5 -right-0.5 xs:-bottom-1 xs:-right-1 sm:-bottom-2 sm:-right-2 flex items-center justify-center">
+                  <div className="absolute w-4 h-4 xs:w-6 xs:h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-green-400 rounded-full animate-ping opacity-75"></div>
+                  <div className="relative w-4 h-4 xs:w-6 xs:h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full border-2 sm:border-4 border-white shadow-xl flex items-center justify-center">
+                    <div className="w-1 h-1 xs:w-2 xs:h-2 sm:w-3 sm:h-3 bg-white rounded-full animate-pulse"></div>
                   </div>
                 </div>
               </div>
 
               <div className="flex-1 text-center sm:text-left">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-2 sm:mb-3">
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight drop-shadow-lg">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-1 sm:gap-4 mb-2 sm:mb-3">
+                  <h1 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight drop-shadow-lg">
                     My Profile
                   </h1>
-                  <div className="hidden lg:flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
-                    <Truck className="size-4 sm:size-5 text-white" />
+                  <div className="hidden xs:flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
+                    <Truck className="size-3.5 sm:size-5 text-white" />
                     <div className="w-px h-3 sm:h-4 bg-white/40"></div>
-                    <span className="text-white text-xs sm:text-sm font-medium">Transport Hub</span>
+                    <span className="text-white text-[10px] sm:text-sm font-medium">Transport Hub</span>
                   </div>
                 </div>
-                <p className="text-white/95 text-sm sm:text-base md:text-lg mb-3 sm:mb-5 max-w-3xl leading-relaxed drop-shadow px-2 sm:px-0">
+                <p className="text-white/95 text-xs xs:text-sm sm:text-base md:text-lg mb-3 sm:mb-5 max-w-3xl leading-relaxed drop-shadow px-2 sm:px-0">
                   Manage your account settings, preferences, and delivery information all in one place
                 </p>
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3">
-                  <Badge className="bg-white/25 text-white border border-white/40 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold hover:bg-white/35 transition-all shadow-lg">
-                    <Shield className="size-3 sm:size-4 mr-1.5 sm:mr-2" />
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-3">
+                  <Badge className="bg-white/25 text-white border border-white/40 backdrop-blur-md px-2 xs:px-3 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-sm font-semibold hover:bg-white/35 transition-all shadow-lg">
+                    <Shield className="size-3 sm:size-4 mr-1 sm:mr-2" />
                     {profile?.role === 'admin' ? 'Fleet Manager' : 'User'}
                   </Badge>
-                  <Badge className="bg-white/25 text-white border border-white/40 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold hover:bg-white/35 transition-all shadow-lg">
-                    <Check className="size-3 sm:size-4 mr-1.5 sm:mr-2" />
+                  <Badge className="bg-white/25 text-white border border-white/40 backdrop-blur-md px-2 xs:px-3 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-sm font-semibold hover:bg-white/35 transition-all shadow-lg">
+                    <Check className="size-3 sm:size-4 mr-1 sm:mr-2" />
                     Verified
                   </Badge>
-                  <Badge className="bg-white/25 text-white border border-white/40 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold hover:bg-white/35 transition-all shadow-lg">
-                    <TrendingUp className="size-3 sm:size-4 mr-1.5 sm:mr-2" />
+                  <Badge className="bg-white/25 text-white border border-white/40 backdrop-blur-md px-2 xs:px-3 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-sm font-semibold hover:bg-white/35 transition-all shadow-lg">
+                    <TrendingUp className="size-3 sm:size-4 mr-1 sm:mr-2" />
                     Active
                   </Badge>
                 </div>
@@ -580,17 +580,17 @@ export default function ProfilePage() {
                       return (
                         <div
                           key={item.key}
-                          className="flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-100 dark:border-gray-800 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 hover:border-green-300 dark:hover:border-green-700 hover:shadow-md transition-all duration-300 group/item"
+                          className="flex items-center justify-between p-2 sm:p-4 rounded-lg sm:rounded-xl border border-gray-100 dark:border-gray-800 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 hover:border-green-300 dark:hover:border-green-700 hover:shadow-md transition-all duration-300 group/item"
                         >
-                          <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center group-hover/item:bg-green-200 dark:group-hover/item:bg-green-800 transition-colors flex-shrink-0">
-                              <Icon className="size-4 sm:size-5 text-green-600 dark:text-green-400" />
+                              <Icon className="size-3.5 sm:size-5 text-green-600 dark:text-green-400" />
                             </div>
-                            <div className="space-y-0.5 sm:space-y-1 flex-1 min-w-0">
-                              <Label htmlFor={item.key} className="text-xs sm:text-sm font-semibold cursor-pointer text-gray-900 dark:text-gray-100 block">
+                            <div className="space-y-0 flex-1 min-w-0">
+                              <Label htmlFor={item.key} className="text-[11px] sm:text-sm font-semibold cursor-pointer text-gray-900 dark:text-gray-100 block truncate">
                                 {item.label}
                               </Label>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 sm:line-clamp-2">
+                              <p className="text-[9px] sm:text-xs text-gray-600 dark:text-gray-400 truncate">
                                 {item.description}
                               </p>
                             </div>
@@ -601,7 +601,7 @@ export default function ProfilePage() {
                             onCheckedChange={(checked) =>
                               handlePreferenceChange(item.key as keyof NotificationPreferences, checked)
                             }
-                            className="data-[state=checked]:bg-green-600 dark:data-[state=checked]:bg-green-500 ml-2 flex-shrink-0"
+                            className="scale-75 sm:scale-100 data-[state=checked]:bg-green-600 dark:data-[state=checked]:bg-green-500 ml-2 flex-shrink-0"
                           />
                         </div>
                       );
