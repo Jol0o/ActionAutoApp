@@ -26,6 +26,25 @@ export default function AppointmentsPage() {
   const [preselectedDate, setPreselectedDate] = React.useState<Date | undefined>()
   const [preselectedConversation, setPreselectedConversation] = React.useState<string | undefined>()
 
+  // Check URL params for Google Calendar connection result
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('calendar_connected') === 'true') {
+      // Clean up URL params after reading them
+      window.history.replaceState({}, '', '/appointments')
+    }
+    if (params.get('calendar_error')) {
+      console.error('Google Calendar connection error:', params.get('calendar_error'))
+      window.history.replaceState({}, '', '/appointments')
+    }
+  }, [])
+
+  // Helper to get auth headers
+  const getAuthHeaders = async () => {
+    const token = await getToken()
+    return { headers: { Authorization: `Bearer ${token}` } }
+  }
+
   // Fetch appointments
   const {
     data: appointments = [],
@@ -34,10 +53,8 @@ export default function AppointmentsPage() {
   } = useQuery({
     queryKey: ['appointments'],
     queryFn: async () => {
-      const token = await getToken()
-      const response = await apiClient.get('/api/appointments', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const headers = await getAuthHeaders()
+      const response = await apiClient.get('/api/appointments', headers)
       const data = response.data?.data || response.data
       return data.appointments || []
     },
@@ -47,10 +64,8 @@ export default function AppointmentsPage() {
   const { data: customerBookingsCount = 0 } = useQuery({
     queryKey: ['customer-bookings-count'],
     queryFn: async () => {
-      const token = await getToken()
-      const response = await apiClient.get('/api/appointments/customer-bookings/list', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const headers = await getAuthHeaders()
+      const response = await apiClient.get('/api/appointments/customer-bookings/list', headers)
       const data = response.data?.data || response.data
       return data.appointments?.length || 0
     },
@@ -60,10 +75,8 @@ export default function AppointmentsPage() {
   const { data: conversationsCount = 0 } = useQuery({
     queryKey: ['conversations-count'],
     queryFn: async () => {
-      const token = await getToken()
-      const response = await apiClient.get('/api/conversations', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const headers = await getAuthHeaders()
+      const response = await apiClient.get('/api/conversations', headers)
       const data = response.data?.data || response.data
       return data.conversations?.length || 0
     },
@@ -117,6 +130,26 @@ export default function AppointmentsPage() {
     setCreateModalOpen(true)
   }
 
+  // FIX: Actually make API calls for update/cancel/delete operations
+  const handleUpdateAppointment = async (id: string, data: any) => {
+    const headers = await getAuthHeaders()
+    await apiClient.patch(`/api/appointments/${id}`, data, headers)
+    await refetchAppointments()
+  }
+
+  const handleCancelAppointment = async (id: string) => {
+    const headers = await getAuthHeaders()
+    await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers)
+    await refetchAppointments()
+  }
+
+  const handleDeleteAppointment = async (id: string) => {
+    const headers = await getAuthHeaders()
+    await apiClient.delete(`/api/appointments/${id}`, headers)
+    setDetailsModalOpen(false)
+    await refetchAppointments()
+  }
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
@@ -128,7 +161,7 @@ export default function AppointmentsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <GoogleCalendarSyncButton />
+          <GoogleCalendarSyncButton onSyncComplete={() => refetchAppointments()} />
           <Button onClick={handleCreateAppointment}>
             <Plus className="mr-2 h-4 w-4" />
             New Appointment
@@ -331,10 +364,8 @@ export default function AppointmentsPage() {
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         onCreateAppointment={async (data) => {
-          const token = await getToken()
-          await apiClient.post('/api/appointments', data, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
+          const headers = await getAuthHeaders()
+          await apiClient.post('/api/appointments', data, headers)
           refetchAppointments()
         }}
         conversations={[]}
@@ -348,16 +379,9 @@ export default function AppointmentsPage() {
           open={detailsModalOpen}
           onOpenChange={setDetailsModalOpen}
           appointment={selectedAppointment}
-          onUpdate={async (id: string, data: any) => {
-            await refetchAppointments()
-          }}
-          onDelete={async (id: string) => {
-            setDetailsModalOpen(false)
-            await refetchAppointments()
-          }}
-          onCancel={async (id: string) => {
-            await refetchAppointments()
-          }}
+          onUpdate={handleUpdateAppointment}
+          onDelete={handleDeleteAppointment}
+          onCancel={handleCancelAppointment}
         />
       )}
     </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { 
   Send, Search, Calendar, Plus, Loader2, MessageSquare, 
   Mail, RefreshCw, AlertCircle, ExternalLink 
@@ -44,6 +44,16 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   const typingTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('[ConversationPanel] State:', { 
+      isLoading, 
+      error, 
+      conversationsCount: conversations?.length,
+      conversations: conversations 
+    });
+  }, [isLoading, error, conversations]);
+
   // Auto-scroll to bottom when messages change
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -52,7 +62,6 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
   // Handle new messages from socket
   React.useEffect(() => {
     if (newMessage && selectedConversation?._id === newMessage.conversationId) {
-      // Refresh conversation to get new message
       refetchConversations()
     }
   }, [newMessage, selectedConversation, refetchConversations])
@@ -108,30 +117,42 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
   }
 
   const filteredConversations = React.useMemo(() => {
-    if (!conversations) return []
+    if (!conversations || !Array.isArray(conversations)) {
+      console.warn('[ConversationPanel] Conversations is not an array:', conversations);
+      return [];
+    }
     
     if (!searchQuery) return conversations
 
     const query = searchQuery.toLowerCase()
     return conversations.filter((conv: any) => {
       const name = conv.name?.toLowerCase() || ''
-      const participantNames = conv.participants.map((p: any) => p.name.toLowerCase()).join(' ')
-      const externalEmails = conv.externalEmails.map((e: any) => e.email.toLowerCase()).join(' ')
+      const participantNames = conv.participants?.map((p: any) => p.name?.toLowerCase()).join(' ') || ''
+      const externalEmails = conv.externalEmails?.map((e: any) => e.email?.toLowerCase()).join(' ') || ''
       
       return name.includes(query) || participantNames.includes(query) || externalEmails.includes(query)
     })
   }, [conversations, searchQuery])
 
   const getConversationName = (conv: any) => {
-    if (conv.name) return conv.name
-    if (conv.externalEmails.length > 0) {
-      return conv.externalEmails[0].email
+    if (!conv) return 'Unknown';
+    if (conv.name) return conv.name;
+    if (conv.externalEmails?.length > 0) {
+      return conv.externalEmails[0].email || 'External';
     }
-    return conv.participants.map((p: any) => p.name).join(', ')
+    if (conv.participants?.length > 0) {
+      const names = conv.participants
+        .map((p: any) => p?.name)
+        .filter(Boolean)
+        .join(', ');
+      return names || 'Unknown';
+    }
+    return 'Unknown';
   }
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    if (!name) return '??';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';
   }
 
   const handleSyncGmail = () => {
@@ -142,21 +163,52 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
     })
   }
 
+  // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[600px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Loading conversations...</span>
-      </div>
+      <Card>
+        <CardContent className="flex items-center justify-center h-[600px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-2" />
+            <span className="text-muted-foreground">Loading conversations...</span>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
+  // Error state
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <Card>
+        <CardContent className="p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error Loading Conversations</AlertTitle>
+            <AlertDescription className="mt-2">
+              {error}
+              <div className="mt-4 flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => refetchConversations()}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setCreateModalOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -169,6 +221,11 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
           <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-green-500" : ""}>
             {isConnected ? "Connected" : "Offline"}
           </Badge>
+          {conversations && (
+            <Badge variant="outline">
+              {conversations.length} total
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -207,18 +264,23 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-[500px]">
-              {filteredConversations.length === 0 ? (
+              {!filteredConversations || filteredConversations.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
                   <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                  No conversations found
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => setCreateModalOpen(true)}
-                  >
-                    Start a conversation
-                  </Button>
+                  <p className="mb-2">
+                    {searchQuery ? 'No conversations found' : 'No conversations yet'}
+                  </p>
+                  {!searchQuery && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => setCreateModalOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Start a conversation
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-1 p-2">
@@ -232,7 +294,7 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
                     >
                       <div className="flex items-start gap-3">
                         <Avatar>
-                          <AvatarImage src={conv.participants[0]?.avatar} />
+                          <AvatarImage src={conv.participants?.[0]?.avatar} />
                           <AvatarFallback>
                             {conv.type === 'external' ? <Mail className="h-4 w-4" /> : getInitials(getConversationName(conv))}
                           </AvatarFallback>
@@ -277,7 +339,7 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={selectedConversation.participants[0]?.avatar} />
+                      <AvatarImage src={selectedConversation.participants?.[0]?.avatar} />
                       <AvatarFallback>
                         {selectedConversation.type === 'external' ? (
                           <Mail className="h-4 w-4" />
@@ -298,8 +360,8 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
                       </h3>
                       <p className="text-xs text-muted-foreground">
                         {selectedConversation.type === 'external'
-                          ? `${selectedConversation.externalEmails.length} external recipient(s)`
-                          : `${selectedConversation.participants.length} participant(s)`}
+                          ? `${selectedConversation.externalEmails?.length || 0} external recipient(s)`
+                          : `${selectedConversation.participants?.length || 0} participant(s)`}
                       </p>
                     </div>
                   </div>
@@ -411,7 +473,7 @@ export function ConversationPanelComplete({ onCreateAppointment }: ConversationP
                 </div>
                 {selectedConversation.type === 'external' && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    Messages will be sent to: {selectedConversation.externalEmails.map((e: any) => e.email).join(', ')}
+                    Messages will be sent to: {selectedConversation.externalEmails?.map((e: any) => e.email).join(', ')}
                   </p>
                 )}
               </div>

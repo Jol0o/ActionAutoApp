@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { RefreshCw, Check, AlertCircle } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@clerk/nextjs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface GoogleCalendarSyncButtonProps {
   onSyncComplete?: () => void
@@ -13,69 +12,85 @@ interface GoogleCalendarSyncButtonProps {
 
 export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncButtonProps) {
   const { getToken } = useAuth()
-  const [isSyncing, setIsSyncing] = React.useState(false)
-  const [syncResult, setSyncResult] = React.useState<{
-    success: boolean
-    message: string
-  } | null>(null)
+  const [syncing, setSyncing] = React.useState(false)
+  const [syncResult, setSyncResult] = React.useState<'success' | 'error' | null>(null)
+  const [message, setMessage] = React.useState<string | null>(null)
 
   const handleSync = async () => {
     try {
-      setIsSyncing(true)
+      setSyncing(true)
       setSyncResult(null)
+      setMessage(null)
 
       const token = await getToken()
-      const response = await apiClient.post('/api/appointments/sync/google-calendar', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+
+      const response = await apiClient.post(
+        '/api/appointments/sync/google-calendar',
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 120000,
+        }
+      )
 
       const data = response.data?.data || response.data
-      setSyncResult({
-        success: true,
-        message: `Successfully synced ${data.syncedAppointments || 0} appointments from Google Calendar`
-      })
+      const syncedCount = data?.syncedAppointments ?? 0
 
-      if (onSyncComplete) {
-        onSyncComplete()
+      setSyncResult('success')
+      setMessage(`Synced ${syncedCount} new event${syncedCount !== 1 ? 's' : ''} from Google Calendar.`)
+
+      onSyncComplete?.()
+    } catch (error: any) {
+      console.error('Google Calendar sync error:', error)
+      setSyncResult('error')
+
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        setMessage('Sync timed out. Try again — subsequent syncs are faster.')
+      } else if (error.message === 'Network Error') {
+        setMessage('Could not reach the server. Check that your backend is running and Google Calendar is connected.')
+      } else if (error.response?.status === 401) {
+        setMessage('Google Calendar not connected. Please connect it first.')
+      } else {
+        setMessage(error.response?.data?.message || 'Failed to sync with Google Calendar.')
       }
-
-      // Auto-hide success message after 5 seconds
+    } finally {
+      setSyncing(false)
       setTimeout(() => {
         setSyncResult(null)
-      }, 5000)
-    } catch (error: any) {
-      console.error('Failed to sync with Google Calendar:', error)
-      setSyncResult({
-        success: false,
-        message: error.response?.data?.message || 'Failed to sync with Google Calendar'
-      })
-    } finally {
-      setIsSyncing(false)
+        setMessage(null)
+      }, 4000)
     }
   }
 
   return (
-    <div className="space-y-2">
+    <div className="relative">
       <Button
         variant="outline"
         size="sm"
         onClick={handleSync}
-        disabled={isSyncing}
-        className="gap-2"
+        disabled={syncing}
       >
-        <RefreshCw className={`size-4 ${isSyncing ? 'animate-spin' : ''}`} />
-        {isSyncing ? 'Syncing...' : 'Sync with Google Calendar'}
+        {syncing ? (
+          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+        ) : syncResult === 'success' ? (
+          <Check className="mr-2 h-4 w-4 text-green-500" />
+        ) : syncResult === 'error' ? (
+          <AlertCircle className="mr-2 h-4 w-4 text-red-500" />
+        ) : (
+          <RefreshCw className="mr-2 h-4 w-4" />
+        )}
+        {syncing ? 'Syncing...' : 'Sync Calendar'}
       </Button>
-
-      {syncResult && (
-        <Alert variant={syncResult.success ? "default" : "destructive"} className="mt-2">
-          {syncResult.success ? (
-            <Check className="h-4 w-4" />
-          ) : (
-            <AlertCircle className="h-4 w-4" />
-          )}
-          <AlertDescription>{syncResult.message}</AlertDescription>
-        </Alert>
+      {message && (
+        <div
+          className={`absolute top-full right-0 mt-2 px-3 py-2 rounded-md text-sm whitespace-nowrap z-50 shadow-md ${
+            syncResult === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}
+        >
+          {message}
+        </div>
       )}
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
@@ -41,33 +41,86 @@ export const useConversations = () => {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all conversations
+  // Fetch all conversations with proper error handling
   const {
     data: conversations = [],
     isLoading,
+    error: queryError,
     refetch: refetchConversations,
   } = useQuery({
     queryKey: ['conversations'],
     queryFn: async () => {
-      const token = await getToken();
-      const response = await apiClient.get('/api/conversations', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = response.data?.data || response.data;
-      return data.conversations || [];
+      try {
+        console.log('[useConversations] Fetching conversations...');
+        const token = await getToken();
+        
+        if (!token) {
+          console.error('[useConversations] No auth token available');
+          throw new Error('Not authenticated');
+        }
+
+        console.log('[useConversations] Making API request to /api/conversations');
+        const response = await apiClient.get('/api/conversations', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        console.log('[useConversations] Raw response:', response);
+        
+        // Handle different response formats
+        let conversationsData = [];
+        
+        if (response.data?.data?.conversations) {
+          conversationsData = response.data.data.conversations;
+        } else if (response.data?.conversations) {
+          conversationsData = response.data.conversations;
+        } else if (Array.isArray(response.data?.data)) {
+          conversationsData = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          conversationsData = response.data;
+        } else {
+          console.warn('[useConversations] Unexpected response format:', response.data);
+          conversationsData = [];
+        }
+
+        console.log('[useConversations] Parsed conversations:', conversationsData.length, 'items');
+        return conversationsData;
+      } catch (error: any) {
+        console.error('[useConversations] Error fetching conversations:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        throw error;
+      }
     },
+    retry: 1,
+    retryDelay: 1000,
   });
+
+  // Set error state from query error
+  React.useEffect(() => {
+    if (queryError) {
+      const errorMessage = (queryError as any)?.response?.data?.message 
+        || (queryError as any)?.message 
+        || 'Failed to load conversations';
+      setError(errorMessage);
+      console.error('[useConversations] Query error:', errorMessage);
+    } else {
+      setError(null);
+    }
+  }, [queryError]);
 
   // Fetch specific conversation
   const fetchConversation = async (conversationId: string) => {
     try {
+      console.log('[useConversations] Fetching conversation:', conversationId);
       const token = await getToken();
       const response = await apiClient.get(`/api/conversations/${conversationId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data?.data || response.data;
     } catch (error: any) {
-      console.error('Failed to fetch conversation:', error);
+      console.error('[useConversations] Failed to fetch conversation:', error);
       throw error;
     }
   };
@@ -81,6 +134,7 @@ export const useConversations = () => {
       externalEmails?: string[];
       subject?: string;
     }) => {
+      console.log('[useConversations] Creating conversation:', data);
       const token = await getToken();
       const response = await apiClient.post('/api/conversations', data, {
         headers: { Authorization: `Bearer ${token}` },
@@ -88,10 +142,13 @@ export const useConversations = () => {
       return response.data?.data || response.data;
     },
     onSuccess: () => {
+      console.log('[useConversations] Conversation created successfully');
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
     onError: (error: any) => {
-      setError(error.response?.data?.message || 'Failed to create conversation');
+      const errorMessage = error.response?.data?.message || 'Failed to create conversation';
+      console.error('[useConversations] Create error:', errorMessage);
+      setError(errorMessage);
     },
   });
 
@@ -106,6 +163,7 @@ export const useConversations = () => {
       content: string;
       type?: string;
     }) => {
+      console.log('[useConversations] Sending message to:', conversationId);
       const token = await getToken();
       const response = await apiClient.post(
         `/api/conversations/${conversationId}/messages`,
@@ -115,11 +173,14 @@ export const useConversations = () => {
       return response.data?.data || response.data;
     },
     onSuccess: (_, variables) => {
+      console.log('[useConversations] Message sent successfully');
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['conversation', variables.conversationId] });
     },
     onError: (error: any) => {
-      setError(error.response?.data?.message || 'Failed to send message');
+      const errorMessage = error.response?.data?.message || 'Failed to send message';
+      console.error('[useConversations] Send message error:', errorMessage);
+      setError(errorMessage);
     },
   });
 
@@ -132,6 +193,7 @@ export const useConversations = () => {
       conversationId: string;
       email: string;
     }) => {
+      console.log('[useConversations] Adding external email:', email);
       const token = await getToken();
       const response = await apiClient.post(
         `/api/conversations/${conversationId}/external-email`,
@@ -144,7 +206,9 @@ export const useConversations = () => {
       queryClient.invalidateQueries({ queryKey: ['conversation', variables.conversationId] });
     },
     onError: (error: any) => {
-      setError(error.response?.data?.message || 'Failed to add external email');
+      const errorMessage = error.response?.data?.message || 'Failed to add external email';
+      console.error('[useConversations] Add email error:', errorMessage);
+      setError(errorMessage);
     },
   });
 
@@ -166,6 +230,7 @@ export const useConversations = () => {
   // Sync Gmail mutation
   const syncGmailMutation = useMutation({
     mutationFn: async () => {
+      console.log('[useConversations] Syncing Gmail...');
       const token = await getToken();
       const response = await apiClient.post(
         '/api/conversations/sync-gmail',
@@ -174,11 +239,14 @@ export const useConversations = () => {
       );
       return response.data?.data || response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[useConversations] Gmail synced:', data);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
     onError: (error: any) => {
-      setError(error.response?.data?.message || 'Failed to sync Gmail');
+      const errorMessage = error.response?.data?.message || 'Failed to sync Gmail';
+      console.error('[useConversations] Sync Gmail error:', errorMessage);
+      setError(errorMessage);
     },
   });
 
@@ -200,7 +268,7 @@ export const useConversations = () => {
   return {
     conversations,
     isLoading,
-    error,
+    error: error || (queryError ? 'Failed to load conversations' : null),
     fetchConversation,
     createConversation: createConversationMutation.mutate,
     isCreatingConversation: createConversationMutation.isPending,
