@@ -13,12 +13,13 @@ import { CreateAppointmentModal } from "@/components/CreateAppointmentModal"
 import { AppointmentDetailsModal } from "@/components/AppointmentDetailsModal"
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
 import { GoogleCalendarSyncButton } from "@/components/GoogleCalendarSyncButton"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@clerk/nextjs"
 
 export default function AppointmentsPage() {
   const { getToken } = useAuth()
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = React.useState("calendar")
   const [createModalOpen, setCreateModalOpen] = React.useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = React.useState(false)
@@ -30,14 +31,19 @@ export default function AppointmentsPage() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('calendar_connected') === 'true') {
+      console.log('[AppointmentsPage] Google Calendar connected, refreshing data...')
       // Clean up URL params after reading them
       window.history.replaceState({}, '', '/appointments')
+      // Force refetch appointments after calendar connection
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      }, 1000)
     }
     if (params.get('calendar_error')) {
-      console.error('Google Calendar connection error:', params.get('calendar_error'))
+      console.error('[AppointmentsPage] Google Calendar connection error:', params.get('calendar_error'))
       window.history.replaceState({}, '', '/appointments')
     }
-  }, [])
+  }, [queryClient])
 
   // Helper to get auth headers
   const getAuthHeaders = async () => {
@@ -45,40 +51,80 @@ export default function AppointmentsPage() {
     return { headers: { Authorization: `Bearer ${token}` } }
   }
 
-  // Fetch appointments
+  // Fetch appointments with improved error handling and logging
   const {
     data: appointments = [],
     isLoading,
     refetch: refetchAppointments,
+    error: appointmentsError,
+    isFetching,
   } = useQuery({
     queryKey: ['appointments'],
     queryFn: async () => {
-      const headers = await getAuthHeaders()
-      const response = await apiClient.get('/api/appointments', headers)
-      const data = response.data?.data || response.data
-      return data.appointments || []
+      try {
+        console.log('[AppointmentsPage] Fetching appointments...')
+        const headers = await getAuthHeaders()
+        const response = await apiClient.get('/api/appointments', headers)
+        const data = response.data?.data || response.data
+        const appts = data.appointments || []
+        
+        console.log('[AppointmentsPage] ✅ Fetched appointments:', {
+          total: appts.length,
+          sample: appts.slice(0, 3).map((a: any) => ({
+            id: a._id,
+            title: a.title,
+            startTime: a.startTime,
+            entryType: a.entryType,
+            status: a.status
+          }))
+        })
+        
+        return appts
+      } catch (error: any) {
+        console.error('[AppointmentsPage] ❌ Error fetching appointments:', error)
+        throw error
+      }
     },
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 0, // Always consider data stale
+    refetchOnMount: 'always', // Always refetch when component mounts
+    refetchOnWindowFocus: false, // Don't refetch on window focus to avoid spam
   })
 
   // Fetch customer bookings count
-  const { data: customerBookingsCount = 0 } = useQuery({
+  const { data: customerBookingsCount = 0, refetch: refetchCustomerBookings } = useQuery({
     queryKey: ['customer-bookings-count'],
     queryFn: async () => {
-      const headers = await getAuthHeaders()
-      const response = await apiClient.get('/api/appointments/customer-bookings/list', headers)
-      const data = response.data?.data || response.data
-      return data.appointments?.length || 0
+      try {
+        const headers = await getAuthHeaders()
+        const response = await apiClient.get('/api/appointments/customer-bookings/list', headers)
+        const data = response.data?.data || response.data
+        const count = data.appointments?.length || 0
+        console.log('[AppointmentsPage] Customer bookings count:', count)
+        return count
+      } catch (error) {
+        console.error('[AppointmentsPage] Error fetching customer bookings:', error)
+        return 0
+      }
     },
   })
 
   // Fetch conversations count
-  const { data: conversationsCount = 0 } = useQuery({
+  const { data: conversationsCount = 0, refetch: refetchConversations } = useQuery({
     queryKey: ['conversations-count'],
     queryFn: async () => {
-      const headers = await getAuthHeaders()
-      const response = await apiClient.get('/api/conversations', headers)
-      const data = response.data?.data || response.data
-      return data.conversations?.length || 0
+      try {
+        const headers = await getAuthHeaders()
+        const response = await apiClient.get('/api/conversations', headers)
+        const data = response.data?.data || response.data
+        const count = data.conversations?.length || 0
+        console.log('[AppointmentsPage] Conversations count:', count)
+        return count
+      } catch (error) {
+        console.error('[AppointmentsPage] Error fetching conversations:', error)
+        return 0
+      }
     },
   })
 
@@ -130,24 +176,108 @@ export default function AppointmentsPage() {
     setCreateModalOpen(true)
   }
 
-  // FIX: Actually make API calls for update/cancel/delete operations
+  // Update appointment handler
   const handleUpdateAppointment = async (id: string, data: any) => {
-    const headers = await getAuthHeaders()
-    await apiClient.patch(`/api/appointments/${id}`, data, headers)
-    await refetchAppointments()
+    try {
+      console.log('[AppointmentsPage] Updating appointment:', id)
+      const headers = await getAuthHeaders()
+      await apiClient.patch(`/api/appointments/${id}`, data, headers)
+      
+      // Invalidate all appointment-related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] })
+      ])
+      
+      console.log('[AppointmentsPage] ✅ Appointment updated successfully')
+    } catch (error) {
+      console.error('[AppointmentsPage] ❌ Error updating appointment:', error)
+      throw error
+    }
   }
 
+  // Cancel appointment handler
   const handleCancelAppointment = async (id: string) => {
-    const headers = await getAuthHeaders()
-    await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers)
-    await refetchAppointments()
+    try {
+      console.log('[AppointmentsPage] Cancelling appointment:', id)
+      const headers = await getAuthHeaders()
+      await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers)
+      
+      // Invalidate all appointment-related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] })
+      ])
+      
+      console.log('[AppointmentsPage] ✅ Appointment cancelled successfully')
+    } catch (error) {
+      console.error('[AppointmentsPage] ❌ Error cancelling appointment:', error)
+      throw error
+    }
   }
 
+  // Delete appointment handler
   const handleDeleteAppointment = async (id: string) => {
-    const headers = await getAuthHeaders()
-    await apiClient.delete(`/api/appointments/${id}`, headers)
-    setDetailsModalOpen(false)
-    await refetchAppointments()
+    try {
+      console.log('[AppointmentsPage] Deleting appointment:', id)
+      const headers = await getAuthHeaders()
+      await apiClient.delete(`/api/appointments/${id}`, headers)
+      setDetailsModalOpen(false)
+      
+      // Invalidate all appointment-related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] })
+      ])
+      
+      console.log('[AppointmentsPage] ✅ Appointment deleted successfully')
+    } catch (error) {
+      console.error('[AppointmentsPage] ❌ Error deleting appointment:', error)
+      throw error
+    }
+  }
+
+  // Handle sync complete - IMPROVED with better logging and forced refetch
+  const handleSyncComplete = async () => {
+    console.log('[AppointmentsPage] 🔄 Sync completed, refreshing all data...')
+    
+    try {
+      // Invalidate all queries simultaneously
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['conversations-count'], refetchType: 'active' })
+      ])
+      
+      console.log('[AppointmentsPage] ✅ All queries invalidated')
+      
+      // Force manual refetch as backup to ensure data updates
+      setTimeout(async () => {
+        console.log('[AppointmentsPage] 🔄 Force refetching all data...')
+        const [apptResult, bookingsResult, convResult] = await Promise.all([
+          refetchAppointments(),
+          refetchCustomerBookings(),
+          refetchConversations()
+        ])
+        
+        console.log('[AppointmentsPage] ✅ Force refetch complete:', {
+          appointments: {
+            success: apptResult.isSuccess,
+            count: apptResult.data?.length || 0
+          },
+          customerBookings: {
+            success: bookingsResult.isSuccess,
+            count: bookingsResult.data || 0
+          },
+          conversations: {
+            success: convResult.isSuccess,
+            count: convResult.data || 0
+          }
+        })
+      }, 500)
+    } catch (error) {
+      console.error('[AppointmentsPage] ❌ Error refreshing data:', error)
+    }
   }
 
   return (
@@ -161,7 +291,7 @@ export default function AppointmentsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <GoogleCalendarSyncButton onSyncComplete={() => refetchAppointments()} />
+          <GoogleCalendarSyncButton onSyncComplete={handleSyncComplete} />
           <Button onClick={handleCreateAppointment}>
             <Plus className="mr-2 h-4 w-4" />
             New Appointment
@@ -181,6 +311,9 @@ export default function AppointmentsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
+            {isFetching && (
+              <p className="text-xs text-muted-foreground mt-1">Updating...</p>
+            )}
           </CardContent>
         </Card>
 
@@ -215,158 +348,201 @@ export default function AppointmentsPage() {
         </Card>
       </div>
 
+      {/* Error message if appointments failed to load */}
+      {appointmentsError && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-red-600">
+              Failed to load appointments. Please try refreshing the page.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => refetchAppointments()}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Loading indicator */}
+      {isLoading && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading appointments...</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="calendar">
-            <Calendar className="mr-2 h-4 w-4" />
-            Calendar View
-          </TabsTrigger>
-          <TabsTrigger value="upcoming">
-            <Clock className="mr-2 h-4 w-4" />
-            Upcoming
-            {stats.upcoming > 0 && (
-              <Badge className="ml-2" variant="secondary">
-                {stats.upcoming}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="booked">
-            <Users className="mr-2 h-4 w-4" />
-            Booked
-            {customerBookingsCount > 0 && (
-              <Badge className="ml-2" variant="secondary">
-                {customerBookingsCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="conversations">
-            Conversations
-            {conversationsCount > 0 && (
-              <Badge className="ml-2" variant="secondary">
-                {conversationsCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Calendar View Tab */}
-        <TabsContent value="calendar" className="space-y-4">
-          <AppointmentCalendar
-            appointments={appointments}
-            onCreateAppointment={handleDateClick}
-            onSelectAppointment={handleAppointmentClick}
-          />
-        </TabsContent>
-
-        {/* Upcoming Appointments Tab */}
-        <TabsContent value="upcoming" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upcoming Appointments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : stats.upcoming === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                  <p>No upcoming appointments</p>
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={handleCreateAppointment}
-                  >
-                    Create Appointment
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {appointments
-                    .filter((apt: any) => {
-                      const start = new Date(apt.startTime)
-                      const today = new Date()
-                      today.setHours(0, 0, 0, 0)
-                      return start >= today && apt.status !== 'cancelled'
-                    })
-                    .sort((a: any, b: any) =>
-                      new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-                    )
-                    .slice(0, 10)
-                    .map((appointment: any) => (
-                      <Card
-                        key={appointment._id}
-                        className="hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => handleAppointmentClick(appointment)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1 flex-1">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-semibold">{appointment.title}</h4>
-                                <Badge
-                                  variant={
-                                    appointment.status === 'confirmed' ? 'default' :
-                                      appointment.status === 'cancelled' ? 'destructive' :
-                                        'secondary'
-                                  }
-                                  className={appointment.status === 'confirmed' ? 'bg-green-500' : ''}
-                                >
-                                  {appointment.status}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(appointment.startTime).toLocaleDateString('en-US', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                })}
-                                {' at '}
-                                {new Date(appointment.startTime).toLocaleTimeString('en-US', {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                })}
-                              </p>
-                              {appointment.location && (
-                                <p className="text-sm text-muted-foreground">
-                                  Location: {appointment.location}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
+      {!isLoading && (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="calendar">
+              <Calendar className="mr-2 h-4 w-4" />
+              Calendar View
+            </TabsTrigger>
+            <TabsTrigger value="upcoming">
+              <Clock className="mr-2 h-4 w-4" />
+              Upcoming
+              {stats.upcoming > 0 && (
+                <Badge className="ml-2" variant="secondary">
+                  {stats.upcoming}
+                </Badge>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </TabsTrigger>
+            <TabsTrigger value="booked">
+              <Users className="mr-2 h-4 w-4" />
+              Booked
+              {customerBookingsCount > 0 && (
+                <Badge className="ml-2" variant="secondary">
+                  {customerBookingsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="conversations">
+              Conversations
+              {conversationsCount > 0 && (
+                <Badge className="ml-2" variant="secondary">
+                  {conversationsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Booked (Customer Bookings) Tab */}
-        <TabsContent value="booked" className="space-y-4">
-          <BookedTab />
-        </TabsContent>
+          {/* Calendar View Tab */}
+          <TabsContent value="calendar" className="space-y-4">
+            <AppointmentCalendar
+              appointments={appointments}
+              onCreateAppointment={handleDateClick}
+              onSelectAppointment={handleAppointmentClick}
+            />
+          </TabsContent>
 
-        {/* Conversations Tab */}
-        <TabsContent value="conversations" className="space-y-4">
-          <ConversationPanelComplete
-            onCreateAppointment={handleCreateFromConversation}
-          />
-        </TabsContent>
-      </Tabs>
+          {/* Upcoming Appointments Tab */}
+          <TabsContent value="upcoming" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Upcoming Appointments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {stats.upcoming === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                    <p>No upcoming appointments</p>
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      onClick={handleCreateAppointment}
+                    >
+                      Create Appointment
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {appointments
+                      .filter((apt: any) => {
+                        const start = new Date(apt.startTime)
+                        const today = new Date()
+                        today.setHours(0, 0, 0, 0)
+                        return start >= today && apt.status !== 'cancelled'
+                      })
+                      .sort((a: any, b: any) =>
+                        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+                      )
+                      .slice(0, 10)
+                      .map((appointment: any) => (
+                        <Card
+                          key={appointment._id}
+                          className="hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => handleAppointmentClick(appointment)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-semibold">{appointment.title}</h4>
+                                  <Badge
+                                    variant={
+                                      appointment.status === 'confirmed' ? 'default' :
+                                        appointment.status === 'cancelled' ? 'destructive' :
+                                          'secondary'
+                                    }
+                                    className={appointment.status === 'confirmed' ? 'bg-green-500' : ''}
+                                  >
+                                    {appointment.status}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {new Date(appointment.startTime).toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                  })}
+                                  {' at '}
+                                  {new Date(appointment.startTime).toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
+                                {appointment.location && (
+                                  <p className="text-sm text-muted-foreground">
+                                    Location: {appointment.location}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Booked (Customer Bookings) Tab */}
+          <TabsContent value="booked" className="space-y-4">
+            <BookedTab />
+          </TabsContent>
+
+          {/* Conversations Tab */}
+          <TabsContent value="conversations" className="space-y-4">
+            <ConversationPanelComplete
+              onCreateAppointment={handleCreateFromConversation}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
 
       {/* Create Appointment Modal */}
       <CreateAppointmentModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         onCreateAppointment={async (data) => {
-          const headers = await getAuthHeaders()
-          await apiClient.post('/api/appointments', data, headers)
-          refetchAppointments()
+          try {
+            console.log('[AppointmentsPage] Creating appointment:', data)
+            const headers = await getAuthHeaders()
+            await apiClient.post('/api/appointments', data, headers)
+            
+            // Invalidate all appointment-related queries
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+              queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] })
+            ])
+            
+            console.log('[AppointmentsPage] ✅ Appointment created successfully')
+          } catch (error) {
+            console.error('[AppointmentsPage] ❌ Error creating appointment:', error)
+            throw error
+          }
         }}
         conversations={[]}
         preselectedConversation={preselectedConversation}
