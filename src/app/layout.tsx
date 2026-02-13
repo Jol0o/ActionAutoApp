@@ -3,7 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from '../providers/QueryProvider'
 import "mapbox-gl/dist/mapbox-gl.css";
+<<<<<<< HEAD
 
+=======
+>>>>>>> e8cfe2633dc30f90eda18b6b65112f7a1247a99f
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
