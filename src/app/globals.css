@@ -3,6 +3,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @custom-variant dark (&:is(.dark *));
+@import "mapbox-gl/dist/mapbox-gl.css";
+
 
 :root {
   --background: oklch(0.99 0 0);
