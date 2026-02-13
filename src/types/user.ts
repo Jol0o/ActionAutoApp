@@ -8,6 +8,8 @@ export interface UserProfile {
   role: 'user' | 'admin';
   notificationPreferences: NotificationPreferences;
   theme: 'light' | 'dark';
+  organizationId?: string;
+  organizationRole?: 'admin' | 'member';
   subscription?: {
     plan: 'free' | 'starter' | 'professional' | 'enterprise';
     status: 'active' | 'inactive' | 'trial' | 'cancelled';
@@ -35,4 +37,5 @@ export interface UpdateProfileRequest {
   avatar?: string;
   notificationPreferences?: Partial<NotificationPreferences>;
   theme?: 'light' | 'dark';
+  organizationId?: string;
 }

@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 
+import { useOrg } from "@/hooks/useOrg"
+
 function DashboardLayoutContent({
     children,
 }: Readonly<{
@@ -30,10 +32,12 @@ function DashboardLayoutContent({
 }>) {
     const { user } = useUser();
     const { signOut } = useClerk();
-    const { organization, isLoaded } = useOrganization();
+    // Use custom hook for organization context
+    const { organization, isLoaded } = useOrg();
     const router = useRouter();
 
     React.useEffect(() => {
+        // If loaded and no organization is found, redirect to selection/onboarding
         if (isLoaded && !organization) {
             router.push('/org-selection');
         }
