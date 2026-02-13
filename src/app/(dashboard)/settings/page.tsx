@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { OrganizationProfile } from "@clerk/nextjs"
+import { OrganizationMembersSettings } from "@/components/settings/org-members-settings"
 
 export default function UtilitiesPage() {
     return (
@@ -163,31 +163,8 @@ export default function UtilitiesPage() {
                             <CardTitle className="text-lg font-bold">Dealership Management</CardTitle>
                             <CardDescription>Manage your dealership profile, invites, and team roles.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-0 sm:p-6 min-h-[400px]">
-                            <OrganizationProfile
-                                routing="hash" // Use hash routing to avoid catch-all route requirement
-                                appearance={{
-                                    variables: {
-                                        fontSize: '0.875rem',
-                                        spacingUnit: '0.8rem',
-                                    },
-                                    elements: {
-                                        rootBox: "w-full",
-                                        card: "shadow-none border-0 sm:border sm:border-border sm:rounded-xl w-full bg-transparent",
-                                        navbar: "hidden sm:flex flex-col border-r border-border bg-transparent w-auto min-w-[200px]",
-                                        navbarMobileMenuButton: "flex sm:hidden",
-                                        headerTitle: "text-lg font-bold",
-                                        headerSubtitle: "text-xs text-muted-foreground",
-                                        pageScrollable: "p-0",
-                                        organizationProfilePage__start: "p-0",
-                                        organizationProfilePage__organizationSettings: "p-3 sm:p-6 max-w-full",
-                                        organizationProfilePage__members: "p-3 sm:p-6 max-w-full",
-                                        formButtonPrimary: "text-xs sm:text-sm",
-                                        formFieldInput: "text-xs sm:text-sm h-8 sm:h-9",
-                                        breadcrumbs: "hidden",
-                                    }
-                                }}
-                            />
+                        <CardContent className="p-4 sm:p-6 min-h-[400px]">
+                            <OrganizationMembersSettings />
                         </CardContent>
                     </Card>
                 </TabsContent>

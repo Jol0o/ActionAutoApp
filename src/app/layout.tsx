@@ -64,6 +64,7 @@ export default function RootLayout({
               {children}
             </QueryProvider>
           </main>
+          {/* <Toaster /> */}
           <InstallPrompt />
         </body>
       </html>
