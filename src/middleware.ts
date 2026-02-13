@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
 const isOrgSelectionRoute = createRouteMatcher(['/org-selection(.*)']);
 
 export default clerkMiddleware(async (auth, request) => {
+
     const { userId, orgId } = await auth();
 
     // 1. If not a public route, protect it
@@ -16,11 +17,14 @@ export default clerkMiddleware(async (auth, request) => {
         await auth.protect();
     }
 
-    // 2. If logged in but no org, and not on the selection page or public routes, redirect
-    if (userId && !orgId && !isOrgSelectionRoute(request) && !isPublicRoute(request)) {
-        const orgSelection = new URL('/org-selection', request.url);
-        return Response.redirect(orgSelection);
-    }
+    // 2. If logged in, but we want to handle org selection on client side or via custom logic
+    // We remove the Clerk orgId check here because we are using custom organizations.
+    // The DashboardLayout will handle the redirection to /org-selection if no custom org is found.
+
+    // if (userId && !orgId && !isOrgSelectionRoute(request) && !isPublicRoute(request)) {
+    //     const orgSelection = new URL('/org-selection', request.url);
+    //     return Response.redirect(orgSelection);
+    // }
 });
 
 export const config = {
