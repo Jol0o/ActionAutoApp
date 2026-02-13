@@ -4,24 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-<<<<<<< Updated upstream
-  BarChart3,
-  Car,
-  ChevronRight,
-  ClipboardList,
-  DollarSign,
-  Home,
-  LayoutDashboard,
-  Search,
-  Settings,
-  Tag,
-  Truck,
-  AlertCircle,
-  PlusCircle,
-  User,
-  Calendar,
-} from "lucide-react";
-=======
     BarChart3,
     Car,
     ChevronRight,
@@ -39,7 +21,6 @@ import {
     Calendar,
     Inbox,
 } from "lucide-react"
->>>>>>> Stashed changes
 
 import {
   Sidebar,
@@ -73,25 +54,6 @@ import {
 } from "lucide-react";
 
 const data = {
-<<<<<<< Updated upstream
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "All Inventory",
-      url: "/inventory",
-      icon: Car,
-    },
-    {
-      title: "Appointments",
-      url: "/appointments",
-      icon: Calendar,
-    },
-  ],
-=======
     navMain: [
         {
             title: "Dashboard",
@@ -114,7 +76,6 @@ const data = {
             icon: Inbox, // Inquiries Page
         },
     ],
->>>>>>> Stashed changes
 
   services: [
     {
