@@ -20,6 +20,7 @@ import {
     User,
     Calendar,
     Inbox,
+    CreditCard,
 } from "lucide-react"
 
 import {
@@ -73,7 +74,7 @@ const data = {
         {
             title: "Inquiries",
             url: "/leads",
-            icon: Inbox, // Inquiries Page
+            icon: Inbox,
         },
     ],
 
@@ -102,6 +103,11 @@ const data = {
           url: "#",
         },
       ],
+    },
+    {
+      title: "Billing",
+      url: "/billing",
+      icon: CreditCard,
     },
   ],
   account: [
