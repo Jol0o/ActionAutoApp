@@ -26,8 +26,9 @@ export function DriverTrackerLoadsCard({
   error,
 }: DriverTrackerLoadsCardProps) {
   const router = useRouter();
-  const [viewDriver, setViewDriver] =
-    React.useState<DriverTrackingItem | null>(null);
+  const [viewDriver, setViewDriver] = React.useState<DriverTrackingItem | null>(
+    null,
+  );
 
   return (
     <>
@@ -48,36 +49,40 @@ export function DriverTrackerLoadsCard({
           {!isLoading && drivers.length === 0 && !error && (
             <p className="text-xs text-muted-foreground">No assigned loads.</p>
           )}
-          {drivers.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between rounded-lg border border-border/60 p-3"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
-                  <User2 className="size-4 text-muted-foreground" />
-                </div>
-                <div className="space-y-0.5 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {item.driver?.name || "Unknown Driver"}
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Package className="size-3" />
-                    {item.shipments.length} load{item.shipments.length !== 1 ? "s" : ""} assigned
-                  </span>
-                </div>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-[11px] gap-1 shrink-0"
-                onClick={() => setViewDriver(item)}
+          {drivers.map((item) => {
+            const shipments = item.shipments ?? [];
+            return (
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-lg border border-border/60 p-3"
               >
-                <Eye className="size-3" />
-                View Loads
-              </Button>
-            </div>
-          ))}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
+                    <User2 className="size-4 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {item.driver?.name || "Unknown Driver"}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Package className="size-3" />
+                      {shipments.length} load{shipments.length !== 1 ? "s" : ""}{" "}
+                      assigned
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[11px] gap-1 shrink-0"
+                  onClick={() => setViewDriver(item)}
+                >
+                  <Eye className="size-3" />
+                  View Loads
+                </Button>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -94,22 +99,26 @@ export function DriverTrackerLoadsCard({
               {viewDriver?.driver?.name || "Driver"} — Assigned Loads
             </DialogTitle>
             <p className="text-xs text-muted-foreground">
-              {viewDriver?.shipments.length || 0} load{(viewDriver?.shipments.length || 0) !== 1 ? "s" : ""} assigned to this driver.
+              {viewDriver?.shipments?.length || 0} load
+              {(viewDriver?.shipments?.length || 0) !== 1 ? "s" : ""} assigned
+              to this driver.
             </p>
           </DialogHeader>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-            {viewDriver?.shipments.length === 0 && (
+            {(viewDriver?.shipments?.length || 0) === 0 && (
               <p className="text-xs text-muted-foreground py-6 text-center">
                 No loads assigned.
               </p>
             )}
-            {viewDriver?.shipments.map((shipment) => (
+            {viewDriver?.shipments?.map((shipment) => (
               <div
                 key={shipment.id}
                 className="flex items-center justify-between rounded-lg border border-border/60 p-3 gap-3 cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => {
                   const query = shipment.trackingNumber || shipment.id;
-                  router.push(`/transportation?search=${encodeURIComponent(query)}`);
+                  router.push(
+                    `/transportation?search=${encodeURIComponent(query)}`,
+                  );
                 }}
               >
                 <div className="flex items-start gap-3 min-w-0">
