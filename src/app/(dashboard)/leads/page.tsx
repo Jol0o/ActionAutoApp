@@ -160,18 +160,18 @@ export default function InquiriesPage() {
   const handleSyncEmails = async () => {
     try {
       addToast('info', 'Syncing emails from Gmail...')
-      syncGmail()
-      // Wait a moment for the mutation to complete
-      setTimeout(() => {
-        setGmailSynced(true)
-        localStorage.setItem('inquiry_gmail_synced', 'true')
-        addToast('success', 'Gmail synced successfully! New inquiries imported.')
-        refetch() // Refetch leads after sync
-      }, 1500)
-    } catch {
+      const result = await syncGmail()
+      console.log('[Sync Result]', result)
+      setGmailSynced(true)
+      localStorage.setItem('inquiry_gmail_synced', 'true')
+      addToast('success', `Gmail synced! ${result?.syncedCount || 0} new inquiries imported.`)
+      await refetch() // Wait for refetch to complete
+    } catch (error: any) {
+      console.error('[Sync Error]', error)
       setGmailSynced(false)
       localStorage.setItem('inquiry_gmail_synced', 'false')
-      addToast('error', 'Failed to sync Gmail')
+      const errorMsg = error?.response?.data?.message || 'Failed to sync Gmail'
+      addToast('error', errorMsg)
     }
   }
 
@@ -342,53 +342,18 @@ export default function InquiriesPage() {
         </div>
       </div>
 
-      {/* Gmail Configuration Alert */}
+      {/* Gmail Configuration Alert - Only show if not synced */}
       {!gmailSynced && (
         <Card className="border-2 border-orange-200 bg-orange-50">
           <CardContent className="pt-6 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
             <div className="flex-1">
-              {!gmailEmail ? (
-                <>
-                  <p className="font-semibold text-orange-900">Gmail account not configured</p>
-                  <p className="text-sm text-orange-800 mt-1">
-                    Set up your inquiry Gmail account to sync emails and view them here.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="font-semibold text-orange-900">Gmail not synced</p>
-                  <p className="text-sm text-orange-800 mt-1">
-                    Gmail configured as <span className="font-medium">{gmailEmail}</span>. Click the Sync button to fetch inquiries.
-                  </p>
-                </>
-              )}
-              <Button 
-                size="sm" 
-                variant="default" 
-                onClick={() => setShowGmailConfig(true)} 
-                className="mt-3 bg-orange-600 hover:bg-orange-700"
-              >
-                {!gmailEmail ? 'Configure Gmail' : 'Configure'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Gmail Synced Status */}
-      {gmailSynced && gmailEmail && (
-        <Card className="border-2 border-green-200 bg-green-50">
-          <CardContent className="pt-6 flex items-start gap-3">
-            <Check className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="font-semibold text-green-900">Gmail Connected & Synced</p>
-              <p className="text-sm text-green-800 mt-1">
-                Currently synced to <span className="font-medium">{gmailEmail}</span>
+              <p className="font-semibold text-orange-900">Gmail is currently not synced</p>
+              <p className="text-sm text-orange-800 mt-1">
+                {gmailEmail 
+                  ? `Click the Sync button to fetch inquiries from ${gmailEmail}` 
+                  : 'Configure and sync your Gmail account to view inquiries'}
               </p>
-              <Button size="sm" variant="outline" onClick={() => setShowGmailConfig(true)} className="mt-3">
-                Change Account
-              </Button>
             </div>
           </CardContent>
         </Card>

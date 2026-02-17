@@ -147,7 +147,7 @@ export const useLeads = () => {
     markAsRead: markAsReadMutation.mutate,
     markAsPending: markAsPendingMutation.mutate,
     reply: replyMutation.mutate,
-    syncGmail: syncGmailMutation.mutate,
+    syncGmail: syncGmailMutation.mutateAsync,
     isSyncingGmail: syncGmailMutation.isPending,
   }
 }
