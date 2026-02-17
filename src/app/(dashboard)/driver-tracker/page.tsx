@@ -85,7 +85,7 @@ export default function DriverTrackerPage() {
     const matchesQuery = (driver: DriverTrackingItem) => {
       if (!query) return true;
       const name = driver.driver?.name?.toLowerCase() || "";
-      const tracking = driver.shipment?.trackingNumber?.toLowerCase() || "";
+      const tracking = driver.shipments?.map((s) => s.trackingNumber?.toLowerCase() || "").join(" ") || "";
       return name.includes(query) || tracking.includes(query);
     };
     if (filter === "offline") {
@@ -106,7 +106,7 @@ export default function DriverTrackerPage() {
     const matchesQuery = (driver: DriverTrackingItem) => {
       if (!query) return true;
       const name = driver.driver?.name?.toLowerCase() || "";
-      const tracking = driver.shipment?.trackingNumber?.toLowerCase() || "";
+      const tracking = driver.shipments?.map((s) => s.trackingNumber?.toLowerCase() || "").join(" ") || "";
       return name.includes(query) || tracking.includes(query);
     };
     return drivers.filter(
@@ -115,7 +115,7 @@ export default function DriverTrackerPage() {
   }, [drivers, driverQuery]);
 
   const driversWithLoads = React.useMemo(
-    () => drivers.filter((d) => d.shipment),
+    () => drivers.filter((d) => d.shipments && d.shipments.length > 0),
     [drivers],
   );
 
@@ -156,7 +156,9 @@ export default function DriverTrackerPage() {
       });
       const all: Shipment[] = response.data?.data || response.data || [];
       setAvailableShipments(
-        all.filter((s) => s.status === "Available for Pickup"),
+        all.filter(
+          (s) => s.status === "Available for Pickup" && !s.assignedDriverId,
+        ),
       );
     } catch {
       // non-critical — silent fail
@@ -297,7 +299,7 @@ export default function DriverTrackerPage() {
           <div style="font-weight:600;margin-bottom:2px;color:#111827">${driver.driver?.name || "Unknown Driver"}</div>
           <div style="color:${mapPinColor[driver.status]};margin-bottom:2px">${statusLabel[driver.status]}</div>
           ${locationName ? `<div style="color:#374151;font-size:11px;margin-bottom:1px">${locationName}</div>` : ""}
-          ${driver.shipment?.trackingNumber ? `<div style="color:#6b7280;font-size:11px">${driver.shipment.trackingNumber}</div>` : ""}
+          ${driver.shipments.length > 0 ? `<div style="color:#6b7280;font-size:11px">${driver.shipments.length} load${driver.shipments.length !== 1 ? "s" : ""}</div>` : ""}
         </div>`;
 
       const popupHtml = buildPopupHtml(cachedLocation);

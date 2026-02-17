@@ -14,9 +14,11 @@ export interface DriverTrackingItem {
     email: string;
     avatar?: string | null;
   } | null;
-  shipment?: {
+  shipments: {
     id: string;
     trackingNumber?: string;
     status?: string;
-  } | null;
+    origin?: string;
+    destination?: string;
+  }[];
 }

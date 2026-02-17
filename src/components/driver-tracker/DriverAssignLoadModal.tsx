@@ -35,7 +35,6 @@ export function DriverAssignLoadModal({
     setAssigning(shipmentId);
     try {
       await onAssign(shipmentId);
-      onOpenChange(false);
     } finally {
       setAssigning(null);
     }
