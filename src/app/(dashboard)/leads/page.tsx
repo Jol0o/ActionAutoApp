@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { useLeads, Lead } from "@/hooks/useLeads"
 import { Mail, Phone, Car, Calendar, MoreHorizontal, Reply, Clock, AlertCircle, RefreshCw, X, Check, Plus, Upload } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
+import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
+import { apiClient } from "@/lib/api-client"
 import {
   Select,
   SelectContent,
@@ -48,7 +50,7 @@ interface Toast {
 
 export default function InquiriesPage() {
   const { leads, isLoading, updateLeadStatus, markAsRead, markAsPending, reply, refetch, syncGmail, isSyncingGmail } = useLeads()
-  useAuth()
+  const { getToken } = useAuth()
   
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null)
   const [isDetailOpen, setIsDetailOpen] = React.useState(false)
@@ -63,6 +65,8 @@ export default function InquiriesPage() {
   const [showGmailConfig, setShowGmailConfig] = React.useState(false)
   const [syncError, setSyncError] = React.useState<string | null>(null)
   const [showSyncConfirm, setShowSyncConfirm] = React.useState(false)
+  const [isGoogleConnected, setIsGoogleConnected] = React.useState(false)
+  const [isCheckingGoogle, setIsCheckingGoogle] = React.useState(false)
   
   // Reply state
   const [replyOpen, setReplyOpen] = React.useState(false)
@@ -91,6 +95,30 @@ export default function InquiriesPage() {
       setGmailSynced(synced)
     }
   }, [])
+
+  // Check Google Calendar connection when gmail config dialog opens
+  React.useEffect(() => {
+    if (showGmailConfig) {
+      checkGoogleConnection()
+    }
+  }, [showGmailConfig])
+
+  const checkGoogleConnection = async () => {
+    try {
+      setIsCheckingGoogle(true)
+      const token = await getToken()
+      const response = await apiClient.get('/api/google-calendar/status', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = response.data?.data || response.data
+      setIsGoogleConnected(data.connected || false)
+    } catch (error) {
+      console.error('Failed to check Google connection:', error)
+      setIsGoogleConnected(false)
+    } finally {
+      setIsCheckingGoogle(false)
+    }
+  }
 
   // Toast helpers
   const addToast = (type: 'success' | 'error' | 'info', message: string) => {
@@ -144,6 +172,11 @@ export default function InquiriesPage() {
       setGmailSynced(false)
       localStorage.setItem('inquiry_gmail_synced', 'false')
       addToast('error', 'Invalid email address')
+      return
+    }
+    if (!isGoogleConnected) {
+      setSyncError('Please connect to Google Calendar first')
+      addToast('error', 'Google Calendar connection required')
       return
     }
     localStorage.setItem('inquiry_gmail', gmailEmail)
@@ -666,17 +699,41 @@ export default function InquiriesPage() {
               </div>
             )}
 
+            {/* Show Google Calendar connection if not connected */}
+            {!isGoogleConnected && (
+              <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-semibold text-blue-900">
+                  ⚠️ Step 1: Connect to Google Calendar
+                </p>
+                <p className="text-xs text-blue-800">
+                  You must connect your Google account first to sync emails. Click the button below to authorize.
+                </p>
+                <div className="mt-2">
+                  <GoogleCalendarConnect />
+                </div>
+              </div>
+            )}
+
+            {isGoogleConnected && (
+              <div className="space-y-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm font-semibold text-green-900">
+                  ✓ Google Calendar Connected!
+                </p>
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="gmail">Gmail Address</Label>
+              <Label htmlFor="gmail">Gmail Address (Step 2)</Label>
               <Input
                 id="gmail"
                 type="email"
                 placeholder="inquiries@actionauto.com"
                 value={gmailEmail}
                 onChange={(e) => setGmailEmail(e.target.value)}
+                disabled={!isGoogleConnected}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                This is the Gmail account where customer inquiries are received. Your account must be connected to Google Calendar OAuth.
+                Enter the Gmail account where customer inquiries are sent.
               </p>
             </div>
 
@@ -687,7 +744,10 @@ export default function InquiriesPage() {
             <Button variant="outline" onClick={() => setShowGmailConfig(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveGmailConfig} disabled={isSyncingGmail || !gmailEmail.includes('@')}>
+            <Button 
+              onClick={handleSaveGmailConfig} 
+              disabled={isSyncingGmail || !gmailEmail.includes('@') || !isGoogleConnected}
+            >
               {isSyncingGmail ? 'Syncing...' : 'Save & Sync'}
             </Button>
           </DialogFooter>
