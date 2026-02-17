@@ -60,9 +60,9 @@ export function DriverTrackerListCard({
                     <p className="text-sm font-semibold text-foreground">
                       {driver.driver?.name || "Unknown Driver"}
                     </p>
-                    {driver.shipment?.trackingNumber && (
+                    {driver.shipments.length > 0 && (
                       <Badge variant="outline" className="text-[10px]">
-                        {driver.shipment.trackingNumber}
+                        {driver.shipments.length} load{driver.shipments.length !== 1 ? "s" : ""}
                       </Badge>
                     )}
                   </div>
@@ -78,10 +78,10 @@ export function DriverTrackerListCard({
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-                      {driver.shipment?.trackingNumber && (
+                      {driver.shipments.length > 0 && (
                         <span className="inline-flex items-center gap-1">
                           <Package className="size-3.5" />
-                          Load: {driver.shipment.trackingNumber}
+                          {driver.shipments.length} load{driver.shipments.length !== 1 ? "s" : ""}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1">

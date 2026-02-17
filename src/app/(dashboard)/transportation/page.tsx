@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import { Truck, Search, Menu, Filter, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,8 +16,9 @@ import { useAlert } from "@/components/AlertDialog"
 import { Quote, Shipment } from "@/types/transportation"
 
 export default function TransportationPage() {
+    const searchParams = useSearchParams()
     const [activeTab, setActiveTab] = React.useState("shipments")
-    const [searchQuery, setSearchQuery] = React.useState("")
+    const [searchQuery, setSearchQuery] = React.useState(searchParams.get("search") || "")
     const [selectedStatus, setSelectedStatus] = React.useState("all")
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false)
     const [isQuoteModalOpen, setIsQuoteModalOpen] = React.useState(false)
