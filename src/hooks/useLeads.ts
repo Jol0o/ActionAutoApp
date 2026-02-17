@@ -122,6 +122,23 @@ export const useLeads = () => {
     },
   })
 
+  // Sync Gmail inquiries
+  const syncGmailMutation = useMutation({
+    mutationFn: async () => {
+      const headers = await getAuthHeaders()
+      const response = await apiClient.post(
+        `/api/leads/sync-gmail`,
+        {},
+        headers
+      )
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+      refetch()
+    },
+  })
+
   return {
     leads,
     isLoading,
@@ -130,5 +147,7 @@ export const useLeads = () => {
     markAsRead: markAsReadMutation.mutate,
     markAsPending: markAsPendingMutation.mutate,
     reply: replyMutation.mutate,
+    syncGmail: syncGmailMutation.mutate,
+    isSyncingGmail: syncGmailMutation.isPending,
   }
 }

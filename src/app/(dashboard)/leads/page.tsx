@@ -47,7 +47,7 @@ interface Toast {
 }
 
 export default function InquiriesPage() {
-  const { leads, isLoading, updateLeadStatus, markAsRead, markAsPending, reply, refetch } = useLeads()
+  const { leads, isLoading, updateLeadStatus, markAsRead, markAsPending, reply, refetch, syncGmail, isSyncingGmail } = useLeads()
   useAuth()
   
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null)
@@ -59,9 +59,10 @@ export default function InquiriesPage() {
   
   // Gmail config state
   const [gmailEmail, setGmailEmail] = React.useState('')
+  const [gmailSynced, setGmailSynced] = React.useState(false)
   const [showGmailConfig, setShowGmailConfig] = React.useState(false)
-  const [isSyncing, setIsSyncing] = React.useState(false)
   const [syncError, setSyncError] = React.useState<string | null>(null)
+  const [showSyncConfirm, setShowSyncConfirm] = React.useState(false)
   
   // Reply state
   const [replyOpen, setReplyOpen] = React.useState(false)
@@ -84,7 +85,11 @@ export default function InquiriesPage() {
   // Load saved Gmail from localStorage
   React.useEffect(() => {
     const saved = localStorage.getItem('inquiry_gmail')
-    if (saved) setGmailEmail(saved)
+    const synced = localStorage.getItem('inquiry_gmail_synced') === 'true'
+    if (saved) {
+      setGmailEmail(saved)
+      setGmailSynced(synced)
+    }
   }, [])
 
   // Toast helpers
@@ -135,27 +140,26 @@ export default function InquiriesPage() {
     }
     localStorage.setItem('inquiry_gmail', gmailEmail)
     setSyncError(null)
+    setShowSyncConfirm(true)
     setShowGmailConfig(false)
-    addToast('success', 'Gmail configuration saved')
+  }
+
+  const handleConfirmSync = async () => {
+    setShowSyncConfirm(false)
+    await handleSyncEmails()
   }
 
   const handleSyncEmails = async () => {
-    if (!gmailEmail) {
-      setSyncError('Please configure a Gmail account first')
-      addToast('error', 'Gmail account not configured')
-      return
-    }
-    setIsSyncing(true)
-    setSyncError(null)
     try {
-      addToast('info', 'Syncing emails...')
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      refetch()
+      addToast('info', 'Syncing emails from Gmail...')
+      syncGmail()
+      setGmailSynced(true)
+      localStorage.setItem('inquiry_gmail_synced', 'true')
+      addToast('success', 'Gmail synced successfully!')
     } catch {
-      setSyncError('Sync failed')
-      addToast('error', 'Sync failed')
-    } finally {
-      setIsSyncing(false)
+      setGmailSynced(false)
+      localStorage.setItem('inquiry_gmail_synced', 'false')
+      addToast('error', 'Failed to sync Gmail')
     }
   }
 
@@ -304,15 +308,17 @@ export default function InquiriesPage() {
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleSyncEmails}
-            disabled={isSyncing || !gmailEmail}
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Syncing...' : 'Sync'}
-          </Button>
+          {gmailEmail && (
+            <Button
+              variant="outline"
+              onClick={handleSyncEmails}
+              disabled={isSyncingGmail}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncingGmail ? 'animate-spin' : ''}`} />
+              {isSyncingGmail ? 'Syncing...' : 'Sync Now'}
+            </Button>
+          )}
           <Button onClick={() => setShowGmailConfig(true)} variant="outline">
             Settings
           </Button>
@@ -320,22 +326,51 @@ export default function InquiriesPage() {
       </div>
 
       {/* Gmail Configuration Alert */}
-      {!gmailEmail && (
-        <Card className="border-orange-200 bg-orange-50">
+      {!gmailEmail || !gmailSynced ? (
+        <Card className={`border-2 ${gmailSynced ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
           <CardContent className="pt-6 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-semibold text-orange-900">Gmail account not configured</p>
-              <p className="text-sm text-orange-800">
-                Set up your inquiry Gmail account to automatically sync emails and view them here.
-              </p>
-              <Button size="sm" variant="outline" onClick={() => setShowGmailConfig(true)} className="mt-2">
-                Configure Gmail
-              </Button>
+            {gmailSynced ? (
+              <Check className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
+            )}
+            <div className="flex-1">
+              {gmailSynced && gmailEmail ? (
+                <>
+                  <p className="font-semibold text-green-900">Gmail Connected</p>
+                  <p className="text-sm text-green-800">
+                    Currently synced to <span className="font-medium">{gmailEmail}</span>
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => setShowGmailConfig(true)} className="mt-2">
+                    Change Gmail Account
+                  </Button>
+                </>
+              ) : !gmailEmail ? (
+                <>
+                  <p className="font-semibold text-orange-900">Gmail account not configured</p>
+                  <p className="text-sm text-orange-800">
+                    Set up your inquiry Gmail account to automatically sync emails and view them here.
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => setShowGmailConfig(true)} className="mt-2">
+                    Configure Gmail
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-orange-900">Gmail not synced</p>
+                  <p className="text-sm text-orange-800">
+                    Gmail configured as <span className="font-medium">{gmailEmail}</span>, but not yet synced. Click "Sync Now" to fetch inquiries.
+                  </p>
+                  <Button size="sm" variant="outline" onClick={handleSyncEmails} disabled={isSyncingGmail} className="mt-2 gap-2">
+                    {isSyncingGmail && <RefreshCw className="h-3 w-3 animate-spin" />}
+                    Sync Now
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Statistics - Clickable for Filtering */}
       <div>
@@ -654,13 +689,13 @@ export default function InquiriesPage() {
                 onChange={(e) => setGmailEmail(e.target.value)}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                This is the Gmail account where customer inquiries are received. Gmail sync requires OAuth2 setup.
+                This is the Gmail account where customer inquiries are received. Your account must be connected to Google Calendar OAuth.
               </p>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-xs text-blue-900">
-                <strong>Note:</strong> Gmail integration requires connecting the Gmail API. On localhost, you can test manually. For spam emails: ensure the Gmail account has proper filters or the Gmail API scope includes spam labels.
+                <strong>How it works:</strong> Save your Gmail address, then confirm to sync emails. Unread emails will be imported as new inquiries.
               </p>
             </div>
           </div>
@@ -669,7 +704,36 @@ export default function InquiriesPage() {
             <Button variant="outline" onClick={() => setShowGmailConfig(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveGmailConfig}>Save Configuration</Button>
+            <Button onClick={handleSaveGmailConfig} disabled={isSyncingGmail || !gmailEmail.includes('@')}>
+              {isSyncingGmail ? 'Syncing...' : 'Save & Sync'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sync Confirmation Dialog */}
+      <Dialog open={showSyncConfirm} onOpenChange={setShowSyncConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Gmail Sync</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to sync {gmailEmail}?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              This will fetch unread emails from your Gmail account and convert them into inquiries. This process may take a moment.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSyncConfirm(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSync} disabled={isSyncingGmail}>
+              {isSyncingGmail ? 'Syncing...' : 'Yes, Sync Now'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
