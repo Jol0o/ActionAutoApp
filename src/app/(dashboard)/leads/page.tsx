@@ -161,6 +161,12 @@ export default function InquiriesPage() {
   }
 
   const handleSaveGmailConfig = () => {
+    // Check Google Calendar connection first
+    if (!isGoogleConnected) {
+      setSyncError('Please connect your Google Calendar account first to sync Gmail')
+      return
+    }
+
     if (!gmailEmail.trim()) {
       setSyncError('Gmail email is required')
       setGmailSynced(false)
@@ -172,11 +178,6 @@ export default function InquiriesPage() {
       setGmailSynced(false)
       localStorage.setItem('inquiry_gmail_synced', 'false')
       addToast('error', 'Invalid email address')
-      return
-    }
-    if (!isGoogleConnected) {
-      setSyncError('Please connect to Google Calendar first')
-      addToast('error', 'Google Calendar connection required')
       return
     }
     localStorage.setItem('inquiry_gmail', gmailEmail)
@@ -684,60 +685,52 @@ export default function InquiriesPage() {
 
       {/* Gmail Config Modal */}
       <Dialog open={showGmailConfig} onOpenChange={setShowGmailConfig}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Gmail Configuration</DialogTitle>
             <DialogDescription>
-              Enter the Gmail account where customer inquiries are sent.
+              Connect your Google Account and enter your Gmail address to sync inquiries.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {syncError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-900">{syncError}</p>
-              </div>
-            )}
+            {/* Google Calendar Connection - Required First */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Step 1: Connect Google Calendar</Label>
+              <GoogleCalendarConnect />
+            </div>
 
-            {/* Show Google Calendar connection if not connected */}
-            {!isGoogleConnected && (
-              <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm font-semibold text-blue-900">
-                  ⚠️ Step 1: Connect to Google Calendar
-                </p>
-                <p className="text-xs text-blue-800">
-                  You must connect your Google account first to sync emails. Click the button below to authorize.
-                </p>
-                <div className="mt-2">
-                  <GoogleCalendarConnect />
+            {/* Gmail Address Input - Only enabled if Google connected */}
+            {isGoogleConnected && (
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">Step 2: Enter Gmail Address</Label>
+                {syncError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-900">{syncError}</p>
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="gmail">Gmail Address</Label>
+                  <Input
+                    id="gmail"
+                    type="email"
+                    placeholder="inquiries@actionauto.com"
+                    value={gmailEmail}
+                    onChange={(e) => setGmailEmail(e.target.value)}
+                    disabled={!isGoogleConnected}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter the Gmail account where customer inquiries are received.
+                  </p>
                 </div>
               </div>
             )}
 
-            {isGoogleConnected && (
-              <div className="space-y-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm font-semibold text-green-900">
-                  ✓ Google Calendar Connected!
-                </p>
+            {!isGoogleConnected && !isCheckingGoogle && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-900">Please connect your Google Account first to proceed with Gmail sync.</p>
               </div>
             )}
-
-            <div>
-              <Label htmlFor="gmail">Gmail Address (Step 2)</Label>
-              <Input
-                id="gmail"
-                type="email"
-                placeholder="inquiries@actionauto.com"
-                value={gmailEmail}
-                onChange={(e) => setGmailEmail(e.target.value)}
-                disabled={!isGoogleConnected}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Enter the Gmail account where customer inquiries are sent.
-              </p>
-            </div>
-
-
           </div>
 
           <DialogFooter>
@@ -746,7 +739,7 @@ export default function InquiriesPage() {
             </Button>
             <Button 
               onClick={handleSaveGmailConfig} 
-              disabled={isSyncingGmail || !gmailEmail.includes('@') || !isGoogleConnected}
+              disabled={!isGoogleConnected || !gmailEmail.includes('@') || isSyncingGmail || isCheckingGoogle}
             >
               {isSyncingGmail ? 'Syncing...' : 'Save & Sync'}
             </Button>
