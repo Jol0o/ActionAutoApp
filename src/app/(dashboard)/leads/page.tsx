@@ -133,8 +133,16 @@ export default function InquiriesPage() {
   }
 
   const handleSaveGmailConfig = () => {
+    if (!gmailEmail.trim()) {
+      setSyncError('Gmail email is required')
+      setGmailSynced(false)
+      localStorage.setItem('inquiry_gmail_synced', 'false')
+      return
+    }
     if (!gmailEmail.includes('@')) {
       setSyncError('Please enter a valid email address')
+      setGmailSynced(false)
+      localStorage.setItem('inquiry_gmail_synced', 'false')
       addToast('error', 'Invalid email address')
       return
     }
@@ -153,9 +161,13 @@ export default function InquiriesPage() {
     try {
       addToast('info', 'Syncing emails from Gmail...')
       syncGmail()
-      setGmailSynced(true)
-      localStorage.setItem('inquiry_gmail_synced', 'true')
-      addToast('success', 'Gmail synced successfully!')
+      // Wait a moment for the mutation to complete
+      setTimeout(() => {
+        setGmailSynced(true)
+        localStorage.setItem('inquiry_gmail_synced', 'true')
+        addToast('success', 'Gmail synced successfully! New inquiries imported.')
+        refetch() // Refetch leads after sync
+      }, 1500)
     } catch {
       setGmailSynced(false)
       localStorage.setItem('inquiry_gmail_synced', 'false')
@@ -174,6 +186,10 @@ export default function InquiriesPage() {
   }
 
   const handleSendCompose = async () => {
+    if (!gmailSynced || !gmailEmail) {
+      addToast('error', 'Gmail must be synced first. Please configure and sync your Gmail account.')
+      return
+    }
     if (!composeForm.to || !composeForm.subject || !composeForm.body) {
       addToast('error', 'Please fill in all required fields')
       return
@@ -294,7 +310,8 @@ export default function InquiriesPage() {
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
           <Button
-            onClick={() => setComposeOpen(true)}
+            onClick={() => {if (!gmailSynced) {addToast('error', 'Please sync Gmail first'); return;} setComposeOpen(true)}}
+            disabled={!gmailSynced}
             className="gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -326,51 +343,56 @@ export default function InquiriesPage() {
       </div>
 
       {/* Gmail Configuration Alert */}
-      {!gmailEmail || !gmailSynced ? (
-        <Card className={`border-2 ${gmailSynced ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
+      {!gmailSynced && (
+        <Card className="border-2 border-orange-200 bg-orange-50">
           <CardContent className="pt-6 flex items-start gap-3">
-            {gmailSynced ? (
-              <Check className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
-            ) : (
-              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
-            )}
+            <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
             <div className="flex-1">
-              {gmailSynced && gmailEmail ? (
-                <>
-                  <p className="font-semibold text-green-900">Gmail Connected</p>
-                  <p className="text-sm text-green-800">
-                    Currently synced to <span className="font-medium">{gmailEmail}</span>
-                  </p>
-                  <Button size="sm" variant="outline" onClick={() => setShowGmailConfig(true)} className="mt-2">
-                    Change Gmail Account
-                  </Button>
-                </>
-              ) : !gmailEmail ? (
+              {!gmailEmail ? (
                 <>
                   <p className="font-semibold text-orange-900">Gmail account not configured</p>
-                  <p className="text-sm text-orange-800">
-                    Set up your inquiry Gmail account to automatically sync emails and view them here.
+                  <p className="text-sm text-orange-800 mt-1">
+                    Set up your inquiry Gmail account to sync emails and view them here.
                   </p>
-                  <Button size="sm" variant="outline" onClick={() => setShowGmailConfig(true)} className="mt-2">
-                    Configure Gmail
-                  </Button>
                 </>
               ) : (
                 <>
                   <p className="font-semibold text-orange-900">Gmail not synced</p>
-                  <p className="text-sm text-orange-800">
-                    Gmail configured as <span className="font-medium">{gmailEmail}</span>, but not yet synced. Click "Sync Now" to fetch inquiries.
+                  <p className="text-sm text-orange-800 mt-1">
+                    Gmail configured as <span className="font-medium">{gmailEmail}</span>. Click the Sync button to fetch inquiries.
                   </p>
-                  <Button size="sm" variant="outline" onClick={handleSyncEmails} disabled={isSyncingGmail} className="mt-2 gap-2">
-                    {isSyncingGmail && <RefreshCw className="h-3 w-3 animate-spin" />}
-                    Sync Now
-                  </Button>
                 </>
               )}
+              <Button 
+                size="sm" 
+                variant="default" 
+                onClick={() => setShowGmailConfig(true)} 
+                className="mt-3 bg-orange-600 hover:bg-orange-700"
+              >
+                {!gmailEmail ? 'Configure Gmail' : 'Configure'}
+              </Button>
             </div>
           </CardContent>
         </Card>
-      ) : null}
+      )}
+
+      {/* Gmail Synced Status */}
+      {gmailSynced && gmailEmail && (
+        <Card className="border-2 border-green-200 bg-green-50">
+          <CardContent className="pt-6 flex items-start gap-3">
+            <Check className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-green-900">Gmail Connected & Synced</p>
+              <p className="text-sm text-green-800 mt-1">
+                Currently synced to <span className="font-medium">{gmailEmail}</span>
+              </p>
+              <Button size="sm" variant="outline" onClick={() => setShowGmailConfig(true)} className="mt-3">
+                Change Account
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Statistics - Clickable for Filtering */}
       <div>
@@ -693,11 +715,7 @@ export default function InquiriesPage() {
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-xs text-blue-900">
-                <strong>How it works:</strong> Save your Gmail address, then confirm to sync emails. Unread emails will be imported as new inquiries.
-              </p>
-            </div>
+
           </div>
 
           <DialogFooter>
