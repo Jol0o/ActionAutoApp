@@ -15,7 +15,6 @@ import { DriverTrackerListCard } from "@/components/driver-tracker/DriverTracker
 import { DriverAssignLoadModal } from "@/components/driver-tracker/DriverAssignLoadModal";
 import { Input } from "@/components/ui/input";
 
-
 type FilterKey = "all" | "active" | "offline";
 
 const statusLabel: Record<DriverStatus, string> = {
@@ -79,13 +78,15 @@ export default function DriverTrackerPage() {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const normalizedToken = mapboxToken?.trim();
 
-
   const filteredDrivers = React.useMemo(() => {
     const query = driverQuery.trim().toLowerCase();
     const matchesQuery = (driver: DriverTrackingItem) => {
       if (!query) return true;
       const name = driver.driver?.name?.toLowerCase() || "";
-      const tracking = driver.shipments?.map((s) => s.trackingNumber?.toLowerCase() || "").join(" ") || "";
+      const tracking =
+        driver.shipments
+          ?.map((s) => s.trackingNumber?.toLowerCase() || "")
+          .join(" ") || "";
       return name.includes(query) || tracking.includes(query);
     };
     if (filter === "offline") {
@@ -106,12 +107,13 @@ export default function DriverTrackerPage() {
     const matchesQuery = (driver: DriverTrackingItem) => {
       if (!query) return true;
       const name = driver.driver?.name?.toLowerCase() || "";
-      const tracking = driver.shipments?.map((s) => s.trackingNumber?.toLowerCase() || "").join(" ") || "";
+      const tracking =
+        driver.shipments
+          ?.map((s) => s.trackingNumber?.toLowerCase() || "")
+          .join(" ") || "";
       return name.includes(query) || tracking.includes(query);
     };
-    return drivers.filter(
-      (d) => d.status !== "offline" && matchesQuery(d),
-    );
+    return drivers.filter((d) => d.status !== "offline" && matchesQuery(d));
   }, [drivers, driverQuery]);
 
   const driversWithLoads = React.useMemo(
@@ -136,7 +138,11 @@ export default function DriverTrackerPage() {
         },
       });
       const data = response.data?.data || [];
-      setDrivers(data);
+      const normalized = data.map((item: DriverTrackingItem) => ({
+        ...item,
+        shipments: Array.isArray(item.shipments) ? item.shipments : [],
+      }));
+      setDrivers(normalized);
     } catch (err: any) {
       setError(
         err.response?.data?.message || err.message || "Failed to load drivers",
@@ -351,7 +357,9 @@ export default function DriverTrackerPage() {
             const locationName = raw.split(",").slice(0, 2).join(",").trim();
             if (locationName) {
               locationNamesRef.current.set(coordKey, locationName);
-              popupsRef.current.get(driverId)?.setHTML(buildPopupHtml(locationName));
+              popupsRef.current
+                .get(driverId)
+                ?.setHTML(buildPopupHtml(locationName));
             }
           })
           .catch(() => {});
@@ -366,7 +374,6 @@ export default function DriverTrackerPage() {
         popups.delete(id);
       }
     });
-
   }, [filteredDrivers]);
 
   const sendLocationUpdate = React.useCallback(
