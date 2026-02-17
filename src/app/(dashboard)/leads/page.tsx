@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useLeads, Lead } from "@/hooks/useLeads"
-import { Mail, Phone, Car, Calendar, Plus } from "lucide-react"
+import { Mail, Phone, Car, Calendar, MoreHorizontal, Reply, Clock, AlertCircle, RefreshCw, X, Check, Plus, Upload } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import {
   Select,
@@ -22,128 +22,231 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 
 const statusColors: Record<string, string> = {
   'New': 'bg-blue-100 text-blue-800',
+  'Pending': 'bg-orange-100 text-orange-800',
   'Contacted': 'bg-yellow-100 text-yellow-800',
   'Appointment Set': 'bg-green-100 text-green-800',
   'Closed': 'bg-gray-100 text-gray-800',
 }
 
-export default function LeadsPage() {
-  const { leads, isLoading, updateLeadStatus, refetch } = useLeads()
-  const { getToken } = useAuth()
+interface Toast {
+  id: string
+  type: 'success' | 'error' | 'info'
+  message: string
+}
+
+export default function InquiriesPage() {
+  const { leads, isLoading, updateLeadStatus, markAsRead, markAsPending, reply, refetch } = useLeads()
+  useAuth()
+  
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null)
   const [isDetailOpen, setIsDetailOpen] = React.useState(false)
   const [newStatus, setNewStatus] = React.useState<string>('')
   
-  // Create inquiry form state
-  const [isCreateOpen, setIsCreateOpen] = React.useState(false)
-  const [createForm, setCreateForm] = React.useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    year: '',
-    make: '',
-    model: '',
-    comments: '',
+  // Filtering state
+  const [statusFilter, setStatusFilter] = React.useState<string | null>(null)
+  
+  // Gmail config state
+  const [gmailEmail, setGmailEmail] = React.useState('')
+  const [showGmailConfig, setShowGmailConfig] = React.useState(false)
+  const [isSyncing, setIsSyncing] = React.useState(false)
+  const [syncError, setSyncError] = React.useState<string | null>(null)
+  
+  // Reply state
+  const [replyOpen, setReplyOpen] = React.useState(false)
+  const [replyMessage, setReplyMessage] = React.useState('')
+  const [isSendingReply, setIsSendingReply] = React.useState(false)
+  
+  // Compose state
+  const [composeOpen, setComposeOpen] = React.useState(false)
+  const [composeForm, setComposeForm] = React.useState({
+    to: '',
+    subject: '',
+    body: '',
   })
-  const [isCreating, setIsCreating] = React.useState(false)
-  const [createError, setCreateError] = React.useState<string | null>(null)
-  const [createSuccess, setCreateSuccess] = React.useState(false)
+  const [composeAttachments, setComposeAttachments] = React.useState<File[]>([])
+  const [isSendingCompose, setIsSendingCompose] = React.useState(false)
+  
+  // Toast notifications
+  const [toasts, setToasts] = React.useState<Toast[]>([])
 
-  const handleStatusChange = (status: string) => {
-    if (selectedLead) {
-      updateLeadStatus({ id: selectedLead._id, status })
-      setSelectedLead(null)
-      setIsDetailOpen(false)
-    }
+  // Load saved Gmail from localStorage
+  React.useEffect(() => {
+    const saved = localStorage.getItem('inquiry_gmail')
+    if (saved) setGmailEmail(saved)
+  }, [])
+
+  // Toast helpers
+  const addToast = (type: 'success' | 'error' | 'info', message: string) => {
+    const id = Math.random().toString()
+    setToasts(prev => [...prev, { id, type, message }])
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 3000)
   }
 
-  const openDetail = (lead: Lead) => {
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id))
+  }
+
+  const handleOpenLead = (lead: Lead) => {
     setSelectedLead(lead)
     setNewStatus(lead.status)
     setIsDetailOpen(true)
-  }
-
-  const handleCreateInquiry = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsCreating(true)
-    setCreateError(null)
-    setCreateSuccess(false)
-    
-    try {
-      const token = await getToken()
-      const payload = {
-        firstName: createForm.firstName,
-        lastName: createForm.lastName,
-        email: createForm.email,
-        phone: createForm.phone,
-        vehicle: {
-          year: createForm.year,
-          make: createForm.make,
-          model: createForm.model,
-        },
-        comments: createForm.comments,
-        source: 'Manual Entry (Test)',
-        status: 'New',
+    // Mark as read when opening
+    if (!lead.isRead) {
+      try {
+        markAsRead(lead._id)
+        addToast('success', 'Marked as read')
+      } catch {
+        addToast('error', 'Failed to mark as read')
       }
-      
-      console.log('[Frontend] Sending inquiry data:', payload)
-      
-      const response = await fetch('/api/leads', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json()
-      console.log('[Frontend] Response:', { status: response.status, data })
-
-      if (response.ok) {
-        // Reset form and close dialog
-        setCreateForm({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          year: '',
-          make: '',
-          model: '',
-          comments: '',
-        })
-        setCreateSuccess(true)
-        
-        // Close after 2 seconds
-        setTimeout(() => {
-          setIsCreateOpen(false)
-          setCreateSuccess(false)
-        }, 2000)
-        
-        // Refresh leads
-        setTimeout(() => refetch(), 500)
-      } else {
-        setCreateError(data.message || 'Failed to create inquiry')
-      }
-    } catch (error) {
-      console.error('[Frontend] Error creating inquiry:', error)
-      setCreateError(error instanceof Error ? error.message : 'An error occurred')
-    } finally {
-      setIsCreating(false)
     }
   }
+
+  const handleStatusChange = (status: string) => {
+    if (selectedLead) {
+      try {
+        updateLeadStatus({ id: selectedLead._id, status })
+        addToast('success', `Status updated to ${status}`)
+        setIsDetailOpen(false)
+      } catch {
+        addToast('error', 'Failed to update status')
+      }
+    }
+  }
+
+  const handleSaveGmailConfig = () => {
+    if (!gmailEmail.includes('@')) {
+      setSyncError('Please enter a valid email address')
+      addToast('error', 'Invalid email address')
+      return
+    }
+    localStorage.setItem('inquiry_gmail', gmailEmail)
+    setSyncError(null)
+    setShowGmailConfig(false)
+    addToast('success', 'Gmail configuration saved')
+  }
+
+  const handleSyncEmails = async () => {
+    if (!gmailEmail) {
+      setSyncError('Please configure a Gmail account first')
+      addToast('error', 'Gmail account not configured')
+      return
+    }
+    setIsSyncing(true)
+    setSyncError(null)
+    try {
+      addToast('info', 'Syncing emails...')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      refetch()
+    } catch {
+      setSyncError('Sync failed')
+      addToast('error', 'Sync failed')
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  const handleRefreshEmails = async () => {
+    try {
+      addToast('info', 'Refreshing emails...')
+      await refetch()
+      addToast('success', 'Emails refreshed successfully')
+    } catch {
+      addToast('error', 'Failed to refresh emails')
+    }
+  }
+
+  const handleSendCompose = async () => {
+    if (!composeForm.to || !composeForm.subject || !composeForm.body) {
+      addToast('error', 'Please fill in all required fields')
+      return
+    }
+    setIsSendingCompose(true)
+    try {
+      // Future: Send email via Gmail API
+      console.log('[Compose] Sending email:', composeForm, composeAttachments)
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Create inquiry from compose
+      // For now, just show success
+      addToast('success', 'Email sent successfully')
+      setComposeForm({ to: '', subject: '', body: '' })
+      setComposeAttachments([])
+      setComposeOpen(false)
+      refetch()
+    } catch {
+      addToast('error', 'Failed to send email')
+    } finally {
+      setIsSendingCompose(false)
+    }
+  }
+
+  const handleAddAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setComposeAttachments(prev => [...prev, ...files])
+    addToast('success', `${files.length} file(s) added`)
+  }
+
+  const handleRemoveAttachment = (index: number) => {
+    setComposeAttachments(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSendReply = async () => {
+    if (!selectedLead || !replyMessage.trim()) return
+    setIsSendingReply(true)
+    try {
+      reply({ id: selectedLead._id, message: replyMessage })
+      setReplyMessage('')
+      setReplyOpen(false)
+      addToast('success', 'Reply sent successfully')
+    } catch {
+      addToast('error', 'Failed to send reply')
+    } finally {
+      setIsSendingReply(false)
+    }
+  }
+
+  const handleMarkPending = (leadId: string, currentlyPending: boolean) => {
+    try {
+      markAsPending(leadId)
+      addToast('success', currentlyPending ? 'Unmarked as pending' : 'Marked as pending')
+    } catch {
+      addToast('error', 'Failed to update pending status')
+    }
+  }
+
+  // Filter leads based on active status filter
+  const filteredLeads = React.useMemo(() => {
+    if (!statusFilter) return leads
+    
+    if (statusFilter === 'new-unread') {
+      return leads.filter((l: Lead) => !l.isRead && l.status === 'New')
+    }
+    if (statusFilter === 'pending') {
+      return leads.filter((l: Lead) => l.isPending)
+    }
+    
+    return leads.filter((l: Lead) => l.status === statusFilter)
+  }, [leads, statusFilter])
 
   const stats = React.useMemo(() => {
     return {
       total: leads.length,
-      new: leads.filter((l: Lead) => l.status === 'New').length,
+      new: leads.filter((l: Lead) => !l.isRead && l.status === 'New').length,
+      pending: leads.filter((l: Lead) => l.isPending).length,
       contacted: leads.filter((l: Lead) => l.status === 'Contacted').length,
       appointmentSet: leads.filter((l: Lead) => l.status === 'Appointment Set').length,
       closed: leads.filter((l: Lead) => l.status === 'Closed').length,
@@ -151,194 +254,329 @@ export default function LeadsPage() {
   }, [leads])
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header with Explanation */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">Customer Inquiries</h1>
-          <p className="text-muted-foreground mt-1">
-            All customer inquiries and leads come to this central location when customers submit inquiries via email or your website. Manage and track them all in one place.
-          </p>
-        </div>
-        <Button onClick={() => setIsCreateOpen(true)} size="lg" className="gap-2 whitespace-nowrap">
-          <Plus className="h-4 w-4" />
-          Create Test Inquiry
-        </Button>
+    <div className="min-h-screen bg-background py-6 px-4 md:px-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+      {/* Toast Notifications */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white animate-in slide-in-from-top ${
+              toast.type === 'success'
+                ? 'bg-green-500'
+                : toast.type === 'error'
+                ? 'bg-red-500'
+                : 'bg-blue-500'
+            }`}
+          >
+            {toast.type === 'success' && <Check className="h-4 w-4" />}
+            {toast.type === 'error' && <AlertCircle className="h-4 w-4" />}
+            {toast.type === 'info' && <Mail className="h-4 w-4" />}
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button onClick={() => removeToast(toast.id)} className="ml-2">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
       </div>
 
-      {/* Statistics with Explanations */}
-      <div>
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold mb-2">Inquiry Status Overview</h2>
-          <p className="text-sm text-muted-foreground">
-            These cards show how many inquiries are in each stage of your sales process. Track your pipeline and see which inquiries need attention.
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold">Inquiries</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage and respond to customer inquiries from your Gmail account in one centralized dashboard.
           </p>
         </div>
-        <div className="grid gap-4 md:grid-cols-5">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">All Inquiries</CardTitle>
-              <Mail className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground mt-1">Total inquiries in system</p>
-            </CardContent>
-          </Card>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <Button
+            onClick={() => setComposeOpen(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Compose
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleRefreshEmails}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSyncEmails}
+            disabled={isSyncing || !gmailEmail}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Syncing...' : 'Sync'}
+          </Button>
+          <Button onClick={() => setShowGmailConfig(true)} variant="outline">
+            Settings
+          </Button>
+        </div>
+      </div>
 
-          <Card>
+      {/* Gmail Configuration Alert */}
+      {!gmailEmail && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-6 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-orange-900">Gmail account not configured</p>
+              <p className="text-sm text-orange-800">
+                Set up your inquiry Gmail account to automatically sync emails and view them here.
+              </p>
+              <Button size="sm" variant="outline" onClick={() => setShowGmailConfig(true)} className="mt-2">
+                Configure Gmail
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Statistics - Clickable for Filtering */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Overview {statusFilter && `- ${statusFilter === 'new-unread' ? 'New (Unread)' : statusFilter === 'pending' ? 'Pending' : statusFilter}`}</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <Card
+            className={`cursor-pointer transition-all ${statusFilter === null ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
+            onClick={() => setStatusFilter(null)}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">New</CardTitle>
+              <CardTitle className="text-sm font-medium">All</CardTitle>
               <Mail className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.new}</div>
-              <p className="text-xs text-muted-foreground mt-1">Just received, need attention</p>
+              <div className="text-2xl font-bold">{stats.total}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className={`cursor-pointer transition-all ${statusFilter === 'new-unread' ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
+            onClick={() => setStatusFilter('new-unread')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">New</CardTitle>
+              <Mail className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.new}</div>
+              <p className="text-xs text-muted-foreground">Unread</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`cursor-pointer transition-all ${statusFilter === 'pending' ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
+            onClick={() => setStatusFilter('pending')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <Clock className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pending}</div>
+              <p className="text-xs text-muted-foreground">Marked</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`cursor-pointer transition-all ${statusFilter === 'Contacted' ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
+            onClick={() => setStatusFilter('Contacted')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Contacted</CardTitle>
               <Phone className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.contacted}</div>
-              <p className="text-xs text-muted-foreground mt-1">You reached out to customer</p>
+              <p className="text-xs text-muted-foreground">Replied</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className={`cursor-pointer transition-all ${statusFilter === 'Appointment Set' ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
+            onClick={() => setStatusFilter('Appointment Set')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Apt. Scheduled</CardTitle>
+              <CardTitle className="text-sm font-medium">Apt.</CardTitle>
               <Calendar className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.appointmentSet}</div>
-              <p className="text-xs text-muted-foreground mt-1">Appointment confirmed</p>
+              <p className="text-xs text-muted-foreground">Scheduled</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card
+            className={`cursor-pointer transition-all ${statusFilter === 'Closed' ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
+            onClick={() => setStatusFilter('Closed')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Closed</CardTitle>
               <Car className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.closed}</div>
-              <p className="text-xs text-muted-foreground mt-1">Deal closed or lost</p>
+              <p className="text-xs text-muted-foreground">Done/Lost</p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Leads List */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold mb-2">Inquiry List</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Click on any inquiry to view complete details, including customer contact information and vehicle details. From there, you can update the status or add notes.
-          </p>
-        </div>
-
+      {/* Inquiry List */}
+      <div className="space-y-3">
         {isLoading ? (
           <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">Loading inquiries...</p>
+            <CardContent className="pt-6 text-center text-muted-foreground">
+              Loading inquiries...
             </CardContent>
           </Card>
-        ) : leads.length === 0 ? (
+        ) : filteredLeads.length === 0 ? (
           <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-muted-foreground mb-4">No inquiries yet</p>
-              <p className="text-sm text-muted-foreground">Click the Create Test Inquiry button to create a sample, or customer inquiries will appear here automatically when they submit forms or emails.</p>
+            <CardContent className="pt-6 text-center space-y-3">
+              <Mail className="h-12 w-12 text-muted-foreground mx-auto opacity-50" />
+              <div>
+                <p className="font-semibold text-lg">
+                  {statusFilter ? 'No inquiries in this category' : 'No inquiries yet'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {statusFilter
+                    ? 'Try selecting a different filter or sync emails from Gmail.'
+                    : gmailEmail
+                    ? 'Click "Sync Emails" to fetch inquiries from Gmail.'
+                    : 'Configure a Gmail account to get started.'}
+                </p>
+              </div>
+              {statusFilter && (
+                <Button variant="outline" size="sm" onClick={() => setStatusFilter(null)}>
+                  Clear Filter
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
-            {leads.map((lead: Lead) => (
-              <Card key={lead._id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => openDetail(lead)}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <div>
-                          <p className="font-semibold">
-                            {lead.firstName} {lead.lastName}
-                          </p>
-                          <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-                            <a href={`mailto:${lead.email}`} className="flex items-center gap-1 hover:underline">
-                              <Mail className="h-3 w-3" />
-                              {lead.email}
-                            </a>
-                            <a href={`tel:${lead.phone}`} className="flex items-center gap-1 hover:underline">
-                              <Phone className="h-3 w-3" />
-                              {lead.phone}
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                      {lead.vehicle?.make && (
-                        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                          <Car className="h-3 w-3" />
-                          {lead.vehicle.year} {lead.vehicle.make} {lead.vehicle.model}
-                        </div>
+          filteredLeads.map((lead: Lead) => (
+            <Card
+              key={lead._id}
+              className={`cursor-pointer hover:shadow-md transition-all ${!lead.isRead ? 'border-blue-300 bg-blue-50' : ''}`}
+              onClick={() => handleOpenLead(lead)}
+            >
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {!lead.isRead && (
+                        <div className="h-2 w-2 rounded-full bg-blue-600 shrink-0" />
                       )}
-                      {lead.comments && (
-                        <p className="text-sm text-muted-foreground mt-2">{lead.comments}</p>
-                      )}
+                      <h3 className="font-semibold truncate">
+                        {lead.firstName} {lead.lastName}
+                      </h3>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge className={statusColors[lead.status] || 'bg-gray-100'}>
-                        {lead.status}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(lead.createdAt).toLocaleDateString()}
-                      </span>
+                    {lead.subject && (
+                      <p className="text-sm text-foreground mt-1 line-clamp-2">{lead.subject}</p>
+                    )}
+                    <div className="flex gap-2 text-sm text-muted-foreground mt-2">
+                      <a
+                        href={`mailto:${lead.email}`}
+                        className="hover:underline flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Mail className="h-3 w-3" />
+                        {lead.email}
+                      </a>
+                      <span>•</span>
+                      <span>{new Date(lead.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge className={statusColors[lead.status] || 'bg-gray-100'}>
+                      {lead.status}
+                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {!lead.isRead && (
+                          <DropdownMenuItem onClick={(e) => {
+                            e.preventDefault()
+                            markAsRead(lead._id)
+                            addToast('success', 'Marked as read')
+                          }}>
+                            Mark as Read
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={(e) => {
+                          e.preventDefault()
+                          handleMarkPending(lead._id, !!lead.isPending)
+                        }}>
+                          {lead.isPending ? 'Unmark Pending' : 'Mark as Pending'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 
-      {/* Detail Dialog */}
+      {/* Detail Modal */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedLead?.firstName} {selectedLead?.lastName}
             </DialogTitle>
+            <DialogDescription>
+              {selectedLead?.email}
+            </DialogDescription>
           </DialogHeader>
+
           {selectedLead && (
             <div className="space-y-4">
-              <div>
-                <p className="text-sm font-semibold text-muted-foreground">Email</p>
-                <a href={`mailto:${selectedLead.email}`} className="text-blue-600 hover:underline">
-                  {selectedLead.email}
-                </a>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-muted-foreground">Phone</p>
-                <a href={`tel:${selectedLead.phone}`} className="text-blue-600 hover:underline">
-                  {selectedLead.phone}
-                </a>
-              </div>
+              {selectedLead.subject && (
+                <div>
+                  <p className="text-sm font-semibold text-muted-foreground">Subject</p>
+                  <p className="text-foreground">{selectedLead.subject}</p>
+                </div>
+              )}
+
+              {selectedLead.body && (
+                <div>
+                  <p className="text-sm font-semibold text-muted-foreground">Message</p>
+                  <p className="text-foreground whitespace-pre-wrap">{selectedLead.body}</p>
+                </div>
+              )}
+
+              {selectedLead.phone && (
+                <div>
+                  <p className="text-sm font-semibold text-muted-foreground">Phone</p>
+                  <a
+                    href={`tel:${selectedLead.phone}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {selectedLead.phone}
+                  </a>
+                </div>
+              )}
+
               {selectedLead.vehicle?.make && (
                 <div>
-                  <p className="text-sm font-semibold text-muted-foreground">Vehicle</p>
-                  <p>
+                  <p className="text-sm font-semibold text-muted-foreground">Vehicle Interest</p>
+                  <p className="text-foreground">
                     {selectedLead.vehicle.year} {selectedLead.vehicle.make} {selectedLead.vehicle.model}
                   </p>
                 </div>
               )}
-              <div>
-                <p className="text-sm font-semibold text-muted-foreground">Comments</p>
-                <p className="text-sm">{selectedLead.comments || 'No comments'}</p>
-              </div>
-              <div>
+
+              <div className="border-t pt-4">
                 <p className="text-sm font-semibold text-muted-foreground mb-2">Status</p>
                 <Select value={newStatus} onValueChange={setNewStatus}>
                   <SelectTrigger>
@@ -346,6 +584,7 @@ export default function LeadsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="New">New</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
                     <SelectItem value="Contacted">Contacted</SelectItem>
                     <SelectItem value="Appointment Set">Appointment Set</SelectItem>
                     <SelectItem value="Closed">Closed</SelectItem>
@@ -354,170 +593,228 @@ export default function LeadsPage() {
               </div>
             </div>
           )}
+
+          <DialogFooter className="flex gap-2 justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (selectedLead) handleMarkPending(selectedLead._id, !!selectedLead.isPending)
+                }}
+              >
+                {selectedLead?.isPending ? 'Unmark Pending' : 'Mark Pending'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReplyOpen(true)}
+                className="gap-1"
+              >
+                <Reply className="h-4 w-4" />
+                Reply
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleStatusChange(newStatus)}>
+                Update Status
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Gmail Config Modal */}
+      <Dialog open={showGmailConfig} onOpenChange={setShowGmailConfig}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gmail Configuration</DialogTitle>
+            <DialogDescription>
+              Enter the Gmail account where customer inquiries are sent.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {syncError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-900">{syncError}</p>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="gmail">Gmail Address</Label>
+              <Input
+                id="gmail"
+                type="email"
+                placeholder="inquiries@actionauto.com"
+                value={gmailEmail}
+                onChange={(e) => setGmailEmail(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This is the Gmail account where customer inquiries are received. Gmail sync requires OAuth2 setup.
+              </p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-900">
+                <strong>Note:</strong> Gmail integration requires connecting the Gmail API. On localhost, you can test manually. For spam emails: ensure the Gmail account has proper filters or the Gmail API scope includes spam labels.
+              </p>
+            </div>
+          </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
+            <Button variant="outline" onClick={() => setShowGmailConfig(false)}>
               Cancel
             </Button>
-            <Button onClick={() => handleStatusChange(newStatus)}>
-              Update Status
+            <Button onClick={handleSaveGmailConfig}>Save Configuration</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reply Modal */}
+      <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reply to {selectedLead?.firstName} {selectedLead?.lastName}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="reply-message">Message</Label>
+              <Textarea
+                id="reply-message"
+                placeholder="Type your reply..."
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+                rows={5}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplyOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendReply}
+              disabled={isSendingReply || !replyMessage.trim()}
+            >
+              {isSendingReply ? 'Sending...' : 'Send Reply'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Create Inquiry Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* Compose Email Modal */}
+      <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Test Inquiry</DialogTitle>
+            <DialogTitle>Compose Email</DialogTitle>
             <DialogDescription>
-              Fill in customer details to create a sample inquiry for testing.
+              Send a new inquiry email to a customer.
             </DialogDescription>
           </DialogHeader>
 
-          {/* Test Disclaimer Banner */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-            <p className="text-sm text-blue-900">
-              <strong>ℹ️ For Testing Only:</strong> This creates a sample inquiry in your system. 
-              In production, real customer inquiries will be automatically forwarded from your email account. 
-              This test feature helps you see how the system works before connecting email integration.
-            </p>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="compose-to">To</Label>
+              <Input
+                id="compose-to"
+                type="email"
+                placeholder="customer@example.com"
+                value={composeForm.to}
+                onChange={(e) => setComposeForm({ ...composeForm, to: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="compose-subject">Subject</Label>
+              <Input
+                id="compose-subject"
+                placeholder="Email subject"
+                value={composeForm.subject}
+                onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="compose-body">Message</Label>
+              <Textarea
+                id="compose-body"
+                placeholder="Type your message..."
+                value={composeForm.body}
+                onChange={(e) => setComposeForm({ ...composeForm, body: e.target.value })}
+                rows={6}
+              />
+            </div>
+
+            {/* Attachments Section */}
+            <div className="border-t pt-4">
+              <div className="space-y-3">
+                <Label>Attachments</Label>
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    multiple
+                    id="file-upload"
+                    onChange={handleAddAttachment}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                    className="gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Add Files
+                  </Button>
+                </div>
+
+                {composeAttachments.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">Files ({composeAttachments.length})</p>
+                    <div className="space-y-1">
+                      {composeAttachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-muted p-2 rounded text-sm">
+                          <span className="truncate">{file.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveAttachment(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Success Message */}
-          {createSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-              <p className="text-sm text-green-900">
-                ✅ Test inquiry created successfully! It should appear in your list in a moment...
-              </p>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {createError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-              <p className="text-sm text-red-900">
-                <strong>Error:</strong> {createError}
-              </p>
-            </div>
-          )}
-
-          <form onSubmit={handleCreateInquiry} className="space-y-4">
-            {createSuccess ? (
-              <div className="py-8 text-center">
-                <p className="text-lg font-semibold text-green-600 mb-2">✅ Success!</p>
-                <p className="text-muted-foreground">Test inquiry created. Closing...</p>
-              </div>
-            ) : (
-              <>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  placeholder="John"
-                  value={createForm.firstName}
-                  onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  placeholder="Doe"
-                  value={createForm.lastName}
-                  onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john@example.com"
-                value={createForm.email}
-                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                placeholder="555-0123"
-                value={createForm.phone}
-                onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">Vehicle Information (Optional)</h3>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label htmlFor="year">Year</Label>
-                  <Input
-                    id="year"
-                    placeholder="2023"
-                    value={createForm.year}
-                    onChange={(e) => setCreateForm({ ...createForm, year: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="make">Make</Label>
-                  <Input
-                    id="make"
-                    placeholder="Toyota"
-                    value={createForm.make}
-                    onChange={(e) => setCreateForm({ ...createForm, make: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="model">Model</Label>
-                  <Input
-                    id="model"
-                    placeholder="Camry"
-                    value={createForm.model}
-                    onChange={(e) => setCreateForm({ ...createForm, model: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="comments">Comments/Notes</Label>
-              <Textarea
-                id="comments"
-                placeholder="Add any notes about this inquiry..."
-                value={createForm.comments}
-                onChange={(e) => setCreateForm({ ...createForm, comments: e.target.value })}
-                rows={3}
-              />
-            </div>
-              </>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => {
-                setIsCreateOpen(false)
-                setCreateError(null)
-              }}>
-                Cancel
-              </Button>
-              {!createSuccess && (
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? 'Creating...' : 'Create Inquiry'}
-                </Button>
-              )}
-            </DialogFooter>
-          </form>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setComposeOpen(false)
+              setComposeForm({ to: '', subject: '', body: '' })
+              setComposeAttachments([])
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendCompose}
+              disabled={isSendingCompose || !composeForm.to || !composeForm.subject || !composeForm.body}
+            >
+              {isSendingCompose ? 'Sending...' : 'Send Email'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   )
 }

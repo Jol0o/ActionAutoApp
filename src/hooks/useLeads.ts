@@ -4,12 +4,26 @@ import { useAuth } from '@clerk/nextjs'
 
 export interface Lead {
   _id: string
+  // Contact Information
   firstName: string
   lastName: string
   email: string
   phone: string
+  senderEmail?: string
+  senderName?: string
+  
+  // Email Fields
+  subject?: string
+  body?: string
+  threadId?: string
+  messageId?: string
+  isRead?: boolean
+  isPending?: boolean
+  labels?: string[]
+  
+  // Lead Information
   source: string
-  status: 'New' | 'Contacted' | 'Appointment Set' | 'Closed'
+  status: 'New' | 'Contacted' | 'Pending' | 'Appointment Set' | 'Closed'
   vehicle: {
     year: string
     make: string
@@ -57,10 +71,64 @@ export const useLeads = () => {
     },
   })
 
+  // Mark as read
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const headers = await getAuthHeaders()
+      const response = await apiClient.patch(
+        `/api/leads/${id}/read`,
+        {},
+        headers
+      )
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+      refetch()
+    },
+  })
+
+  // Mark as pending
+  const markAsPendingMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const headers = await getAuthHeaders()
+      const response = await apiClient.patch(
+        `/api/leads/${id}/pending`,
+        {},
+        headers
+      )
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+      refetch()
+    },
+  })
+
+  // Reply to inquiry
+  const replyMutation = useMutation({
+    mutationFn: async ({ id, message }: { id: string; message: string }) => {
+      const headers = await getAuthHeaders()
+      const response = await apiClient.post(
+        `/api/leads/${id}/reply`,
+        { message },
+        headers
+      )
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+      refetch()
+    },
+  })
+
   return {
     leads,
     isLoading,
     refetch,
     updateLeadStatus: updateLeadMutation.mutate,
+    markAsRead: markAsReadMutation.mutate,
+    markAsPending: markAsPendingMutation.mutate,
+    reply: replyMutation.mutate,
   }
 }
