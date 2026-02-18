@@ -4,6 +4,7 @@ import withSerwistInit from "@serwist/next";
 process.env.SERWIST_SUPPRESS_TURBOPACK_WARNING = "1";
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   experimental: {
     serverActions: {
       allowedOrigins: ["nctbkrf4-3000.asse.devtunnels.ms", "localhost:3001", "localhost:3000"],
