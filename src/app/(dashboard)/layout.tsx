@@ -33,15 +33,21 @@ function DashboardLayoutContent({
     const { user } = useUser();
     const { signOut } = useClerk();
     // Use custom hook for organization context
-    const { organization, isLoaded } = useOrg();
+    const { organization, isLoaded, isDriver } = useOrg();
     const router = useRouter();
 
     React.useEffect(() => {
+        if (!isLoaded) return;
+        // Redirect drivers to their own dashboard
+        if (isDriver) {
+            router.push('/driver');
+            return;
+        }
         // If loaded and no organization is found, redirect to selection/onboarding
-        if (isLoaded && !organization) {
+        if (!organization) {
             router.push('/org-selection');
         }
-    }, [isLoaded, organization, router]);
+    }, [isLoaded, organization, isDriver, router]);
 
     return (
         <SidebarProvider>

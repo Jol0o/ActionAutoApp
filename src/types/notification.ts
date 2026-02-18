@@ -12,7 +12,10 @@ export type NotificationType =
   | 'guest_response' // NEW: For guest RSVP changes
   | 'password_changed'
   | 'email_changed'
-  | 'profile_updated';
+  | 'profile_updated'
+  | 'driver_request'
+  | 'driver_request_approved'
+  | 'driver_request_rejected';
 
 export interface Notification {
   _id: string;

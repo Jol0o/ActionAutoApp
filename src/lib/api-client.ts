@@ -113,6 +113,27 @@ class ApiClient {
     async acceptInvite(token: string, config?: AxiosRequestConfig) {
         return this.post('/api/invitations/accept', { token }, config);
     }
+
+    // Driver Request Methods
+    async createDriverRequest(data: { dealerEmail: string }, config?: AxiosRequestConfig) {
+        return this.post('/api/driver-requests', data, config);
+    }
+
+    async getDriverRequestStatus(config?: AxiosRequestConfig) {
+        return this.get('/api/driver-requests/my-status', config);
+    }
+
+    async getDriverRequests(params?: { status?: string }, config?: AxiosRequestConfig) {
+        return this.get('/api/driver-requests', { ...config, params });
+    }
+
+    async approveDriverRequest(id: string, config?: AxiosRequestConfig) {
+        return this.patch(`/api/driver-requests/${id}/approve`, {}, config);
+    }
+
+    async rejectDriverRequest(id: string, config?: AxiosRequestConfig) {
+        return this.patch(`/api/driver-requests/${id}/reject`, {}, config);
+    }
 }
 
 export const apiClient = new ApiClient();
