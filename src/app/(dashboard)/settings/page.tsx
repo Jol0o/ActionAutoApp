@@ -26,6 +26,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { OrganizationMembersSettings } from "@/components/settings/org-members-settings"
+import { DriverRequestsSettings } from "@/components/settings/driver-requests-settings"
+import { Truck } from "lucide-react"
 
 export default function UtilitiesPage() {
     return (
@@ -55,6 +57,9 @@ export default function UtilitiesPage() {
                     </TabsTrigger>
                     <TabsTrigger value="dealership" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-2 md:px-6 data-[state=active]:bg-secondary shadow-none">
                         <MapPin className="size-4 hidden md:block" /> Organization
+                    </TabsTrigger>
+                    <TabsTrigger value="drivers" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-2 md:px-6 data-[state=active]:bg-secondary shadow-none">
+                        <Truck className="size-4 hidden md:block" /> Drivers
                     </TabsTrigger>
                 </TabsList>
 
@@ -165,6 +170,18 @@ export default function UtilitiesPage() {
                         </CardHeader>
                         <CardContent className="p-4 sm:p-6 min-h-[400px]">
                             <OrganizationMembersSettings />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="drivers" className="m-0">
+                    <Card className="border-none shadow-sm bg-card p-0 overflow-hidden">
+                        <CardHeader className="bg-muted/30 border-b py-4">
+                            <CardTitle className="text-lg font-bold">Driver Management</CardTitle>
+                            <CardDescription>Review and manage driver access requests.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-4 sm:p-6 min-h-[400px]">
+                            <DriverRequestsSettings />
                         </CardContent>
                     </Card>
                 </TabsContent>

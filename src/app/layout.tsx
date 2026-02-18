@@ -48,14 +48,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider appearance={{
-      baseTheme: dark,
-      captcha: {
-        theme: 'auto',
-        size: 'flexible',
-        language: 'en',
-      },
-    }}>
+    <ClerkProvider
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      appearance={{
+        baseTheme: dark,
+        captcha: {
+          theme: 'auto',
+          size: 'flexible',
+          language: 'en',
+        },
+      }}
+    >
       <html lang="en" className="dark scrollbar-thin">
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}

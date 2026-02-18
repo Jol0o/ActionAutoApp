@@ -6,10 +6,11 @@ export interface UserProfile {
   email: string;
   avatar?: string;
   role: 'user' | 'admin';
+  accountType?: 'dealer' | 'driver';
   notificationPreferences: NotificationPreferences;
   theme: 'light' | 'dark';
   organizationId?: string;
-  organizationRole?: 'admin' | 'member';
+  organizationRole?: 'admin' | 'member' | 'driver';
   subscription?: {
     plan: 'free' | 'starter' | 'professional' | 'enterprise';
     status: 'active' | 'inactive' | 'trial' | 'cancelled';

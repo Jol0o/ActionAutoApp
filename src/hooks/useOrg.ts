@@ -102,12 +102,16 @@ export function useOrg() {
         }
     });
 
+    const accountType = orgContext?.data?.accountType as 'dealer' | 'driver' | undefined;
+
     return {
         isLoaded: isLoaded && !isLoadingOrgContext && (!organizationId || !isLoadingOrgDetails),
         organization: organization as Organization | undefined,
         organizationId: organizationId as string | undefined,
-        role: orgRole as 'admin' | 'member' | undefined,
+        role: orgRole as 'admin' | 'member' | 'driver' | undefined,
         isAdmin: orgRole === 'admin',
+        isDriver: accountType === 'driver',
+        accountType,
         createOrganization: createOrgMutation.mutateAsync,
         isCreating: createOrgMutation.isPending,
         userOrganizations: (userOrgsData as Organization[]) || [],
