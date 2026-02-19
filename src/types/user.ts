@@ -5,8 +5,7 @@ export interface UserProfile {
   name: string;
   email: string;
   avatar?: string;
-  role: 'user' | 'admin';
-  accountType?: 'dealer' | 'driver';
+  role: 'user' | 'admin' | 'super_admin';
   notificationPreferences: NotificationPreferences;
   theme: 'light' | 'dark';
   organizationId?: string;

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { useLeads, Lead } from "@/hooks/useLeads"
 import { Mail, Phone, Car, Calendar, MoreHorizontal, Reply, Clock, AlertCircle, RefreshCw, X, Check, Plus, Upload } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
+import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
+import { apiClient } from "@/lib/api-client"
 import {
   Select,
   SelectContent,
@@ -48,7 +50,7 @@ interface Toast {
 
 export default function InquiriesPage() {
   const { leads, isLoading, updateLeadStatus, markAsRead, markAsPending, reply, refetch, syncGmail, isSyncingGmail } = useLeads()
-  useAuth()
+  const { getToken } = useAuth()
   
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null)
   const [isDetailOpen, setIsDetailOpen] = React.useState(false)
@@ -63,6 +65,8 @@ export default function InquiriesPage() {
   const [showGmailConfig, setShowGmailConfig] = React.useState(false)
   const [syncError, setSyncError] = React.useState<string | null>(null)
   const [showSyncConfirm, setShowSyncConfirm] = React.useState(false)
+  const [isGoogleConnected, setIsGoogleConnected] = React.useState(false)
+  const [isCheckingGoogle, setIsCheckingGoogle] = React.useState(false)
   
   // Reply state
   const [replyOpen, setReplyOpen] = React.useState(false)
@@ -91,6 +95,30 @@ export default function InquiriesPage() {
       setGmailSynced(synced)
     }
   }, [])
+
+  // Check Google Calendar connection when gmail config dialog opens
+  React.useEffect(() => {
+    if (showGmailConfig) {
+      checkGoogleConnection()
+    }
+  }, [showGmailConfig])
+
+  const checkGoogleConnection = async () => {
+    try {
+      setIsCheckingGoogle(true)
+      const token = await getToken()
+      const response = await apiClient.get('/api/google-calendar/status', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = response.data?.data || response.data
+      setIsGoogleConnected(data.connected || false)
+    } catch (error) {
+      console.error('Failed to check Google connection:', error)
+      setIsGoogleConnected(false)
+    } finally {
+      setIsCheckingGoogle(false)
+    }
+  }
 
   // Toast helpers
   const addToast = (type: 'success' | 'error' | 'info', message: string) => {
@@ -133,6 +161,12 @@ export default function InquiriesPage() {
   }
 
   const handleSaveGmailConfig = () => {
+    // Check Google Calendar connection first
+    if (!isGoogleConnected) {
+      setSyncError('Please connect your Google Calendar account first to sync Gmail')
+      return
+    }
+
     if (!gmailEmail.trim()) {
       setSyncError('Gmail email is required')
       setGmailSynced(false)
@@ -651,43 +685,62 @@ export default function InquiriesPage() {
 
       {/* Gmail Config Modal */}
       <Dialog open={showGmailConfig} onOpenChange={setShowGmailConfig}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Gmail Configuration</DialogTitle>
             <DialogDescription>
-              Enter the Gmail account where customer inquiries are sent.
+              Connect your Google Account and enter your Gmail address to sync inquiries.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {syncError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-900">{syncError}</p>
+            {/* Google Calendar Connection - Required First */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Step 1: Connect Google Calendar</Label>
+              <GoogleCalendarConnect />
+            </div>
+
+            {/* Gmail Address Input - Only enabled if Google connected */}
+            {isGoogleConnected && (
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">Step 2: Enter Gmail Address</Label>
+                {syncError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-900">{syncError}</p>
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="gmail">Gmail Address</Label>
+                  <Input
+                    id="gmail"
+                    type="email"
+                    placeholder="inquiries@actionauto.com"
+                    value={gmailEmail}
+                    onChange={(e) => setGmailEmail(e.target.value)}
+                    disabled={!isGoogleConnected}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter the Gmail account where customer inquiries are received.
+                  </p>
+                </div>
               </div>
             )}
 
-            <div>
-              <Label htmlFor="gmail">Gmail Address</Label>
-              <Input
-                id="gmail"
-                type="email"
-                placeholder="inquiries@actionauto.com"
-                value={gmailEmail}
-                onChange={(e) => setGmailEmail(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                This is the Gmail account where customer inquiries are received. Your account must be connected to Google Calendar OAuth.
-              </p>
-            </div>
-
-
+            {!isGoogleConnected && !isCheckingGoogle && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-900">Please connect your Google Account first to proceed with Gmail sync.</p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowGmailConfig(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveGmailConfig} disabled={isSyncingGmail || !gmailEmail.includes('@')}>
+            <Button 
+              onClick={handleSaveGmailConfig} 
+              disabled={!isGoogleConnected || !gmailEmail.includes('@') || isSyncingGmail || isCheckingGoogle}
+            >
               {isSyncingGmail ? 'Syncing...' : 'Save & Sync'}
             </Button>
           </DialogFooter>

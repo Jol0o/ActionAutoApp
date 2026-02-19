@@ -110,8 +110,7 @@ export function useOrg() {
         organizationId: organizationId as string | undefined,
         role: orgRole as 'admin' | 'member' | 'driver' | undefined,
         isAdmin: orgRole === 'admin',
-        isDriver: accountType === 'driver',
-        accountType,
+        isSuperAdmin: user?.publicMetadata?.role === 'super_admin' || (user as any)?.role === 'super_admin' || orgContext?.data?.role === 'super_admin', // Checking Clerk, extended Clerk type, and DB source
         createOrganization: createOrgMutation.mutateAsync,
         isCreating: createOrgMutation.isPending,
         userOrganizations: (userOrgsData as Organization[]) || [],
