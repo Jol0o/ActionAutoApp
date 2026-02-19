@@ -378,77 +378,13 @@ export function DriverAuthForm() {
   return (
     <div className="space-y-4">
       {/* Login / Register toggle */}
-      <div className="flex rounded-lg bg-muted p-1 gap-1">
-        <button
-          type="button"
-          onClick={() => {
-            setMode("login");
-            setError(null);
-          }}
-          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-            mode === "login"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Login
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMode("register");
-            setError(null);
-          }}
-          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-            mode === "register"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Register
-        </button>
-      </div>
-
       {error && (
         <p className="text-xs text-destructive text-center bg-destructive/10 rounded-md p-2">
           {error}
         </p>
       )}
 
-      {mode === "login" ? (
-        <form onSubmit={handleLogin} className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="login-email">Email</Label>
-            <Input
-              id="login-email"
-              type="email"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-              placeholder="driver@email.com"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="login-password">Password</Label>
-            <Input
-              id="login-password"
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
-          </div>
-          <Button
-            type="submit"
-            className="w-full bg-emerald-600 hover:bg-emerald-700"
-            disabled={isSubmitting}
-          >
-            {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
-            Sign In as Driver
-          </Button>
-        </form>
-      ) : (
+     
         <form onSubmit={handleRegister} className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="reg-name">Full Name</Label>
@@ -546,7 +482,6 @@ export function DriverAuthForm() {
             Create Driver Account
           </Button>
         </form>
-      )}
     </div>
   );
 }
