@@ -9,7 +9,24 @@ import { Calendar, Check, X, Loader2, AlertCircle } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@clerk/nextjs"
 
-export function GoogleCalendarConnect() {
+export interface GoogleCalendarConnectProps {
+  title?: string
+  description?: string
+  showFeatures?: boolean
+  features?: string[]
+}
+
+export function GoogleCalendarConnect({
+  title = 'Google Calendar Integration',
+  description,
+  showFeatures = true,
+  features = [
+    'Bidirectional sync (App and Google Calendar)',
+    'Auto-sync to participants\' calendars',
+    'Real-time webhook notifications',
+    'Customer bookings sync'
+  ]
+}: GoogleCalendarConnectProps = {}) {
   const { getToken } = useAuth()
   const [isConnected, setIsConnected] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(true)
@@ -51,13 +68,46 @@ export function GoogleCalendarConnect() {
       const data = response.data?.data || response.data
       
       if (data.authUrl) {
-        window.location.href = data.authUrl
+        // Open in popup window instead of full redirect
+        const width = 500
+        const height = 600
+        const left = window.screenX + (window.outerWidth - width) / 2
+        const top = window.screenY + (window.outerHeight - height) / 2
+        
+        const popup = window.open(
+          data.authUrl,
+          'Google Auth',
+          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        )
+        
+        if (!popup) {
+          setError('Popup blocked. Please allow popups and try again.')
+          setIsConnecting(false)
+          return
+        }
+
+        // Check popup status
+        const checkPopupTimer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkPopupTimer)
+            // Popup closed, check if we're still connected
+            checkConnection()
+            setIsConnecting(false)
+          }
+        }, 500)
+
+        // Fallback: close timer after 5 minutes
+        setTimeout(() => {
+          clearInterval(checkPopupTimer)
+          setIsConnecting(false)
+        }, 300000)
       } else {
         setError('Failed to get authorization URL')
+        setIsConnecting(false)
       }
     } catch (error: any) {
       console.error('Failed to connect Google Calendar:', error)
-      setError(error.response?.data?.message || 'Failed to connect to Google Calendar')
+      setError(error.response?.data?.message || 'Failed to connect to Google Calendar. Please check your internet connection.')
       setIsConnecting(false)
     }
   }
@@ -103,12 +153,12 @@ export function GoogleCalendarConnect() {
               <Calendar className="size-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <CardTitle className="text-lg">Google Calendar Integration</CardTitle>
+              <CardTitle className="text-lg">{title}</CardTitle>
               <CardDescription>
-                {isConnected 
-                  ? 'Your calendar is synced and up to date'
-                  : 'Connect to sync appointments with Google Calendar'
-                }
+                {description || (isConnected 
+                  ? 'Your account is synced and up to date'
+                  : `Connect to sync with ${title}`
+                )}
               </CardDescription>
             </div>
           </div>
@@ -141,22 +191,12 @@ export function GoogleCalendarConnect() {
               <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg p-4">
                 <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">Active Features:</h4>
                 <ul className="space-y-1 text-sm text-green-800 dark:text-green-200">
-                  <li className="flex items-center gap-2">
-                    <Check className="size-4" />
-                    Bidirectional sync (App and Google Calendar)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="size-4" />
-                    Auto-sync to participants' calendars
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="size-4" />
-                    Real-time webhook notifications
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="size-4" />
-                    Customer bookings sync
-                  </li>
+                  {showFeatures && features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center gap-2">
+                      <Check className="size-4" />
+                      {feature}
+                    </li>
+                  ))}
                 </ul>
               </div>
 
@@ -182,7 +222,7 @@ export function GoogleCalendarConnect() {
               <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
                 <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Benefits:</h4>
                 <ul className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
-                  <li>Sync all appointments with Google Calendar</li>
+                  <li>Sync all inquiries with {title}</li>
                   <li>Automatic updates when you make changes</li>
                   <li>Share events with participants</li>
                   <li>Get notifications on all your devices</li>
@@ -202,7 +242,7 @@ export function GoogleCalendarConnect() {
                 ) : (
                   <>
                     <Calendar className="size-4 mr-2" />
-                    Connect Google Calendar
+                    Connect {title}
                   </>
                 )}
               </Button>
