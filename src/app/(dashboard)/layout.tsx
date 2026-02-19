@@ -24,6 +24,7 @@ import {
 
 
 import { useOrg } from "@/hooks/useOrg"
+import { adminStore } from "@/store/admin-store"
 
 function DashboardLayoutContent({
     children,
@@ -33,15 +34,26 @@ function DashboardLayoutContent({
     const { user } = useUser();
     const { signOut } = useClerk();
     // Use custom hook for organization context
-    const { organization, isLoaded } = useOrg();
+    const { organization, isLoaded, isSuperAdmin } = useOrg();
     const router = useRouter();
+    const { isImpersonating } = adminStore.useStore();
 
     React.useEffect(() => {
+        // Bypass & Redirect for Super Admin
+        // FAILSAFE: If impersonating, DO NOT redirect to admin dashboard
+        if (isSuperAdmin && !isImpersonating) {
+            // If at root or org-selection, go to admin dashboard
+            if (window.location.pathname === '/' || window.location.pathname === '/org-selection') {
+                router.push('/admin/dashboard');
+            }
+            return;
+        }
+
         // If loaded and no organization is found, redirect to selection/onboarding
         if (isLoaded && !organization) {
             router.push('/org-selection');
         }
-    }, [isLoaded, organization, router]);
+    }, [isLoaded, organization, isSuperAdmin, router, isImpersonating]);
 
     return (
         <SidebarProvider>
