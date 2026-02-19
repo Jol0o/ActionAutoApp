@@ -22,10 +22,53 @@ class ApiClient {
             (config) => {
                 const fullUrl = `${config.baseURL}${config.url}`;
                 console.log(`[apiClient] ${config.method?.toUpperCase()} ${fullUrl}`);
+
+                // --- IMPERSONATION INJECTION START ---
+                if (typeof window !== 'undefined') {
+                    const impersonatedOrgId = localStorage.getItem('admin_impersonate_org_id');
+                    if (impersonatedOrgId) {
+                        config.headers['x-impersonate-org-id'] = impersonatedOrgId;
+                        console.log('[apiClient] 🕵️ Impersonating Org:', impersonatedOrgId);
+                    }
+                }
+                // --- IMPERSONATION INJECTION END ---
+
                 return config;
             },
             (error) => {
                 console.error('[apiClient] Request setup failed:', error);
+                return Promise.reject(error);
+            }
+        );
+
+        this.client.interceptors.response.use(
+            (response) => {
+                console.log(`[apiClient] Response ${response.status} from ${response.config.url}`);
+                return response;
+            },
+            (error) => {
+                // --- SUSPENSION HANDLING START ---
+                if (error.response && error.response.status === 403) {
+                    const msg = error.response.data?.message || '';
+                    if (msg.includes('Suspended')) {
+                        if (typeof window !== 'undefined') {
+                            window.location.href = '/suspended';
+                        }
+                    }
+                }
+                // --- SUSPENSION HANDLING END ---
+
+                if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+                    const attemptedUrl = `${error.config?.baseURL}${error.config?.url}`;
+                    console.error('[apiClient] NETWORK ERROR');
+                    console.error('   Attempted URL:', attemptedUrl);
+                    console.error('   This means: Cannot reach backend server');
+                    console.error('   Check: Is backend running on http://localhost:5000?');
+                } else if (error.response) {
+                    console.error(`[apiClient] Server responded with ${error.response.status}:`, error.response.data);
+                } else {
+                    console.error('[apiClient] Error:', error.message);
+                }
                 return Promise.reject(error);
             }
         );
@@ -115,7 +158,7 @@ class ApiClient {
     }
 
     // Driver Request Methods
-    async createDriverRequest(data: { dealerEmail: string }, config?: AxiosRequestConfig) {
+    async createDriverRequest(data?: Record<string, unknown>, config?: AxiosRequestConfig) {
         return this.post('/api/driver-requests', data, config);
     }
 

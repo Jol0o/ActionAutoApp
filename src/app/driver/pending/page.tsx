@@ -31,7 +31,21 @@ export default function DriverPendingPage() {
       const data = response.data?.data;
 
       if (!data) {
-        setStatus("no-request");
+        // No request yet — driver navigated here before createDriverRequest ran.
+        // Create it now, then re-check.
+        try {
+          await apiClient.createDriverRequest({}, { headers: { Authorization: `Bearer ${token}` } });
+          // Re-check after creating
+          const recheck = await apiClient.getDriverRequestStatus({ headers: { Authorization: `Bearer ${token}` } });
+          const recheckData = recheck.data?.data;
+          if (recheckData?.status === "pending") {
+            setStatus("pending");
+          } else {
+            setStatus("no-request");
+          }
+        } catch {
+          setStatus("no-request");
+        }
         return;
       }
 

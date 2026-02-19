@@ -42,6 +42,9 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { dark } from '@clerk/themes'
 
+import { Toaster } from "@/components/ui/sonner"
+import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -70,7 +73,8 @@ export default function RootLayout({
               {children}
             </QueryProvider>
           </main>
-          {/* <Toaster /> */}
+          <Toaster />
+          <ImpersonationBanner />
           <InstallPrompt />
         </body>
       </html>
