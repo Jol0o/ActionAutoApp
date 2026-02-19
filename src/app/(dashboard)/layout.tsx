@@ -34,26 +34,34 @@ function DashboardLayoutContent({
     const { user } = useUser();
     const { signOut } = useClerk();
     // Use custom hook for organization context
-    const { organization, isLoaded, isSuperAdmin } = useOrg();
+    const { organization, isLoaded, isSuperAdmin, isDriver } = useOrg();
     const router = useRouter();
     const { isImpersonating } = adminStore.useStore();
 
     React.useEffect(() => {
+        // Wait until org context is fully loaded before making routing decisions
+        if (!isLoaded) return;
+
         // Bypass & Redirect for Super Admin
         // FAILSAFE: If impersonating, DO NOT redirect to admin dashboard
         if (isSuperAdmin && !isImpersonating) {
-            // If at root or org-selection, go to admin dashboard
             if (window.location.pathname === '/' || window.location.pathname === '/org-selection') {
                 router.push('/admin/dashboard');
             }
             return;
         }
 
-        // If loaded and no organization is found, redirect to selection/onboarding
+        // Drivers don't belong to an org — send them to their own dashboard
+        if (isDriver) {
+            router.push('/driver');
+            return;
+        }
+
+        // If no organization is found, redirect to selection/onboarding
         if (!organization) {
             router.push('/org-selection');
         }
-    }, [isLoaded, organization, isSuperAdmin, router, isImpersonating]);
+    }, [isLoaded, organization, isSuperAdmin, isDriver, router, isImpersonating]);
 
     return (
         <SidebarProvider>

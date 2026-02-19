@@ -102,15 +102,17 @@ export function useOrg() {
         }
     });
 
-    const accountType = orgContext?.data?.accountType as 'dealer' | 'driver' | undefined;
+    const userRole = orgContext?.data?.role as 'user' | 'admin' | 'super_admin' | 'driver' | undefined;
 
     return {
         isLoaded: isLoaded && !isLoadingOrgContext && (!organizationId || !isLoadingOrgDetails),
         organization: organization as Organization | undefined,
         organizationId: organizationId as string | undefined,
         role: orgRole as 'admin' | 'member' | 'driver' | undefined,
+        userRole,
         isAdmin: orgRole === 'admin',
-        isSuperAdmin: user?.publicMetadata?.role === 'super_admin' || (user as any)?.role === 'super_admin' || orgContext?.data?.role === 'super_admin', // Checking Clerk, extended Clerk type, and DB source
+        isDriver: userRole === 'driver',
+        isSuperAdmin: userRole === 'super_admin',
         createOrganization: createOrgMutation.mutateAsync,
         isCreating: createOrgMutation.isPending,
         userOrganizations: (userOrgsData as Organization[]) || [],

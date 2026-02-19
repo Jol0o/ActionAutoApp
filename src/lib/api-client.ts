@@ -158,7 +158,7 @@ class ApiClient {
     }
 
     // Driver Request Methods
-    async createDriverRequest(data: { dealerEmail: string }, config?: AxiosRequestConfig) {
+    async createDriverRequest(data?: Record<string, unknown>, config?: AxiosRequestConfig) {
         return this.post('/api/driver-requests', data, config);
     }
 

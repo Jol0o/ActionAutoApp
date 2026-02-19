@@ -25,30 +25,25 @@ function DriverLayoutContent({
 }: Readonly<{ children: React.ReactNode }>) {
   const { user } = useUser();
   const { signOut } = useClerk();
-  const { isLoaded, isDriver, organizationId, accountType } = useOrg();
+  const { isLoaded, isDriver, userRole } = useOrg();
   const router = useRouter();
   const [guardPassed, setGuardPassed] = React.useState(false);
 
   React.useEffect(() => {
     if (!isLoaded) return;
 
-    // accountType is undefined means data hasn't resolved yet — wait
-    if (accountType === undefined) return;
+    // Wait until role data has resolved
+    if (userRole === undefined) return;
 
     // If not a driver, redirect to dealer dashboard
     if (!isDriver) {
       router.push("/");
       return;
     }
-    // If driver but no org (not approved yet), redirect to pending
-    if (!organizationId) {
-      router.push("/driver/pending");
-      return;
-    }
 
-    // All checks passed
+    // Driver is approved — grant access
     setGuardPassed(true);
-  }, [isLoaded, isDriver, organizationId, accountType, router]);
+  }, [isLoaded, isDriver, userRole, router]);
 
   // Show loading while guard is checking
   if (!guardPassed) {
