@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 import type { Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "Action Auto Utah Dashboard",
+  title: "AAU | Supra AI",
   description: "Advanced Car Dealership Management",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
