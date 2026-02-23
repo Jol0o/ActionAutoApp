@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useLeads, Lead } from "@/hooks/useLeads"
-import { Mail, Phone, Car, Calendar, MoreHorizontal, Reply, Clock, AlertCircle, RefreshCw, X, Check, Plus, Upload, Send, Eye, Inbox, Clock3, CheckCircle, XCircle, FileText } from "lucide-react"
+import { Mail, Phone, Calendar, MoreHorizontal, X, Plus, Send, Clock3, XCircle, LockOpen, Lock, ChevronLeft } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
 import { apiClient } from "@/lib/api-client"
@@ -27,20 +27,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 
-const statusColors: Record<string, string> = {
-  'New': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
-  'Pending': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100',
-  'Contacted': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
-  'Appointment Set': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
-  'Closed': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100',
-}
-
-const statusButtonMap: Record<string, { label: string, color: string, icon: React.ReactNode }> = {
-  'New': { label: 'New', color: 'bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-100 dark:hover:bg-blue-800', icon: <Inbox className="h-4 w-4" /> },
-  'Pending': { label: 'Not Replied', color: 'bg-orange-100 hover:bg-orange-200 text-orange-800 dark:bg-orange-900 dark:text-orange-100 dark:hover:bg-orange-800', icon: <Clock3 className="h-4 w-4" /> },
-  'Contacted': { label: 'Contacted', color: 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100 dark:hover:bg-yellow-800', icon: <CheckCircle className="h-4 w-4" /> },
-  'Appointment Set': { label: 'Appointment', color: 'bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-100 dark:hover:bg-green-800', icon: <Calendar className="h-4 w-4" /> },
-  'Closed': { label: 'Closed', color: 'bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600', icon: <XCircle className="h-4 w-4" /> },
+const statusConfig = {
+  'New': { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100', icon: <Mail className="h-3 w-3" /> },
+  'Pending': { color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100', icon: <Clock3 className="h-3 w-3" /> },
+  'Contacted': { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100', icon: <Phone className="h-3 w-3" /> },
+  'Appointment Set': { color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100', icon: <Calendar className="h-3 w-3" /> },
+  'Closed': { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100', icon: <XCircle className="h-3 w-3" /> },
 }
 
 interface Toast {
@@ -50,246 +42,192 @@ interface Toast {
   timestamp: Date
 }
 
+const cleanHTMLContent = (html: string): string => {
+  if (!html) return ''
+  return html
+    .replace(/<!doctype[^>]*>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/\r\n/g, '\n')
+    .trim()
+}
+
 export default function InquiriesPage() {
-  const { leads, isLoading, updateLeadStatus, markAsRead, markAsPending, reply, refetch, syncGmail, isSyncingGmail } = useLeads()
-  const { getToken, userId } = useAuth()
+  const { leads, isLoading, updateLeadStatus, markAsRead, reply, refetch } = useLeads()
+  const { getToken } = useAuth()
   
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null)
-  
-  // Filtering state
   const [statusFilter, setStatusFilter] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState('')
-  
-  // Gmail config state
   const [loggedInEmail, setLoggedInEmail] = React.useState('')
   const [gmailSynced, setGmailSynced] = React.useState(false)
   const [showGmailConfig, setShowGmailConfig] = React.useState(false)
   const [syncError, setSyncError] = React.useState<string | null>(null)
   const [isGoogleConnected, setIsGoogleConnected] = React.useState(false)
-  const [isCheckingGoogle, setIsCheckingGoogle] = React.useState(false)
+  const [lastSyncTime, setLastSyncTime] = React.useState<Date | null>(null)
+  const [syncCountdown, setSyncCountdown] = React.useState(0)
   
-  // Auto-sync state
-  const [autoSyncEnabled, setAutoSyncEnabled] = React.useState(false)
-  const [lastSyncTime, setLastSyncTime] = React.useState<string>('')
-  
-  // Reply state
-  const [replyOpen, setReplyOpen] = React.useState(false)
   const [replyMessage, setReplyMessage] = React.useState('')
   const [isSendingReply, setIsSendingReply] = React.useState(false)
   
-  // Compose state
   const [composeOpen, setComposeOpen] = React.useState(false)
-  const [composeForm, setComposeForm] = React.useState({
-    to: '',
-    subject: '',
-    body: '',
-  })
-  const [composeAttachments, setComposeAttachments] = React.useState<File[]>([])
+  const [composeForm, setComposeForm] = React.useState({ to: '', subject: '', body: '', cc: '', bcc: '' })
   const [isSendingCompose, setIsSendingCompose] = React.useState(false)
   
-  // Appointment dialog state
   const [appointmentOpen, setAppointmentOpen] = React.useState(false)
-  const [appointmentForm, setAppointmentForm] = React.useState({
-    date: '',
-    time: '',
-    notes: '',
-  })
+  const [appointmentForm, setAppointmentForm] = React.useState({ date: '', time: '', notes: '', locationOrVehicle: '' })
   
-  // Toast notifications
   const [toasts, setToasts] = React.useState<Toast[]>([])
+  const [selectedLeadClosed, setSelectedLeadClosed] = React.useState(false)
+  const [messageThreads, setMessageThreads] = React.useState<Record<string, Array<{id: string, sender: string, senderEmail: string, message: string, timestamp: Date, isOwn: boolean}>>>({})
 
-  // Load saved Gmail from localStorage
+  // Auto-sync every 60 seconds
   React.useEffect(() => {
     const saved = localStorage.getItem('inquiry_gmail_synced') === 'true'
     setGmailSynced(saved)
-    const autoSync = localStorage.getItem('inquiry_auto_sync') === 'true'
-    setAutoSyncEnabled(autoSync)
-  }, [])
+    
+    if (saved) {
+      const syncInterval = setInterval(async () => {
+        try {
+          const token = await getToken()
+          const result = await apiClient.post('/api/leads/sync-gmail', {}, { headers: { Authorization: `Bearer ${token}` } })
+          const newCount = result.data?.syncedCount || 0
+          if (newCount > 0) {
+            addToast('success', `Auto-synced: ${newCount} new inquiry${newCount > 1 ? 'ies' : ''}`)
+          }
+          setLastSyncTime(new Date())
+          setSyncCountdown(60)
+          await refetch()
+        } catch (error) {
+          console.error('Auto-sync failed:', error)
+        }
+      }, 60000)
 
-  // Check Google Calendar connection
-  React.useEffect(() => {
-    if (showGmailConfig) {
-      checkGoogleConnection()
-    }
-  }, [showGmailConfig])
+      const countdownInterval = setInterval(() => {
+        setSyncCountdown(prev => prev > 0 ? prev - 1 : 0)
+      }, 1000)
 
-  // Setup auto-sync interval
-  React.useEffect(() => {
-    if (!autoSyncEnabled || !gmailSynced) return
-
-    const syncInterval = setInterval(async () => {
-      try {
-        await handleAutoSync()
-      } catch (error) {
-        console.error('Auto-sync failed:', error)
+      return () => {
+        clearInterval(syncInterval)
+        clearInterval(countdownInterval)
       }
-    }, 5 * 60 * 1000) // Auto-sync every 5 minutes
+    }
+  }, [getToken, gmailSynced])
 
-    return () => clearInterval(syncInterval)
-  }, [autoSyncEnabled, gmailSynced])
-
-  // Get logged-in user email from Clerk
+  // Get logged email
   React.useEffect(() => {
     const getEmail = async () => {
       try {
         const token = await getToken()
-        const response = await apiClient.get('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        const email = response.data?.email || userId || ''
-        setLoggedInEmail(email)
-        localStorage.setItem('inquiry_gmail', email)
+        const response = await apiClient.get('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        setLoggedInEmail(response.data?.email || '')
       } catch (error) {
-        console.error('Failed to get logged-in email:', error)
+        console.log('Could not fetch email')
       }
     }
     getEmail()
-  }, [getToken, userId])
+  }, [getToken])
 
-  const checkGoogleConnection = async () => {
-    try {
-      setIsCheckingGoogle(true)
-      const token = await getToken()
-      const response = await apiClient.get('/api/google-calendar/status', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = response.data?.data || response.data
-      setIsGoogleConnected(data.connected || false)
-    } catch (error) {
-      console.error('Failed to check Google connection:', error)
-      setIsGoogleConnected(false)
-    } finally {
-      setIsCheckingGoogle(false)
-    }
-  }
-
-  // Toast helpers with timestamp
-  const addToast = (type: 'success' | 'error' | 'info', message: string) => {
-    const id = Math.random().toString()
-    const timestamp = new Date()
-    setToasts(prev => [...prev, { id, type, message, timestamp }])
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id))
-    }, 4000)
-  }
-
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id))
-  }
-
-  const formatToastTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const handleOpenLead = (lead: Lead) => {
-    setSelectedLead(lead)
-    // Mark as read when opening
-    if (!lead.isRead) {
-      try {
-        markAsRead(lead._id)
-      } catch {
-        addToast('error', 'Failed to mark as read')
+  // Check Google connection
+  React.useEffect(() => {
+    if (showGmailConfig) {
+      const check = async () => {
+        try {
+          const token = await getToken()
+          const response = await apiClient.get('/api/google-calendar/status', { headers: { Authorization: `Bearer ${token}` } })
+          setIsGoogleConnected(response.data?.data?.connected || false)
+        } catch { setIsGoogleConnected(false) }
       }
+      check()
     }
+  }, [showGmailConfig, getToken])
+
+  const addToast = (type: 'success' | 'error' | 'info', message: string) => {
+    const isDuplicate = toasts.some(t => t.message === message && t.type === type)
+    if (isDuplicate) return
+    const id = Math.random().toString()
+    setToasts(prev => [...prev, { id, type, message, timestamp: new Date() }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
   }
 
   const handleStatusChange = (status: string) => {
-    if (selectedLead) {
-      try {
-        updateLeadStatus({ id: selectedLead._id, status })
-        addToast('success', `Status updated to ${status}`)
-        setSelectedLead(prev => prev ? { ...prev, status: status as any } : null)
-      } catch {
-        addToast('error', 'Failed to update status')
-      }
+    if (!selectedLead) return
+    try {
+      updateLeadStatus({ id: selectedLead._id, status })
+      setSelectedLead(prev => prev ? { ...prev, status: status as any } : null)
+      addToast('success', `Status updated to ${status}`)
+    } catch {
+      addToast('error', 'Failed to update status')
     }
   }
 
-  const handleSaveGmailConfig = async () => {
-    // Check Google Calendar connection first
-    if (!isGoogleConnected) {
-      setSyncError('Please connect your Google Account first to sync Gmail')
-      return
-    }
-
-    setSyncError(null)
-    setShowGmailConfig(false)
-    await handleSyncEmails()
-  }
-
-  const handleAutoSync = async () => {
+  const handleSendReply = async () => {
+    if (!selectedLead || !replyMessage.trim()) return
+    setIsSendingReply(true)
     try {
       const token = await getToken()
-      const response = await apiClient.post(
-        '/api/leads/sync-gmail',
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      setLastSyncTime(new Date().toLocaleTimeString())
-      const syncedCount = response.data?.syncedCount || 0
-      if (syncedCount > 0) {
-        addToast('success', `Auto-synced! ${syncedCount} new inquiries imported.`)
+      await apiClient.post(`/api/leads/${selectedLead._id}/reply`, { message: replyMessage }, { headers: { Authorization: `Bearer ${token}` } })
+      
+      // Add reply to message thread
+      const newMessage = {
+        id: Math.random().toString(),
+        sender: 'You',
+        senderEmail: loggedInEmail,
+        message: replyMessage,
+        timestamp: new Date(),
+        isOwn: true
       }
+      setMessageThreads(prev => ({
+        ...prev,
+        [selectedLead._id]: [...(prev[selectedLead._id] || []), newMessage]
+      }))
+      
+      setReplyMessage('')
+      addToast('success', 'Reply sent successfully')
+      updateLeadStatus({ id: selectedLead._id, status: 'Contacted' })
+      setSelectedLead(prev => prev ? { ...prev, status: 'Contacted' } : null)
       await refetch()
-    } catch (error: any) {
-      console.error('[Auto-sync Error]', error)
-    }
+    } catch { addToast('error', 'Failed to send reply') } 
+    finally { setIsSendingReply(false) }
   }
 
   const handleSyncEmails = async () => {
     try {
-      addToast('info', 'Syncing emails from Gmail...')
+      addToast('info', 'Syncing Gmail inquiries...')
       const token = await getToken()
-      const result = await apiClient.post(
-        '/api/leads/sync-gmail',
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      const result = await apiClient.post('/api/leads/sync-gmail', {}, { headers: { Authorization: `Bearer ${token}` } })
       const syncedCount = result.data?.syncedCount || 0
       setGmailSynced(true)
       localStorage.setItem('inquiry_gmail_synced', 'true')
-      setLastSyncTime(new Date().toLocaleTimeString())
-      addToast('success', `Gmail synced! ${syncedCount} new inquiries imported.`)
+      setLastSyncTime(new Date())
+      setSyncCountdown(60)
+      addToast('success', `Gmail synced! ${syncedCount} inquiries imported`)
       await refetch()
     } catch (error: any) {
-      console.error('[Sync Error]', error)
-      setGmailSynced(false)
-      localStorage.setItem('inquiry_gmail_synced', 'false')
-      const errorMsg = error?.response?.data?.message || 'Failed to sync Gmail'
-      addToast('error', errorMsg)
-    }
-  }
-
-  const handleRefreshEmails = async () => {
-    try {
-      addToast('info', 'Refreshing inquiries...')
-      await refetch()
-      addToast('success', 'Inquiries refreshed successfully')
-    } catch {
-      addToast('error', 'Failed to refresh inquiries')
+      addToast('error', error?.response?.data?.message || 'Failed to sync Gmail')
     }
   }
 
   const handleSendCompose = async () => {
     if (!gmailSynced || !loggedInEmail) {
-      addToast('error', 'Gmail must be synced first. Please configure your Google Account.')
+      addToast('error', 'Please sync Gmail first')
       return
     }
     if (!composeForm.to || !composeForm.subject || !composeForm.body) {
-      addToast('error', 'Please fill in all required fields')
+      addToast('error', 'Fill in all required fields')
       return
     }
     setIsSendingCompose(true)
     try {
       const token = await getToken()
-      await apiClient.post(
-        '/api/leads/send-email',
-        composeForm,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      await apiClient.post('/api/leads/send-email', { ...composeForm }, { headers: { Authorization: `Bearer ${token}` } })
       addToast('success', 'Email sent successfully')
-      setComposeForm({ to: '', subject: '', body: '' })
-      setComposeAttachments([])
+      setComposeForm({ to: '', subject: '', body: '', cc: '', bcc: '' })
       setComposeOpen(false)
       await refetch()
     } catch (error: any) {
@@ -299,862 +237,530 @@ export default function InquiriesPage() {
     }
   }
 
-  const handleAddAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    setComposeAttachments(prev => [...prev, ...files])
-    addToast('success', `${files.length} file(s) added`)
-  }
-
-  const handleRemoveAttachment = (index: number) => {
-    setComposeAttachments(prev => prev.filter((_, i) => i !== index))
-  }
-
-  const handleSendReply = async () => {
-    if (!selectedLead || !replyMessage.trim()) return
-    setIsSendingReply(true)
-    try {
-      const token = await getToken()
-      await apiClient.post(
-        `/api/leads/${selectedLead._id}/reply`,
-        { message: replyMessage },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      setReplyMessage('')
-      setReplyOpen(false)
-      addToast('success', 'Reply sent successfully')
-      // Mark as contacted
-      updateLeadStatus({ id: selectedLead._id, status: 'Contacted' })
-      setSelectedLead(prev => prev ? { ...prev, status: 'Contacted' } : null)
-      await refetch()
-    } catch {
-      addToast('error', 'Failed to send reply')
-    } finally {
-      setIsSendingReply(false)
-    }
-  }
-
-  const handleMarkPending = (leadId: string, currentlyPending: boolean) => {
-    try {
-      markAsPending(leadId)
-      addToast('success', currentlyPending ? 'Unmarked as pending' : 'Marked for follow-up')
-    } catch {
-      addToast('error', 'Failed to update status')
-    }
-  }
-
   const handleSetAppointment = () => {
-    if (selectedLead && appointmentForm.date && appointmentForm.time) {
-      try {
-        updateLeadStatus({ id: selectedLead._id, status: 'Appointment Set' })
-        addToast('success', 'Appointment scheduled')
-        setSelectedLead(prev => prev ? { ...prev, status: 'Appointment Set' } : null)
-        setAppointmentOpen(false)
-        setAppointmentForm({ date: '', time: '', notes: '' })
-      } catch {
-        addToast('error', 'Failed to schedule appointment')
-      }
+    if (!selectedLead || !appointmentForm.date || !appointmentForm.time) return
+    try {
+      updateLeadStatus({ id: selectedLead._id, status: 'Appointment Set' })
+      setSelectedLead(prev => prev ? { ...prev, status: 'Appointment Set' } : null)
+      addToast('success', 'Appointment scheduled')
+      setAppointmentOpen(false)
+      setAppointmentForm({ date: '', time: '', notes: '', locationOrVehicle: '' })
+    } catch {
+      addToast('error', 'Failed to schedule appointment')
     }
   }
 
-  // Filter and search leads
+  const handleCloseLead = () => {
+    if (!selectedLead) return
+    handleStatusChange('Closed')
+    setSelectedLeadClosed(true)
+  }
+
+  const handleReopenLead = () => {
+    if (!selectedLead) return
+    handleStatusChange('Pending')
+    setSelectedLeadClosed(false)
+  }
+
   const filteredLeads = React.useMemo(() => {
     let filtered = leads
-
-    // Apply status filter
     if (statusFilter) {
-      if (statusFilter === 'new-unread') {
-        filtered = filtered.filter((l: Lead) => !l.isRead && l.status === 'New')
-      } else if (statusFilter === 'pending') {
-        filtered = filtered.filter((l: Lead) => l.isPending)
+      if (statusFilter === 'New') {
+        filtered = filtered.filter((l: Lead) => l.status === 'New')
       } else {
         filtered = filtered.filter((l: Lead) => l.status === statusFilter)
       }
     }
-
-    // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter((l: Lead) =>
         l.firstName.toLowerCase().includes(query) ||
         l.lastName.toLowerCase().includes(query) ||
         l.email.toLowerCase().includes(query) ||
-        l.subject?.toLowerCase().includes(query) ||
-        l.senderEmail?.toLowerCase().includes(query)
+        l.senderEmail?.toLowerCase().includes(query) ||
+        l.subject?.toLowerCase().includes(query)
       )
     }
-
     return filtered
   }, [leads, statusFilter, searchQuery])
 
-  const stats = React.useMemo(() => {
-    return {
-      total: leads.length,
-      new: leads.filter((l: Lead) => !l.isRead && l.status === 'New').length,
-      pending: leads.filter((l: Lead) => l.isPending).length,
-      contacted: leads.filter((l: Lead) => l.status === 'Contacted').length,
-      appointmentSet: leads.filter((l: Lead) => l.status === 'Appointment Set').length,
-      closed: leads.filter((l: Lead) => l.status === 'Closed').length,
-    }
-  }, [leads])
+  const stats = React.useMemo(() => ({
+    total: leads.length,
+    new: leads.filter((l: Lead) => l.status === 'New').length,
+    pending: leads.filter((l: Lead) => l.status === 'Pending').length,
+    contacted: leads.filter((l: Lead) => l.status === 'Contacted').length,
+    appointmentSet: leads.filter((l: Lead) => l.status === 'Appointment Set').length,
+    closed: leads.filter((l: Lead) => l.status === 'Closed').length,
+  }), [leads])
+
+  const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const formatDate = (date: Date) => date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  const formatFullDateTime = (date: Date) => date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
   return (
-    <div className="min-h-screen bg-background py-6 px-4 md:px-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        {/* Toast Notifications - Now with timestamps */}
-        <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="h-screen flex flex-col bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="mx-auto max-w-7xl w-full flex flex-col flex-1 px-4 md:px-6 py-6 gap-6 overflow-hidden">
+        {/* Toast Notifications - Improved */}
+        <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm pointer-events-none">
           {toasts.map((toast) => (
-            <div
-              key={toast.id}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white animate-in slide-in-from-top ${
-                toast.type === 'success'
-                  ? 'bg-green-500 dark:bg-green-600'
-                  : toast.type === 'error'
-                  ? 'bg-red-500 dark:bg-red-600'
-                  : 'bg-blue-500 dark:bg-blue-600'
-              }`}
-            >
-              {toast.type === 'success' && <Check className="h-4 w-4" />}
-              {toast.type === 'error' && <AlertCircle className="h-4 w-4" />}
-              {toast.type === 'info' && <Mail className="h-4 w-4" />}
-              <div className="flex-1">
+            <div key={toast.id} className={`pointer-events-auto flex flex-col px-4 py-3 rounded-lg shadow-lg backdrop-blur text-white animate-in slide-in-from-top-2 border overflow-hidden ${
+              toast.type === 'success' ? 'bg-emerald-600/95 border-emerald-500' :
+              toast.type === 'error' ? 'bg-red-600/95 border-red-500' :
+              'bg-blue-600/95 border-blue-500'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">{toast.message}</span>
-                <span className="text-xs opacity-75 ml-2">{formatToastTime(toast.timestamp)}</span>
+                <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-3 hover:opacity-80 shrink-0">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <button onClick={() => removeToast(toast.id)} className="ml-2">
-                <X className="h-4 w-4" />
-              </button>
+              <div className="w-full h-1 bg-white/30 rounded-full overflow-hidden">
+                <div className="h-full bg-white animate-shrink origin-left" style={{ animationDuration: '5s' }}></div>
+              </div>
             </div>
           ))}
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold">Inquiries & Leads</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage customer inquiries and conversations in one CRM dashboard
-            </p>
-          </div>
-          <div className="flex gap-2 flex-wrap justify-end">
-            <Button
-              onClick={() => {if (!gmailSynced) {addToast('error', 'Please sync Gmail first'); return;} setComposeOpen(true)}}
-              disabled={!gmailSynced}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Compose
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleRefreshEmails}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-            {gmailSynced && (
-              <Button
-                variant="outline"
-                onClick={handleSyncEmails}
-                disabled={isSyncingGmail}
-                className="gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${isSyncingGmail ? 'animate-spin' : ''}`} />
-                {isSyncingGmail ? 'Syncing...' : 'Sync Now'}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Inquiries & Leads</h1>
+              {loggedInEmail && gmailSynced && <p className="text-sm text-green-600 dark:text-green-400 mt-1">Synced from: {loggedInEmail}</p>}
+            </div>
+            <div className="flex gap-2 flex-wrap justify-end">
+              <Button onClick={() => { if (!gmailSynced) { addToast('error', 'Sync Gmail first'); return } setComposeOpen(true) }} disabled={!gmailSynced} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+                <Plus className="h-4 w-4" /> Compose
               </Button>
-            )}
-            <Button onClick={() => setShowGmailConfig(true)} variant="outline">
-              Settings
-            </Button>
+              <Button onClick={handleSyncEmails} disabled={!gmailSynced} variant="outline" className="gap-2">
+                <Mail className="h-4 w-4" /> Sync
+              </Button>
+              <Button onClick={() => setShowGmailConfig(true)} variant="outline">
+                Settings
+              </Button>
+            </div>
           </div>
+          {gmailSynced && lastSyncTime && (
+            <div className="text-xs text-muted-foreground">
+              Last sync: {formatTime(lastSyncTime)} • {formatDate(lastSyncTime)} ({syncCountdown}s)
+            </div>
+          )}
         </div>
 
-        {/* Gmail Configuration Alert - Only show if not synced */}
+        {/* Not Synced Alert */}
         {!gmailSynced && (
-          <Card className="border-2 border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800">
-            <CardContent className="pt-6 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+          <Card className="border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+            <CardContent className="pt-5 pb-5 flex items-start gap-3">
               <div className="flex-1">
-                <p className="font-semibold text-orange-900 dark:text-orange-100">Gmail is currently not synced</p>
-                <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
-                  {loggedInEmail 
-                    ? `Your account (${loggedInEmail}) is ready to sync. Click "Sync Now" or "Settings" to begin.` 
-                    : 'Configure your Google Account settings to sync inquiries'}
-                </p>
+                <p className="font-semibold text-amber-900 dark:text-amber-100">Gmail not synced</p>
+                <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">Click Settings to connect your Gmail and start importing inquiries.</p>
               </div>
+              <Button onClick={() => setShowGmailConfig(true)} size="sm" className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white">
+                Setup
+              </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Search and Filter */}
-        <div className="space-y-4">
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, subject..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="dark:bg-slate-900 pl-10 shadow-sm border-slate-200 dark:border-slate-700"
-            />
-          </div>
-
-          {/* Statistics - Clickable for Filtering */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5 gap-3">
-            <Card
-              className={`cursor-pointer transition-all ${statusFilter === null ? 'ring-2 ring-blue-500 shadow-md bg-blue-50 dark:bg-blue-950' : 'hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              onClick={() => setStatusFilter(null)}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-semibold">All</CardTitle>
-                <Mail className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
-                <p className="text-xs text-muted-foreground mt-1">inquiries</p>
-              </CardContent>
-            </Card>
-
-            <Card
-              className={`cursor-pointer transition-all ${statusFilter === 'new-unread' ? 'ring-2 ring-blue-500 shadow-md bg-blue-50 dark:bg-blue-950' : 'hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              onClick={() => setStatusFilter('new-unread')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-semibold">New</CardTitle>
-                <Mail className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold">{stats.new}</div>
-                <p className="text-xs text-muted-foreground mt-1">unread</p>
-              </CardContent>
-            </Card>
-
-            <Card
-              className={`cursor-pointer transition-all ${statusFilter === 'Contacted' ? 'ring-2 ring-blue-500 shadow-md bg-blue-50 dark:bg-blue-950' : 'hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              onClick={() => setStatusFilter('Contacted')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-semibold">Contacted</CardTitle>
-                <Phone className="h-4 w-4 text-yellow-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold">{stats.contacted}</div>
-                <p className="text-xs text-muted-foreground mt-1">replied</p>
-              </CardContent>
-            </Card>
-
-            <Card
-              className={`cursor-pointer transition-all hidden sm:block ${statusFilter === 'Appointment Set' ? 'ring-2 ring-blue-500 shadow-md bg-blue-50 dark:bg-blue-950' : 'hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              onClick={() => setStatusFilter('Appointment Set')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-semibold">Apt.</CardTitle>
-                <Calendar className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold">{stats.appointmentSet}</div>
-                <p className="text-xs text-muted-foreground mt-1\">scheduled</p>
-              </CardContent>
-            </Card>
-
-            <Card
-              className={`cursor-pointer transition-all hidden md:block ${statusFilter === 'Closed' ? 'ring-2 ring-blue-500 shadow-md bg-blue-50 dark:bg-blue-950' : 'hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              onClick={() => setStatusFilter('Closed')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-semibold">Closed</CardTitle>
-                <Car className="h-4 w-4 text-gray-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold">{stats.closed}</div>
-                <p className="text-xs text-muted-foreground mt-1">done</p>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Search */}
+        <div className="relative">
+          <Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
+          <Input placeholder="Search inquiries..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-10 rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500" />
         </div>
 
-        {/* Split View: List and Details */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[600px]">
-          {/* Left: Inquiry List */}
-          <div className="lg:col-span-1 space-y-3 max-h-[600px] overflow-y-auto">
-            {isLoading ? (
-              <Card>
-                <CardContent className="pt-6 text-center text-muted-foreground">
-                  Loading inquiries...
-                </CardContent>
-              </Card>
-            ) : filteredLeads.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6 text-center space-y-3">
-                  <Mail className="h-12 w-12 text-muted-foreground mx-auto opacity-50" />
-                  <div>
-                    <p className="font-semibold text-lg">
-                      {searchQuery || statusFilter ? 'No inquiries match' : 'No inquiries yet'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {searchQuery || statusFilter
-                        ? 'Try adjusting your filters'
-                        : 'Sync your Gmail to get started'}
-                    </p>
-                  </div>
-                  {(searchQuery || statusFilter) && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => {
-                        setSearchQuery('')
-                        setStatusFilter(null)
-                      }}
-                    >
-                      Clear Filters
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              filteredLeads.map((lead: Lead) => (
-                <Card
-                  key={lead._id}
-                  className={`cursor-pointer hover:shadow-md transition-all ${
-                    selectedLead?._id === lead._id ? 'ring-2 ring-blue-500' : ''
-                  } ${!lead.isRead ? 'border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950' : 'dark:hover:bg-slate-800'}`}
-                  onClick={() => handleOpenLead(lead)}
+
+        {/* Stats Grid with Clear Filter */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 w-full">
+          {[
+            { filter: null, label: 'All', value: stats.total },
+            { filter: 'New', label: 'New', value: stats.new },
+            { filter: 'Pending', label: 'Pending', value: stats.pending },
+            { filter: 'Contacted', label: 'Contacted', value: stats.contacted },
+            { filter: 'Appointment Set', label: 'Appt', value: stats.appointmentSet },
+            { filter: 'Closed', label: 'Closed', value: stats.closed },
+          ].map((stat, idx) => (
+            <div key={idx} className="relative">
+              <button
+                onClick={() => setStatusFilter(stat.filter)}
+                className={`w-full px-2 sm:px-3 py-2 rounded-lg transition-all text-xs sm:text-sm font-semibold truncate ${
+                  statusFilter === stat.filter
+                    ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400'
+                    : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {stat.label} <span className="ml-1 font-bold text-xs">{stat.value}</span>
+              </button>
+              {statusFilter === stat.filter && stat.filter !== null && (
+                <button
+                  onClick={() => setStatusFilter(null)}
+                  className="absolute -top-2 -right-2 bg-slate-400 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-slate-500 transition-colors shadow-md"
                 >
-                  <CardContent className="pt-4">
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-2">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Main Grid - Responsive with Fixed Heights */}
+        <div className="flex-1 overflow-hidden grid grid-cols-1 gap-4" style={{ gridTemplateColumns: 'minmax(0, 0.85fr) minmax(0, 1.5fr)' }}>
+          {/* Left: List */}
+          <div className={`${selectedLead ? 'hidden sm:block' : ''} h-full overflow-hidden flex`}>
+            <Card className="w-full h-full overflow-hidden flex flex-col shadow-lg border-t-4 border-blue-600 dark:border-blue-400">
+              <CardHeader className="pb-3 border-b bg-white dark:bg-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base font-bold text-slate-900 dark:text-white truncate">Messages</CardTitle>
+                  <span className="text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 px-2 py-1 rounded-full font-semibold shrink-0">{filteredLeads.length}</span>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-slate-200 dark:scrollbar-thumb-blue-600 dark:scrollbar-track-slate-800">
+                {isLoading ? (
+                  <div className="p-4 text-center text-muted-foreground">Loading...</div>
+                ) : filteredLeads.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground">
+                    <Mail className="h-12 w-12 mx-auto opacity-20 mb-2" />
+                    <p className="text-sm">No inquiries found</p>
+                  </div>
+                ) : (
+                  filteredLeads.map((lead: Lead) => (
+                    <div key={lead._id} className={`border-b p-3.5 cursor-pointer transition-all ${selectedLead?._id === lead._id ? 'bg-blue-50 dark:bg-slate-700 border-l-4 border-blue-600' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-4 border-transparent'}`} onClick={() => { setSelectedLead(lead); if (!lead.isRead) markAsRead(lead._id); setSelectedLeadClosed(lead.status === 'Closed') }}>
+                      <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate text-sm">
-                            {lead.firstName} {lead.lastName}
-                          </h3>
-                          {!lead.isRead && (
-                            <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 mt-1">
-                              New
-                            </Badge>
-                          )}
+                          <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{lead.firstName} {lead.lastName}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">{lead.senderEmail || lead.email}</p>
                         </div>
-                        <Badge className={statusColors[lead.status] || 'bg-gray-100'}>
-                          {lead.status === 'Appointment Set' ? 'Apt' : lead.status}
+                        {!lead.isRead && <Badge className="text-xs bg-blue-600 text-white shrink-0">New</Badge>}
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate mb-2 line-clamp-1">{lead.subject || '(No subject)'}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-500">{new Date(lead.createdAt).toLocaleDateString([], {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</p>
+                        <Badge className={statusConfig[lead.status as keyof typeof statusConfig]?.color} variant="secondary">
+                          {statusConfig[lead.status as keyof typeof statusConfig]?.icon}
+                          <span className="ml-1 text-xs">{lead.status}</span>
                         </Badge>
                       </div>
-                      {lead.subject && (
-                        <p className="text-xs text-foreground line-clamp-2">{lead.subject}</p>
-                      )}
-                      <div className="flex gap-2 text-xs text-muted-foreground">
-                        <span className="truncate">{lead.email}</span>
-                        <span>•</span>
-                        <span className="shrink-0">{new Date(lead.createdAt).toLocaleDateString()}</span>
-                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+                  ))
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Right: Inquiry Details */}
-          <div className="lg:col-span-2">
+          {/* Right: Chat */}
+          <div className={`${!selectedLead ? 'hidden sm:block' : ''} h-full w-full overflow-hidden flex`}>
             {selectedLead ? (
-              <Card className="max-h-[600px] overflow-y-auto flex flex-col">
+              <Card className="w-full h-full flex flex-col shadow-lg overflow-hidden bg-white dark:bg-slate-900">
                 {/* Header */}
-                <CardHeader className="border-b">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-xl">
-                        {selectedLead.firstName} {selectedLead.lastName}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        From: {selectedLead.senderEmail || selectedLead.email}
-                      </p>
-                      {selectedLead.senderName && selectedLead.senderName !== selectedLead.email && (
-                        <p className="text-xs text-muted-foreground">({selectedLead.senderName})</p>
+                <CardHeader className="border-b pb-4 bg-slate-50 dark:bg-slate-800">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-2 flex-1">
+                        <button
+                          onClick={() => setSelectedLead(null)}
+                          className="sm:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"
+                          title="Back to list"
+                        >
+                          <ChevronLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white truncate">{selectedLead.firstName} {selectedLead.lastName}</h2>
+                          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 truncate">{selectedLead.senderEmail || selectedLead.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge className={`${statusConfig[selectedLead.status as keyof typeof statusConfig]?.color} shrink-0`}>
+                          {statusConfig[selectedLead.status as keyof typeof statusConfig]?.icon}
+                          <span className="ml-1">{selectedLead.status}</span>
+                        </Badge>
+                        <button
+                          onClick={() => setSelectedLead(null)}
+                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                          title="Close"
+                        >
+                          <X className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Subject</p>
+                        <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedLead.subject || '(No subject)'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">To</p>
+                        <p className="font-medium text-slate-900 dark:text-white mt-1 truncate">{loggedInEmail || 'Your email'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Sent</p>
+                        <p className="font-medium text-slate-900 dark:text-white mt-1">{new Date(selectedLead.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      {selectedLead.phone && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Phone</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedLead.phone}</p>
+                        </div>
                       )}
                     </div>
-                    <Badge className={statusColors[selectedLead.status] || 'bg-gray-100'}>
-                      {selectedLead.status}
-                    </Badge>
+                    {selectedLead.vehicle && (selectedLead.vehicle.year || selectedLead.vehicle.make || selectedLead.vehicle.model) && (
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Vehicle Interest</p>
+                        <p className="font-medium text-slate-900 dark:text-white mt-1">{[selectedLead.vehicle.year, selectedLead.vehicle.make, selectedLead.vehicle.model].filter(v => v).join(' ')}</p>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
 
-                {/* Email Details */}
-                <CardContent className="flex-1 space-y-4 pt-6">
-                  {/* Email Metadata */}
-                  <div className="grid grid-cols-2 gap-4 text-sm border-b pb-4">
-                    <div>
-                      <p className="text-muted-foreground font-semibold mb-1">From:</p>
-                      <p className="truncate">{selectedLead.senderEmail || selectedLead.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground font-semibold mb-1">To:</p>
-                      <p className="truncate">{loggedInEmail}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground font-semibold mb-1">Date:</p>
-                      <p>{new Date(selectedLead.createdAt).toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground font-semibold mb-1">Status:</p>
-                      <Badge className={statusColors[selectedLead.status] || 'bg-gray-100'}>
-                        {selectedLead.status}
-                      </Badge>
+                {/* Message Content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50 dark:bg-slate-950 scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-slate-200 dark:scrollbar-thumb-blue-600 dark:scrollbar-track-slate-800">
+                  {/* Original Message */}
+                  <div className="flex justify-start">
+                    <div className="max-w-sm lg:max-w-lg bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-700">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 text-sm font-bold shrink-0">M</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{selectedLead.firstName} {selectedLead.lastName}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{formatFullDateTime(new Date(selectedLead.createdAt))}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{cleanHTMLContent(selectedLead.body || '')}</p>
                     </div>
                   </div>
 
-                  {/* Subject */}
-                  {selectedLead.subject && (
-                    <div>
-                      <p className="text-sm font-semibold text-muted-foreground mb-2">Subject</p>
-                      <p className="text-foreground font-medium">{selectedLead.subject}</p>
-                    </div>
-                  )}
-
-                  {/* Message Body - Handle HTML content */}
-                  {selectedLead.body && (
-                    <div>
-                      <p className="text-sm font-semibold text-muted-foreground mb-2">Message</p>
-                      <div className="bg-muted p-4 rounded-lg text-sm text-foreground whitespace-pre-wrap break-words max-h-[200px] overflow-y-auto">
-                        {selectedLead.body.replace(/(<([^>]+)>)/gi, '')}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Contact Details */}
-                  <div className="space-y-3 border-t pt-4">
-                    {selectedLead.phone && (
-                      <div>
-                        <p className="text-sm font-semibold text-muted-foreground">Phone</p>
-                        <a href={`tel:${selectedLead.phone}`} className="text-blue-600 dark:text-blue-400 hover:underline">
-                          {selectedLead.phone}
-                        </a>
-                      </div>
-                    )}
-
-                    {selectedLead.vehicle?.make && (
-                      <div>
-                        <p className="text-sm font-semibold text-muted-foreground">Vehicle Interest</p>
-                        <p className="text-foreground">
-                          {selectedLead.vehicle.year} {selectedLead.vehicle.make} {selectedLead.vehicle.model}
+                  {/* Replies in Thread */}
+                  {messageThreads[selectedLead._id]?.map((msg) => (
+                    <div key={msg.id} className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-sm lg:max-w-lg rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow ${
+                        msg.isOwn
+                          ? 'bg-blue-600 text-white border-blue-500'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                      }`}>
+                        {!msg.isOwn && (
+                          <div className="flex items-center gap-2 mb-3 pb-3 border-b opacity-80" style={{ borderColor: msg.isOwn ? 'rgba(255,255,255,0.2)' : undefined }}>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                              msg.isOwn ? 'bg-blue-500' : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                            }`}>M</div>
+                            <p className="text-xs truncate">{msg.sender}</p>
+                          </div>
+                        )}
+                        <p className="text-sm leading-relaxed">{msg.message}</p>
+                        <p className={`text-xs mt-2 ${msg.isOwn ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                          {formatFullDateTime(msg.timestamp)}
                         </p>
                       </div>
-                    )}
+                    </div>
+                  ))}
+                </div>
 
-                    {selectedLead.comments && (
-                      <div>
-                        <p className="text-sm font-semibold text-muted-foreground">Notes</p>
-                        <p className="text-foreground text-sm">{selectedLead.comments}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-
-                {/* Actions */}
-                <div className="border-t p-4 space-y-3">
-                  {/* Status Buttons */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(statusButtonMap).map(([status, info]) => (
-                      <Button
-                        key={status}
-                        variant={selectedLead.status === status ? 'default' : 'outline'}
-                        size="sm"
-                        className={selectedLead.status === status ? '' : info.color}
-                        onClick={() => handleStatusChange(status)}
-                      >
-                        {info.icon}
-                        <span className="text-xs">{info.label}</span>
-                      </Button>
-                    ))}
-                  </div>
-
-                  {/* More Actions */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setReplyOpen(true)}
-                      className="flex-1 gap-2"
-                    >
-                      <Reply className="h-4 w-4" />
-                      Reply
-                    </Button>
-
-                    {selectedLead.status !== 'Appointment Set' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setAppointmentOpen(true)}
-                        className="flex-1 gap-2"
-                      >
-                        <Calendar className="h-4 w-4" />
-                        Schedule
-                      </Button>
-                    )}
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
+                {/* Reply Section */}
+                {!selectedLeadClosed ? (
+                  <div className="border-t p-4 space-y-3 bg-white dark:bg-slate-900">
+                    <div>
+                      <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2 block">Reply</Label>
+                      <Textarea placeholder="Type your response..." value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={3} className="text-sm resize-none dark:bg-slate-800 border-slate-300 dark:border-slate-600" />
+                    </div>
+                    <div className="flex gap-2 items-center justify-between flex-wrap">
+                      <div className="flex gap-2 flex-wrap">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="outline" className="gap-1 text-xs">
+                              <MoreHorizontal className="h-4 w-4" /> Status
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            {Object.keys(statusConfig).filter(s => s !== selectedLead.status).map(status => (
+                              <DropdownMenuItem key={status} onClick={() => { handleStatusChange(status); setSelectedLead(prev => prev ? { ...prev, status: status as any } : null) }} className="cursor-pointer text-xs">
+                                {statusConfig[status as keyof typeof statusConfig].icon}
+                                <span className="ml-2">{status}</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button size="sm" variant="outline" onClick={() => setAppointmentOpen(true)} className="gap-1 text-xs">
+                          <Calendar className="h-4 w-4" /> Appointment
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {!selectedLead.isRead && (
-                          <DropdownMenuItem onClick={() => {
-                            markAsRead(selectedLead._id)
-                            addToast('success', 'Marked as read')
-                          }}>
-                            Mark as Read
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => {
-                          handleMarkPending(selectedLead._id, !!selectedLead.isPending)
-                        }}>
-                          {selectedLead.isPending ? 'Unmark Follow-up' : 'Mark for Follow-up'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          const email = selectedLead.senderEmail || selectedLead.email
-                          window.location.href = `mailto:${email}`
-                        }}>
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          handleStatusChange('Closed')
-                        }}>
-                          Close Inquiry
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        <Button onClick={handleCloseLead} size="sm" variant="outline" className="gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
+                          <XCircle className="h-4 w-4" /> Close
+                        </Button>
+                      </div>
+                      <Button onClick={handleSendReply} disabled={isSendingReply || !replyMessage.trim()} size="sm" className="gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">
+                        <Send className="h-4 w-4" /> {isSendingReply ? 'Sending...' : 'Send'}
+                      </Button>
+                    </div>
                   </div>
+                ) : (
+                  <div className="border-t p-4 flex items-center justify-between bg-slate-100 dark:bg-slate-800">
+                    <div className="flex items-center gap-3">
+                      <Lock className="h-5 w-5 text-slate-400" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Inquiry Closed</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">This conversation is archived</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={handleReopenLead} className="gap-1 text-xs">
+                      <LockOpen className="h-4 w-4" /> Reopen
+                    </Button>
+                  </div>
+                )}
 
-                  {lastSyncTime && gmailSynced && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Last synced: {lastSyncTime}
-                    </p>
-                  )}
+                {/* Footer */}
+                <div className="border-t p-3 bg-slate-50 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-400 text-center">
+                  {lastSyncTime && <span>Synced: {formatDate(lastSyncTime)} at {formatTime(lastSyncTime)}</span>}
                 </div>
               </Card>
             ) : (
-              <Card className="h-[600px] flex items-center justify-center">
-                <CardContent className="text-center space-y-4">
-                  <Mail className="h-16 w-16 text-muted-foreground mx-auto opacity-30" />
-                  <div>
-                    <p className="text-lg font-semibold text-muted-foreground">
-                      Select an inquiry to view details
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Click on any inquiry from the list to view its full message and details
-                    </p>
-                  </div>
+              <Card className="h-full flex items-center justify-center shadow-lg">
+                <CardContent className="text-center">
+                  <Mail className="h-20 w-20 text-muted-foreground mx-auto opacity-10 mb-4" />
+                  <p className="text-muted-foreground text-lg">Select an inquiry to view</p>
                 </CardContent>
               </Card>
             )}
           </div>
         </div>
-
-        {/* Google Account Config Dialog */}
+        </div>
+      
+      {/* Dialogs */}
+      {/* Gmail Config */}
         <Dialog open={showGmailConfig} onOpenChange={setShowGmailConfig}>
           <DialogContent className="max-w-md dark:bg-slate-900">
             <DialogHeader>
-              <DialogTitle className="text-xl">Google Account Setup</DialogTitle>
-              <DialogDescription className="text-sm">
-                Connect your Google Account to sync and manage inquiries
-              </DialogDescription>
+              <DialogTitle>Gmail Setup</DialogTitle>
+              <DialogDescription>Connect your Gmail to auto-sync inquiries</DialogDescription>
             </DialogHeader>
-
             <div className="space-y-4">
-              {/* Google Account Connection */}
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">Step 1: Connect Google Account</Label>
-                <GoogleCalendarConnect 
-                  title="Google Account"
-                  description="Connect your Google Account to manage inquiries and emails"
-                  showFeatures={true}
-                  features={[
-                    'Sync inquiries from Gmail',
-                    'Send and receive emails',
-                    'Real-time notifications',
-                    'Auto-import email threads'
-                  ]}
-                />
-              </div>
-
+              <GoogleCalendarConnect title="Google Account" description="Connect to sync inquiries" features={['Sync inquiries', 'Auto-refresh every 60 seconds', 'Real-time notifications']} />
               {isGoogleConnected && (
-                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                  <p className="text-sm text-green-900 dark:text-green-100 font-medium">✓ Google Account connected successfully</p>
-                  {loggedInEmail && (
-                    <p className="text-xs text-green-800 dark:text-green-200 mt-1">Email: <span className="font-mono">{loggedInEmail}</span></p>
-                  )}
+                <div className="bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+                  <p className="text-sm text-emerald-900 dark:text-emerald-100">Connected</p>
+                  {loggedInEmail && <p className="text-xs text-emerald-800 dark:text-emerald-200 mt-1">{loggedInEmail}</p>}
                 </div>
               )}
-
-              {syncError && (
-                <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                  <p className="text-sm text-red-900 dark:text-red-100 font-medium">⚠ {syncError}</p>
-                </div>
-              )}
-
-              {isGoogleConnected && (
-                <div className="space-y-3 border-t pt-4">
-                  <Label className="text-sm font-semibold">Step 2: Auto-Sync Settings</Label>
-                  <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                    <input
-                      type="checkbox"
-                      id="auto-sync"
-                      checked={autoSyncEnabled}
-                      onChange={(e) => {
-                        setAutoSyncEnabled(e.target.checked)
-                        localStorage.setItem('inquiry_auto_sync', e.target.checked.toString())
-                      }}
-                      className="h-4 w-4 rounded border-slate-300 cursor-pointer"
-                    />
-                    <label htmlFor="auto-sync" className="text-sm cursor-pointer">
-                      Automatically sync inquiries every 5 minutes
-                    </label>
-                  </div>
-                </div>
-              )}
+              {syncError && <div className="bg-red-50 dark:bg-red-950 p-3 rounded text-sm text-red-900 dark:text-red-100">{syncError}</div>}
             </div>
-
-            <DialogFooter className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowGmailConfig(false)}>
-                Close
-              </Button>
-              <Button 
-                onClick={handleSaveGmailConfig}
-                disabled={!isGoogleConnected || isCheckingGoogle || isSyncingGmail}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isSyncingGmail ? 'Syncing...' : 'Sync Now'}
-              </Button>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowGmailConfig(false)}>Close</Button>
+              <Button onClick={handleSyncEmails} disabled={!isGoogleConnected} className="bg-blue-600 hover:bg-blue-700">Sync Now</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Reply Dialog - Improved UI */}
-        <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
-          <DialogContent className="dark:bg-slate-900">
-            <DialogHeader>
-              <DialogTitle className="text-lg">Reply to {selectedLead?.firstName}</DialogTitle>
-              <DialogDescription className="text-sm">
-                Responding to: <span className="font-mono text-xs">{selectedLead?.senderEmail || selectedLead?.email}</span>
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">Original Message:</p>
-                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{selectedLead?.subject}</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 line-clamp-3">
-                  {selectedLead?.body?.substring(0, 200)}...
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="reply-message" className="font-semibold">Your Reply</Label>
-                <Textarea
-                  id="reply-message"
-                  placeholder="Type your reply..."
-                  value={replyMessage}
-                  onChange={(e) => setReplyMessage(e.target.value)}
-                  rows={5}
-                  className="dark:bg-slate-800 border-slate-300 dark:border-slate-600"
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="flex gap-2">
-              <Button variant="outline" onClick={() => setReplyOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSendReply}
-                disabled={isSendingReply || !replyMessage.trim()}
-                className="bg-blue-600 hover:bg-blue-700 gap-2"
-              >
-                <Send className="h-4 w-4" />
-                {isSendingReply ? 'Sending...' : 'Send Reply'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Appointment Scheduling Dialog */}
+        {/* Appointment */}
         <Dialog open={appointmentOpen} onOpenChange={setAppointmentOpen}>
-          <DialogContent>
+          <DialogContent className="dark:bg-slate-900 max-w-md">
             <DialogHeader>
-              <DialogTitle>Schedule Appointment</DialogTitle>
-              <DialogDescription>
-                with {selectedLead?.firstName} {selectedLead?.lastName}
-              </DialogDescription>
+              <DialogTitle className="text-xl">Schedule Appointment</DialogTitle>
+              <DialogDescription>with {selectedLead?.firstName} {selectedLead?.lastName}</DialogDescription>
             </DialogHeader>
-
-            <div className="space-y-4">
+            <div className="space-y-4 py-2">
               <div>
-                <Label htmlFor="apt-date">Date</Label>
-                <Input
-                  id="apt-date"
-                  type="date"
-                  value={appointmentForm.date}
-                  onChange={(e) => setAppointmentForm({ ...appointmentForm, date: e.target.value })}
-                  className="dark:bg-slate-900"
-                />
+                <Label className="text-xs font-bold text-muted-foreground">DATE *</Label>
+                <Input type="date" value={appointmentForm.date} onChange={(e) => setAppointmentForm({...appointmentForm, date: e.target.value})} className="dark:bg-slate-800 mt-1" />
               </div>
-
               <div>
-                <Label htmlFor="apt-time">Time</Label>
-                <Input
-                  id="apt-time"
-                  type="time"
-                  value={appointmentForm.time}
-                  onChange={(e) => setAppointmentForm({ ...appointmentForm, time: e.target.value })}
-                  className="dark:bg-slate-900"
-                />
+                <Label className="text-xs font-bold text-muted-foreground">TIME *</Label>
+                <Input type="time" value={appointmentForm.time} onChange={(e) => setAppointmentForm({...appointmentForm, time: e.target.value})} className="dark:bg-slate-800 mt-1" />
               </div>
-
               <div>
-                <Label htmlFor="apt-notes">Notes (Optional)</Label>
-                <Textarea
-                  id="apt-notes"
-                  placeholder="Add any notes about this appointment..."
-                  value={appointmentForm.notes}
-                  onChange={(e) => setAppointmentForm({ ...appointmentForm, notes: e.target.value })}
-                  rows={3}
-                  className="dark:bg-slate-900"
-                />
+                <Label className="text-xs font-bold text-muted-foreground">LOCATION / VEHICLE</Label>
+                <Input placeholder="e.g., Showroom, Test Drive Route, or Vehicle Model" value={appointmentForm.locationOrVehicle} onChange={(e) => setAppointmentForm({...appointmentForm, locationOrVehicle: e.target.value})} className="dark:bg-slate-800 mt-1" />
               </div>
+              <div>
+                <Label className="text-xs font-bold text-muted-foreground">NOTES</Label>
+                <Textarea placeholder="Additional details..." value={appointmentForm.notes} onChange={(e) => setAppointmentForm({...appointmentForm, notes: e.target.value})} rows={3} className="dark:bg-slate-800 mt-1" />
+              </div>
+              {selectedLead?.phone && (
+                <div className="bg-blue-50 dark:bg-blue-950 rounded p-3 text-xs border border-blue-200 dark:border-blue-800">
+                  <p className="font-semibold text-blue-900 dark:text-blue-100">{selectedLead.phone}</p>
+                </div>
+              )}
             </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setAppointmentOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSetAppointment}
-                disabled={!appointmentForm.date || !appointmentForm.time}
-                className="gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Schedule
-              </Button>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => { setAppointmentOpen(false); setAppointmentForm({ date: '', time: '', notes: '', locationOrVehicle: '' }) }} className="text-xs">Cancel</Button>
+              <Button onClick={handleSetAppointment} disabled={!appointmentForm.date || !appointmentForm.time} className="bg-emerald-600 hover:bg-emerald-700 text-xs">Schedule Appointment</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Compose Email Dialog - Improved */}
+        {/* Compose */}
         <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Compose New Email</DialogTitle>
-              <DialogDescription>
-                Send a new inquiry or follow-up message
-              </DialogDescription>
+              <DialogTitle className="text-xl">Compose Email</DialogTitle>
+              <DialogDescription>Send a professional email</DialogDescription>
             </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
-                <p className="text-sm">
-                  <span className="font-semibold">From:</span> {loggedInEmail}
-                </p>
+            <div className="space-y-4 py-2">
+              <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded border border-blue-200 dark:border-blue-800">
+                <p className="text-xs font-bold text-muted-foreground mb-1">FROM</p>
+                <p className="text-sm font-semibold">{loggedInEmail}</p>
               </div>
-
               <div>
-                <Label htmlFor="compose-to">To *</Label>
-                <Input
-                  id="compose-to"
-                  type="email"
-                  placeholder="customer@example.com"
-                  value={composeForm.to}
-                  onChange={(e) => setComposeForm({ ...composeForm, to: e.target.value })}
-                  className="dark:bg-slate-900"
-                />
+                <Label className="text-xs font-bold text-muted-foreground">TO *</Label>
+                <Input type="email" placeholder="recipient@example.com" value={composeForm.to} onChange={(e) => setComposeForm({...composeForm, to: e.target.value})} className="dark:bg-slate-800 mt-1" />
               </div>
-
-              <div>
-                <Label htmlFor="compose-subject">Subject *</Label>
-                <Input
-                  id="compose-subject"
-                  placeholder="Email subject"
-                  value={composeForm.subject}
-                  onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })}
-                  className="dark:bg-slate-900"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="compose-body">Message *</Label>
-                <Textarea
-                  id="compose-body"
-                  placeholder="Type your message..."
-                  value={composeForm.body}
-                  onChange={(e) => setComposeForm({ ...composeForm, body: e.target.value })}
-                  rows={6}
-                  className="dark:bg-slate-900"
-                />
-              </div>
-
-              {/* Attachments Section */}
-              <div className="border-t pt-4">
-                <div className="space-y-3">
-                  <Label>Attachments</Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="file"
-                      multiple
-                      id="file-upload"
-                      onChange={handleAddAttachment}
-                      className="hidden"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById('file-upload')?.click()}
-                      className="gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Add Files
-                    </Button>
-                  </div>
-
-                  {composeAttachments.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold">Files ({composeAttachments.length})</p>
-                      <div className="space-y-1">
-                        {composeAttachments.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between bg-muted p-2 rounded text-sm dark:bg-slate-800">
-                            <span className="truncate">{file.name}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveAttachment(index)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground">CC</Label>
+                  <Input type="email" placeholder="Optional" value={composeForm.cc} onChange={(e) => setComposeForm({...composeForm, cc: e.target.value})} className="dark:bg-slate-800 mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-muted-foreground">BCC</Label>
+                  <Input type="email" placeholder="Optional" value={composeForm.bcc} onChange={(e) => setComposeForm({...composeForm, bcc: e.target.value})} className="dark:bg-slate-800 mt-1" />
                 </div>
               </div>
+              <div>
+                <Label className="text-xs font-bold text-muted-foreground">SUBJECT *</Label>
+                <Input placeholder="Email subject" value={composeForm.subject} onChange={(e) => setComposeForm({...composeForm, subject: e.target.value})} className="dark:bg-slate-800 mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs font-bold text-muted-foreground">MESSAGE *</Label>
+                <Textarea placeholder="Type your message here..." value={composeForm.body} onChange={(e) => setComposeForm({...composeForm, body: e.target.value})} rows={10} className="dark:bg-slate-800 resize-none mt-1" />
+              </div>
             </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => {
-                setComposeOpen(false)
-                setComposeForm({ to: '', subject: '', body: '' })
-                setComposeAttachments([])
-              }}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSendCompose}
-                disabled={isSendingCompose || !composeForm.to || !composeForm.subject || !composeForm.body}
-                className="gap-2"
-              >
-                <Send className="h-4 w-4" />
-                {isSendingCompose ? 'Sending...' : 'Send Email'}
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => { setComposeOpen(false); setComposeForm({to: '', subject: '', body: '', cc: '', bcc: ''}) }} className="text-xs">Cancel</Button>
+              <Button onClick={handleSendCompose} disabled={isSendingCompose || !composeForm.to || !composeForm.subject || !composeForm.body} className="gap-2 bg-blue-600 hover:bg-blue-700 text-xs font-semibold">
+                <Send className="h-4 w-4" /> {isSendingCompose ? 'Sending...' : 'Send Email'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
+
+      <style jsx>{`
+        @keyframes shrink {
+          to { width: 0%; }
+        }
+        .animate-shrink {
+          animation: shrink 5s linear forwards;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #3b82f6;
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #1d4ed8;
+        }
+        @media (prefers-color-scheme: dark) {
+          ::-webkit-scrollbar-track {
+            background: #1e293b;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: #2563eb;
+          }
+          ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+          }
+        }
+      `}</style>
     </div>
   )
 }

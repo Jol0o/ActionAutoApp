@@ -211,3 +211,19 @@
     transition-timing-function: ease;
   }
 }
+
+/* Notification progress bar animation - shrinks from full width to 0 */
+@keyframes shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@layer utilities {
+  .animate-shrink {
+    animation: shrink forwards linear;
+  }
+}
