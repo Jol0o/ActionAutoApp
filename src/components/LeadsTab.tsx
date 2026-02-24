@@ -175,14 +175,24 @@ export function LeadsTab() {
       const fetchThreadMessages = async () => {
         try {
           const token = await getToken()
+          if (!token) {
+            console.warn('No auth token available for thread fetch')
+            return
+          }
           const response = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${token}` } })
           const messages = response.data?.data?.messages || []
+          console.log(`[Thread] Fetched ${messages.length} messages for lead ${selectedLead._id}`)
           setMessageThreads(prev => ({
             ...prev,
             [selectedLead._id]: messages
           }))
         } catch (error) {
-          console.log('Could not fetch thread messages')
+          console.error('[Thread] Failed to fetch thread messages:', error)
+          // Still set empty array so lead renders without messages
+          setMessageThreads(prev => ({
+            ...prev,
+            [selectedLead._id]: []
+          }))
         }
       }
       fetchThreadMessages()
@@ -220,6 +230,11 @@ export function LeadsTab() {
     setIsSendingReply(true)
     try {
       const token = await getToken()
+      if (!token) {
+        addToast('error', 'Authentication required')
+        return
+      }
+      console.log(`[Reply] Sending reply to lead ${selectedLead._id}`)
       await apiClient.post(`/api/leads/${selectedLead._id}/reply`, { message: replyMessage }, { headers: { Authorization: `Bearer ${token}` } })
       
       setReplyMessage('')
@@ -227,23 +242,32 @@ export function LeadsTab() {
       updateLeadStatus({ id: selectedLead._id, status: 'Contacted' })
       setSelectedLead(prev => prev ? { ...prev, status: 'Contacted' } : null)
       
+      // Refresh thread messages after a brief delay
       setTimeout(async () => {
         try {
           const newToken = await getToken()
+          if (!newToken) return
+          console.log(`[Reply] Refreshing thread messages for lead ${selectedLead._id}`)
           const response = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${newToken}` } })
           const messages = response.data?.data?.messages || []
+          console.log(`[Reply] Refreshed thread with ${messages.length} messages`)
           setMessageThreads(prev => ({
             ...prev,
             [selectedLead._id]: messages
           }))
         } catch (e) {
-          console.log('Could not refresh thread messages')
+          console.warn('[Reply] Could not refresh thread messages:', e)
         }
       }, 1000)
       
       await refetch()
-    } catch { addToast('error', 'Failed to send reply') } 
-    finally { setIsSendingReply(false) }
+    } catch (error) {
+      console.error('[Reply] Failed to send reply:', error)
+      addToast('error', 'Failed to send reply')
+    } 
+    finally { 
+      setIsSendingReply(false) 
+    }
   }
 
   const handleSyncEmails = async () => {
@@ -276,9 +300,17 @@ export function LeadsTab() {
   }
 
   const handleSetAppointment = async () => {
-    if (!selectedLead || !appointmentForm.date || !appointmentForm.time) return
+    if (!selectedLead || !appointmentForm.date || !appointmentForm.time) {
+      addToast('error', 'Date and time are required')
+      return
+    }
     try {
       const token = await getToken()
+      if (!token) {
+        addToast('error', 'Authentication required')
+        return
+      }
+      console.log(`[Appointment] Saving appointment for lead ${selectedLead._id}`, appointmentForm)
       await apiClient.post(
         `/api/leads/${selectedLead._id}/appointment`,
         {
@@ -289,13 +321,15 @@ export function LeadsTab() {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       )
+      console.log(`[Appointment] Appointment saved successfully`)
       updateLeadStatus({ id: selectedLead._id, status: 'Appointment Set' })
-      setSelectedLead(prev => prev ? { ...prev, status: 'Appointment Set' } : null)
-      addToast('success', 'Appointment saved and synced to your calendar')
+      setSelectedLead(prev => prev ? { ...prev, status: 'Appointment Set', appointment: appointmentForm } : null)
+      addToast('success', 'Appointment saved successfully')
       setAppointmentOpen(false)
       setAppointmentForm({ date: '', time: '', notes: '', locationOrVehicle: '' })
       await refetch()
     } catch (error: any) {
+      console.error('[Appointment] Failed to save appointment:', error)
       addToast('error', error?.response?.data?.message || 'Failed to save appointment')
     }
   }
