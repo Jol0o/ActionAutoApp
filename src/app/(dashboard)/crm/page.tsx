@@ -2,29 +2,27 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Car, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Car, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { apiClient } from "@/lib/api-client"
 
 export default function CrmLoginPage() {
   const router = useRouter()
-  const [username, setUsername] = React.useState("")
-  const [password, setPassword] = React.useState("")
-  const [showPassword, setShowPassword] = React.useState(false)
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [error, setError] = React.useState("")
+  const [username, setUsername]           = React.useState("")
+  const [password, setPassword]           = React.useState("")
+  const [showPassword, setShowPassword]   = React.useState(false)
+  const [isLoading, setIsLoading]         = React.useState(false)
+  const [error, setError]                 = React.useState("")
   const [isCheckingAuth, setIsCheckingAuth] = React.useState(true)
 
-  // Check if already logged in — redirect to dashboard
   React.useEffect(() => {
     const token = localStorage.getItem("crm_token")
     if (token) {
       apiClient
-        .get("/api/crm/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then(() => {
-          router.replace("/crm/dashboard")
-        })
+        .get("/api/crm/me", { headers: { Authorization: `Bearer ${token}` } })
+        .then(() => router.replace("/crm/dashboard"))
         .catch(() => {
           localStorage.removeItem("crm_token")
           localStorage.removeItem("crm_user")
@@ -38,156 +36,161 @@ export default function CrmLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-
     if (!username.trim() || !password.trim()) {
-      setError("Please enter both Employee ID and password")
+      setError("Please enter both Employee ID and password.")
       return
     }
-
     setIsLoading(true)
-
     try {
-      const response = await apiClient.post("/api/crm/login", {
+      const res = await apiClient.post("/api/crm/login", {
         username: username.trim(),
         password,
       })
-
-      const data = response.data?.data || response.data
-      const token = data.token
-      const user = data.user
-
-      if (token && user) {
-        localStorage.setItem("crm_token", token)
-        localStorage.setItem("crm_user", JSON.stringify(user))
+      const data = res.data?.data || res.data
+      if (data.token && data.user) {
+        localStorage.setItem("crm_token", data.token)
+        localStorage.setItem("crm_user", JSON.stringify(data.user))
         router.push("/crm/dashboard")
       } else {
         setError("Login failed. Please try again.")
       }
     } catch (err: any) {
-      const message =
+      setError(
         err?.response?.data?.message ||
         err?.response?.data?.data?.message ||
-        "Invalid Employee ID or password"
-      setError(message)
+        "Invalid Employee ID or password."
+      )
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Show nothing while checking existing auth
+  // ── Auth check loader ──────────────────────────────────────────────────────
   if (isCheckingAuth) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-emerald-600/10 flex items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+          </div>
+          <p className="text-xs text-muted-foreground/50 tracking-wide">Checking session…</p>
+        </div>
       </div>
     )
   }
 
+  // ── Login page ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-8 px-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 shadow-lg shadow-blue-600/30">
-            <Car className="h-8 w-8 text-white" />
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-background">
+      <div className="w-full max-w-[400px] space-y-8">
+
+        {/* ── Brand ── */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="h-14 w-14 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-600/20">
+              <Car className="h-7 w-7 text-white" />
+            </div>
+            {/* online dot */}
+            <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-background flex items-center justify-center">
+              <span className="h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+            </span>
           </div>
-          <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight">
-              Action Auto
-            </h1>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-              CRM System
-            </p>
+          <div className="text-center leading-none">
+            <p className="text-base font-bold tracking-tight">Action Auto</p>
+            <p className="text-[9px] font-bold uppercase tracking-[0.28em] text-emerald-600 mt-1">CRM System</p>
           </div>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-card border rounded-2xl p-8 shadow-lg">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold italic">
-              Welcome back
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Sign in to continue | Employee Portal Login
-            </p>
+        {/* ── Card ── */}
+        <div className="rounded-2xl border border-border/50 bg-card p-7 space-y-6 shadow-sm">
+
+          {/* heading */}
+          <div className="space-y-0.5">
+            <h1 className="text-xl font-bold tracking-tight">Welcome back</h1>
+            <p className="text-xs text-muted-foreground/50">Sign in to your employee portal</p>
           </div>
 
-          {/* Error Message */}
+          {/* error */}
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div className="flex items-center gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3.5 py-2.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+              <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            {/* Employee ID */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {/* form */}
+          <form onSubmit={handleLogin} className="space-y-4">
+
+            <div className="space-y-1.5">
+              <Label htmlFor="eid" className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
                 Employee ID
-              </label>
-              <input
-                type="text"
+              </Label>
+              <Input
+                id="eid"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="e.g. 2026-00001"
-                className="w-full h-12 px-4 rounded-lg bg-muted/50 border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                 autoComplete="username"
                 disabled={isLoading}
+                className="h-10 rounded-xl border-border/50 bg-muted/20 text-sm focus-visible:ring-emerald-500/30"
               />
             </div>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="space-y-1.5">
+              <Label htmlFor="pwd" className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
                 Password
-              </label>
+              </Label>
               <div className="relative">
-                <input
+                <Input
+                  id="pwd"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full h-12 px-4 pr-12 rounded-lg bg-muted/50 border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                   autoComplete="current-password"
                   disabled={isLoading}
+                  className="h-10 rounded-xl border-border/50 bg-muted/20 text-sm pr-10 focus-visible:ring-emerald-500/30"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   tabIndex={-1}
+                  className="absolute right-0 top-0 h-10 w-10 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Sign In Button */}
-            <button
+            <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+              className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium gap-2 mt-1 transition-all"
             >
               {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Sign In"
+                <>
+                  Sign In
+                  <ArrowRight className="h-4 w-4 ml-auto" />
+                </>
               )}
-            </button>
+            </Button>
           </form>
+
+          {/* separator + note */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border/40" />
+            <p className="text-[10px] text-muted-foreground/30 font-medium">Authorized personnel only</p>
+            <div className="flex-1 h-px bg-border/40" />
+          </div>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground">
-          Action Auto CRM v1.0 &middot; Customer Life Cycle Management
+        {/* footer */}
+        <p className="text-center text-[10px] text-muted-foreground/30">
+          Action Auto CRM v1.0 &middot; Customer Lifecycle Management
         </p>
+
       </div>
     </div>
   )

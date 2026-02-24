@@ -1,148 +1,175 @@
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 import { useLeads, Lead } from "@/hooks/useLeads"
-import { Mail, Phone, Calendar, MoreHorizontal, X, Send, Clock3, XCircle, LockOpen, Lock, ChevronLeft, RefreshCw } from "lucide-react"
+import {
+  Mail, Phone, Calendar, MoreHorizontal, X, Send, Clock3,
+  XCircle, LockOpen, Lock, ChevronLeft, RefreshCw, Search,
+  CheckCircle2, AlertCircle, Info, ChevronDown,
+} from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
 import { apiClient } from "@/lib/api-client"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogFooter, DialogDescription,
 } from "@/components/ui/dialog"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+
+// ─── Status config ────────────────────────────────────────────────────────────
 
 const statusConfig = {
-  'New': { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100', icon: <Mail className="h-3 w-3" /> },
-  'Pending': { color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100', icon: <Clock3 className="h-3 w-3" /> },
-  'Contacted': { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100', icon: <Phone className="h-3 w-3" /> },
-  'Appointment Set': { color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100', icon: <Calendar className="h-3 w-3" /> },
-  'Closed': { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100', icon: <XCircle className="h-3 w-3" /> },
+  'New':              { badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',   dot: 'bg-emerald-500',  icon: <Mail    className="h-3 w-3" /> },
+  'Pending':          { badge: 'bg-amber-500/10  text-amber-700  dark:text-amber-300  border-amber-500/20',        dot: 'bg-amber-500',    icon: <Clock3  className="h-3 w-3" /> },
+  'Contacted':        { badge: 'bg-blue-500/10   text-blue-700   dark:text-blue-300   border-blue-500/20',         dot: 'bg-blue-500',     icon: <Phone   className="h-3 w-3" /> },
+  'Appointment Set':  { badge: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20',       dot: 'bg-violet-500',   icon: <Calendar className="h-3 w-3" /> },
+  'Closed':           { badge: 'bg-rose-500/10   text-rose-700   dark:text-rose-300   border-rose-500/20',         dot: 'bg-rose-500',     icon: <XCircle className="h-3 w-3" /> },
 }
 
-interface Toast {
-  id: string
-  type: 'success' | 'error' | 'info'
-  message: string
-  timestamp: Date
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const cleanHTMLContent = (html: string): string => {
+const cleanHTML = (html: string) => {
   if (!html) return ''
   return html
-    .replace(/<!doctype[^>]*>/gi, '')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/\r\n/g, '\n')
-    .trim()
+    .replace(/<!doctype[^>]*>/gi, '').replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    .replace(/\r\n/g, '\n').trim()
 }
+
+function getInitials(a?: string, b?: string) {
+  return ((a?.[0] || '') + (b?.[0] || '')).toUpperCase() || 'U'
+}
+
+function fmtTime(d: Date) {
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+function fmtDate(d: Date) {
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+function fmtFull(d: Date) {
+  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+interface Toast { id: string; type: 'success' | 'error' | 'info'; message: string; ts: Date }
+
+function ToastStack({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: string) => void }) {
+  const icons = {
+    success: <CheckCircle2 className="h-4 w-4 shrink-0" />,
+    error:   <AlertCircle  className="h-4 w-4 shrink-0" />,
+    info:    <Info         className="h-4 w-4 shrink-0" />,
+  }
+  const colors = {
+    success: 'bg-emerald-600/95 border-emerald-500',
+    error:   'bg-rose-600/95 border-rose-500',
+    info:    'bg-blue-600/95 border-blue-500',
+  }
+  return (
+    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className={`pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg text-white border animate-in slide-in-from-top-2 ${colors[t.type]}`}>
+          {icons[t.type]}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium leading-snug">{t.message}</p>
+            <p className="text-[10px] opacity-60 mt-0.5">{fmtTime(t.ts)}</p>
+          </div>
+          <button onClick={() => dismiss(t.id)} className="hover:opacity-70 transition-opacity">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Status pill ──────────────────────────────────────────────────────────────
+
+function StatusPill({ status }: { status: string }) {
+  const cfg = statusConfig[status as keyof typeof statusConfig]
+  if (!cfg) return null
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium ${cfg.badge}`}>
+      {cfg.icon} {status}
+    </span>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function LeadsTab() {
   const { leads, isLoading, updateLeadStatus, markAsRead, reply, refetch } = useLeads()
   const { getToken } = useAuth()
-  
-  const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null)
-  const [statusFilter, setStatusFilter] = React.useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = React.useState('')
-  const [loggedInEmail, setLoggedInEmail] = React.useState('')
-  const [gmailSynced, setGmailSynced] = React.useState(false)
-  const [showGmailConfig, setShowGmailConfig] = React.useState(false)
-  const [syncError, setSyncError] = React.useState<string | null>(null)
+
+  const [selectedLead, setSelectedLead]           = React.useState<Lead | null>(null)
+  const [statusFilter, setStatusFilter]           = React.useState<string | null>(null)
+  const [searchQuery, setSearchQuery]             = React.useState('')
+  const [loggedInEmail, setLoggedInEmail]         = React.useState('')
+  const [gmailSynced, setGmailSynced]             = React.useState(false)
+  const [showGmailConfig, setShowGmailConfig]     = React.useState(false)
+  const [syncError, setSyncError]                 = React.useState<string | null>(null)
   const [isGoogleConnected, setIsGoogleConnected] = React.useState(false)
-  const [lastSyncTime, setLastSyncTime] = React.useState<Date | null>(null)
-  const [syncCountdown, setSyncCountdown] = React.useState(0)
-  
-  const [replyMessage, setReplyMessage] = React.useState('')
-  const [isSendingReply, setIsSendingReply] = React.useState(false)
-  
-  const [appointmentOpen, setAppointmentOpen] = React.useState(false)
-  const [appointmentForm, setAppointmentForm] = React.useState({ date: '', time: '', notes: '', locationOrVehicle: '' })
-  
-  const [toasts, setToasts] = React.useState<Toast[]>([])
+  const [lastSyncTime, setLastSyncTime]           = React.useState<Date | null>(null)
+  const [syncCountdown, setSyncCountdown]         = React.useState(0)
+  const [replyMessage, setReplyMessage]           = React.useState('')
+  const [isSendingReply, setIsSendingReply]       = React.useState(false)
+  const [appointmentOpen, setAppointmentOpen]     = React.useState(false)
+  const [appointmentForm, setAppointmentForm]     = React.useState({ date: '', time: '', notes: '', locationOrVehicle: '' })
+  const [toasts, setToasts]                       = React.useState<Toast[]>([])
   const [selectedLeadClosed, setSelectedLeadClosed] = React.useState(false)
-  const [messageThreads, setMessageThreads] = React.useState<Record<string, Array<{id: string, sender: string, senderEmail: string, message: string, timestamp: Date, isOwn: boolean}>>>({})
-  const [userName, setUserName] = React.useState('')
-  const [isSyncing, setIsSyncing] = React.useState(false)
-  const [savedAppointments, setSavedAppointments] = React.useState<Record<string, any>>({})
+  const [messageThreads, setMessageThreads]       = React.useState<Record<string, any[]>>({})
+  const [isSyncing, setIsSyncing]                 = React.useState(false)
+
+  // ── Effects ────────────────────────────────────────────────────────────────
 
   React.useEffect(() => {
     const saved = localStorage.getItem('inquiry_gmail_synced') === 'true'
     setGmailSynced(saved)
-
     const checkConnection = async () => {
       try {
         const token = await getToken()
-        const response = await apiClient.get('/api/google-calendar/status', { headers: { Authorization: `Bearer ${token}` } })
-        const connected = response.data?.data?.connected || false
-        if (connected && !saved) {
+        const res = await apiClient.get('/api/google-calendar/status', { headers: { Authorization: `Bearer ${token}` } })
+        if (res.data?.data?.connected && !saved) {
           setGmailSynced(true)
           localStorage.setItem('inquiry_gmail_synced', 'true')
         }
-      } catch (e) {}
+      } catch {}
     }
-    
     checkConnection()
-    
     if (saved) {
       const syncInterval = setInterval(async () => {
         try {
           const token = await getToken()
           const result = await apiClient.post('/api/leads/sync-gmail', {}, { headers: { Authorization: `Bearer ${token}` } })
-          const newCount = result.data?.syncedCount || 0
-          if (newCount > 0) {
-            addToast('success', `Auto-synced: ${newCount} new inquiry${newCount > 1 ? 'ies' : ''}`)
-          }
-          setLastSyncTime(new Date())
-          setSyncCountdown(60)
-          await refetch()
-        } catch (error) {
-          console.error('Auto-sync failed:', error)
-        }
+          const n = result.data?.syncedCount || 0
+          if (n > 0) addToast('success', `Auto-synced: ${n} new entr${n > 1 ? 'ies' : 'y'}`)
+          setLastSyncTime(new Date()); setSyncCountdown(60); await refetch()
+        } catch {}
       }, 60000)
-
-      const countdownInterval = setInterval(() => {
-        setSyncCountdown(prev => prev > 0 ? prev - 1 : 0)
-      }, 1000)
-
-      return () => {
-        clearInterval(syncInterval)
-        clearInterval(countdownInterval)
-      }
+      const cd = setInterval(() => setSyncCountdown(p => p > 0 ? p - 1 : 0), 1000)
+      return () => { clearInterval(syncInterval); clearInterval(cd) }
     }
   }, [getToken, gmailSynced])
 
   React.useEffect(() => {
-    const getEmail = async () => {
+    const get = async () => {
       try {
         const token = await getToken()
-        const response = await apiClient.get('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-        setLoggedInEmail(response.data?.email || '')
-        setUserName(response.data?.name || response.data?.email || '')
-      } catch (error) {
-        console.log('Could not fetch email')
-      }
+        const res = await apiClient.get('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        setLoggedInEmail(res.data?.email || '')
+      } catch {}
     }
-    getEmail()
+    get()
   }, [getToken])
 
   React.useEffect(() => {
@@ -150,13 +177,10 @@ export function LeadsTab() {
       const check = async () => {
         try {
           const token = await getToken()
-          const response = await apiClient.get('/api/google-calendar/status', { headers: { Authorization: `Bearer ${token}` } })
-          const connected = response.data?.data?.connected || false
+          const res = await apiClient.get('/api/google-calendar/status', { headers: { Authorization: `Bearer ${token}` } })
+          const connected = res.data?.data?.connected || false
           setIsGoogleConnected(connected)
-          if (connected) {
-            setGmailSynced(true)
-            localStorage.setItem('inquiry_gmail_synced', 'true')
-          }
+          if (connected) { setGmailSynced(true); localStorage.setItem('inquiry_gmail_synced', 'true') }
         } catch { setIsGoogleConnected(false) }
       }
       check()
@@ -164,65 +188,38 @@ export function LeadsTab() {
   }, [showGmailConfig, getToken])
 
   React.useEffect(() => {
-    if (isGoogleConnected) {
-      setGmailSynced(true)
-      localStorage.setItem('inquiry_gmail_synced', 'true')
-    }
+    if (isGoogleConnected) { setGmailSynced(true); localStorage.setItem('inquiry_gmail_synced', 'true') }
   }, [isGoogleConnected])
 
   React.useEffect(() => {
-    if (selectedLead) {
-      const fetchThreadMessages = async () => {
-        try {
-          const token = await getToken()
-          if (!token) {
-            console.warn('No auth token available for thread fetch')
-            return
-          }
-          const response = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${token}` } })
-          const messages = response.data?.data?.messages || []
-          console.log(`[Thread] Fetched ${messages.length} messages for lead ${selectedLead._id}`)
-          setMessageThreads(prev => ({
-            ...prev,
-            [selectedLead._id]: messages
-          }))
-        } catch (error) {
-          console.error('[Thread] Failed to fetch thread messages:', error)
-          // Still set empty array so lead renders without messages
-          setMessageThreads(prev => ({
-            ...prev,
-            [selectedLead._id]: []
-          }))
-        }
+    if (!selectedLead) return
+    const fetch = async () => {
+      try {
+        const token = await getToken()
+        if (!token) return
+        const res = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${token}` } })
+        setMessageThreads(p => ({ ...p, [selectedLead._id]: res.data?.data?.messages || [] }))
+      } catch {
+        setMessageThreads(p => ({ ...p, [selectedLead._id]: [] }))
       }
-      fetchThreadMessages()
     }
+    fetch()
   }, [selectedLead, getToken])
 
-  const addToast = (type: 'success' | 'error' | 'info', message: string) => {
-    const isDuplicate = toasts.some(t => t.message === message && t.type === type)
-    if (isDuplicate) return
-    const id = Math.random().toString()
-    setToasts(prev => [...prev, { id, type, message, timestamp: new Date() }])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
-  }
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
-  const getInitials = (firstName: string | undefined, lastName: string | undefined): string => {
-    if (!firstName && !lastName) return 'U'
-    const fn = (firstName || '')[0] || ''
-    const ln = (lastName || '')[0] || ''
-    return (fn + ln).toUpperCase() || 'U'
+  const addToast = (type: Toast['type'], message: string) => {
+    if (toasts.some(t => t.message === message && t.type === type)) return
+    const id = Math.random().toString()
+    setToasts(p => [...p, { id, type, message, ts: new Date() }])
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 6000)
   }
 
   const handleStatusChange = (status: string) => {
     if (!selectedLead) return
-    try {
-      updateLeadStatus({ id: selectedLead._id, status })
-      setSelectedLead(prev => prev ? { ...prev, status: status as any } : null)
-      addToast('success', `Status updated to ${status}`)
-    } catch {
-      addToast('error', 'Failed to update status')
-    }
+    updateLeadStatus({ id: selectedLead._id, status })
+    setSelectedLead(p => p ? { ...p, status: status as any } : null)
+    addToast('success', `Status → ${status}`)
   }
 
   const handleSendReply = async () => {
@@ -230,161 +227,76 @@ export function LeadsTab() {
     setIsSendingReply(true)
     try {
       const token = await getToken()
-      if (!token) {
-        addToast('error', 'Authentication required')
-        return
-      }
-      console.log(`[Reply] Sending reply to lead ${selectedLead._id}`)
+      if (!token) { addToast('error', 'Auth required'); return }
       await apiClient.post(`/api/leads/${selectedLead._id}/reply`, { message: replyMessage }, { headers: { Authorization: `Bearer ${token}` } })
-      
       setReplyMessage('')
-      addToast('success', 'Reply sent successfully')
+      addToast('success', 'Reply sent')
       updateLeadStatus({ id: selectedLead._id, status: 'Contacted' })
-      setSelectedLead(prev => prev ? { ...prev, status: 'Contacted' } : null)
-      
-      // Refresh thread messages after a brief delay
+      setSelectedLead(p => p ? { ...p, status: 'Contacted' } : null)
       setTimeout(async () => {
         try {
-          const newToken = await getToken()
-          if (!newToken) return
-          console.log(`[Reply] Refreshing thread messages for lead ${selectedLead._id}`)
-          const response = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${newToken}` } })
-          const messages = response.data?.data?.messages || []
-          console.log(`[Reply] Refreshed thread with ${messages.length} messages`)
-          setMessageThreads(prev => ({
-            ...prev,
-            [selectedLead._id]: messages
-          }))
-        } catch (e) {
-          console.warn('[Reply] Could not refresh thread messages:', e)
-        }
+          const t = await getToken()
+          if (!t) return
+          const res = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${t}` } })
+          setMessageThreads(p => ({ ...p, [selectedLead._id]: res.data?.data?.messages || [] }))
+        } catch {}
       }, 1000)
-      
       await refetch()
-    } catch (error) {
-      console.error('[Reply] Failed to send reply:', error)
-      addToast('error', 'Failed to send reply')
-    } 
-    finally { 
-      setIsSendingReply(false) 
-    }
+    } catch { addToast('error', 'Failed to send reply') }
+    finally { setIsSendingReply(false) }
   }
 
   const handleSyncEmails = async () => {
     try {
-      setIsSyncing(true)
-      setSyncError(null)
-      addToast('info', 'Refreshing inquiries...')
+      setIsSyncing(true); setSyncError(null); addToast('info', 'Refreshing…')
       const token = await getToken()
       const result = await apiClient.post('/api/leads/sync-gmail', {}, { headers: { Authorization: `Bearer ${token}` } })
-      const syncedCount = result.data?.syncedCount || 0
-      setGmailSynced(true)
-      localStorage.setItem('inquiry_gmail_synced', 'true')
-      setLastSyncTime(new Date())
-      setSyncCountdown(60)
-      if (syncedCount > 0) {
-        addToast('success', `Refreshed! ${syncedCount} new inquiry${syncedCount > 1 ? 'ies' : ''} imported`)
-      } else {
-        addToast('info', 'Already up to date')
-      }
+      const n = result.data?.syncedCount || 0
+      setGmailSynced(true); localStorage.setItem('inquiry_gmail_synced', 'true')
+      setLastSyncTime(new Date()); setSyncCountdown(60)
+      addToast(n > 0 ? 'success' : 'info', n > 0 ? `${n} new entr${n > 1 ? 'ies' : 'y'} imported` : 'Already up to date')
       await refetch()
-    } catch (error: any) {
-      const errorMsg = error?.response?.data?.message || 'Failed to refresh inquiries. Please reconnect your Gmail.'
-      setSyncError(errorMsg)
-      addToast('error', errorMsg)
-      setGmailSynced(false)
-      localStorage.removeItem('inquiry_gmail_synced')
-    } finally {
-      setIsSyncing(false)
-    }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to refresh. Reconnect Gmail.'
+      setSyncError(msg); addToast('error', msg)
+      setGmailSynced(false); localStorage.removeItem('inquiry_gmail_synced')
+    } finally { setIsSyncing(false) }
   }
 
   const handleSetAppointment = async () => {
-    if (!selectedLead || !appointmentForm.date || !appointmentForm.time) {
-      addToast('error', 'Date and time are required')
-      return
-    }
+    if (!selectedLead || !appointmentForm.date || !appointmentForm.time) { addToast('error', 'Date and time required'); return }
     try {
       const token = await getToken()
-      if (!token) {
-        addToast('error', 'Authentication required')
-        return
-      }
-      console.log(`[Appointment] Saving appointment for lead ${selectedLead._id}`, appointmentForm)
-      await apiClient.post(
-        `/api/leads/${selectedLead._id}/appointment`,
-        {
-          date: appointmentForm.date,
-          time: appointmentForm.time,
-          notes: appointmentForm.notes,
-          locationOrVehicle: appointmentForm.locationOrVehicle
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      console.log(`[Appointment] Appointment saved successfully`)
+      if (!token) { addToast('error', 'Auth required'); return }
+      await apiClient.post(`/api/leads/${selectedLead._id}/appointment`, appointmentForm, { headers: { Authorization: `Bearer ${token}` } })
       updateLeadStatus({ id: selectedLead._id, status: 'Appointment Set' })
-      setSelectedLead(prev => prev ? { ...prev, status: 'Appointment Set', appointment: appointmentForm } : null)
-      addToast('success', 'Appointment saved successfully')
+      setSelectedLead(p => p ? { ...p, status: 'Appointment Set', appointment: appointmentForm } : null)
+      addToast('success', 'Appointment saved')
       setAppointmentOpen(false)
       setAppointmentForm({ date: '', time: '', notes: '', locationOrVehicle: '' })
       await refetch()
-    } catch (error: any) {
-      console.error('[Appointment] Failed to save appointment:', error)
-      addToast('error', error?.response?.data?.message || 'Failed to save appointment')
-    }
+    } catch (err: any) { addToast('error', err?.response?.data?.message || 'Failed') }
   }
 
-  const handleCloseLead = () => {
-    if (!selectedLead) return
-    handleStatusChange('Closed')
-    setSelectedLeadClosed(true)
-  }
-
-  const handleReopenLead = () => {
-    if (!selectedLead) return
-    handleStatusChange('Pending')
-    setSelectedLeadClosed(false)
-  }
+  // ── Derived ────────────────────────────────────────────────────────────────
 
   const filteredLeads = React.useMemo(() => {
-    let filtered = leads
-    if (statusFilter) {
-      if (statusFilter === 'New') {
-        filtered = filtered.filter((l: Lead) => l.status === 'New')
-      } else {
-        filtered = filtered.filter((l: Lead) => l.status === statusFilter)
-      }
-    }
+    let f = leads
+    if (statusFilter) f = f.filter((l: Lead) => l.status === statusFilter)
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter((l: Lead) =>
-        l.firstName.toLowerCase().includes(query) ||
-        l.lastName.toLowerCase().includes(query) ||
-        l.email.toLowerCase().includes(query) ||
-        l.senderEmail?.toLowerCase().includes(query) ||
-        l.subject?.toLowerCase().includes(query)
+      const q = searchQuery.toLowerCase()
+      f = f.filter((l: Lead) =>
+        l.firstName.toLowerCase().includes(q) || l.lastName.toLowerCase().includes(q) ||
+        l.email.toLowerCase().includes(q) || l.senderEmail?.toLowerCase().includes(q) ||
+        l.subject?.toLowerCase().includes(q)
       )
     }
-
-    const groupedByEmail: Record<string, Lead[]> = {}
-    filtered.forEach((lead: Lead) => {
-      const email = lead.senderEmail || lead.email
-      if (!groupedByEmail[email]) {
-        groupedByEmail[email] = []
-      }
-      groupedByEmail[email].push(lead)
+    const byEmail: Record<string, Lead[]> = {}
+    f.forEach((l: Lead) => { const e = l.senderEmail || l.email; (byEmail[e] = byEmail[e] || []).push(l) })
+    return Object.values(byEmail).map((g: Lead[]) => {
+      const latest = g.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+      return { ...latest, _emailGroup: g, _emailCount: g.length }
     })
-
-    const merged = Object.values(groupedByEmail).map((group: Lead[]) => {
-      const latestLead = group.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
-      return {
-        ...latestLead,
-        _emailGroup: group,
-        _emailCount: group.length
-      }
-    })
-
-    return merged
   }, [leads, statusFilter, searchQuery])
 
   const stats = React.useMemo(() => ({
@@ -396,404 +308,442 @@ export function LeadsTab() {
     closed: leads.filter((l: Lead) => l.status === 'Closed').length,
   }), [leads])
 
-  const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  const formatDate = (date: Date) => date.toLocaleDateString([], { month: 'short', day: 'numeric' })
-  const formatFullDateTime = (date: Date) => date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
-
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 rounded-lg">
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="h-full w-full flex flex-col gap-4 p-4 overflow-hidden">
-        <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm pointer-events-none">
-          {toasts.map((toast) => (
-            <div key={toast.id} className={`pointer-events-auto flex flex-col px-4 py-3 rounded-lg shadow-lg backdrop-blur text-white animate-in slide-in-from-top-2 border overflow-hidden ${
-              toast.type === 'success' ? 'bg-emerald-600/95 border-emerald-500' :
-              toast.type === 'error' ? 'bg-red-600/95 border-red-500' :
-              'bg-blue-600/95 border-blue-500'
-            }`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex-1">
-                  <span className="text-sm font-medium">{toast.message}</span>
-                  <p className="text-xs opacity-75 mt-1">{toast.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-                <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-3 hover:opacity-80 shrink-0">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="w-full h-0.5 bg-white/20 rounded-full overflow-hidden">
-                <div className="h-full bg-white/40 animate-fadeOut origin-left" style={{ animationDuration: '6s' }}></div>
-              </div>
-            </div>
-          ))}
-        </div>
+    <div className="flex flex-col gap-5">
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Inquiries & Leads</h2>
-              {loggedInEmail && gmailSynced && <p className="text-sm text-green-600 dark:text-green-400 mt-1">Synced from: {loggedInEmail}</p>}
-            </div>
-            <div className="flex gap-2 flex-wrap justify-end">
-              <Button onClick={handleSyncEmails} disabled={!gmailSynced || isSyncing} variant="outline" className="gap-2 text-xs">
-                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} /> {isSyncing ? 'Refreshing...' : 'Refresh'}
-              </Button>
-              <Button onClick={() => setShowGmailConfig(true)} variant="outline" className="text-xs">
-                Settings
-              </Button>
-            </div>
-          </div>
-          {gmailSynced && lastSyncTime && (
-            <div className="text-xs text-muted-foreground">
-              Last sync: {formatTime(lastSyncTime)} • {formatDate(lastSyncTime)} ({syncCountdown}s)
-            </div>
+      <ToastStack toasts={toasts} dismiss={(id) => setToasts(p => p.filter(t => t.id !== id))} />
+
+      {/* ── Section header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">Inquiries & Leads</h2>
+          {gmailSynced && loggedInEmail && (
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
+              Synced · {loggedInEmail}
+              {lastSyncTime && <span className="text-muted-foreground/50 ml-1">· {fmtTime(lastSyncTime)} ({syncCountdown}s)</span>}
+            </p>
           )}
         </div>
-
-        {!gmailSynced && (
-          <Card className="border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/30">
-            <CardContent className="pt-5 pb-5 flex items-start gap-3">
-              <div className="flex-1">
-                <p className="font-semibold text-amber-900 dark:text-amber-100 text-sm">Gmail not synced</p>
-                <p className="text-xs text-amber-800 dark:text-amber-200 mt-1">Click Settings to connect your Gmail and start importing inquiries.</p>
-              </div>
-              <Button onClick={() => setShowGmailConfig(true)} size="sm" className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white">
-                Setup
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="relative">
-          <Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
-          <Input placeholder="Search inquiries..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-10 rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 text-sm" />
+        <div className="flex gap-2">
+          <Button
+            onClick={handleSyncEmails}
+            disabled={!gmailSynced || isSyncing}
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5 rounded-lg"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Refreshing…' : 'Refresh'}
+          </Button>
+          <Button onClick={() => setShowGmailConfig(true)} variant="outline" size="sm" className="h-8 text-xs rounded-lg">
+            Settings
+          </Button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-          {[
-            { filter: null, label: 'All', value: stats.total },
-            { filter: 'New', label: 'New', value: stats.new },
-            { filter: 'Pending', label: 'Pending', value: stats.pending },
-            { filter: 'Contacted', label: 'Contacted', value: stats.contacted },
-            { filter: 'Appointment Set', label: 'Appt', value: stats.appointmentSet },
-            { filter: 'Closed', label: 'Closed', value: stats.closed },
-          ].map((stat, idx) => (
-            <div key={idx} className="relative">
-              <button
-                onClick={() => setStatusFilter(stat.filter)}
-                className={`w-full px-2 sm:px-3 py-2 rounded-lg transition-all text-xs font-semibold truncate ${
-                  statusFilter === stat.filter
-                    ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400'
-                    : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                {stat.label} <span className="ml-1 font-bold text-xs">{stat.value}</span>
-              </button>
-            </div>
-          ))}
+      {/* ── Gmail not connected banner ── */}
+      {!gmailSynced && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Gmail not connected</p>
+            <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-0.5">Connect your Gmail to start importing inquiries automatically.</p>
+          </div>
+          <Button onClick={() => setShowGmailConfig(true)} size="sm" className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-xs h-8 rounded-lg">
+            Setup
+          </Button>
         </div>
+      )}
 
-        <div className="flex-1 overflow-hidden grid grid-cols-1 gap-4" style={{ gridTemplateColumns: 'minmax(0, 0.6fr) minmax(0, 1.4fr)' }}>
-          <div className={`${selectedLead ? 'hidden sm:block' : ''} h-full overflow-hidden flex`}>
-            <Card className="w-full h-full overflow-hidden flex flex-col shadow-lg border-t-4 border-blue-600 dark:border-blue-400">
-              <CardHeader className="pb-3 border-b bg-white dark:bg-slate-800">
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base font-bold text-slate-900 dark:text-white truncate">Messages</CardTitle>
-                  <span className="text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 px-2 py-1 rounded-full font-semibold shrink-0">{filteredLeads.length}</span>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-slate-200 dark:scrollbar-thumb-blue-600 dark:scrollbar-track-slate-800">
-                {isLoading ? (
-                  <div className="p-4 text-center text-muted-foreground text-sm">Loading...</div>
-                ) : filteredLeads.length === 0 ? (
-                  <div className="p-6 text-center text-muted-foreground">
-                    <Mail className="h-12 w-12 mx-auto opacity-20 mb-2" />
-                    <p className="text-sm">No inquiries found</p>
-                  </div>
-                ) : (
-                  filteredLeads.map((lead: any) => (
-                    <div key={lead._id} className={`border-b p-3.5 cursor-pointer transition-all ${selectedLead?._id === lead._id ? 'bg-blue-50 dark:bg-slate-700 border-l-4 border-blue-600' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-4 border-transparent'}`} onClick={() => { setSelectedLead(lead); if (!lead.isRead) markAsRead(lead._id); setSelectedLeadClosed(lead.status === 'Closed') }}>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{lead.firstName} {lead.lastName}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">{lead.senderEmail || lead.email}</p>
-                        </div>
-                        <div className="flex gap-1 shrink-0">
-                          {lead._emailCount > 1 && <Badge className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-100">{lead._emailCount}</Badge>}
-                          {!lead.isRead && <Badge className="text-xs bg-blue-600 text-white">New</Badge>}
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate mb-2 line-clamp-1">{lead.subject || '(No subject)'}</p>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs text-slate-500 dark:text-slate-500">{new Date(lead.createdAt).toLocaleDateString([], {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</p>
-                        <Badge className={statusConfig[lead.status as keyof typeof statusConfig]?.color} variant="secondary">
-                          {statusConfig[lead.status as keyof typeof statusConfig]?.icon}
-                          <span className="ml-1 text-xs">{lead.status}</span>
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+      {/* ── Search ── */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+        <Input
+          placeholder="Search by name, email, or subject…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 h-9 text-sm rounded-xl border-border/50 bg-card focus-visible:ring-emerald-500/30"
+        />
+      </div>
+
+      {/* ── Filter pills ── */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { filter: null,               label: 'All',       value: stats.total },
+          { filter: 'New',              label: 'New',       value: stats.new },
+          { filter: 'Pending',          label: 'Pending',   value: stats.pending },
+          { filter: 'Contacted',        label: 'Contacted', value: stats.contacted },
+          { filter: 'Appointment Set',  label: 'Appt',      value: stats.appointmentSet },
+          { filter: 'Closed',           label: 'Closed',    value: stats.closed },
+        ].map((s, i) => (
+          <button
+            key={i}
+            onClick={() => setStatusFilter(s.filter)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+              statusFilter === s.filter
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                : 'bg-card text-foreground border-border/50 hover:border-emerald-500/40 hover:text-emerald-600'
+            }`}
+          >
+            {s.label}
+            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+              statusFilter === s.filter ? 'bg-white/20' : 'bg-muted/60'
+            }`}>{s.value}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Two-pane layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.55fr)_minmax(0,1.45fr)] gap-4 min-h-[600px]">
+
+        {/* ── List pane ── */}
+        <div className={`${selectedLead ? 'hidden lg:flex' : 'flex'} flex-col rounded-2xl border border-border/50 bg-card overflow-hidden`}>
+          {/* pane header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">Messages</p>
+            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              {filteredLeads.length}
+            </span>
           </div>
 
-          <div className={`${!selectedLead ? 'hidden sm:block' : ''} h-full w-full overflow-hidden flex`}>
-            {selectedLead ? (
-              <Card className="w-full h-full flex flex-col shadow-lg overflow-hidden bg-white dark:bg-slate-900">
-                <CardHeader className="border-b pb-3 bg-slate-50 dark:bg-slate-800">
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-2 flex-1">
-                        <button
-                          onClick={() => setSelectedLead(null)}
-                          className="sm:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"
-                          title="Back to list"
-                        >
-                          <ChevronLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                        </button>
-                        <div className="min-w-0 flex-1">
-                          <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{selectedLead.firstName} {selectedLead.lastName}</h2>
-                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 truncate">{selectedLead.senderEmail || selectedLead.email}</p>
+          {/* pane body */}
+          <div className="flex-1 overflow-y-auto divide-y divide-border/40">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <p className="text-xs text-muted-foreground/50">Loading…</p>
+              </div>
+            ) : filteredLeads.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Mail className="h-10 w-10 text-muted-foreground/10" />
+                <p className="text-xs text-muted-foreground/40">No inquiries found</p>
+              </div>
+            ) : (
+              filteredLeads.map((lead: any) => {
+                const isSelected = selectedLead?._id === lead._id
+                return (
+                  <div
+                    key={lead._id}
+                    onClick={() => { setSelectedLead(lead); if (!lead.isRead) markAsRead(lead._id); setSelectedLeadClosed(lead.status === 'Closed') }}
+                    className={`px-4 py-3.5 cursor-pointer transition-all group ${
+                      isSelected
+                        ? 'bg-emerald-500/5 border-l-2 border-emerald-500'
+                        : 'border-l-2 border-transparent hover:bg-muted/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {/* avatar */}
+                        <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                          {getInitials(lead.firstName, lead.lastName)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold leading-none truncate">{lead.firstName} {lead.lastName}</p>
+                          <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">{lead.senderEmail || lead.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge className={`${statusConfig[selectedLead.status as keyof typeof statusConfig]?.color} shrink-0`}>
-                          {statusConfig[selectedLead.status as keyof typeof statusConfig]?.icon}
-                          <span className="ml-1 text-xs">{selectedLead.status}</span>
-                        </Badge>
-                        <button
-                          onClick={() => setSelectedLead(null)}
-                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                          title="Close"
-                        >
-                          <X className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                      <div>
-                        <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Subject</p>
-                        <p className="font-medium text-slate-900 dark:text-white mt-0.5 truncate cursor-help" title={selectedLead.subject || '(No subject)'}>{selectedLead.subject || '(No subject)'}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">To</p>
-                        <p className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{loggedInEmail || 'Your email'}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Date</p>
-                        <p className="font-medium text-slate-900 dark:text-white mt-0.5">{new Date(selectedLead.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      {selectedLead.phone && (
-                        <div>
-                          <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Phone</p>
-                          <p className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{selectedLead.phone}</p>
-                        </div>
-                      )}
-                    </div>
-                    {(selectedLead as any).appointment && (
-                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Appointment Date</p>
-                          <p className="font-medium text-slate-900 dark:text-white mt-0.5">{new Date((selectedLead as any).appointment.date).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Time</p>
-                          <p className="font-medium text-slate-900 dark:text-white mt-0.5">{(selectedLead as any).appointment.time}</p>
-                        </div>
-                        {(selectedLead as any).appointment.location && (
-                          <div>
-                            <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Location</p>
-                            <p className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{(selectedLead as any).appointment.location}</p>
-                          </div>
+                      <div className="flex gap-1 shrink-0 mt-0.5">
+                        {lead._emailCount > 1 && (
+                          <span className="text-[9px] font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
+                            {lead._emailCount}
+                          </span>
+                        )}
+                        {!lead.isRead && (
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 mt-1" />
                         )}
                       </div>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-950 scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-slate-200 dark:scrollbar-thumb-blue-600 dark:scrollbar-track-slate-800">
-                  <div className="flex justify-start">
-                    <div className="max-w-xl w-full bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-700">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{getInitials(selectedLead.firstName, selectedLead.lastName)}</div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{selectedLead.firstName} {selectedLead.lastName}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{formatFullDateTime(new Date(selectedLead.createdAt))}</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{cleanHTMLContent(selectedLead.body || '')}</p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/60 truncate mb-2">{lead.subject || '(No subject)'}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] text-muted-foreground/40">{fmtFull(new Date(lead.createdAt))}</p>
+                      <StatusPill status={lead.status} />
                     </div>
                   </div>
+                )
+              })
+            )}
+          </div>
+        </div>
 
-                  {messageThreads[selectedLead._id]?.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xl w-full rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow ${
-                        msg.isOwn
-                          ? 'bg-blue-600 text-white border-blue-500'
-                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-                      }`}>
-                        {!msg.isOwn && (
-                          <div className="flex items-center gap-2 mb-3 pb-3 border-b opacity-80" style={{ borderColor: msg.isOwn ? 'rgba(255,255,255,0.2)' : undefined }}>
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-slate-400 to-slate-600 text-white">{msg.sender.substring(0, 2).toUpperCase()}</div>
-                            <p className="text-xs truncate">{msg.sender}</p>
-                          </div>
-                        )}
-                        {msg.isOwn && (
-                          <div className="flex items-center gap-2 mb-3 pb-3 border-b opacity-80" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-white/20 text-white">YOU</div>
-                            <p className="text-xs truncate">You</p>
-                          </div>
-                        )}
-                        <p className="text-sm leading-relaxed">{msg.message}</p>
-                        <p className={`text-xs mt-2 ${msg.isOwn ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                          {formatFullDateTime(msg.timestamp)}
-                        </p>
-                      </div>
+        {/* ── Detail pane ── */}
+        <div className={`${!selectedLead ? 'hidden lg:flex' : 'flex'} flex-col rounded-2xl border border-border/50 bg-card overflow-hidden`}>
+          {selectedLead ? (
+            <>
+              {/* Detail header */}
+              <div className="px-5 py-4 border-b border-border/50 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      onClick={() => setSelectedLead(null)}
+                      className="lg:hidden p-1.5 rounded-lg hover:bg-muted/40 transition-colors shrink-0"
+                    >
+                      <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                    <div className="h-10 w-10 rounded-full bg-emerald-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                      {getInitials(selectedLead.firstName, selectedLead.lastName)}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-base font-bold leading-tight truncate">{selectedLead.firstName} {selectedLead.lastName}</h3>
+                      <p className="text-xs text-muted-foreground/50 truncate">{selectedLead.senderEmail || selectedLead.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <StatusPill status={selectedLead.status} />
+                    <button onClick={() => setSelectedLead(null)} className="p-1.5 rounded-lg hover:bg-muted/40 transition-colors">
+                      <X className="h-4 w-4 text-muted-foreground/50" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Meta grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Subject', value: selectedLead.subject || '(No subject)' },
+                    { label: 'To', value: loggedInEmail || 'Your email' },
+                    { label: 'Date', value: new Date(selectedLead.createdAt).toLocaleDateString() },
+                    ...(selectedLead.phone ? [{ label: 'Phone', value: selectedLead.phone }] : []),
+                  ].map(m => (
+                    <div key={m.label}>
+                      <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-medium">{m.label}</p>
+                      <p className="text-xs font-semibold truncate mt-0.5" title={m.value}>{m.value}</p>
                     </div>
                   ))}
                 </div>
 
-                {!selectedLeadClosed ? (
-                  <div className="border-t p-3 space-y-2 bg-white dark:bg-slate-900">
-                    <div>
-                      <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2 block">Reply</Label>
-                      <Textarea placeholder="Type your response..." value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={3} className="text-sm resize-none dark:bg-slate-800 border-slate-300 dark:border-slate-600 max-h-48 overflow-y-auto" />
+                {/* Appointment details */}
+                {(selectedLead as any).appointment && (
+                  <>
+                    <Separator className="opacity-40" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {[
+                        { label: 'Appt Date', value: new Date((selectedLead as any).appointment.date).toLocaleDateString() },
+                        { label: 'Time', value: (selectedLead as any).appointment.time },
+                        ...((selectedLead as any).appointment.location ? [{ label: 'Location', value: (selectedLead as any).appointment.location }] : []),
+                      ].map(m => (
+                        <div key={m.label}>
+                          <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-medium">{m.label}</p>
+                          <p className="text-xs font-semibold truncate mt-0.5">{m.value}</p>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex gap-2 items-center justify-between flex-wrap">
-                      <div className="flex gap-2 flex-wrap">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="outline" className="gap-1 text-xs">
-                              <MoreHorizontal className="h-4 w-4" /> Status
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            {Object.keys(statusConfig).filter(s => s !== selectedLead.status).map(status => (
-                              <DropdownMenuItem key={status} onClick={() => { handleStatusChange(status); setSelectedLead(prev => prev ? { ...prev, status: status as any } : null) }} className="cursor-pointer text-xs">
-                                {statusConfig[status as keyof typeof statusConfig].icon}
-                                <span className="ml-2">{status}</span>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button size="sm" variant="outline" onClick={() => setAppointmentOpen(true)} className="gap-1 text-xs">
-                          <Calendar className="h-4 w-4" /> Appointment
-                        </Button>
-                        <Button onClick={handleCloseLead} size="sm" variant="outline" className="gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
-                          <XCircle className="h-4 w-4" /> Close
-                        </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Message thread */}
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-muted/10">
+                {/* Original message */}
+                <div className="flex justify-start">
+                  <div className="max-w-2xl w-full rounded-xl border border-border/50 bg-card p-4">
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border/40">
+                      <div className="h-7 w-7 rounded-full bg-emerald-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                        {getInitials(selectedLead.firstName, selectedLead.lastName)}
                       </div>
-                      <Button onClick={handleSendReply} disabled={isSendingReply || !replyMessage.trim()} size="sm" className="gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">
-                        <Send className="h-4 w-4" /> {isSendingReply ? 'Sending...' : 'Send'}
+                      <div>
+                        <p className="text-xs font-semibold">{selectedLead.firstName} {selectedLead.lastName}</p>
+                        <p className="text-[10px] text-muted-foreground/50">{fmtFull(new Date(selectedLead.createdAt))}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-foreground/80 leading-relaxed">{cleanHTML(selectedLead.body || '')}</p>
+                  </div>
+                </div>
+
+                {/* Thread messages */}
+                {messageThreads[selectedLead._id]?.map((msg: any) => (
+                  <div key={msg.id} className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-2xl w-full rounded-xl border p-4 ${
+                      msg.isOwn
+                        ? 'bg-emerald-600 text-white border-emerald-500'
+                        : 'bg-card border-border/50'
+                    }`}>
+                      <div className={`flex items-center gap-2 mb-3 pb-3 border-b ${msg.isOwn ? 'border-white/20' : 'border-border/40'}`}>
+                        <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${msg.isOwn ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
+                          {msg.isOwn ? 'YOU' : msg.sender.substring(0, 2).toUpperCase()}
+                        </div>
+                        <p className={`text-xs font-medium ${msg.isOwn ? 'text-white/80' : 'text-muted-foreground'}`}>
+                          {msg.isOwn ? 'You' : msg.sender}
+                        </p>
+                      </div>
+                      <p className={`text-sm leading-relaxed ${msg.isOwn ? 'text-white' : 'text-foreground/80'}`}>{msg.message}</p>
+                      <p className={`text-[10px] mt-2 ${msg.isOwn ? 'text-white/50' : 'text-muted-foreground/40'}`}>{fmtFull(msg.timestamp)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Reply / closed footer */}
+              {!selectedLeadClosed ? (
+                <div className="border-t border-border/50 px-5 py-4 space-y-3 bg-card">
+                  <Label className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-medium">Reply</Label>
+                  <Textarea
+                    placeholder="Type your response…"
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    rows={3}
+                    className="text-sm resize-none rounded-xl border-border/50 bg-muted/20 focus-visible:ring-emerald-500/30 max-h-40"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      {/* Status dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 rounded-lg">
+                            <MoreHorizontal className="h-3.5 w-3.5" /> Status <ChevronDown className="h-3 w-3 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="rounded-xl">
+                          {Object.keys(statusConfig).filter(s => s !== selectedLead.status).map(s => (
+                            <DropdownMenuItem
+                              key={s}
+                              onClick={() => { handleStatusChange(s); setSelectedLead(p => p ? { ...p, status: s as any } : null) }}
+                              className="text-xs gap-2 cursor-pointer"
+                            >
+                              {statusConfig[s as keyof typeof statusConfig].icon} {s}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <Button size="sm" variant="outline" onClick={() => setAppointmentOpen(true)} className="h-8 text-xs gap-1.5 rounded-lg">
+                        <Calendar className="h-3.5 w-3.5" /> Appointment
+                      </Button>
+
+                      <Button
+                        onClick={() => { handleStatusChange('Closed'); setSelectedLeadClosed(true) }}
+                        size="sm" variant="outline"
+                        className="h-8 text-xs gap-1.5 rounded-lg text-rose-600 hover:text-rose-600 hover:bg-rose-500/5 border-rose-500/20"
+                      >
+                        <XCircle className="h-3.5 w-3.5" /> Close
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="border-t p-4 flex items-center justify-between bg-slate-100 dark:bg-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Lock className="h-5 w-5 text-slate-400" />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Inquiry Closed</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">This conversation is archived</p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" onClick={handleReopenLead} className="gap-1 text-xs">
-                      <LockOpen className="h-4 w-4" /> Reopen
+
+                    <Button
+                      onClick={handleSendReply}
+                      disabled={isSendingReply || !replyMessage.trim()}
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {isSendingReply ? 'Sending…' : 'Send Reply'}
                     </Button>
                   </div>
-                )}
-
-                <div className="border-t p-3 bg-slate-50 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-400 text-center">
-                  {lastSyncTime && <span>Synced: {formatDate(lastSyncTime)} at {formatTime(lastSyncTime)}</span>}
                 </div>
-              </Card>
-            ) : (
-              <Card className="h-full flex items-center justify-center shadow-lg">
-                <CardContent className="text-center">
-                  <Mail className="h-20 w-20 text-muted-foreground mx-auto opacity-10 mb-4" />
-                  <p className="text-muted-foreground text-lg">Select an inquiry to view</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+              ) : (
+                <div className="border-t border-border/50 px-5 py-4 flex items-center justify-between bg-muted/20">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
+                      <Lock className="h-4 w-4 text-muted-foreground/40" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold leading-none">Inquiry Closed</p>
+                      <p className="text-[11px] text-muted-foreground/50 mt-0.5">This conversation is archived</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => { handleStatusChange('Pending'); setSelectedLeadClosed(false) }} className="h-8 text-xs gap-1.5 rounded-lg">
+                    <LockOpen className="h-3.5 w-3.5" /> Reopen
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            /* Empty state */
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
+              <div className="h-16 w-16 rounded-2xl border-2 border-dashed border-border/30 flex items-center justify-center">
+                <Mail className="h-7 w-7 text-muted-foreground/20" />
+              </div>
+              <p className="text-sm text-muted-foreground/40">Select an inquiry to view</p>
+            </div>
+          )}
         </div>
-        </div>
-      
+      </div>
+
+      {/* ── Gmail settings dialog ── */}
       <Dialog open={showGmailConfig} onOpenChange={setShowGmailConfig}>
-        <DialogContent className="max-w-md dark:bg-slate-900">
+        <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle>Gmail Setup</DialogTitle>
             <DialogDescription>Connect your Gmail to auto-sync inquiries</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <GoogleCalendarConnect title="Google Account" description="Connect to sync inquiries" features={['Sync inquiries', 'Auto-refresh every 60 seconds', 'Real-time notifications']} />
+            <GoogleCalendarConnect
+              title="Google Account"
+              description="Connect to sync inquiries"
+              features={['Sync inquiries', 'Auto-refresh every 60s', 'Real-time notifications']}
+            />
             {isGoogleConnected && (
-              <div className="bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-emerald-900 dark:text-emerald-100 uppercase tracking-wide">Current Gmail Account</p>
-                  <span className="text-xs bg-emerald-200 dark:bg-emerald-700 text-emerald-900 dark:text-emerald-100 px-2 py-1 rounded">Connected</span>
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">Current Account</p>
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Connected</span>
                 </div>
-                {loggedInEmail && <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">{loggedInEmail}</p>}
+                {loggedInEmail && <p className="text-sm font-semibold">{loggedInEmail}</p>}
               </div>
             )}
-            {syncError && <div className="bg-red-50 dark:bg-red-950 p-3 rounded text-sm text-red-900 dark:text-red-100">{syncError}</div>}
+            {syncError && (
+              <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-xs text-rose-600 dark:text-rose-400">{syncError}</div>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowGmailConfig(false)}>Close</Button>
-            <Button onClick={handleSyncEmails} disabled={!isGoogleConnected} className="bg-blue-600 hover:bg-blue-700">Sync Now</Button>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowGmailConfig(false)} className="rounded-lg text-xs">Close</Button>
+            <Button onClick={handleSyncEmails} disabled={!isGoogleConnected} className="rounded-lg text-xs bg-emerald-600 hover:bg-emerald-700 text-white">
+              Sync Now
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* ── Appointment dialog ── */}
       <Dialog open={appointmentOpen} onOpenChange={setAppointmentOpen}>
-        <DialogContent className="dark:bg-slate-900 max-w-md">
+        <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl">Schedule Appointment</DialogTitle>
+            <DialogTitle>Schedule Appointment</DialogTitle>
             <DialogDescription>with {selectedLead?.firstName} {selectedLead?.lastName}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-1">
+            {[
+              { label: 'Date *', key: 'date', type: 'date' },
+              { label: 'Time *', key: 'time', type: 'time' },
+              { label: 'Location / Vehicle', key: 'locationOrVehicle', type: 'text', placeholder: 'e.g., Showroom, Test Drive, Vehicle Model' },
+            ].map(f => (
+              <div key={f.key}>
+                <Label className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/40">{f.label}</Label>
+                <Input
+                  type={f.type}
+                  placeholder={f.placeholder}
+                  value={appointmentForm[f.key as keyof typeof appointmentForm]}
+                  onChange={(e) => setAppointmentForm({ ...appointmentForm, [f.key]: e.target.value })}
+                  className="mt-1 rounded-xl border-border/50 text-sm"
+                />
+              </div>
+            ))}
             <div>
-              <Label className="text-xs font-bold text-muted-foreground">DATE *</Label>
-              <Input type="date" value={appointmentForm.date} onChange={(e) => setAppointmentForm({...appointmentForm, date: e.target.value})} className="dark:bg-slate-800 mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs font-bold text-muted-foreground">TIME *</Label>
-              <Input type="time" value={appointmentForm.time} onChange={(e) => setAppointmentForm({...appointmentForm, time: e.target.value})} className="dark:bg-slate-800 mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs font-bold text-muted-foreground">LOCATION / VEHICLE</Label>
-              <Input placeholder="e.g., Showroom, Test Drive Route, or Vehicle Model" value={appointmentForm.locationOrVehicle} onChange={(e) => setAppointmentForm({...appointmentForm, locationOrVehicle: e.target.value})} className="dark:bg-slate-800 mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs font-bold text-muted-foreground">NOTES</Label>
-              <Textarea placeholder="Additional details..." value={appointmentForm.notes} onChange={(e) => setAppointmentForm({...appointmentForm, notes: e.target.value})} rows={3} className="dark:bg-slate-800 mt-1" />
+              <Label className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/40">Notes</Label>
+              <Textarea
+                placeholder="Additional details…"
+                value={appointmentForm.notes}
+                onChange={(e) => setAppointmentForm({ ...appointmentForm, notes: e.target.value })}
+                rows={3}
+                className="mt-1 rounded-xl border-border/50 text-sm resize-none"
+              />
             </div>
             {selectedLead?.phone && (
-              <div className="bg-blue-50 dark:bg-blue-950 rounded p-3 text-xs border border-blue-200 dark:border-blue-800">
-                <p className="font-semibold text-blue-900 dark:text-blue-100">{selectedLead.phone}</p>
+              <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
+                <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-medium">Phone</p>
+                <p className="text-sm font-semibold mt-0.5">{selectedLead.phone}</p>
               </div>
             )}
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setAppointmentOpen(false); setAppointmentForm({ date: '', time: '', notes: '', locationOrVehicle: '' }) }} className="text-xs">Cancel</Button>
-            <Button onClick={handleSetAppointment} disabled={!appointmentForm.date || !appointmentForm.time} className="bg-emerald-600 hover:bg-emerald-700 text-xs">Save & Schedule</Button>
+            <Button variant="outline" onClick={() => { setAppointmentOpen(false); setAppointmentForm({ date: '', time: '', notes: '', locationOrVehicle: '' }) }} className="rounded-lg text-xs">
+              Cancel
+            </Button>
+            <Button onClick={handleSetAppointment} disabled={!appointmentForm.date || !appointmentForm.time} className="rounded-lg text-xs bg-emerald-600 hover:bg-emerald-700 text-white">
+              Save & Schedule
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      </div>
-
-      <style jsx>{`
-        @keyframes fadeOut {
-          0% { opacity: 0.4; width: 100%; }
-          90% { opacity: 0.4; width: 0%; }
-          100% { opacity: 0; width: 0%; }
-        }
-        .animate-fadeOut {
-          animation: fadeOut 6s ease-out forwards;
-        }
-      `}</style>
     </div>
   )
 }
