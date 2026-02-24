@@ -278,29 +278,7 @@ export default function InquiriesPage() {
     }
   }
 
-  const handleSendCompose = async () => {
-    if (!loggedInEmail) {
-      addToast('error', 'Please connect your Gmail first')
-      return
-    }
-    if (!composeForm.to || !composeForm.subject || !composeForm.body) {
-      addToast('error', 'Fill in all required fields')
-      return
-    }
-    setIsSendingCompose(true)
-    try {
-      const token = await getToken()
-      await apiClient.post('/api/leads/send-email', { ...composeForm }, { headers: { Authorization: `Bearer ${token}` } })
-      addToast('success', 'Email sent successfully')
-      setComposeForm({ to: '', subject: '', body: '', cc: '', bcc: '' })
-      setComposeOpen(false)
-      await refetch()
-    } catch (error: any) {
-      addToast('error', error?.response?.data?.message || 'Failed to send email')
-    } finally {
-      setIsSendingCompose(false)
-    }
-  }
+
 
   const handleSetAppointment = async () => {
     if (!selectedLead || !appointmentForm.date || !appointmentForm.time) return
