@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useLeads, Lead } from "@/hooks/useLeads"
-import { Mail, Phone, Calendar, MoreHorizontal, X, Plus, Send, Clock3, XCircle, LockOpen, Lock, ChevronLeft } from "lucide-react"
+import { Mail, Phone, Calendar, MoreHorizontal, X, Send, Clock3, XCircle, LockOpen, Lock, ChevronLeft, RefreshCw } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
 import { apiClient } from "@/lib/api-client"
@@ -75,21 +75,34 @@ export default function InquiriesPage() {
   const [replyMessage, setReplyMessage] = React.useState('')
   const [isSendingReply, setIsSendingReply] = React.useState(false)
   
-  const [composeOpen, setComposeOpen] = React.useState(false)
-  const [composeForm, setComposeForm] = React.useState({ to: '', subject: '', body: '', cc: '', bcc: '' })
-  const [isSendingCompose, setIsSendingCompose] = React.useState(false)
-  
   const [appointmentOpen, setAppointmentOpen] = React.useState(false)
   const [appointmentForm, setAppointmentForm] = React.useState({ date: '', time: '', notes: '', locationOrVehicle: '' })
   
   const [toasts, setToasts] = React.useState<Toast[]>([])
   const [selectedLeadClosed, setSelectedLeadClosed] = React.useState(false)
   const [messageThreads, setMessageThreads] = React.useState<Record<string, Array<{id: string, sender: string, senderEmail: string, message: string, timestamp: Date, isOwn: boolean}>>>({})
+  const [userName, setUserName] = React.useState('')
+  const [isSyncing, setIsSyncing] = React.useState(false)
+  const [savedAppointments, setSavedAppointments] = React.useState<Record<string, any>>({})
 
   // Auto-sync every 60 seconds
   React.useEffect(() => {
     const saved = localStorage.getItem('inquiry_gmail_synced') === 'true'
     setGmailSynced(saved)
+
+    const checkConnection = async () => {
+      try {
+        const token = await getToken()
+        const response = await apiClient.get('/api/google-calendar/status', { headers: { Authorization: `Bearer ${token}` } })
+        const connected = response.data?.data?.connected || false
+        if (connected && !saved) {
+          setGmailSynced(true)
+          localStorage.setItem('inquiry_gmail_synced', 'true')
+        }
+      } catch (e) {}
+    }
+    
+    checkConnection()
     
     if (saved) {
       const syncInterval = setInterval(async () => {
@@ -119,13 +132,14 @@ export default function InquiriesPage() {
     }
   }, [getToken, gmailSynced])
 
-  // Get logged email
+  // Get logged email and user name
   React.useEffect(() => {
     const getEmail = async () => {
       try {
         const token = await getToken()
         const response = await apiClient.get('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
         setLoggedInEmail(response.data?.email || '')
+        setUserName(response.data?.name || response.data?.email || '')
       } catch (error) {
         console.log('Could not fetch email')
       }
@@ -140,19 +154,57 @@ export default function InquiriesPage() {
         try {
           const token = await getToken()
           const response = await apiClient.get('/api/google-calendar/status', { headers: { Authorization: `Bearer ${token}` } })
-          setIsGoogleConnected(response.data?.data?.connected || false)
+          const connected = response.data?.data?.connected || false
+          setIsGoogleConnected(connected)
+          if (connected) {
+            setGmailSynced(true)
+            localStorage.setItem('inquiry_gmail_synced', 'true')
+          }
         } catch { setIsGoogleConnected(false) }
       }
       check()
     }
   }, [showGmailConfig, getToken])
 
+  React.useEffect(() => {
+    if (isGoogleConnected) {
+      setGmailSynced(true)
+      localStorage.setItem('inquiry_gmail_synced', 'true')
+    }
+  }, [isGoogleConnected])
+
+  React.useEffect(() => {
+    if (selectedLead) {
+      const fetchThreadMessages = async () => {
+        try {
+          const token = await getToken()
+          const response = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${token}` } })
+          const messages = response.data?.data?.messages || []
+          setMessageThreads(prev => ({
+            ...prev,
+            [selectedLead._id]: messages
+          }))
+        } catch (error) {
+          console.log('Could not fetch thread messages')
+        }
+      }
+      fetchThreadMessages()
+    }
+  }, [selectedLead, getToken])
+
   const addToast = (type: 'success' | 'error' | 'info', message: string) => {
     const isDuplicate = toasts.some(t => t.message === message && t.type === type)
     if (isDuplicate) return
     const id = Math.random().toString()
     setToasts(prev => [...prev, { id, type, message, timestamp: new Date() }])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
+  }
+
+  const getInitials = (firstName: string | undefined, lastName: string | undefined): string => {
+    if (!firstName && !lastName) return 'U'
+    const fn = (firstName || '')[0] || ''
+    const ln = (lastName || '')[0] || ''
+    return (fn + ln).toUpperCase() || 'U'
   }
 
   const handleStatusChange = (status: string) => {
@@ -173,24 +225,25 @@ export default function InquiriesPage() {
       const token = await getToken()
       await apiClient.post(`/api/leads/${selectedLead._id}/reply`, { message: replyMessage }, { headers: { Authorization: `Bearer ${token}` } })
       
-      // Add reply to message thread
-      const newMessage = {
-        id: Math.random().toString(),
-        sender: 'You',
-        senderEmail: loggedInEmail,
-        message: replyMessage,
-        timestamp: new Date(),
-        isOwn: true
-      }
-      setMessageThreads(prev => ({
-        ...prev,
-        [selectedLead._id]: [...(prev[selectedLead._id] || []), newMessage]
-      }))
-      
       setReplyMessage('')
       addToast('success', 'Reply sent successfully')
       updateLeadStatus({ id: selectedLead._id, status: 'Contacted' })
       setSelectedLead(prev => prev ? { ...prev, status: 'Contacted' } : null)
+      
+      setTimeout(async () => {
+        try {
+          const newToken = await getToken()
+          const response = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${newToken}` } })
+          const messages = response.data?.data?.messages || []
+          setMessageThreads(prev => ({
+            ...prev,
+            [selectedLead._id]: messages
+          }))
+        } catch (e) {
+          console.log('Could not refresh thread messages')
+        }
+      }, 1000)
+      
       await refetch()
     } catch { addToast('error', 'Failed to send reply') } 
     finally { setIsSendingReply(false) }
@@ -198,7 +251,9 @@ export default function InquiriesPage() {
 
   const handleSyncEmails = async () => {
     try {
-      addToast('info', 'Syncing Gmail inquiries...')
+      setIsSyncing(true)
+      setSyncError(null)
+      addToast('info', 'Refreshing inquiries...')
       const token = await getToken()
       const result = await apiClient.post('/api/leads/sync-gmail', {}, { headers: { Authorization: `Bearer ${token}` } })
       const syncedCount = result.data?.syncedCount || 0
@@ -206,16 +261,26 @@ export default function InquiriesPage() {
       localStorage.setItem('inquiry_gmail_synced', 'true')
       setLastSyncTime(new Date())
       setSyncCountdown(60)
-      addToast('success', `Gmail synced! ${syncedCount} inquiries imported`)
+      if (syncedCount > 0) {
+        addToast('success', `Refreshed! ${syncedCount} new inquiry${syncedCount > 1 ? 'ies' : ''} imported`)
+      } else {
+        addToast('info', 'Already up to date')
+      }
       await refetch()
     } catch (error: any) {
-      addToast('error', error?.response?.data?.message || 'Failed to sync Gmail')
+      const errorMsg = error?.response?.data?.message || 'Failed to refresh inquiries. Please reconnect your Gmail.'
+      setSyncError(errorMsg)
+      addToast('error', errorMsg)
+      setGmailSynced(false)
+      localStorage.removeItem('inquiry_gmail_synced')
+    } finally {
+      setIsSyncing(false)
     }
   }
 
   const handleSendCompose = async () => {
-    if (!gmailSynced || !loggedInEmail) {
-      addToast('error', 'Please sync Gmail first')
+    if (!loggedInEmail) {
+      addToast('error', 'Please connect your Gmail first')
       return
     }
     if (!composeForm.to || !composeForm.subject || !composeForm.body) {
@@ -237,17 +302,33 @@ export default function InquiriesPage() {
     }
   }
 
-  const handleSetAppointment = () => {
+  const handleSetAppointment = async () => {
     if (!selectedLead || !appointmentForm.date || !appointmentForm.time) return
     try {
+      const token = await getToken()
+      await apiClient.post(
+        `/api/leads/${selectedLead._id}/appointment`,
+        {
+          date: appointmentForm.date,
+          time: appointmentForm.time,
+          notes: appointmentForm.notes,
+          locationOrVehicle: appointmentForm.locationOrVehicle
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
       updateLeadStatus({ id: selectedLead._id, status: 'Appointment Set' })
       setSelectedLead(prev => prev ? { ...prev, status: 'Appointment Set' } : null)
-      addToast('success', 'Appointment scheduled')
+      addToast('success', 'Appointment saved and synced to your calendar')
       setAppointmentOpen(false)
       setAppointmentForm({ date: '', time: '', notes: '', locationOrVehicle: '' })
-    } catch {
-      addToast('error', 'Failed to schedule appointment')
+      await refetch()
+    } catch (error: any) {
+      addToast('error', error?.response?.data?.message || 'Failed to save appointment')
     }
+  }
+
+  const handleGoToAppointments = () => {
+    window.location.href = '/dashboard/appointments'
   }
 
   const handleCloseLead = () => {
@@ -281,7 +362,26 @@ export default function InquiriesPage() {
         l.subject?.toLowerCase().includes(query)
       )
     }
-    return filtered
+
+    const groupedByEmail: Record<string, Lead[]> = {}
+    filtered.forEach((lead: Lead) => {
+      const email = lead.senderEmail || lead.email
+      if (!groupedByEmail[email]) {
+        groupedByEmail[email] = []
+      }
+      groupedByEmail[email].push(lead)
+    })
+
+    const merged = Object.values(groupedByEmail).map((group: Lead[]) => {
+      const latestLead = group.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+      return {
+        ...latestLead,
+        _emailGroup: group,
+        _emailCount: group.length
+      }
+    })
+
+    return merged
   }, [leads, statusFilter, searchQuery])
 
   const stats = React.useMemo(() => ({
@@ -310,13 +410,16 @@ export default function InquiriesPage() {
               'bg-blue-600/95 border-blue-500'
             }`}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">{toast.message}</span>
+                <div className="flex-1">
+                  <span className="text-sm font-medium">{toast.message}</span>
+                  <p className="text-xs opacity-75 mt-1">{toast.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
                 <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-3 hover:opacity-80 shrink-0">
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="w-full h-1 bg-white/30 rounded-full overflow-hidden">
-                <div className="h-full bg-white animate-shrink origin-left" style={{ animationDuration: '5s' }}></div>
+              <div className="w-full h-0.5 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full bg-white/40 animate-fadeOut origin-left" style={{ animationDuration: '6s' }}></div>
               </div>
             </div>
           ))}
@@ -330,11 +433,8 @@ export default function InquiriesPage() {
               {loggedInEmail && gmailSynced && <p className="text-sm text-green-600 dark:text-green-400 mt-1">Synced from: {loggedInEmail}</p>}
             </div>
             <div className="flex gap-2 flex-wrap justify-end">
-              <Button onClick={() => { if (!gmailSynced) { addToast('error', 'Sync Gmail first'); return } setComposeOpen(true) }} disabled={!gmailSynced} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="h-4 w-4" /> Compose
-              </Button>
-              <Button onClick={handleSyncEmails} disabled={!gmailSynced} variant="outline" className="gap-2">
-                <Mail className="h-4 w-4" /> Sync
+              <Button onClick={handleSyncEmails} disabled={!gmailSynced || isSyncing} variant="outline" className="gap-2">
+                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} /> {isSyncing ? 'Refreshing...' : 'Refresh'}
               </Button>
               <Button onClick={() => setShowGmailConfig(true)} variant="outline">
                 Settings
@@ -404,7 +504,7 @@ export default function InquiriesPage() {
         </div>
 
         {/* Main Grid - Responsive with Fixed Heights */}
-        <div className="flex-1 overflow-hidden grid grid-cols-1 gap-4" style={{ gridTemplateColumns: 'minmax(0, 0.85fr) minmax(0, 1.5fr)' }}>
+        <div className="flex-1 overflow-hidden grid grid-cols-1 gap-4" style={{ gridTemplateColumns: 'minmax(0, 0.6fr) minmax(0, 1.4fr)' }}>
           {/* Left: List */}
           <div className={`${selectedLead ? 'hidden sm:block' : ''} h-full overflow-hidden flex`}>
             <Card className="w-full h-full overflow-hidden flex flex-col shadow-lg border-t-4 border-blue-600 dark:border-blue-400">
@@ -423,14 +523,17 @@ export default function InquiriesPage() {
                     <p className="text-sm">No inquiries found</p>
                   </div>
                 ) : (
-                  filteredLeads.map((lead: Lead) => (
+                  filteredLeads.map((lead: any) => (
                     <div key={lead._id} className={`border-b p-3.5 cursor-pointer transition-all ${selectedLead?._id === lead._id ? 'bg-blue-50 dark:bg-slate-700 border-l-4 border-blue-600' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-4 border-transparent'}`} onClick={() => { setSelectedLead(lead); if (!lead.isRead) markAsRead(lead._id); setSelectedLeadClosed(lead.status === 'Closed') }}>
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{lead.firstName} {lead.lastName}</p>
                           <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">{lead.senderEmail || lead.email}</p>
                         </div>
-                        {!lead.isRead && <Badge className="text-xs bg-blue-600 text-white shrink-0">New</Badge>}
+                        <div className="flex gap-1 shrink-0">
+                          {lead._emailCount > 1 && <Badge className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-100">{lead._emailCount}</Badge>}
+                          {!lead.isRead && <Badge className="text-xs bg-blue-600 text-white">New</Badge>}
+                        </div>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-400 truncate mb-2 line-clamp-1">{lead.subject || '(No subject)'}</p>
                       <div className="flex items-center justify-between gap-2">
@@ -452,8 +555,8 @@ export default function InquiriesPage() {
             {selectedLead ? (
               <Card className="w-full h-full flex flex-col shadow-lg overflow-hidden bg-white dark:bg-slate-900">
                 {/* Header */}
-                <CardHeader className="border-b pb-4 bg-slate-50 dark:bg-slate-800">
-                  <div className="space-y-3">
+                <CardHeader className="border-b pb-3 bg-slate-50 dark:bg-slate-800">
+                  <div className="space-y-2">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-2 flex-1">
                         <button
@@ -464,14 +567,14 @@ export default function InquiriesPage() {
                           <ChevronLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                         </button>
                         <div className="min-w-0 flex-1">
-                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white truncate">{selectedLead.firstName} {selectedLead.lastName}</h2>
-                          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 truncate">{selectedLead.senderEmail || selectedLead.email}</p>
+                          <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{selectedLead.firstName} {selectedLead.lastName}</h2>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 truncate">{selectedLead.senderEmail || selectedLead.email}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <Badge className={`${statusConfig[selectedLead.status as keyof typeof statusConfig]?.color} shrink-0`}>
                           {statusConfig[selectedLead.status as keyof typeof statusConfig]?.icon}
-                          <span className="ml-1">{selectedLead.status}</span>
+                          <span className="ml-1 text-xs">{selectedLead.status}</span>
                         </Badge>
                         <button
                           onClick={() => setSelectedLead(null)}
@@ -482,42 +585,54 @@ export default function InquiriesPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                       <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Subject</p>
-                        <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedLead.subject || '(No subject)'}</p>
+                        <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Subject</p>
+                        <p className="font-medium text-slate-900 dark:text-white mt-0.5 truncate cursor-help" title={selectedLead.subject || '(No subject)'}>{selectedLead.subject || '(No subject)'}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">To</p>
-                        <p className="font-medium text-slate-900 dark:text-white mt-1 truncate">{loggedInEmail || 'Your email'}</p>
+                        <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">To</p>
+                        <p className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{loggedInEmail || 'Your email'}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Sent</p>
-                        <p className="font-medium text-slate-900 dark:text-white mt-1">{new Date(selectedLead.createdAt).toLocaleDateString()}</p>
+                        <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Date</p>
+                        <p className="font-medium text-slate-900 dark:text-white mt-0.5">{new Date(selectedLead.createdAt).toLocaleDateString()}</p>
                       </div>
                       {selectedLead.phone && (
                         <div>
-                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Phone</p>
-                          <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedLead.phone}</p>
+                          <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Phone</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{selectedLead.phone}</p>
                         </div>
                       )}
                     </div>
-                    {selectedLead.vehicle && (selectedLead.vehicle.year || selectedLead.vehicle.make || selectedLead.vehicle.model) && (
-                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Vehicle Interest</p>
-                        <p className="font-medium text-slate-900 dark:text-white mt-1">{[selectedLead.vehicle.year, selectedLead.vehicle.make, selectedLead.vehicle.model].filter(v => v).join(' ')}</p>
+                    {(selectedLead as any).appointment && (
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Appointment Date</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-0.5">{new Date((selectedLead as any).appointment.date).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Time</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-0.5">{(selectedLead as any).appointment.time}</p>
+                        </div>
+                        {(selectedLead as any).appointment.location && (
+                          <div>
+                            <p className="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Location</p>
+                            <p className="font-medium text-slate-900 dark:text-white mt-0.5 truncate">{(selectedLead as any).appointment.location}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 </CardHeader>
 
                 {/* Message Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50 dark:bg-slate-950 scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-slate-200 dark:scrollbar-thumb-blue-600 dark:scrollbar-track-slate-800">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-950 scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-slate-200 dark:scrollbar-thumb-blue-600 dark:scrollbar-track-slate-800">
                   {/* Original Message */}
                   <div className="flex justify-start">
-                    <div className="max-w-sm lg:max-w-lg bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
+                    <div className="max-w-xl w-full bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-700">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 text-sm font-bold shrink-0">M</div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{getInitials(selectedLead.firstName, selectedLead.lastName)}</div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{selectedLead.firstName} {selectedLead.lastName}</p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">{formatFullDateTime(new Date(selectedLead.createdAt))}</p>
@@ -530,17 +645,21 @@ export default function InquiriesPage() {
                   {/* Replies in Thread */}
                   {messageThreads[selectedLead._id]?.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-sm lg:max-w-lg rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow ${
+                      <div className={`max-w-xl w-full rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow ${
                         msg.isOwn
                           ? 'bg-blue-600 text-white border-blue-500'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
                       }`}>
                         {!msg.isOwn && (
                           <div className="flex items-center gap-2 mb-3 pb-3 border-b opacity-80" style={{ borderColor: msg.isOwn ? 'rgba(255,255,255,0.2)' : undefined }}>
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                              msg.isOwn ? 'bg-blue-500' : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
-                            }`}>M</div>
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-slate-400 to-slate-600 text-white">{msg.sender.substring(0, 2).toUpperCase()}</div>
                             <p className="text-xs truncate">{msg.sender}</p>
+                          </div>
+                        )}
+                        {msg.isOwn && (
+                          <div className="flex items-center gap-2 mb-3 pb-3 border-b opacity-80" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-white/20 text-white">YOU</div>
+                            <p className="text-xs truncate">You</p>
                           </div>
                         )}
                         <p className="text-sm leading-relaxed">{msg.message}</p>
@@ -554,10 +673,10 @@ export default function InquiriesPage() {
 
                 {/* Reply Section */}
                 {!selectedLeadClosed ? (
-                  <div className="border-t p-4 space-y-3 bg-white dark:bg-slate-900">
+                  <div className="border-t p-3 space-y-2 bg-white dark:bg-slate-900">
                     <div>
                       <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2 block">Reply</Label>
-                      <Textarea placeholder="Type your response..." value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={3} className="text-sm resize-none dark:bg-slate-800 border-slate-300 dark:border-slate-600" />
+                      <Textarea placeholder="Type your response..." value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={3} className="text-sm resize-none dark:bg-slate-800 border-slate-300 dark:border-slate-600 max-h-48 overflow-y-auto" />
                     </div>
                     <div className="flex gap-2 items-center justify-between flex-wrap">
                       <div className="flex gap-2 flex-wrap">
@@ -631,9 +750,12 @@ export default function InquiriesPage() {
             <div className="space-y-4">
               <GoogleCalendarConnect title="Google Account" description="Connect to sync inquiries" features={['Sync inquiries', 'Auto-refresh every 60 seconds', 'Real-time notifications']} />
               {isGoogleConnected && (
-                <div className="bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
-                  <p className="text-sm text-emerald-900 dark:text-emerald-100">Connected</p>
-                  {loggedInEmail && <p className="text-xs text-emerald-800 dark:text-emerald-200 mt-1">{loggedInEmail}</p>}
+                <div className="bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-emerald-900 dark:text-emerald-100 uppercase tracking-wide">Current Gmail Account</p>
+                    <span className="text-xs bg-emerald-200 dark:bg-emerald-700 text-emerald-900 dark:text-emerald-100 px-2 py-1 rounded">Connected</span>
+                  </div>
+                  {loggedInEmail && <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">{loggedInEmail}</p>}
                 </div>
               )}
               {syncError && <div className="bg-red-50 dark:bg-red-950 p-3 rounded text-sm text-red-900 dark:text-red-100">{syncError}</div>}
@@ -677,62 +799,21 @@ export default function InquiriesPage() {
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => { setAppointmentOpen(false); setAppointmentForm({ date: '', time: '', notes: '', locationOrVehicle: '' }) }} className="text-xs">Cancel</Button>
-              <Button onClick={handleSetAppointment} disabled={!appointmentForm.date || !appointmentForm.time} className="bg-emerald-600 hover:bg-emerald-700 text-xs">Schedule Appointment</Button>
+              <Button onClick={handleSetAppointment} disabled={!appointmentForm.date || !appointmentForm.time} className="bg-emerald-600 hover:bg-emerald-700 text-xs">Save & Schedule</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Compose */}
-        <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-          <DialogContent className="max-w-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl">Compose Email</DialogTitle>
-              <DialogDescription>Send a professional email</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded border border-blue-200 dark:border-blue-800">
-                <p className="text-xs font-bold text-muted-foreground mb-1">FROM</p>
-                <p className="text-sm font-semibold">{loggedInEmail}</p>
-              </div>
-              <div>
-                <Label className="text-xs font-bold text-muted-foreground">TO *</Label>
-                <Input type="email" placeholder="recipient@example.com" value={composeForm.to} onChange={(e) => setComposeForm({...composeForm, to: e.target.value})} className="dark:bg-slate-800 mt-1" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground">CC</Label>
-                  <Input type="email" placeholder="Optional" value={composeForm.cc} onChange={(e) => setComposeForm({...composeForm, cc: e.target.value})} className="dark:bg-slate-800 mt-1" />
-                </div>
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground">BCC</Label>
-                  <Input type="email" placeholder="Optional" value={composeForm.bcc} onChange={(e) => setComposeForm({...composeForm, bcc: e.target.value})} className="dark:bg-slate-800 mt-1" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs font-bold text-muted-foreground">SUBJECT *</Label>
-                <Input placeholder="Email subject" value={composeForm.subject} onChange={(e) => setComposeForm({...composeForm, subject: e.target.value})} className="dark:bg-slate-800 mt-1" />
-              </div>
-              <div>
-                <Label className="text-xs font-bold text-muted-foreground">MESSAGE *</Label>
-                <Textarea placeholder="Type your message here..." value={composeForm.body} onChange={(e) => setComposeForm({...composeForm, body: e.target.value})} rows={10} className="dark:bg-slate-800 resize-none mt-1" />
-              </div>
-            </div>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => { setComposeOpen(false); setComposeForm({to: '', subject: '', body: '', cc: '', bcc: ''}) }} className="text-xs">Cancel</Button>
-              <Button onClick={handleSendCompose} disabled={isSendingCompose || !composeForm.to || !composeForm.subject || !composeForm.body} className="gap-2 bg-blue-600 hover:bg-blue-700 text-xs font-semibold">
-                <Send className="h-4 w-4" /> {isSendingCompose ? 'Sending...' : 'Send Email'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <style jsx>{`
-        @keyframes shrink {
-          to { width: 0%; }
+        @keyframes fadeOut {
+          0% { opacity: 0.4; width: 100%; }
+          90% { opacity: 0.4; width: 0%; }
+          100% { opacity: 0; width: 0%; }
         }
-        .animate-shrink {
-          animation: shrink 5s linear forwards;
+        .animate-fadeOut {
+          animation: fadeOut 6s ease-out forwards;
         }
         /* Custom Scrollbar */
         ::-webkit-scrollbar {

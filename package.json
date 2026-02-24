@@ -56,7 +56,11 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query-devtools": "^5.91.3",
-    "@types/node": "^20",
+    "@types/estree": "^1.0.8",
+    "@types/jest": "^30.0.0",
+    "@types/json-schema": "^7.0.15",
+    "@types/mapbox__point-geometry": "^0.1.4",
+    "@types/node": "^20.19.33",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/xml2js": "^0.4.14",
