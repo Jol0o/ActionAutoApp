@@ -369,10 +369,12 @@ export function LeadsTab() {
                 : 'bg-card text-foreground border-border/50 hover:border-emerald-500/40 hover:text-emerald-600'
             }`}
           >
-            {s.label}
-            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-              statusFilter === s.filter ? 'bg-white/20' : 'bg-muted/60'
-            }`}>{s.value}</span>
+          {s.label}
+            {s.filter !== 'Inbound Calls' && (
+              <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                statusFilter === s.filter ? 'bg-white/20' : 'bg-muted/60'
+              }`}>{s.value}</span>
+            )}
           </button>
         ))}
       </div>
