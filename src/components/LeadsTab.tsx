@@ -308,7 +308,7 @@ export function LeadsTab() {
     contacted: leads.filter((l: Lead) => l.status === 'Contacted').length,
     appointmentSet: leads.filter((l: Lead) => l.status === 'Appointment Set').length,
     closed: leads.filter((l: Lead) => l.status === 'Closed').length,
-    inboundCalls: leads.filter((l: Lead) => l.status === 'Inbound Calls').length,
+    inboundCalls: leads.filter((l: Lead) => (l.status as string) === 'Inbound Calls').length,
   }), [leads])
 
   // ── Render ─────────────────────────────────────────────────────────────────
