@@ -4,23 +4,15 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-    BarChart3,
     Car,
     ChevronRight,
     ClipboardList,
-    DollarSign,
-    Home,
     LayoutDashboard,
-    Search,
     Settings,
-    Tag,
     Truck,
-    AlertCircle,
-    PlusCircle,
     User,
-    Calendar,
-    Inbox,
     CreditCard,
+    Users,
 } from "lucide-react"
 
 import {
@@ -31,13 +23,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarProvider,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
 import { useUser, useClerk, useOrganization } from "@clerk/nextjs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -62,19 +49,14 @@ const data = {
             icon: LayoutDashboard,
         },
         {
+            title: "CRM",
+            url: "/crm",
+            icon: Users,
+        },
+        {
             title: "All Inventory",
             url: "/inventory",
             icon: Car,
-        },
-        {
-            title: "Appointments",
-            url: "/appointments",
-            icon: Calendar,
-        },
-        {
-            title: "Inquiries",
-            url: "/leads",
-            icon: Inbox,
         },
     ],
 
@@ -162,7 +144,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton
                 asChild
                 tooltip={item.title}
-                isActive={pathname === item.url}
+                isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
               >
                 <Link href={item.url}>
                   <item.icon />

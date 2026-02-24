@@ -231,7 +231,14 @@ export function CreateAppointmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      {/*
+        FIX: The CRM dashboard wrapper uses `fixed inset-0 z-[100]`, which creates
+        a stacking context. shadcn's Dialog portal renders into document.body but
+        the default overlay/content z-index (z-50) is not enough to pierce through
+        the parent's stacking context visually. We override with z-[200] here to
+        ensure the modal always appears on top.
+      */}
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto z-[200]">
         <DialogHeader>
           <DialogTitle>Schedule New {formData.entryType.charAt(0).toUpperCase() + formData.entryType.slice(1)}</DialogTitle>
         </DialogHeader>
