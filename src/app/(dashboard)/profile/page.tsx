@@ -71,6 +71,7 @@ import {
 import { UserProfile, OnlineStatus, PersonalInfo, RecentActivity, SocialLink } from '@/types/user';
 import { NotificationPreferences } from '@/types/notification';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api-client';
 import { format, formatDistanceToNow } from 'date-fns';
 
 // Country codes for phone
@@ -260,37 +261,30 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     setFetchError(null);
     try {
-      const response = await fetch('/api/profile', {
-        credentials: 'include',
+      const response = await apiClient.get('/profile');
+      const data = response.data;
+      setProfile(data.data);
+      setPreferences(data.data.notificationPreferences || {
+        quoteCreated: true,
+        quoteUpdated: true,
+        quoteDeleted: true,
+        shipmentCreated: true,
+        shipmentUpdated: true,
+        shipmentDeleted: true,
+        passwordChanged: true,
+        emailChanged: true,
+        profileUpdated: true,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.data);
-        setPreferences(data.data.notificationPreferences || {
-          quoteCreated: true,
-          quoteUpdated: true,
-          quoteDeleted: true,
-          shipmentCreated: true,
-          shipmentUpdated: true,
-          shipmentDeleted: true,
-          passwordChanged: true,
-          emailChanged: true,
-          profileUpdated: true,
-        });
-        setOnlineStatus(data.data.onlineStatus || 'online');
-        setCustomStatus((data.data.customStatus || '').slice(0, MAX_CUSTOM_STATUS_LENGTH));
-        setPersonalInfo(data.data.personalInfo || {});
-        setPhoneCountryCode(data.data.personalInfo?.phoneCountryCode || '+1');
-        setSocialLinks(data.data.personalInfo?.socialLinks || []);
-        setActivities(data.data.recentActivities || []);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        setFetchError(errorData.message || 'Failed to load profile. Please refresh the page.');
-      }
-    } catch (error) {
+      setOnlineStatus(data.data.onlineStatus || 'online');
+      setCustomStatus((data.data.customStatus || '').slice(0, MAX_CUSTOM_STATUS_LENGTH));
+      setPersonalInfo(data.data.personalInfo || {});
+      setPhoneCountryCode(data.data.personalInfo?.phoneCountryCode || '+1');
+      setSocialLinks(data.data.personalInfo?.socialLinks || []);
+      setActivities(data.data.recentActivities || []);
+    } catch (error: any) {
       console.error('Error fetching profile:', error);
-      setFetchError('Network error. Please check your connection and try again.');
+      const errorMessage = error.response?.data?.message || 'Failed to load profile. Please refresh the page.';
+      setFetchError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -313,52 +307,39 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch('/api/profile/avatar', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ avatar: croppedImage }),
-      });
-
-      if (response.ok) {
-        showAlert({
-          type: 'success',
-          title: 'Profile Picture Updated',
-          message: 'Your profile picture has been successfully updated.',
-        });
-        fetchProfile();
-      } else {
-        const data = await response.json();
-        const errorMessage = data.message || 'Failed to update profile picture.';
-        
-        // Handle specific error codes
-        if (response.status === 413) {
-          showAlert({
-            type: 'error',
-            title: 'Image Too Large',
-            message: 'The image is too large. Please use a smaller image.',
-          });
-        } else if (response.status === 400) {
-          showAlert({
-            type: 'error',
-            title: 'Invalid Image',
-            message: errorMessage,
-          });
-        } else {
-          showAlert({
-            type: 'error',
-            title: 'Error',
-            message: errorMessage,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error updating profile picture:', error);
+      const response = await apiClient.patch('/profile/avatar', { avatar: croppedImage });
+      
       showAlert({
-        type: 'error',
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'An error occurred while updating profile picture.',
+        type: 'success',
+        title: 'Profile Picture Updated',
+        message: 'Your profile picture has been successfully updated.',
       });
+      fetchProfile();
+    } catch (error: any) {
+      console.error('Error updating profile picture:', error);
+      const status = error.response?.status;
+      const errorMessage = error.response?.data?.message || 'Failed to update profile picture.';
+      
+      // Handle specific error codes
+      if (status === 413) {
+        showAlert({
+          type: 'error',
+          title: 'Image Too Large',
+          message: 'The image is too large. Please use a smaller image.',
+        });
+      } else if (status === 400) {
+        showAlert({
+          type: 'error',
+          title: 'Invalid Image',
+          message: errorMessage,
+        });
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: errorMessage,
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -367,34 +348,21 @@ export default function ProfilePage() {
   const handleUpdateOnlineStatus = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch('/api/profile/online-status', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: onlineStatus, customStatus }),
+      await apiClient.patch('/profile/online-status', { status: onlineStatus, customStatus });
+      
+      showAlert({
+        type: 'success',
+        title: 'Status Updated',
+        message: 'Your online status has been updated.',
       });
-
-      if (response.ok) {
-        showAlert({
-          type: 'success',
-          title: 'Status Updated',
-          message: 'Your online status has been updated.',
-        });
-        setShowStatusDialog(false);
-        fetchProfile();
-      } else {
-        const data = await response.json();
-        showAlert({
-          type: 'error',
-          title: 'Error',
-          message: data.message || 'Failed to update status.',
-        });
-      }
-    } catch (error) {
+      setShowStatusDialog(false);
+      fetchProfile();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to update status.';
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'An error occurred while updating status.',
+        message: errorMessage,
       });
     } finally {
       setIsSaving(false);
@@ -451,34 +419,21 @@ export default function ProfilePage() {
         socialLinks,
       };
 
-      const response = await fetch('/api/profile/personal-info', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(updatedInfo),
+      await apiClient.patch('/profile/personal-info', updatedInfo);
+      
+      showAlert({
+        type: 'success',
+        title: 'Information Saved',
+        message: 'Your personal information has been updated.',
       });
-
-      if (response.ok) {
-        showAlert({
-          type: 'success',
-          title: 'Information Saved',
-          message: 'Your personal information has been updated.',
-        });
-        setEditingPersonalInfo(false);
-        fetchProfile();
-      } else {
-        const data = await response.json();
-        showAlert({
-          type: 'error',
-          title: 'Error',
-          message: data.message || 'Failed to save information.',
-        });
-      }
-    } catch (error) {
+      setEditingPersonalInfo(false);
+      fetchProfile();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to save information.';
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'An error occurred while saving information.',
+        message: errorMessage,
       });
     } finally {
       setIsSaving(false);
@@ -493,27 +448,13 @@ export default function ProfilePage() {
     setPreferences(newPreferences);
 
     try {
-      const response = await fetch('/api/profile/notification-preferences', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ [key]: value }),
-      });
-
-      if (!response.ok) {
-        setPreferences(preferences);
-        showAlert({
-          type: 'error',
-          title: 'Error',
-          message: 'Failed to update notification preferences.',
-        });
-      }
-    } catch (error) {
+      await apiClient.patch('/profile/notification-preferences', { [key]: value });
+    } catch (error: any) {
       setPreferences(preferences);
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'An error occurred while updating preferences.',
+        message: error.response?.data?.message || 'Failed to update notification preferences.',
       });
     } finally {
       setSavingPreference(null);
@@ -540,33 +481,19 @@ export default function ProfilePage() {
     setPreferences(allEnabled);
 
     try {
-      const response = await fetch('/api/profile/notification-preferences', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(allEnabled),
+      await apiClient.patch('/profile/notification-preferences', allEnabled);
+      
+      showAlert({
+        type: 'success',
+        title: 'Notifications Enabled',
+        message: 'All notifications have been enabled.',
       });
-
-      if (response.ok) {
-        showAlert({
-          type: 'success',
-          title: 'Notifications Enabled',
-          message: 'All notifications have been enabled.',
-        });
-      } else {
-        setPreferences(previousPreferences);
-        showAlert({
-          type: 'error',
-          title: 'Error',
-          message: 'Failed to enable all notifications.',
-        });
-      }
-    } catch (error) {
+    } catch (error: any) {
       setPreferences(previousPreferences);
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'An error occurred. Please try again.',
+        message: error.response?.data?.message || 'Failed to enable all notifications.',
       });
     }
   };
@@ -591,33 +518,19 @@ export default function ProfilePage() {
     setPreferences(allDisabled);
 
     try {
-      const response = await fetch('/api/profile/notification-preferences', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(allDisabled),
+      await apiClient.patch('/profile/notification-preferences', allDisabled);
+      
+      showAlert({
+        type: 'success',
+        title: 'Notifications Disabled',
+        message: 'All notifications have been disabled.',
       });
-
-      if (response.ok) {
-        showAlert({
-          type: 'success',
-          title: 'Notifications Disabled',
-          message: 'All notifications have been disabled.',
-        });
-      } else {
-        setPreferences(previousPreferences);
-        showAlert({
-          type: 'error',
-          title: 'Error',
-          message: 'Failed to disable all notifications.',
-        });
-      }
-    } catch (error) {
+    } catch (error: any) {
       setPreferences(previousPreferences);
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'An error occurred. Please try again.',
+        message: error.response?.data?.message || 'Failed to disable all notifications.',
       });
     }
   };
@@ -679,29 +592,19 @@ export default function ProfilePage() {
   const handleConnectGoogleCalendar = async () => {
     try {
       // Redirect to Google Calendar OAuth endpoint
-      const response = await fetch('/api/google-calendar/auth-url', {
-        credentials: 'include',
-      });
+      const response = await apiClient.get('/google-calendar/auth-url');
+      const data = response.data;
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          showAlert({
-            type: 'info',
-            title: 'Coming Soon',
-            message: 'Google Calendar integration is being configured. Please try again later.',
-          });
-        }
+      if (data.url) {
+        window.location.href = data.url;
       } else {
         showAlert({
           type: 'info',
           title: 'Coming Soon',
-          message: 'Google Calendar integration will be available soon.',
+          message: 'Google Calendar integration is being configured. Please try again later.',
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       showAlert({
         type: 'info',
         title: 'Coming Soon',
@@ -713,30 +616,19 @@ export default function ProfilePage() {
   // Disconnect Google Calendar
   const handleDisconnectGoogleCalendar = async () => {
     try {
-      const response = await fetch('/api/google-calendar/disconnect', {
-        method: 'POST',
-        credentials: 'include',
+      await apiClient.post('/google-calendar/disconnect');
+      
+      showAlert({
+        type: 'success',
+        title: 'Disconnected',
+        message: 'Google Calendar has been disconnected.',
       });
-
-      if (response.ok) {
-        showAlert({
-          type: 'success',
-          title: 'Disconnected',
-          message: 'Google Calendar has been disconnected.',
-        });
-        fetchProfile();
-      } else {
-        showAlert({
-          type: 'error',
-          title: 'Error',
-          message: 'Failed to disconnect Google Calendar.',
-        });
-      }
-    } catch (error) {
+      fetchProfile();
+    } catch (error: any) {
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'An error occurred. Please try again.',
+        message: error.response?.data?.message || 'Failed to disconnect Google Calendar.',
       });
     }
   };
@@ -753,26 +645,13 @@ export default function ProfilePage() {
     }
 
     try {
-      const response = await fetch('/api/profile/delete-account', {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        await signOut();
-      } else {
-        const data = await response.json();
-        showAlert({
-          type: 'error',
-          title: 'Error',
-          message: data.message || 'Failed to delete account.',
-        });
-      }
-    } catch (error) {
+      await apiClient.delete('/profile/delete-account');
+      await signOut();
+    } catch (error: any) {
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'An error occurred. Please try again.',
+        message: error.response?.data?.message || 'Failed to delete account.',
       });
     }
   };
@@ -2017,7 +1896,7 @@ export default function ProfilePage() {
                   <Button 
                     variant="outline" 
                     className="w-full justify-start btn-hover-scale animate-slide-up stagger-3"
-                    onClick={() => window.open('mailto:support@actionautoutah.com')}
+                    onClick={() => window.open('https://mail.google.com/mail/?view=cm&to=support@actionautoutah.com&su=Support%20Request', '_blank')}
                   >
                     <Mail className="size-4 mr-3" />Email: support@actionautoutah.com
                   </Button>
