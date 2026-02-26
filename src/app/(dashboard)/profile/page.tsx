@@ -261,7 +261,7 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     setFetchError(null);
     try {
-      const response = await apiClient.get('/profile');
+      const response = await apiClient.get('/api/profile');
       const data = response.data;
       setProfile(data.data);
       setPreferences(data.data.notificationPreferences || {
@@ -307,7 +307,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await apiClient.patch('/profile/avatar', { avatar: croppedImage });
+      const response = await apiClient.patch('/api/profile/avatar', { avatar: croppedImage });
       
       showAlert({
         type: 'success',
@@ -348,7 +348,7 @@ export default function ProfilePage() {
   const handleUpdateOnlineStatus = async () => {
     setIsSaving(true);
     try {
-      await apiClient.patch('/profile/online-status', { status: onlineStatus, customStatus });
+      await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus });
       
       showAlert({
         type: 'success',
@@ -419,7 +419,7 @@ export default function ProfilePage() {
         socialLinks,
       };
 
-      await apiClient.patch('/profile/personal-info', updatedInfo);
+      await apiClient.patch('/api/profile/personal-info', updatedInfo);
       
       showAlert({
         type: 'success',
@@ -448,7 +448,7 @@ export default function ProfilePage() {
     setPreferences(newPreferences);
 
     try {
-      await apiClient.patch('/profile/notification-preferences', { [key]: value });
+      await apiClient.patch('/api/profile/notification-preferences', { [key]: value });
     } catch (error: any) {
       setPreferences(preferences);
       showAlert({
@@ -481,7 +481,7 @@ export default function ProfilePage() {
     setPreferences(allEnabled);
 
     try {
-      await apiClient.patch('/profile/notification-preferences', allEnabled);
+      await apiClient.patch('/api/profile/notification-preferences', allEnabled);
       
       showAlert({
         type: 'success',
@@ -518,7 +518,7 @@ export default function ProfilePage() {
     setPreferences(allDisabled);
 
     try {
-      await apiClient.patch('/profile/notification-preferences', allDisabled);
+      await apiClient.patch('/api/profile/notification-preferences', allDisabled);
       
       showAlert({
         type: 'success',
@@ -592,7 +592,7 @@ export default function ProfilePage() {
   const handleConnectGoogleCalendar = async () => {
     try {
       // Redirect to Google Calendar OAuth endpoint
-      const response = await apiClient.get('/google-calendar/auth-url');
+      const response = await apiClient.get('/api/google-calendar/auth-url');
       const data = response.data;
       
       if (data.url) {
@@ -616,7 +616,7 @@ export default function ProfilePage() {
   // Disconnect Google Calendar
   const handleDisconnectGoogleCalendar = async () => {
     try {
-      await apiClient.post('/google-calendar/disconnect');
+      await apiClient.post('/api/google-calendar/disconnect');
       
       showAlert({
         type: 'success',
@@ -645,7 +645,7 @@ export default function ProfilePage() {
     }
 
     try {
-      await apiClient.delete('/profile/delete-account');
+      await apiClient.delete('/api/profile/delete-account');
       await signOut();
     } catch (error: any) {
       showAlert({

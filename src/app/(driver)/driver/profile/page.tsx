@@ -136,7 +136,7 @@ export default function DriverProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      const response = await apiClient.get('/profile');
+      const response = await apiClient.get('/api/profile');
       const data = response.data;
       setProfile(data.data);
       setPreferences(data.data.notificationPreferences);
@@ -168,7 +168,7 @@ export default function DriverProfilePage() {
         return;
       }
 
-      const response = await apiClient.patch('/profile/avatar', { avatar: croppedImage });
+      const response = await apiClient.patch('/api/profile/avatar', { avatar: croppedImage });
       
       showAlert({
         type: 'success',
@@ -209,7 +209,7 @@ export default function DriverProfilePage() {
   const handleUpdateOnlineStatus = async () => {
     setIsSaving(true);
     try {
-      await apiClient.patch('/profile/online-status', { status: onlineStatus, customStatus });
+      await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus });
       
       showAlert({
         type: 'success',
@@ -233,7 +233,7 @@ export default function DriverProfilePage() {
   const handleSavePersonalInfo = async () => {
     setIsSaving(true);
     try {
-      await apiClient.patch('/profile/personal-info', personalInfo);
+      await apiClient.patch('/api/profile/personal-info', personalInfo);
       
       showAlert({
         type: 'success',
@@ -261,7 +261,7 @@ export default function DriverProfilePage() {
     setPreferences(newPreferences);
 
     try {
-      await apiClient.patch('/profile/notification-preferences', { [key]: value });
+      await apiClient.patch('/api/profile/notification-preferences', { [key]: value });
     } catch (error: any) {
       setPreferences(preferences);
       showAlert({
