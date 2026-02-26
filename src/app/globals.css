@@ -201,6 +201,25 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/50;
   }
+
+}
+
+/* Independent global scrollbar, circumventing tailwind layer purging */
+/* Enhanced Webkit Scrollbar Styling for Profile & Network Panel */
+.custom-scrollbar::-webkit-scrollbar {
+  @apply w-1.5 h-1.5 bg-transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-zinc-300 dark:bg-zinc-800 rounded-full border-2 border-transparent bg-clip-padding transition-colors duration-200;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-zinc-400 dark:bg-zinc-700 border-2 border-transparent bg-clip-padding;
 }
 
 /* Smooth transitions for theme changes */

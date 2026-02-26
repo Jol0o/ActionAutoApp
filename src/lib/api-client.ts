@@ -19,9 +19,22 @@ class ApiClient {
         });
 
         this.client.interceptors.request.use(
-            (config) => {
+            async (config) => {
                 const fullUrl = `${config.baseURL}${config.url}`;
                 console.log(`[apiClient] ${config.method?.toUpperCase()} ${fullUrl}`);
+
+                // --- AUTHENTICATION INJECTION START ---
+                try {
+                    if (typeof window !== 'undefined' && (window as any).Clerk?.session) {
+                        const token = await (window as any).Clerk.session.getToken();
+                        if (token) {
+                            config.headers.Authorization = `Bearer ${token}`;
+                        }
+                    }
+                } catch (err) {
+                    console.error('[apiClient] Error fetching Clerk Token:', err);
+                }
+                // --- AUTHENTICATION INJECTION END ---
 
                 // --- IMPERSONATION INJECTION START ---
                 if (typeof window !== 'undefined') {

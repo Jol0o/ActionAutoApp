@@ -58,75 +58,6 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 
-const data = {
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "All Inventory",
-      url: "/inventory",
-      icon: Car,
-    },
-    {
-      title: "Appointments",
-      url: "/appointments",
-      icon: Calendar,
-    },
-    {
-      title: "Inquiries",
-      url: "/leads",
-      icon: Inbox,
-    },
-  ],
-
-  services: [
-    {
-      title: "Transportation",
-      url: "/transportation",
-      icon: Truck,
-    },
-    {
-      title: "Driver Tracker",
-      url: "/driver-tracker",
-      icon: User,
-    },
-    {
-      title: "Reports",
-      url: "/reports",
-      icon: ClipboardList,
-      items: [
-        {
-          title: "Sales Report",
-          url: "#",
-        },
-        {
-          title: "Inventory Health",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Billing",
-      url: "/billing",
-      icon: CreditCard,
-    },
-  ],
-  account: [
-    {
-      title: "Profile",
-      url: "/profile",
-      icon: User,
-    },
-    {
-      title: "Settings",
-      url: "/settings",
-      icon: Settings,
-    },
-  ],
-};
 
 const customerData = {
   navMain: [
@@ -153,14 +84,11 @@ const customerData = {
   ]
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function CustomerSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useUser();
   const { signOut } = useClerk();
-  const { organization, isCustomer, isLoaded } = useOrg();
-
-  // Determine which navigation data to display based on role
-  const activeNavMain = isCustomer ? customerData.navMain : data.navMain;
+  const { organization } = useOrg();
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
@@ -189,63 +117,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {activeNavMain.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                asChild
-                tooltip={item.title}
-                isActive={pathname === item.url}
-              >
-                <Link href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-
-        {!isCustomer && (
-          <>
-            <div className="px-4 py-2 mt-4 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider group-data-[collapsible=icon]:hidden">
-              Services
-            </div>
-
-            <SidebarMenu>
-              {data.services.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  {item.items ? (
-                    <SidebarMenuButton asChild tooltip={item.title}>
-                      <div className="flex items-center w-full">
-                        <item.icon />
-                        <span className="flex-1">{item.title}</span>
-                        <ChevronRight className="ml-auto size-4 group-data-[state=open]/collapsible:rotate-90" />
-                      </div>
-                    </SidebarMenuButton>
-                  ) : (
-                    <SidebarMenuButton
-                      asChild
-                      tooltip={item.title}
-                      isActive={pathname === item.url}
-                    >
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </>
-        )}
-
-        <div className="px-4 py-2 mt-4 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider group-data-[collapsible=icon]:hidden">
-          Account
-        </div>
-
-        <SidebarMenu>
-          {data.account.map((item) => (
+          {customerData.navMain.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild

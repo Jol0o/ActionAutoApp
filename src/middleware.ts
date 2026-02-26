@@ -1,9 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
     '/sign-in(.*)',
     '/sign-up(.*)',
-    '/api/uploadthing(.*)' // If you use uploadthing or similar public APIs
+    '/api/uploadthing(.*)',
+    '/.well-known(.*)'
 ]);
 
 const isOrgSelectionRoute = createRouteMatcher(['/org-selection(.*)']);
@@ -11,10 +13,17 @@ const isOrgSelectionRoute = createRouteMatcher(['/org-selection(.*)']);
 export default clerkMiddleware(async (auth, request) => {
 
     const { userId, orgId } = await auth();
+    console.log(`[Middleware] URL: ${request.url} | UserId: ${userId} | OrgId: ${orgId}`);
 
     // 1. If not a public route, protect it
-    if (!isPublicRoute(request)) {
-        await auth.protect();
+    // Note: We are relying on component-level auth checks (useOrg, etc.) 
+    // instead of auth.protect() here to bypass Clerk Edge Runtime cookie loops
+    // that occur during localhost development.
+    if (!isPublicRoute(request) && !userId) {
+        // If there's truly no userId attached to the request headers, we redirect to sign-in
+        // But we DO NOT call auth.protect() which throws a hard 401 and kills the session loop.
+        const signInUrl = new URL('/sign-in', request.url);
+        return NextResponse.redirect(signInUrl);
     }
 
     // 2. If logged in, but we want to handle org selection on client side or via custom logic
@@ -25,7 +34,10 @@ export default clerkMiddleware(async (auth, request) => {
     //     const orgSelection = new URL('/org-selection', request.url);
     //     return Response.redirect(orgSelection);
     // }
-});
+
+    return NextResponse.next();
+}, { clockSkewInMs: 300000 } as any);
+
 
 export const config = {
     matcher: [

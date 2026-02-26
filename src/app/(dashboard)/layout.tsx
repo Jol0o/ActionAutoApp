@@ -34,7 +34,7 @@ function DashboardLayoutContent({
     const { user } = useUser();
     const { signOut } = useClerk();
     // Use custom hook for organization context
-    const { organization, isLoaded, isSuperAdmin, isDriver } = useOrg();
+    const { organization, isLoaded, isSuperAdmin, isDriver, userRole } = useOrg();
     const router = useRouter();
     const { isImpersonating } = adminStore.useStore();
 
@@ -57,11 +57,22 @@ function DashboardLayoutContent({
             return;
         }
 
-        // If no organization is found, redirect to selection/onboarding
-        if (!organization) {
-            router.push('/org-selection');
+        const isCustomer = userRole === 'customer';
+        const isEmployee = userRole === 'employee';
+
+        // Strict isolation: Customers must never view the organization/employee layout
+        if (isCustomer) {
+            router.push('/customer');
+            return;
         }
-    }, [isLoaded, organization, isSuperAdmin, isDriver, router, isImpersonating]);
+
+        // If employee has no organization, they must go to org-selection
+        if (!organization && isEmployee) {
+            router.push('/org-selection');
+            return;
+        }
+
+    }, [isLoaded, organization, isSuperAdmin, isDriver, router, isImpersonating, userRole]);
 
     return (
         <SidebarProvider>
