@@ -86,19 +86,45 @@ export function GoogleCalendarConnect({
           return
         }
 
-        // Check popup status
+        // Check popup status every 500ms
         const checkPopupTimer = setInterval(() => {
           if (popup.closed) {
             clearInterval(checkPopupTimer)
-            // Popup closed, check if we're still connected
-            checkConnection()
-            setIsConnecting(false)
+            // Popup closed, check if we're connected
+            checkConnection().then(() => {
+              setIsConnecting(false)
+            })
+            return
           }
         }, 500)
 
-        // Fallback: close timer after 5 minutes
+        // Fallback: force check connection every 1 second for up to 5 minutes
+        const connectionCheckTimer = setInterval(async () => {
+          try {
+            const token = await getToken()
+            const response = await apiClient.get('/api/google-calendar/status', {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            const data = response.data?.data || response.data
+            if (data.connected) {
+              // Successfully connected, close popup
+              popup.close()
+              clearInterval(checkPopupTimer)
+              clearInterval(connectionCheckTimer)
+              setIsConnected(true)
+              setIsConnecting(false)
+            }
+          } catch (err) {
+            // Keep checking
+          }
+        }, 1000)
+
+        // Cleanup timers after 5 minutes
+        // Cleanup after 5 minutes
         setTimeout(() => {
           clearInterval(checkPopupTimer)
+          clearInterval(connectionCheckTimer)
+          if (!popup.closed) popup.close()
           setIsConnecting(false)
         }, 300000)
       } else {

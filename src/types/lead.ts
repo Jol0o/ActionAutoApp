@@ -4,16 +4,32 @@ export interface VehicleInterest {
   model: string;
 }
 
+export interface Appointment {
+  date: Date | string;
+  time: string;
+  notes?: string;
+  location?: string;
+}
+
 export interface Lead {
   _id: string;
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
-  source: string; // e.g., "ADF Email", "Website", "Walk-in"
-  status: string; // e.g., "New", "Contacted", "Appointment Set"
+  phone?: string;
+  senderEmail?: string;
+  senderName?: string;
+  source: string;
+  status: string;
   vehicle: VehicleInterest;
   comments: string;
+  subject?: string;
+  body?: string;
+  threadId?: string;
+  messageId?: string;
+  isRead?: boolean;
+  isPending?: boolean;
+  appointment?: Appointment;
   createdAt: string;
   updatedAt: string;
 }

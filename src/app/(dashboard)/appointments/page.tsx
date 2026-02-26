@@ -5,10 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, Users, Plus, RefreshCw } from "lucide-react"
+import { Calendar, Clock, Users, Plus, RefreshCw, Mail } from "lucide-react"
 import { AppointmentCalendar } from "@/components/AppointmentCalendar"
 import { BookedTab } from "@/components/BookedTab"
-import { ConversationPanelComplete } from "@/components/ConversationPanel"
+import { LeadsTab } from "@/components/LeadsTab"
 import { CreateAppointmentModal } from "@/components/CreateAppointmentModal"
 import { AppointmentDetailsModal } from "@/components/AppointmentDetailsModal"
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
@@ -20,38 +20,30 @@ import { useAuth } from "@clerk/nextjs"
 export default function AppointmentsPage() {
   const { getToken } = useAuth()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = React.useState("calendar")
+  const [activeTab, setActiveTab] = React.useState("leads")
   const [createModalOpen, setCreateModalOpen] = React.useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = React.useState(false)
   const [selectedAppointment, setSelectedAppointment] = React.useState<any>(null)
   const [preselectedDate, setPreselectedDate] = React.useState<Date | undefined>()
-  const [preselectedConversation, setPreselectedConversation] = React.useState<string | undefined>()
 
-  // Check URL params for Google Calendar connection result
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('calendar_connected') === 'true') {
-      console.log('[AppointmentsPage] Google Calendar connected, refreshing data...')
-      // Clean up URL params after reading them
       window.history.replaceState({}, '', '/appointments')
-      // Force refetch appointments after calendar connection
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['appointments'] })
       }, 1000)
     }
     if (params.get('calendar_error')) {
-      console.error('[AppointmentsPage] Google Calendar connection error:', params.get('calendar_error'))
       window.history.replaceState({}, '', '/appointments')
     }
   }, [queryClient])
 
-  // Helper to get auth headers
   const getAuthHeaders = async () => {
     const token = await getToken()
     return { headers: { Authorization: `Bearer ${token}` } }
   }
 
-  // Fetch appointments with improved error handling and logging
   const {
     data: appointments = [],
     isLoading,
@@ -62,24 +54,10 @@ export default function AppointmentsPage() {
     queryKey: ['appointments'],
     queryFn: async () => {
       try {
-        console.log('[AppointmentsPage] Fetching appointments...')
         const headers = await getAuthHeaders()
         const response = await apiClient.get('/api/appointments', headers)
         const data = response.data?.data || response.data
-        const appts = data.appointments || []
-        
-        console.log('[AppointmentsPage] ✅ Fetched appointments:', {
-          total: appts.length,
-          sample: appts.slice(0, 3).map((a: any) => ({
-            id: a._id,
-            title: a.title,
-            startTime: a.startTime,
-            entryType: a.entryType,
-            status: a.status
-          }))
-        })
-        
-        return appts
+        return data.appointments || []
       } catch (error: any) {
         console.error('[AppointmentsPage] ❌ Error fetching appointments:', error)
         throw error
@@ -87,12 +65,11 @@ export default function AppointmentsPage() {
     },
     retry: 2,
     retryDelay: 1000,
-    staleTime: 0, // Always consider data stale
-    refetchOnMount: 'always', // Always refetch when component mounts
-    refetchOnWindowFocus: false, // Don't refetch on window focus to avoid spam
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   })
 
-  // Fetch customer bookings count
   const { data: customerBookingsCount = 0, refetch: refetchCustomerBookings } = useQuery({
     queryKey: ['customer-bookings-count'],
     queryFn: async () => {
@@ -100,290 +77,216 @@ export default function AppointmentsPage() {
         const headers = await getAuthHeaders()
         const response = await apiClient.get('/api/appointments/customer-bookings/list', headers)
         const data = response.data?.data || response.data
-        const count = data.appointments?.length || 0
-        console.log('[AppointmentsPage] Customer bookings count:', count)
-        return count
+        return data.appointments?.length || 0
       } catch (error) {
-        console.error('[AppointmentsPage] Error fetching customer bookings:', error)
         return 0
       }
     },
   })
 
-  // Fetch conversations count
-  const { data: conversationsCount = 0, refetch: refetchConversations } = useQuery({
-    queryKey: ['conversations-count'],
-    queryFn: async () => {
-      try {
-        const headers = await getAuthHeaders()
-        const response = await apiClient.get('/api/conversations', headers)
-        const data = response.data?.data || response.data
-        const count = data.conversations?.length || 0
-        console.log('[AppointmentsPage] Conversations count:', count)
-        return count
-      } catch (error) {
-        console.error('[AppointmentsPage] Error fetching conversations:', error)
-        return 0
-      }
-    },
-  })
-
-  // Calculate statistics
   const stats = React.useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    const upcoming = appointments.filter((apt: any) => {
-      const start = new Date(apt.startTime)
-      return start >= today && apt.status !== 'cancelled'
-    })
-
-    const todayAppointments = appointments.filter((apt: any) => {
-      const start = new Date(apt.startTime)
-      return start >= today && start < tomorrow && apt.status !== 'cancelled'
-    })
-
     return {
       total: appointments.length,
-      upcoming: upcoming.length,
-      today: todayAppointments.length,
+      upcoming: appointments.filter((apt: any) => {
+        const start = new Date(apt.startTime)
+        return start >= today && apt.status !== 'cancelled'
+      }).length,
+      today: appointments.filter((apt: any) => {
+        const start = new Date(apt.startTime)
+        return start >= today && start < tomorrow && apt.status !== 'cancelled'
+      }).length,
       cancelled: appointments.filter((apt: any) => apt.status === 'cancelled').length,
     }
   }, [appointments])
 
-  const handleCreateAppointment = () => {
+  const handleCreateAppointment = React.useCallback(() => {
+    console.log('[AppointmentsPage] New Appointment clicked — opening modal')
     setPreselectedDate(undefined)
-    setPreselectedConversation(undefined)
     setCreateModalOpen(true)
-  }
+  }, [])
 
-  const handleDateClick = (date?: Date) => {
+  const handleDateClick = React.useCallback((date?: Date) => {
     setPreselectedDate(date)
-    setPreselectedConversation(undefined)
     setCreateModalOpen(true)
-  }
+  }, [])
 
-  const handleAppointmentClick = (appointment: any) => {
+  const handleAppointmentClick = React.useCallback((appointment: any) => {
     setSelectedAppointment(appointment)
     setDetailsModalOpen(true)
-  }
+  }, [])
 
-  const handleCreateFromConversation = (conversationId: string) => {
-    setPreselectedConversation(conversationId)
-    setPreselectedDate(undefined)
-    setCreateModalOpen(true)
-  }
-
-  // Update appointment handler
   const handleUpdateAppointment = async (id: string, data: any) => {
     try {
-      console.log('[AppointmentsPage] Updating appointment:', id)
       const headers = await getAuthHeaders()
       await apiClient.patch(`/api/appointments/${id}`, data, headers)
-      
-      // Invalidate all appointment-related queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] })
+        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
       ])
-      
-      console.log('[AppointmentsPage] ✅ Appointment updated successfully')
     } catch (error) {
-      console.error('[AppointmentsPage] ❌ Error updating appointment:', error)
       throw error
     }
   }
 
-  // Cancel appointment handler
   const handleCancelAppointment = async (id: string) => {
     try {
-      console.log('[AppointmentsPage] Cancelling appointment:', id)
       const headers = await getAuthHeaders()
       await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers)
-      
-      // Invalidate all appointment-related queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] })
+        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
       ])
-      
-      console.log('[AppointmentsPage] ✅ Appointment cancelled successfully')
     } catch (error) {
-      console.error('[AppointmentsPage] ❌ Error cancelling appointment:', error)
       throw error
     }
   }
 
-  // Delete appointment handler
   const handleDeleteAppointment = async (id: string) => {
     try {
-      console.log('[AppointmentsPage] Deleting appointment:', id)
       const headers = await getAuthHeaders()
       await apiClient.delete(`/api/appointments/${id}`, headers)
       setDetailsModalOpen(false)
-      
-      // Invalidate all appointment-related queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] })
+        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
       ])
-      
-      console.log('[AppointmentsPage] ✅ Appointment deleted successfully')
     } catch (error) {
-      console.error('[AppointmentsPage] ❌ Error deleting appointment:', error)
       throw error
     }
   }
 
-  // Handle sync complete - IMPROVED with better logging and forced refetch
   const handleSyncComplete = async () => {
-    console.log('[AppointmentsPage] 🔄 Sync completed, refreshing all data...')
-    
     try {
-      // Invalidate all queries simultaneously
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'], refetchType: 'active' }),
-        queryClient.invalidateQueries({ queryKey: ['conversations-count'], refetchType: 'active' })
       ])
-      
-      console.log('[AppointmentsPage] ✅ All queries invalidated')
-      
-      // Force manual refetch as backup to ensure data updates
       setTimeout(async () => {
-        console.log('[AppointmentsPage] 🔄 Force refetching all data...')
-        const [apptResult, bookingsResult, convResult] = await Promise.all([
-          refetchAppointments(),
-          refetchCustomerBookings(),
-          refetchConversations()
-        ])
-        
-        console.log('[AppointmentsPage] ✅ Force refetch complete:', {
-          appointments: {
-            success: apptResult.isSuccess,
-            count: apptResult.data?.length || 0
-          },
-          customerBookings: {
-            success: bookingsResult.isSuccess,
-            count: bookingsResult.data || 0
-          },
-          conversations: {
-            success: convResult.isSuccess,
-            count: convResult.data || 0
-          }
-        })
+        await Promise.all([refetchAppointments(), refetchCustomerBookings()])
       }, 500)
     } catch (error) {
       console.error('[AppointmentsPage] ❌ Error refreshing data:', error)
     }
   }
 
+  const handleCreateAppointmentSubmit = async (data: any) => {
+    const headers = await getAuthHeaders()
+    await apiClient.post('/api/appointments', data, headers)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+      queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
+    ])
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Appointments</h1>
-          <p className="text-muted-foreground">
-            Manage your appointments, events, and conversations
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <GoogleCalendarSyncButton onSyncComplete={handleSyncComplete} />
-          <Button onClick={handleCreateAppointment}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Appointment
-          </Button>
-        </div>
-      </div>
+    <>
+      <div className="container mx-auto py-6 space-y-6">
 
-      {/* Google Calendar Connection */}
-      <GoogleCalendarConnect />
-
-      {/* Statistics */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            {isFetching && (
-              <p className="text-xs text-muted-foreground mt-1">Updating...</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.today}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.upcoming}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Customer Bookings</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{customerBookingsCount}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Error message if appointments failed to load */}
-      {appointmentsError && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <p className="text-sm text-red-600">
-              Failed to load appointments. Please try refreshing the page.
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Appointments</h1>
+            <p className="text-muted-foreground">
+              Manage your leads, appointments, and events
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => refetchAppointments()}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Retry
+          </div>
+          <div className="flex items-center gap-2">
+            <GoogleCalendarSyncButton onSyncComplete={handleSyncComplete} />
+            <Button type="button" onClick={handleCreateAppointment}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Appointment
             </Button>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </div>
 
-      {/* Loading indicator */}
-      {isLoading && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Loading appointments...</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* Google Calendar Connection */}
+        <GoogleCalendarConnect />
 
-      {/* Main Content Tabs */}
-      {!isLoading && (
+        {/* Statistics */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total}</div>
+              {isFetching && (
+                <p className="text-xs text-muted-foreground mt-1">Updating...</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Today</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.today}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.upcoming}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Customer Bookings</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{customerBookingsCount}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Error */}
+        {appointmentsError && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <p className="text-sm text-red-600">
+                Failed to load appointments. Please try refreshing the page.
+              </p>
+              <Button variant="outline" size="sm" className="mt-2" onClick={() => refetchAppointments()}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading */}
+        {isLoading && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">Loading appointments...</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tabs — always rendered, not gated by isLoading */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
+            <TabsTrigger value="leads">
+              <Mail className="mr-2 h-4 w-4" />
+              Leads
+            </TabsTrigger>
             <TabsTrigger value="calendar">
               <Calendar className="mr-2 h-4 w-4" />
               Calendar View
@@ -392,55 +295,47 @@ export default function AppointmentsPage() {
               <Clock className="mr-2 h-4 w-4" />
               Upcoming
               {stats.upcoming > 0 && (
-                <Badge className="ml-2" variant="secondary">
-                  {stats.upcoming}
-                </Badge>
+                <Badge className="ml-2" variant="secondary">{stats.upcoming}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="booked">
               <Users className="mr-2 h-4 w-4" />
               Booked
               {customerBookingsCount > 0 && (
-                <Badge className="ml-2" variant="secondary">
-                  {customerBookingsCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="conversations">
-              Conversations
-              {conversationsCount > 0 && (
-                <Badge className="ml-2" variant="secondary">
-                  {conversationsCount}
-                </Badge>
+                <Badge className="ml-2" variant="secondary">{customerBookingsCount}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
 
-          {/* Calendar View Tab */}
-          <TabsContent value="calendar" className="space-y-4">
-            <AppointmentCalendar
-              appointments={appointments}
-              onCreateAppointment={handleDateClick}
-              onSelectAppointment={handleAppointmentClick}
-            />
+          <TabsContent value="leads" className="space-y-4">
+            <LeadsTab />
           </TabsContent>
 
-          {/* Upcoming Appointments Tab */}
+          <TabsContent value="calendar" className="space-y-4">
+            {!isLoading && (
+              <AppointmentCalendar
+                appointments={appointments}
+                onCreateAppointment={handleDateClick}
+                onSelectAppointment={handleAppointmentClick}
+              />
+            )}
+          </TabsContent>
+
           <TabsContent value="upcoming" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Upcoming Appointments</CardTitle>
               </CardHeader>
               <CardContent>
-                {stats.upcoming === 0 ? (
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : stats.upcoming === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
                     <p>No upcoming appointments</p>
-                    <Button
-                      variant="outline"
-                      className="mt-4"
-                      onClick={handleCreateAppointment}
-                    >
+                    <Button type="button" variant="outline" className="mt-4" onClick={handleCreateAppointment}>
                       Create Appointment
                     </Button>
                   </div>
@@ -470,9 +365,9 @@ export default function AppointmentsPage() {
                                   <h4 className="font-semibold">{appointment.title}</h4>
                                   <Badge
                                     variant={
-                                      appointment.status === 'confirmed' ? 'default' :
-                                        appointment.status === 'cancelled' ? 'destructive' :
-                                          'secondary'
+                                      appointment.status === 'confirmed' ? 'default'
+                                        : appointment.status === 'cancelled' ? 'destructive'
+                                        : 'secondary'
                                     }
                                     className={appointment.status === 'confirmed' ? 'bg-green-500' : ''}
                                   >
@@ -481,15 +376,11 @@ export default function AppointmentsPage() {
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                   {new Date(appointment.startTime).toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric',
+                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                                   })}
                                   {' at '}
                                   {new Date(appointment.startTime).toLocaleTimeString('en-US', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
+                                    hour: 'numeric', minute: '2-digit',
                                   })}
                                 </p>
                                 {appointment.location && (
@@ -508,58 +399,47 @@ export default function AppointmentsPage() {
             </Card>
           </TabsContent>
 
-          {/* Booked (Customer Bookings) Tab */}
           <TabsContent value="booked" className="space-y-4">
             <BookedTab />
           </TabsContent>
-
-          {/* Conversations Tab */}
-          <TabsContent value="conversations" className="space-y-4">
-            <ConversationPanelComplete
-              onCreateAppointment={handleCreateFromConversation}
-            />
-          </TabsContent>
         </Tabs>
-      )}
+      </div>
 
-      {/* Create Appointment Modal */}
+      {/*
+        MODALS ARE OUTSIDE THE CONTAINER DIV — this is intentional and important.
+
+        shadcn's <Dialog> renders via a React portal into document.body. However,
+        if any ancestor element has CSS properties that create a new stacking
+        context (transform, filter, will-change, isolation, etc.) or overflow:hidden,
+        the portal overlay can appear clipped or invisible even though React thinks
+        it's mounted. Placing modals as siblings to the page <div> (inside a <>
+        Fragment) ensures they are completely unaffected by container styles.
+      */}
       <CreateAppointmentModal
         open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-        onCreateAppointment={async (data) => {
-          try {
-            console.log('[AppointmentsPage] Creating appointment:', data)
-            const headers = await getAuthHeaders()
-            await apiClient.post('/api/appointments', data, headers)
-            
-            // Invalidate all appointment-related queries
-            await Promise.all([
-              queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-              queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] })
-            ])
-            
-            console.log('[AppointmentsPage] ✅ Appointment created successfully')
-          } catch (error) {
-            console.error('[AppointmentsPage] ❌ Error creating appointment:', error)
-            throw error
-          }
+        onOpenChange={(open) => {
+          console.log('[AppointmentsPage] CreateModal open state changing to:', open)
+          setCreateModalOpen(open)
+          if (!open) setPreselectedDate(undefined)
         }}
+        onCreateAppointment={handleCreateAppointmentSubmit}
         conversations={[]}
-        preselectedConversation={preselectedConversation}
         preselectedDate={preselectedDate}
       />
 
-      {/* Appointment Details Modal */}
       {selectedAppointment && (
         <AppointmentDetailsModal
           open={detailsModalOpen}
-          onOpenChange={setDetailsModalOpen}
+          onOpenChange={(open) => {
+            setDetailsModalOpen(open)
+            if (!open) setSelectedAppointment(null)
+          }}
           appointment={selectedAppointment}
           onUpdate={handleUpdateAppointment}
           onDelete={handleDeleteAppointment}
           onCancel={handleCancelAppointment}
         />
       )}
-    </div>
+    </>
   )
 }
