@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useClerk, useUser, useAuth } from "@clerk/nextjs";
 import { useTheme } from '@/context/ThemeContext';
 import { useAlert } from '@/components/AlertDialog';
 import ProfileImageCropper from '@/components/ProfileImageCropper';
@@ -204,6 +204,7 @@ const notificationCategories = [
 export default function ProfilePage() {
   const { user: clerkUser } = useUser();
   const { signOut, openUserProfile } = useClerk();
+  const { getToken } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showAlert, AlertComponent } = useAlert();
 
@@ -261,7 +262,8 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     setFetchError(null);
     try {
-      const response = await apiClient.get('/api/profile');
+      const token = await getToken();
+      const response = await apiClient.get('/api/profile', { headers: { Authorization: `Bearer ${token}` } });
       const data = response.data;
       setProfile(data.data);
       setPreferences(data.data.notificationPreferences || {
@@ -307,7 +309,8 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await apiClient.patch('/api/profile/avatar', { avatar: croppedImage });
+      const token = await getToken();
+      const response = await apiClient.patch('/api/profile/avatar', { avatar: croppedImage }, { headers: { Authorization: `Bearer ${token}` } });
       
       showAlert({
         type: 'success',
@@ -348,7 +351,8 @@ export default function ProfilePage() {
   const handleUpdateOnlineStatus = async () => {
     setIsSaving(true);
     try {
-      await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus });
+      const token = await getToken();
+      await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus }, { headers: { Authorization: `Bearer ${token}` } });
       
       showAlert({
         type: 'success',
@@ -419,7 +423,8 @@ export default function ProfilePage() {
         socialLinks,
       };
 
-      await apiClient.patch('/api/profile/personal-info', updatedInfo);
+      const token = await getToken();
+      await apiClient.patch('/api/profile/personal-info', updatedInfo, { headers: { Authorization: `Bearer ${token}` } });
       
       showAlert({
         type: 'success',
@@ -448,7 +453,8 @@ export default function ProfilePage() {
     setPreferences(newPreferences);
 
     try {
-      await apiClient.patch('/api/profile/notification-preferences', { [key]: value });
+      const token = await getToken();
+      await apiClient.patch('/api/profile/notification-preferences', { [key]: value }, { headers: { Authorization: `Bearer ${token}` } });
     } catch (error: any) {
       setPreferences(preferences);
       showAlert({
@@ -481,7 +487,8 @@ export default function ProfilePage() {
     setPreferences(allEnabled);
 
     try {
-      await apiClient.patch('/api/profile/notification-preferences', allEnabled);
+      const token = await getToken();
+      await apiClient.patch('/api/profile/notification-preferences', allEnabled, { headers: { Authorization: `Bearer ${token}` } });
       
       showAlert({
         type: 'success',
@@ -518,7 +525,8 @@ export default function ProfilePage() {
     setPreferences(allDisabled);
 
     try {
-      await apiClient.patch('/api/profile/notification-preferences', allDisabled);
+      const token = await getToken();
+      await apiClient.patch('/api/profile/notification-preferences', allDisabled, { headers: { Authorization: `Bearer ${token}` } });
       
       showAlert({
         type: 'success',

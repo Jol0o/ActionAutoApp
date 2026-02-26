@@ -19,9 +19,27 @@ class ApiClient {
         });
 
         this.client.interceptors.request.use(
-            (config) => {
+            async (config) => {
                 const fullUrl = `${config.baseURL}${config.url}`;
                 console.log(`[apiClient] ${config.method?.toUpperCase()} ${fullUrl}`);
+
+                // --- AUTO AUTH TOKEN INJECTION START ---
+                // Automatically inject Clerk auth token if available and not already set
+                if (typeof window !== 'undefined' && !config.headers.Authorization) {
+                    try {
+                        const clerkInstance = (window as any).Clerk;
+                        if (clerkInstance?.session) {
+                            const token = await clerkInstance.session.getToken();
+                            if (token) {
+                                config.headers.Authorization = `Bearer ${token}`;
+                            }
+                        }
+                    } catch (e) {
+                        // Silently fail - some requests may not need auth
+                        console.warn('[apiClient] Could not get auth token:', e);
+                    }
+                }
+                // --- AUTO AUTH TOKEN INJECTION END ---
 
                 // --- IMPERSONATION INJECTION START ---
                 if (typeof window !== 'undefined') {
