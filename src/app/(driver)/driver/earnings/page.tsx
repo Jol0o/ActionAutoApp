@@ -4,32 +4,78 @@ import * as React from "react";
 import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api-client";
 import { Shipment } from "@/types/transportation";
+import { DriverPayout } from "@/types/driver-payout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   DollarSign,
   Package,
   CheckCircle2,
-  TrendingUp,
-  Loader2,
   Clock,
+  Loader2,
   MapPin,
   ArrowRight,
+  XCircle,
+  TrendingUp,
 } from "lucide-react";
+
+type TransactionRow =
+  | { kind: "payout"; data: DriverPayout; sortDate: string }
+  | { kind: "load"; data: Shipment; sortDate: string };
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+}
+
+function PayoutStatusBadge({ status }: { status: DriverPayout["status"] }) {
+  const map: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    paid: {
+      color: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+      icon: <CheckCircle2 className="size-3" />,
+      label: "Paid",
+    },
+    processing: {
+      color: "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+      icon: <Loader2 className="size-3 animate-spin" />,
+      label: "Processing",
+    },
+    pending: {
+      color: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+      icon: <Clock className="size-3" />,
+      label: "Pending",
+    },
+    failed: {
+      color: "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",
+      icon: <XCircle className="size-3" />,
+      label: "Failed",
+    },
+  };
+  const c = map[status] ?? map.pending;
+  return (
+    <Badge variant="outline" className={`gap-1 ${c.color}`}>
+      {c.icon}
+      {c.label}
+    </Badge>
+  );
+}
 
 export default function DriverEarningsPage() {
   const { getToken } = useAuth();
   const [loads, setLoads] = React.useState<Shipment[]>([]);
+  const [payouts, setPayouts] = React.useState<DriverPayout[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     (async () => {
       try {
         const token = await getToken();
-        const res = await apiClient.get("/api/driver-tracking/my-loads", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setLoads(res.data?.data || []);
+        const headers = { Authorization: `Bearer ${token}` };
+        const [loadsRes, payoutsRes] = await Promise.all([
+          apiClient.get("/api/driver-tracking/my-loads", { headers }),
+          apiClient.get("/api/driver-payouts/my-payouts", { headers }),
+        ]);
+        setLoads(loadsRes.data?.data || []);
+        setPayouts(payoutsRes.data?.data || []);
       } catch {
         // silent
       } finally {
@@ -38,35 +84,60 @@ export default function DriverEarningsPage() {
     })();
   }, [getToken]);
 
-  const completedLoads = loads.filter((l) => l.status === "Delivered");
-  const totalLoads = loads.length;
-  const activeLoads = loads.filter(
-    (l) => l.status !== "Delivered" && l.status !== "Cancelled"
-  ).length;
+  // Stats
+  const totalEarned = React.useMemo(
+    () =>
+      payouts
+        .filter((p) => p.status === "paid")
+        .reduce((sum, p) => sum + p.amount, 0),
+    [payouts]
+  );
 
-  const monthlyBreakdown = React.useMemo(() => {
-    const months: Record<string, number> = {};
-    completedLoads.forEach((load) => {
-      const date = load.delivered
-        ? new Date(load.delivered)
-        : new Date(load.createdAt);
-      const key = date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
+  const completedLoads = loads.filter((l) => l.status === "Delivered");
+
+  const paidShipmentIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    payouts
+      .filter((p) => p.status === "paid" || p.status === "processing")
+      .forEach((p) => {
+        const id =
+          typeof p.shipmentId === "object"
+            ? (p.shipmentId as any)._id
+            : p.shipmentId;
+        if (id) ids.add(id);
       });
-      months[key] = (months[key] || 0) + 1;
-    });
-    return Object.entries(months).sort(
-      (a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime()
+    return ids;
+  }, [payouts]);
+
+  const unpaidCompletedLoads = completedLoads.filter(
+    (l) => !paidShipmentIds.has(l._id)
+  );
+
+  // Combined and sorted transaction list
+  const transactions = React.useMemo<TransactionRow[]>(() => {
+    const rows: TransactionRow[] = [
+      ...payouts.map((p) => ({
+        kind: "payout" as const,
+        data: p,
+        sortDate: p.paidAt || p.createdAt,
+      })),
+      ...unpaidCompletedLoads.map((l) => ({
+        kind: "load" as const,
+        data: l,
+        sortDate: l.delivered || l.createdAt,
+      })),
+    ];
+    return rows.sort(
+      (a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime()
     );
-  }, [completedLoads]);
+  }, [payouts, unpaidCompletedLoads]);
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Earnings</h1>
         <p className="text-muted-foreground text-sm">
-          Your activity and completed loads summary.
+          Your payout history and completed loads.
         </p>
       </div>
 
@@ -76,24 +147,38 @@ export default function DriverEarningsPage() {
         </div>
       ) : (
         <>
+          {/* Stats row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-500/10">
-                    <CheckCircle2 className="size-5 text-green-600" />
+                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                    <DollarSign className="size-5 text-emerald-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">
-                      {completedLoads.length}
+                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                      {formatCurrency(totalEarned)}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Completed Loads
-                    </p>
+                    <p className="text-xs text-muted-foreground">Total Earned</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/10">
+                    <Clock className="size-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{unpaidCompletedLoads.length}</p>
+                    <p className="text-xs text-muted-foreground">Pending Payment</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
@@ -101,101 +186,125 @@ export default function DriverEarningsPage() {
                     <Package className="size-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{totalLoads}</p>
-                    <p className="text-xs text-muted-foreground">Total Loads</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
-                    <TrendingUp className="size-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{activeLoads}</p>
-                    <p className="text-xs text-muted-foreground">
-                      In Progress
-                    </p>
+                    <p className="text-2xl font-bold">{completedLoads.length}</p>
+                    <p className="text-xs text-muted-foreground">Completed Loads</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {monthlyBreakdown.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <TrendingUp className="size-4" />
-                  Monthly Breakdown
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {monthlyBreakdown.map(([month, count]) => (
-                    <div
-                      key={month}
-                      className="flex items-center justify-between p-3 rounded-lg border"
-                    >
-                      <span className="text-sm font-medium">{month}</span>
-                      <Badge variant="secondary">
-                        {count} {count === 1 ? "load" : "loads"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
+          {/* Transactions table */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <CheckCircle2 className="size-4" />
-                Completed Loads
+                <TrendingUp className="size-4" />
+                Transaction History
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {completedLoads.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              {transactions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
                   <DollarSign className="size-8 mb-2 opacity-50" />
-                  <p className="text-sm">No completed loads yet</p>
+                  <p className="text-sm">No transactions yet</p>
+                  <p className="text-xs mt-1">
+                    Completed loads and payouts will appear here.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {completedLoads.map((load) => (
-                    <div
-                      key={load._id}
-                      className="flex items-center justify-between p-3 rounded-lg border"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <span className="text-sm font-mono font-medium">
-                          {load.trackingNumber || "—"}
-                        </span>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <MapPin className="size-3" />
-                          <span className="truncate">{load.origin}</span>
-                          <ArrowRight className="size-3 shrink-0" />
-                          <span className="truncate">{load.destination}</span>
+                  {transactions.map((row) => {
+                    if (row.kind === "payout") {
+                      const p = row.data;
+                      const shipment =
+                        typeof p.shipmentId === "object" ? p.shipmentId : null;
+                      return (
+                        <div
+                          key={`payout-${p._id}`}
+                          className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-mono font-medium">
+                                {p.payoutNumber ||
+                                  (shipment as any)?.trackingNumber ||
+                                  "—"}
+                              </span>
+                              <PayoutStatusBadge status={p.status} />
+                            </div>
+                            {shipment && (
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <MapPin className="size-3 shrink-0" />
+                                <span className="truncate">
+                                  {(shipment as any).origin}
+                                </span>
+                                <ArrowRight className="size-3 shrink-0" />
+                                <span className="truncate">
+                                  {(shipment as any).destination}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0 ml-4">
+                            <p
+                              className={`font-bold ${
+                                p.status === "paid"
+                                  ? "text-emerald-700 dark:text-emerald-400"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {formatCurrency(p.amount)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {new Date(row.sortDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Unpaid completed load row
+                    const l = row.data;
+                    return (
+                      <div
+                        key={`load-${l._id}`}
+                        className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-mono font-medium">
+                              {l.trackingNumber || "—"}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 gap-1"
+                            >
+                              <Clock className="size-3" />
+                              Awaiting Payment
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <MapPin className="size-3 shrink-0" />
+                            <span className="truncate">{l.origin}</span>
+                            <ArrowRight className="size-3 shrink-0" />
+                            <span className="truncate">{l.destination}</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0 ml-4">
+                          {(l.preservedQuoteData as any)?.rate != null && (
+                            <p className="font-bold text-foreground">
+                              {formatCurrency((l.preservedQuoteData as any).rate)}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {l.delivered
+                              ? new Date(l.delivered).toLocaleDateString()
+                              : new Date(l.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <Badge
-                          variant="outline"
-                          className="bg-green-500/10 text-green-700 border-green-200"
-                        >
-                          Delivered
-                        </Badge>
-                        {load.delivered && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(load.delivered).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
