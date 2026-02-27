@@ -79,7 +79,14 @@ export function useTransportationData() {
             const [shipmentsRes, quotesRes, vehiclesRes, statsRes] = await Promise.all([
                 apiClient.get('/api/shipments', config),
                 apiClient.get('/api/quotes', config),
-                apiClient.get('/api/vehicles', { ...config, params: { status: 'all', limit: 0 } }),
+                apiClient.get('/api/vehicles', {
+                    ...config,
+                    params: {
+                        status: 'all',
+                        page: 1,
+                        limit: 1000,
+                    }
+                }),
                 apiClient.get('/api/shipments/stats', config)
             ])
 
