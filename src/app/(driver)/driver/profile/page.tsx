@@ -358,12 +358,12 @@ export default function DriverProfilePage() {
                 <button 
                   onClick={() => setShowStatusDialog(true)}
                   className={cn(
-                    "absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-4 border-white shadow-lg flex items-center justify-center transition-colors",
+                    "absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-4 border-white shadow-lg flex items-center justify-center transition-colors animate-status-aura",
                     currentStatusOption.color
                   )}
                   title={`Status: ${currentStatusOption.label}`}
                 >
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                  <div className="w-2 h-2 bg-white rounded-full" />
                 </button>
               </div>
 
@@ -507,18 +507,39 @@ export default function DriverProfilePage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {personalInfo.bio ? (
-                      <p className="text-gray-600 dark:text-gray-400">{personalInfo.bio}</p>
-                    ) : (
-                      <p className="text-gray-400 dark:text-gray-500 italic">No bio added yet. Click edit to add one.</p>
-                    )}
-                    <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-500 dark:text-gray-400">
-                      {personalInfo.location && (
-                        <span className="flex items-center gap-1"><MapPin className="size-4" />{personalInfo.location}</span>
+                    <div className="space-y-4">
+                      {personalInfo.bio && (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Bio</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">{personalInfo.bio}</p>
+                        </div>
                       )}
-                      {personalInfo.phone && (
-                        <span className="flex items-center gap-1"><Phone className="size-4" />{personalInfo.phone}</span>
-                      )}
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                        {personalInfo.location && (
+                          <span className="flex items-center gap-1.5"><MapPin className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.location}</span></span>
+                        )}
+                        {personalInfo.jobTitle && (
+                          <span className="flex items-center gap-1.5"><Briefcase className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.jobTitle}</span></span>
+                        )}
+                        {personalInfo.department && (
+                          <span className="flex items-center gap-1.5"><Building2 className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.department}</span></span>
+                        )}
+                        {personalInfo.phone && (
+                          <span className="flex items-center gap-1.5"><Phone className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.phone}</span></span>
+                        )}
+                        {personalInfo.dateOfBirth && (
+                          <span className="flex items-center gap-1.5"><Calendar className="size-4 text-emerald-600" /><span className="font-medium">{format(new Date(personalInfo.dateOfBirth), 'MMM d, yyyy')}</span></span>
+                        )}
+                        {personalInfo.gender && (
+                          <span className="flex items-center gap-1.5"><User className="size-4 text-emerald-600" /><span className="font-medium capitalize">{personalInfo.gender}</span></span>
+                        )}
+                        {personalInfo.timezone && (
+                          <span className="flex items-center gap-1.5"><Clock className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.timezone}</span></span>
+                        )}
+                        {personalInfo.language && (
+                          <span className="flex items-center gap-1.5"><Globe className="size-4 text-emerald-600" /><span className="font-medium capitalize">{personalInfo.language}</span></span>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

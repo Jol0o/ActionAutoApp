@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useUser, useClerk, useOrganization } from "@clerk/nextjs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useProfileContext } from "@/context/ProfileContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,6 +112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useUser();
   const { signOut } = useClerk();
   const { organization } = useOrganization();
+  const { avatarUrl } = useProfileContext();
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
@@ -215,7 +217,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton className="h-12 w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage
-                      src={user?.imageUrl}
+                      src={avatarUrl || user?.imageUrl}
                       alt={user?.fullName || ""}
                     />
                     <AvatarFallback className="rounded-lg">
@@ -243,7 +245,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarImage
-                        src={user?.imageUrl}
+                        src={avatarUrl || user?.imageUrl}
                         alt={user?.fullName || ""}
                       />
                       <AvatarFallback className="rounded-lg">

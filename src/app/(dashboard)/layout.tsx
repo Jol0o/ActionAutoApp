@@ -12,6 +12,8 @@ import { useUser, useClerk, useOrganization } from "@clerk/nextjs"
 import { NotificationBell } from "@/components/NotificationBell"
 import { NotificationProvider } from "@/context/NotificationContext"
 import { ThemeProvider } from "@/context/ThemeContext"
+import { ProfileProvider, useProfileContext } from "@/context/ProfileContext"
+import { ProfileToastProvider } from "@/components/ProfileToast"
 import { useRouter } from "next/navigation"
 import {
     DropdownMenu,
@@ -33,6 +35,7 @@ function DashboardLayoutContent({
 }>) {
     const { user } = useUser();
     const { signOut } = useClerk();
+    const { avatarUrl } = useProfileContext();
     // Use custom hook for organization context
     const { organization, isLoaded, isSuperAdmin, isDriver } = useOrg();
     const router = useRouter();
@@ -111,7 +114,7 @@ function DashboardLayoutContent({
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                                         <Avatar className="h-8 w-8">
-                                            <AvatarImage src={user?.imageUrl} alt={user?.fullName || ''} />
+                                            <AvatarImage src={avatarUrl || user?.imageUrl} alt={user?.fullName || ''} />
                                             <AvatarFallback>{user?.firstName?.substring(0, 1).toUpperCase() || "AA"}</AvatarFallback>
                                         </Avatar>
                                     </Button>
@@ -152,11 +155,15 @@ export default function DashboardLayout({
 }>) {
     return (
         <ThemeProvider>
-            <NotificationProvider>
-                <DashboardLayoutContent>
-                    {children}
-                </DashboardLayoutContent>
-            </NotificationProvider>
+            <ProfileProvider>
+                <ProfileToastProvider>
+                    <NotificationProvider>
+                        <DashboardLayoutContent>
+                            {children}
+                        </DashboardLayoutContent>
+                    </NotificationProvider>
+                </ProfileToastProvider>
+            </ProfileProvider>
         </ThemeProvider>
     );
 }

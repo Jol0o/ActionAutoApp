@@ -15,7 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useClerk, useUser, useAuth } from "@clerk/nextjs";
 import { useTheme } from '@/context/ThemeContext';
-import { useAlert } from '@/components/AlertDialog';
+import { useProfileContext } from '@/context/ProfileContext';
+import { useProfileToast } from '@/components/ProfileToast';
 import ProfileImageCropper from '@/components/ProfileImageCropper';
 import {
   User,
@@ -66,17 +67,22 @@ import {
   Star,
   Palette,
   Plus,
-  Trash2
+  Trash2,
+  Users,
+  ShieldAlert,
+  Car,
+  ExternalLink,
 } from 'lucide-react';
 import { UserProfile, OnlineStatus, PersonalInfo, RecentActivity, SocialLink } from '@/types/user';
 import { NotificationPreferences } from '@/types/notification';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 // Country codes for phone
 const countryCodes = [
-  { code: '+1', country: 'United States / Canada' },
+  { code: '+1', country: 'US / Canada' },
   { code: '+63', country: 'Philippines' },
   { code: '+44', country: 'United Kingdom' },
   { code: '+61', country: 'Australia' },
@@ -116,20 +122,20 @@ const timezoneOptions = [
 // Expanded language options
 const languageOptions = [
   { code: 'en', name: 'English' },
-  { code: 'es', name: 'Spanish (Español)' },
-  { code: 'fr', name: 'French (Français)' },
+  { code: 'es', name: 'Spanish (EspaÃƒÂ±ol)' },
+  { code: 'fr', name: 'French (FranÃƒÂ§ais)' },
   { code: 'de', name: 'German (Deutsch)' },
   { code: 'it', name: 'Italian (Italiano)' },
-  { code: 'pt', name: 'Portuguese (Português)' },
-  { code: 'ja', name: 'Japanese (日本語)' },
-  { code: 'ko', name: 'Korean (한국어)' },
-  { code: 'zh', name: 'Chinese (中文)' },
-  { code: 'ar', name: 'Arabic (العربية)' },
-  { code: 'hi', name: 'Hindi (हिन्दी)' },
+  { code: 'pt', name: 'Portuguese (PortuguÃƒÂªs)' },
+  { code: 'ja', name: 'Japanese (Ã¦â€”Â¥Ã¦Å“Â¬Ã¨ÂªÅ¾)' },
+  { code: 'ko', name: 'Korean (Ã­â€¢Å“ÃªÂµÂ­Ã¬â€“Â´)' },
+  { code: 'zh', name: 'Chinese (Ã¤Â¸Â­Ã¦â€“â€¡)' },
+  { code: 'ar', name: 'Arabic (Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â±Ã˜Â¨Ã™Å Ã˜Â©)' },
+  { code: 'hi', name: 'Hindi (Ã Â¤Â¹Ã Â¤Â¿Ã Â¤Â¨Ã Â¥ÂÃ Â¤Â¦Ã Â¥â‚¬)' },
   { code: 'fil', name: 'Filipino (Tagalog)' },
-  { code: 'vi', name: 'Vietnamese (Tiếng Việt)' },
-  { code: 'th', name: 'Thai (ไทย)' },
-  { code: 'ru', name: 'Russian (Русский)' },
+  { code: 'vi', name: 'Vietnamese (TiÃ¡ÂºÂ¿ng ViÃ¡Â»â€¡t)' },
+  { code: 'th', name: 'Thai (Ã Â¹â€žÃ Â¸â€”Ã Â¸Â¢)' },
+  { code: 'ru', name: 'Russian (ÃÂ Ã‘Æ’Ã‘ÂÃ‘ÂÃÂºÃÂ¸ÃÂ¹)' },
 ];
 
 // Curse word filter
@@ -167,12 +173,13 @@ const activityIcons: Record<string, React.ReactNode> = {
   other: <Activity className="size-4" />,
 };
 
-// Notification categories with better grouping
-const notificationCategories = [
+// Notification categories with better grouping - expanded
+const allNotificationCategories = [
   {
     title: 'Quotes & Sales',
     icon: Package,
     color: 'from-blue-500 to-cyan-500',
+    roles: ['admin', 'super_admin'], // Only for admins
     items: [
       { key: 'quoteCreated', label: 'New Quotes', description: 'When a quote is created', icon: Package },
       { key: 'quoteUpdated', label: 'Quote Updates', description: 'When a quote is modified', icon: TrendingUp },
@@ -183,6 +190,7 @@ const notificationCategories = [
     title: 'Shipments & Logistics',
     icon: Truck,
     color: 'from-emerald-500 to-teal-500',
+    roles: ['admin', 'super_admin', 'driver'], // For admins and drivers
     items: [
       { key: 'shipmentCreated', label: 'New Shipments', description: 'When a shipment is created', icon: Truck },
       { key: 'shipmentUpdated', label: 'Shipment Updates', description: 'When shipment status changes', icon: MapPin },
@@ -190,23 +198,57 @@ const notificationCategories = [
     ]
   },
   {
+    title: 'Appointments',
+    icon: Calendar,
+    color: 'from-purple-500 to-violet-500',
+    roles: ['admin', 'super_admin', 'driver'], // For everyone
+    items: [
+      { key: 'appointmentCreated', label: 'New Appointments', description: 'When an appointment is booked', icon: Calendar },
+      { key: 'appointmentUpdated', label: 'Appointment Changes', description: 'When an appointment is modified', icon: Edit3 },
+      { key: 'appointmentCancelled', label: 'Cancellations', description: 'When an appointment is cancelled', icon: XCircle },
+    ]
+  },
+  {
     title: 'Account & Security',
     icon: Shield,
-    color: 'from-violet-500 to-purple-500',
+    color: 'from-rose-500 to-red-500',
+    roles: ['admin', 'super_admin', 'driver'], // For everyone
     items: [
       { key: 'passwordChanged', label: 'Password Changes', description: 'Security alerts for password', icon: Lock },
       { key: 'emailChanged', label: 'Email Changes', description: 'When email is updated', icon: Mail },
       { key: 'profileUpdated', label: 'Profile Updates', description: 'When profile is modified', icon: User },
+      { key: 'loginAlerts', label: 'Login Alerts', description: 'When someone logs into your account', icon: ShieldAlert },
+    ]
+  },
+  {
+    title: 'Team & CRM',
+    icon: Users,
+    color: 'from-amber-500 to-orange-500',
+    roles: ['admin', 'super_admin'], // Only for admins
+    items: [
+      { key: 'driverRequests', label: 'Driver Requests', description: 'New driver join requests', icon: Car },
+      { key: 'crmActivity', label: 'CRM Activity', description: 'Leads and customer updates', icon: Users },
     ]
   }
 ];
+
+// Helper function to get notifications based on user role
+const getNotificationCategoriesByRole = (role?: string) => {
+  // Always show all categories for super_admin and admin
+  if (!role || role === 'super_admin' || role === 'admin') return allNotificationCategories;
+  return allNotificationCategories.filter(category => 
+    category.roles.includes(role) || category.roles.length === 0
+  );
+};
 
 export default function ProfilePage() {
   const { user: clerkUser } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const { getToken } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { showAlert, AlertComponent } = useAlert();
+  const { setAvatarUrl } = useProfileContext();
+  const toast = useProfileToast();
+  const router = useRouter();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -224,7 +266,7 @@ export default function ProfilePage() {
   // Personal info state
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({});
   const [editingPersonalInfo, setEditingPersonalInfo] = useState(false);
-  const [phoneCountryCode, setPhoneCountryCode] = useState('+1');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [bioError, setBioError] = useState<string>('');
 
@@ -232,6 +274,12 @@ export default function ProfilePage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  // Logout confirmation
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+  // Save confirmation
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
 
   // Notification preferences
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
@@ -276,13 +324,23 @@ export default function ProfilePage() {
         passwordChanged: true,
         emailChanged: true,
         profileUpdated: true,
+        loginAlerts: true,
+        appointmentCreated: true,
+        appointmentUpdated: true,
+        appointmentCancelled: true,
+        driverRequests: true,
+        crmActivity: true,
       });
       setOnlineStatus(data.data.onlineStatus || 'online');
       setCustomStatus((data.data.customStatus || '').slice(0, MAX_CUSTOM_STATUS_LENGTH));
       setPersonalInfo(data.data.personalInfo || {});
-      setPhoneCountryCode(data.data.personalInfo?.phoneCountryCode || '+1');
+      setPhoneCountryCode(data.data.personalInfo?.phoneCountryCode || '');
       setSocialLinks(data.data.personalInfo?.socialLinks || []);
       setActivities(data.data.recentActivities || []);
+      // Sync avatar to context
+      if (data.data.avatar) {
+        setAvatarUrl(data.data.avatar);
+      }
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       const errorMessage = error.response?.data?.message || 'Failed to load profile. Please refresh the page.';
@@ -300,10 +358,10 @@ export default function ProfilePage() {
       const imageSizeInMB = imageSizeInBytes / (1024 * 1024);
       
       if (imageSizeInMB > 5) {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Image Too Large',
-          message: `Image size is ${imageSizeInMB.toFixed(2)}MB. Please use a smaller image (max 5MB).`,
+          message: `Image size is ${imageSizeInMB.toFixed(1)}MB. Max 5MB allowed.`,
         });
         setIsSaving(false);
         return;
@@ -312,11 +370,12 @@ export default function ProfilePage() {
       const token = await getToken();
       const response = await apiClient.patch('/api/profile/avatar', { avatar: croppedImage }, { headers: { Authorization: `Bearer ${token}` } });
       
-      showAlert({
+      toast.addToast({
         type: 'success',
         title: 'Profile Picture Updated',
         message: 'Your profile picture has been successfully updated.',
       });
+      setAvatarUrl(croppedImage);
       fetchProfile();
     } catch (error: any) {
       console.error('Error updating profile picture:', error);
@@ -325,19 +384,19 @@ export default function ProfilePage() {
       
       // Handle specific error codes
       if (status === 413) {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Image Too Large',
           message: 'The image is too large. Please use a smaller image.',
         });
       } else if (status === 400) {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Invalid Image',
           message: errorMessage,
         });
       } else {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Error',
           message: errorMessage,
@@ -354,7 +413,7 @@ export default function ProfilePage() {
       const token = await getToken();
       await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus }, { headers: { Authorization: `Bearer ${token}` } });
       
-      showAlert({
+      toast.addToast({
         type: 'success',
         title: 'Status Updated',
         message: 'Your online status has been updated.',
@@ -363,7 +422,7 @@ export default function ProfilePage() {
       fetchProfile();
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to update status.';
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: errorMessage,
@@ -374,9 +433,10 @@ export default function ProfilePage() {
   };
 
   const handleSavePersonalInfo = async () => {
+    setShowSaveConfirmDialog(false);
     // Validate bio
     if (personalInfo.bio && personalInfo.bio.length > 500) {
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Bio Too Long',
         message: 'Bio must be 500 characters or less.',
@@ -394,7 +454,7 @@ export default function ProfilePage() {
 
     for (const field of fieldsToCheck) {
       if (field && containsCurseWord(field)) {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Inappropriate Content',
           message: 'Please remove inappropriate language from your profile.',
@@ -406,7 +466,7 @@ export default function ProfilePage() {
     // Check social links for curse words
     for (const link of socialLinks) {
       if (containsCurseWord(link.label)) {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Inappropriate Content',
           message: 'Please remove inappropriate language from your links.',
@@ -426,7 +486,7 @@ export default function ProfilePage() {
       const token = await getToken();
       await apiClient.patch('/api/profile/personal-info', updatedInfo, { headers: { Authorization: `Bearer ${token}` } });
       
-      showAlert({
+      toast.addToast({
         type: 'success',
         title: 'Information Saved',
         message: 'Your personal information has been updated.',
@@ -435,7 +495,7 @@ export default function ProfilePage() {
       fetchProfile();
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to save information.';
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: errorMessage,
@@ -457,7 +517,7 @@ export default function ProfilePage() {
       await apiClient.patch('/api/profile/notification-preferences', { [key]: value }, { headers: { Authorization: `Bearer ${token}` } });
     } catch (error: any) {
       setPreferences(preferences);
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: error.response?.data?.message || 'Failed to update notification preferences.',
@@ -481,6 +541,12 @@ export default function ProfilePage() {
       passwordChanged: true,
       emailChanged: true,
       profileUpdated: true,
+      loginAlerts: true,
+      appointmentCreated: true,
+      appointmentUpdated: true,
+      appointmentCancelled: true,
+      driverRequests: true,
+      crmActivity: true,
     };
 
     const previousPreferences = { ...preferences };
@@ -490,14 +556,14 @@ export default function ProfilePage() {
       const token = await getToken();
       await apiClient.patch('/api/profile/notification-preferences', allEnabled, { headers: { Authorization: `Bearer ${token}` } });
       
-      showAlert({
+      toast.addToast({
         type: 'success',
         title: 'Notifications Enabled',
         message: 'All notifications have been enabled.',
       });
     } catch (error: any) {
       setPreferences(previousPreferences);
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: error.response?.data?.message || 'Failed to enable all notifications.',
@@ -519,6 +585,12 @@ export default function ProfilePage() {
       passwordChanged: false,
       emailChanged: false,
       profileUpdated: false,
+      loginAlerts: false,
+      appointmentCreated: false,
+      appointmentUpdated: false,
+      appointmentCancelled: false,
+      driverRequests: false,
+      crmActivity: false,
     };
 
     const previousPreferences = { ...preferences };
@@ -528,14 +600,14 @@ export default function ProfilePage() {
       const token = await getToken();
       await apiClient.patch('/api/profile/notification-preferences', allDisabled, { headers: { Authorization: `Bearer ${token}` } });
       
-      showAlert({
-        type: 'success',
+      toast.addToast({
+        type: 'warning',
         title: 'Notifications Disabled',
         message: 'All notifications have been disabled.',
       });
     } catch (error: any) {
       setPreferences(previousPreferences);
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: error.response?.data?.message || 'Failed to disable all notifications.',
@@ -545,13 +617,14 @@ export default function ProfilePage() {
 
   // Calculate notification stats
   const getNotificationStats = () => {
-    if (!preferences) return { enabled: 0, total: 9 };
+    if (!preferences) return { enabled: 0, total: 15 };
     const keys = Object.keys(preferences) as (keyof NotificationPreferences)[];
     const enabled = keys.filter(key => preferences[key]).length;
     return { enabled, total: keys.length };
   };
 
   const handleLogout = async () => {
+    setShowLogoutDialog(false);
     try {
       await signOut();
     } catch (error) {
@@ -562,7 +635,7 @@ export default function ProfilePage() {
   // Social Links handlers
   const addSocialLink = () => {
     if (socialLinks.length >= 4) {
-      showAlert({
+      toast.addToast({
         type: 'warning',
         title: 'Limit Reached',
         message: 'You can only add up to 4 links.',
@@ -588,7 +661,7 @@ export default function ProfilePage() {
       // Use Clerk's built-in verification
       openUserProfile();
     } catch (error) {
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: 'Failed to open verification. Please try again.',
@@ -606,14 +679,14 @@ export default function ProfilePage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        showAlert({
+        toast.addToast({
           type: 'info',
           title: 'Coming Soon',
           message: 'Google Calendar integration is being configured. Please try again later.',
         });
       }
     } catch (error: any) {
-      showAlert({
+      toast.addToast({
         type: 'info',
         title: 'Coming Soon',
         message: 'Google Calendar integration will be available soon.',
@@ -626,14 +699,14 @@ export default function ProfilePage() {
     try {
       await apiClient.post('/api/google-calendar/disconnect');
       
-      showAlert({
+      toast.addToast({
         type: 'success',
         title: 'Disconnected',
         message: 'Google Calendar has been disconnected.',
       });
       fetchProfile();
     } catch (error: any) {
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: error.response?.data?.message || 'Failed to disconnect Google Calendar.',
@@ -644,7 +717,7 @@ export default function ProfilePage() {
   // Delete account handlers (double confirmation)
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== 'DELETE') {
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Confirmation Required',
         message: 'Please type DELETE to confirm account deletion.',
@@ -656,7 +729,7 @@ export default function ProfilePage() {
       await apiClient.delete('/api/profile/delete-account');
       await signOut();
     } catch (error: any) {
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: error.response?.data?.message || 'Failed to delete account.',
@@ -678,7 +751,12 @@ export default function ProfilePage() {
     setPersonalInfo({ ...personalInfo, bio: value.slice(0, 500) });
   };
 
-  const getRoleBadge = (role?: string) => {
+  const getRoleBadge = (role?: string, jobTitle?: string) => {
+    // If jobTitle is set, use it; otherwise fall back to role-based labels
+    if (jobTitle) {
+      return { label: jobTitle, className: 'bg-blue-500/10 text-blue-600 border-blue-200' };
+    }
+    
     switch (role) {
       case 'super_admin':
         return { label: 'Super Admin', className: 'bg-purple-500/10 text-purple-600 border-purple-200' };
@@ -687,7 +765,7 @@ export default function ProfilePage() {
       case 'driver':
         return { label: 'Driver', className: 'bg-emerald-500/10 text-emerald-600 border-emerald-200' };
       default:
-        return { label: 'Member', className: 'bg-gray-500/10 text-gray-600 border-gray-200' };
+        return { label: 'Team Member', className: 'bg-gray-500/10 text-gray-600 border-gray-200' };
     }
   };
 
@@ -709,11 +787,10 @@ export default function ProfilePage() {
     );
   }
 
-  const roleBadge = getRoleBadge(profile?.role);
+  const roleBadge = getRoleBadge(profile?.role, personalInfo?.jobTitle);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
-      <AlertComponent />
       <ProfileImageCropper
         isOpen={showImageCropper}
         onClose={() => setShowImageCropper(false)}
@@ -751,10 +828,12 @@ export default function ProfilePage() {
           
           {/* Truck SVG decoration */}
           <div className="absolute inset-0 overflow-hidden opacity-20 hidden sm:block">
-            <svg viewBox="0 0 1200 400" className="absolute right-0 bottom-0 w-full h-full animate-float" preserveAspectRatio="xMaxYMax slice" style={{ animationDuration: '8s' }}>
+            <svg viewBox="0 0 1200 400" className="absolute right-0 bottom-0 w-full h-full animate-truck-drive" preserveAspectRatio="xMaxYMax slice">
               <path d="M 100 250 L 200 250 L 200 200 L 250 200 L 280 150 L 400 150 L 450 200 L 800 200 L 850 250 L 1100 250 L 1100 300 L 950 300 Q 950 350 900 350 Q 850 350 850 300 L 350 300 Q 350 350 300 350 Q 250 350 250 300 L 100 300 Z" fill="rgba(255, 255, 255, 0.15)" />
               <circle cx="300" cy="310" r="35" fill="rgba(255, 255, 255, 0.2)" />
               <circle cx="900" cy="310" r="35" fill="rgba(255, 255, 255, 0.2)" />
+              {/* Road line */}
+              <line x1="0" y1="360" x2="1200" y2="360" stroke="rgba(255,255,255,0.12)" strokeWidth="3" strokeDasharray="30 20" className="animate-road-scroll" />
             </svg>
           </div>
 
@@ -764,7 +843,7 @@ export default function ProfilePage() {
               <div className="relative group animate-slide-in-left">
                 <div className="absolute -inset-1 bg-gradient-to-r from-white/40 via-emerald-300 to-white/40 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
                 <div 
-                  className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-4 border-white/40 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer transition-all hover:scale-110 profile-picture-animate profile-picture-glow"
+                  className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-[5px] border-white/60 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer transition-all hover:scale-110 profile-picture-glow"
                   onClick={() => setShowImageCropper(true)}
                 >
                   {(profile?.avatar || clerkUser?.imageUrl) ? (
@@ -783,12 +862,12 @@ export default function ProfilePage() {
                 <button 
                   onClick={() => setShowStatusDialog(true)}
                   className={cn(
-                    "absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-4 border-white shadow-lg flex items-center justify-center transition-all hover:scale-125 animate-throb",
+                    "absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-4 border-white shadow-lg flex items-center justify-center transition-all hover:scale-125 z-20 animate-status-aura",
                     currentStatusOption.color
                   )}
                   title={`Status: ${currentStatusOption.label}`}
                 >
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                  <div className="w-2 h-2 bg-white rounded-full" />
                 </button>
               </div>
 
@@ -801,15 +880,19 @@ export default function ProfilePage() {
                     {roleBadge.label}
                   </Badge>
                 </div>
-                <p className="text-white/90 text-sm sm:text-base mb-3">
+                <p className="text-white/90 text-sm sm:text-base mb-1">
                   {profile?.email || clerkUser?.primaryEmailAddress?.emailAddress}
+                </p>
+                <p className="text-white/60 text-[11px] sm:text-xs mb-3">
+                  <Clock className="size-3 inline mr-1" />
+                  {format(new Date(), 'EEEE, MMM d · h:mm a')} (local)
                 </p>
                 {customStatus && (
                   <p className="text-white/80 text-xs sm:text-sm italic mb-3 animate-fade-in-up">"{customStatus}"</p>
                 )}
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3">
                   <Badge className="bg-white/20 text-white border border-white/30 backdrop-blur-sm px-3 py-1.5 text-xs font-medium transition-all hover:bg-white/30">
-                    <div className={cn("w-2 h-2 rounded-full mr-2 animate-throb", currentStatusOption.color)} />
+                    <div className={cn("w-2 h-2 rounded-full mr-2 animate-status-aura", currentStatusOption.color)} />
                     {currentStatusOption.label}
                   </Badge>
                   {profile?.securityStatus?.emailVerified && (
@@ -832,7 +915,7 @@ export default function ProfilePage() {
                   <Camera className="size-4 mr-2" />
                   <span className="hidden sm:inline">Change Photo</span>
                 </Button>
-                <Button onClick={handleLogout} variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30 btn-hover-scale animate-button-entry" style={{ animationDelay: '0.1s' }}>
+                <Button onClick={() => setShowLogoutDialog(true)} variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30 btn-hover-scale animate-button-entry" style={{ animationDelay: '0.1s' }}>
                   <LogOut className="size-4 mr-2" />
                   <span className="hidden sm:inline">Logout</span>
                 </Button>
@@ -895,7 +978,7 @@ export default function ProfilePage() {
                 {/* Account Status Card */}
                 <Card className="shadow-xl border border-green-100 dark:border-green-900 overflow-hidden relative">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 animate-gradient"></div>
-                  <CardHeader className="bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-900 border-b border-green-100 dark:border-green-900">
+                  <CardHeader className="bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-900 border-b border-green-100 dark:border-green-900 cursor-pointer hover:bg-gradient-to-br hover:from-green-100 hover:to-white dark:hover:from-gray-800 dark:hover:to-gray-900 transition-all" onClick={() => router.push('/dashboard')}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg animate-bounce-in">
@@ -910,12 +993,12 @@ export default function ProfilePage() {
                         <div className={cn(
                           "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
                           profile?.accountStatus?.isActive 
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 animate-glow" 
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400" 
                             : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
                         )}>
                           <div className={cn(
                             "w-2 h-2 rounded-full",
-                            profile?.accountStatus?.isActive ? "bg-green-500 animate-pulse" : "bg-red-500"
+                            profile?.accountStatus?.isActive ? "bg-green-500 animate-status-aura" : "bg-red-500"
                           )} />
                           {profile?.accountStatus?.isActive ? 'Active' : 'Inactive'}
                         </div>
@@ -925,26 +1008,29 @@ export default function ProfilePage() {
                   <CardContent className="p-6">
                     {/* Stats Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                      <div className="group p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border border-green-200 dark:border-green-800 transition-all hover:shadow-lg hover:-translate-y-1 animate-slide-up stagger-1">
+                      <div onClick={() => router.push('/crm')} className="group p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border border-green-200 dark:border-green-800 stat-card-clickable animate-slide-up stagger-1">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                           <Package className="size-5 text-white" />
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Quotes</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{profile?.accountStatus?.totalQuotes || 0}</p>
+                        <p className="text-[10px] text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">View in CRM &rarr;</p>
                       </div>
-                      <div className="group p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 transition-all hover:shadow-lg hover:-translate-y-1 animate-slide-up stagger-2">
+                      <div onClick={() => router.push('/transportation')} className="group p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 stat-card-clickable animate-slide-up stagger-2">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                           <Truck className="size-5 text-white" />
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Shipments</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{profile?.accountStatus?.totalShipments || 0}</p>
+                        <p className="text-[10px] text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">View shipments &rarr;</p>
                       </div>
-                      <div className="group p-4 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950 dark:to-violet-950 border border-purple-200 dark:border-purple-800 transition-all hover:shadow-lg hover:-translate-y-1 animate-slide-up stagger-3">
+                      <div onClick={() => router.push('/')} className="group p-4 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950 dark:to-violet-950 border border-purple-200 dark:border-purple-800 stat-card-clickable animate-slide-up stagger-3">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                           <Calendar className="size-5 text-white" />
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Appointments</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{profile?.accountStatus?.totalAppointments || 0}</p>
+                        <p className="text-[10px] text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">View appointments &rarr;</p>
                       </div>
                       <div className="group p-4 rounded-xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 border border-amber-200 dark:border-amber-800 transition-all hover:shadow-lg hover:-translate-y-1 animate-slide-up stagger-4">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -983,7 +1069,7 @@ export default function ProfilePage() {
                       </Badge>
                       <Badge className="bg-gradient-to-r from-purple-100 to-violet-100 text-purple-700 dark:from-purple-900 dark:to-violet-900 dark:text-purple-300 border-purple-300 dark:border-purple-700 px-4 py-2 text-sm gap-2">
                         <Crown className="size-4" />
-                        {profile?.subscription?.plan || 'Free'} Plan
+                        {(profile?.subscription?.plan || 'free').replace(/^\w/, c => c.toUpperCase())} Plan
                       </Badge>
                     </div>
 
@@ -993,11 +1079,18 @@ export default function ProfilePage() {
                         <Activity className="size-4" />
                         <span>Last Activity</span>
                       </div>
-                      <span className="text-sm font-medium">
-                        {profile?.accountStatus?.lastActive 
-                          ? formatDistanceToNow(new Date(profile.accountStatus.lastActive), { addSuffix: true })
-                          : 'Just now'}
-                      </span>
+                      <div className="text-right">
+                        <span className="text-sm font-medium block">
+                          {profile?.accountStatus?.lastActive 
+                            ? formatDistanceToNow(new Date(profile.accountStatus.lastActive), { addSuffix: true })
+                            : 'Just now'}
+                        </span>
+                        {profile?.accountStatus?.lastActive && (
+                          <span className="text-[11px] text-gray-400">
+                            {format(new Date(profile.accountStatus.lastActive), 'MMM d, yyyy · h:mm a')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1018,21 +1111,39 @@ export default function ProfilePage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {personalInfo.bio ? (
-                      <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words overflow-hidden">{personalInfo.bio}</p>
-                    ) : (
-                      <p className="text-gray-400 dark:text-gray-500 italic">No bio added yet. Click edit to add one.</p>
-                    )}
-                    <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-500 dark:text-gray-400">
-                      {personalInfo.location && (
-                        <span className="flex items-center gap-1"><MapPin className="size-4" />{personalInfo.location}</span>
+                    <div className="space-y-4">
+                      {personalInfo.bio && (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Bio</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">{personalInfo.bio}</p>
+                        </div>
                       )}
-                      {personalInfo.jobTitle && (
-                        <span className="flex items-center gap-1"><Briefcase className="size-4" />{personalInfo.jobTitle}</span>
-                      )}
-                      {personalInfo.phone && (
-                        <span className="flex items-center gap-1"><Phone className="size-4" />{phoneCountryCode} {personalInfo.phone}</span>
-                      )}
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                        {personalInfo.location && (
+                          <span className="flex items-center gap-1.5"><MapPin className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.location}</span></span>
+                        )}
+                        {personalInfo.jobTitle && (
+                          <span className="flex items-center gap-1.5"><Briefcase className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.jobTitle}</span></span>
+                        )}
+                        {personalInfo.department && (
+                          <span className="flex items-center gap-1.5"><Building2 className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.department}</span></span>
+                        )}
+                        {personalInfo.phone && (
+                          <span className="flex items-center gap-1.5"><Phone className="size-4 text-emerald-600" /><span className="font-medium">{phoneCountryCode} {personalInfo.phone}</span></span>
+                        )}
+                        {personalInfo.dateOfBirth && (
+                          <span className="flex items-center gap-1.5"><Calendar className="size-4 text-emerald-600" /><span className="font-medium">{format(new Date(personalInfo.dateOfBirth), 'MMM d, yyyy')}</span></span>
+                        )}
+                        {personalInfo.gender && (
+                          <span className="flex items-center gap-1.5"><User className="size-4 text-emerald-600" /><span className="font-medium capitalize">{personalInfo.gender}</span></span>
+                        )}
+                        {personalInfo.timezone && (
+                          <span className="flex items-center gap-1.5"><Clock className="size-4 text-emerald-600" /><span className="font-medium">{personalInfo.timezone}</span></span>
+                        )}
+                        {personalInfo.language && (
+                          <span className="flex items-center gap-1.5"><Globe className="size-4 text-emerald-600" /><span className="font-medium capitalize">{personalInfo.language}</span></span>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1178,7 +1289,7 @@ export default function ProfilePage() {
                   ) : (
                     <div className="flex gap-2 animate-slide-in-right">
                       <Button variant="outline" onClick={() => setEditingPersonalInfo(false)} className="transition-all hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</Button>
-                      <Button onClick={handleSavePersonalInfo} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700 transition-all hover-lift">
+                      <Button onClick={() => setShowSaveConfirmDialog(true)} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700 transition-all hover-lift">
                         {isSaving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Check className="size-4 mr-2" />}
                         Save
                       </Button>
@@ -1315,7 +1426,7 @@ export default function ProfilePage() {
                     <Label htmlFor="language" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
                       <Globe className="size-4 text-emerald-600" />Language
                     </Label>
-                    <Select value={personalInfo.language || 'en'} onValueChange={(value) => setPersonalInfo({ ...personalInfo, language: value })} disabled={!editingPersonalInfo}>
+                    <Select value={personalInfo.language || ''} onValueChange={(value) => setPersonalInfo({ ...personalInfo, language: value })} disabled={!editingPersonalInfo}>
                       <SelectTrigger className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors hover:border-gray-300"><SelectValue placeholder="Select language" /></SelectTrigger>
                       <SelectContent>
                         {languageOptions.map((lang) => (
@@ -1533,7 +1644,7 @@ export default function ProfilePage() {
                       <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800">
                         <div className={cn(
                           "w-2 h-2 rounded-full",
-                          getNotificationStats().enabled > 0 ? "bg-green-500 animate-pulse" : "bg-gray-400"
+                          getNotificationStats().enabled > 0 ? "bg-green-500 animate-status-aura" : "bg-gray-400"
                         )} />
                         <span className="text-sm font-medium">
                           {getNotificationStats().enabled}/{getNotificationStats().total}
@@ -1592,7 +1703,7 @@ export default function ProfilePage() {
                 {/* Notification Categories */}
                 {preferences && (
                   <div className="space-y-6">
-                    {notificationCategories.map((category, categoryIndex) => {
+                    {getNotificationCategoriesByRole(profile?.role).map((category, categoryIndex) => {
                       const CategoryIcon = category.icon;
                       const categoryEnabled = category.items.filter(
                         item => preferences[item.key as keyof NotificationPreferences]
@@ -1609,10 +1720,8 @@ export default function ProfilePage() {
                           <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                             <div className="flex items-center gap-3">
                               <div className={cn(
-                                "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                                category.title === 'Quotes & Sales' && "bg-gradient-to-br from-blue-500 to-cyan-500",
-                                category.title === 'Shipments & Logistics' && "bg-gradient-to-br from-emerald-500 to-teal-500",
-                                category.title === 'Account & Security' && "bg-gradient-to-br from-violet-500 to-purple-500"
+                                "w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-gradient-to-br",
+                                category.color
                               )}>
                                 <CategoryIcon className="size-5 text-white" />
                               </div>
@@ -1733,39 +1842,6 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                {/* Additional Settings */}
-                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                    <Settings className="size-4 text-gray-500" />
-                    Additional Settings
-                  </h4>
-                  <div className="grid gap-4">
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                          <Mail className="size-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold">Email Notifications</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Receive notifications via email</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-amber-100 text-amber-700 border-amber-200">Coming Soon</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center">
-                          <Moon className="size-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold">Do Not Disturb</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Pause all notifications temporarily</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-amber-100 text-amber-700 border-amber-200">Coming Soon</Badge>
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1793,7 +1869,7 @@ export default function ProfilePage() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={fetchProfile}
+                      onClick={() => { fetchProfile(); toast.addToast({ type: 'info', title: 'Refreshed', message: 'Activity events reloaded.' }); }}
                       className="gap-2 border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all hover:scale-105 hover-lift"
                     >
                       <RefreshCw className="size-4" />
@@ -2046,7 +2122,7 @@ export default function ProfilePage() {
           <div className="py-4 space-y-4">
             <div className="p-4 bg-red-50 dark:bg-red-950/50 rounded-lg border border-red-200 dark:border-red-800">
               <p className="text-sm text-red-600 dark:text-red-400 font-medium">
-                ⚠️ Warning: All your data will be permanently deleted and cannot be recovered.
+                Ã¢Å¡Â Ã¯Â¸Â Warning: All your data will be permanently deleted and cannot be recovered.
               </p>
             </div>
             <div className="space-y-2">
@@ -2073,6 +2149,40 @@ export default function ProfilePage() {
               onClick={handleDeleteAccount}
             >
               Permanently Delete Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogOut className="size-5 text-gray-600" />Log Out?
+            </DialogTitle>
+            <DialogDescription>Are you sure you want to log out of your account?</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowLogoutDialog(false)}>Cancel</Button>
+            <Button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white">Log Out</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save Personal Info Confirmation Dialog */}
+      <Dialog open={showSaveConfirmDialog} onOpenChange={setShowSaveConfirmDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-emerald-600" />Save Changes?
+            </DialogTitle>
+            <DialogDescription>Does everything look correct? Your personal information will be updated.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowSaveConfirmDialog(false)}>Go Back</Button>
+            <Button onClick={handleSavePersonalInfo} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {isSaving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Check className="size-4 mr-2" />}Yes, Save
             </Button>
           </DialogFooter>
         </DialogContent>

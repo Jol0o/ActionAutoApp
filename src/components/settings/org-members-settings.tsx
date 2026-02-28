@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuth, useUser } from "@clerk/nextjs" // Import useAuth
 import { apiClient } from "@/lib/api-client"
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Table,
     TableBody,
@@ -34,7 +35,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { Loader2, Mail, Trash2, UserPlus, Shield, User as UserIcon } from "lucide-react"
+import { Loader2, Mail, Trash2, UserPlus, Shield, User as UserIcon, Briefcase, Check, X } from "lucide-react"
 
 
 export function OrganizationMembersSettings() {
@@ -48,6 +49,11 @@ export function OrganizationMembersSettings() {
     const [isInviteOpen, setIsInviteOpen] = useState(false)
     const [inviteEmail, setInviteEmail] = useState("")
     const [inviteRole, setInviteRole] = useState("member")
+
+    // Rank/JobTitle State
+    const [jobTitle, setJobTitle] = useState("")
+    const [isEditingRank, setIsEditingRank] = useState(false)
+    const [tempJobTitle, setTempJobTitle] = useState("")
 
     // Fetch Members
     const { data: members = [], isLoading } = useQuery({
@@ -68,6 +74,24 @@ export function OrganizationMembersSettings() {
         },
         enabled: !!organizationId
     })
+
+    // Fetch user's current jobTitle
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            try {
+                const token = await getToken()
+                const response = await apiClient.get('/api/profile', { headers: { Authorization: `Bearer ${token}` } })
+                const userJobTitle = response.data?.data?.personalInfo?.jobTitle || ''
+                setJobTitle(userJobTitle)
+                setTempJobTitle(userJobTitle)
+            } catch (error) {
+                console.error('Failed to fetch user profile:', error)
+            }
+        }
+        if (user) {
+            fetchUserProfile()
+        }
+    }, [user, getToken])
 
     // Invite Mutation
     const inviteMutation = useMutation({
@@ -106,6 +130,34 @@ export function OrganizationMembersSettings() {
         }
     })
 
+    // Update JobTitle Mutation
+    const updateJobTitleMutation = useMutation({
+        mutationFn: async () => {
+            const token = await getToken()
+            return apiClient.patch('/api/profile/personal-info', 
+                { jobTitle: tempJobTitle }, 
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+        },
+        onSuccess: () => {
+            setJobTitle(tempJobTitle)
+            setIsEditingRank(false)
+            alert("Rank updated successfully")
+        },
+        onError: (error: any) => {
+            alert(error.response?.data?.message || "Failed to update rank")
+        }
+    })
+
+    const handleSaveRank = () => {
+        updateJobTitleMutation.mutate()
+    }
+
+    const handleCancelRank = () => {
+        setTempJobTitle(jobTitle)
+        setIsEditingRank(false)
+    }
+
     const handleInvite = (e: React.FormEvent) => {
         e.preventDefault()
         inviteMutation.mutate()
@@ -115,6 +167,63 @@ export function OrganizationMembersSettings() {
 
     return (
         <div className="space-y-6">
+            {/* Your Rank Card */}
+            <Card className="border-l-4 border-l-blue-500">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Briefcase className="w-5 h-5" />
+                        Your Rank / Title
+                    </CardTitle>
+                    <CardDescription>Set your professional title or rank within the organization</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {!isEditingRank ? (
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground mb-2">Current Rank</p>
+                                <p className="text-lg font-semibold">
+                                    {jobTitle || "Not Set"}
+                                </p>
+                            </div>
+                            <Button variant="outline" onClick={() => setIsEditingRank(true)}>
+                                <Briefcase className="w-4 h-4 mr-2" />
+                                Edit Rank
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-sm font-medium block mb-2">New Rank / Title</label>
+                                <Input
+                                    value={tempJobTitle}
+                                    onChange={(e) => setTempJobTitle(e.target.value)}
+                                    placeholder="e.g., Sales Manager, Operations Lead, Senior Developer"
+                                    className="flex-1"
+                                />
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={handleCancelRank}
+                                    disabled={updateJobTitleMutation.isPending}
+                                >
+                                    <X className="w-4 h-4 mr-2" />
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    onClick={handleSaveRank}
+                                    disabled={updateJobTitleMutation.isPending}
+                                >
+                                    {updateJobTitleMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    <Check className="w-4 h-4 mr-2" />
+                                    Save Rank
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
             <div className="flex items-center justify-between ">
                 <div>
                     <h3 className="text-lg font-medium">Members</h3>
