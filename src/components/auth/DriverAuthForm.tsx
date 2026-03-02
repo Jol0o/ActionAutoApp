@@ -27,7 +27,7 @@ export function DriverAuthForm() {
   const [pendingVerification, setPendingVerification] = React.useState(false);
   const [verificationCode, setVerificationCode] = React.useState("");
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => { 
     e.preventDefault();
     if (!isSignUpLoaded || !signUp) return;
     setError(null);
