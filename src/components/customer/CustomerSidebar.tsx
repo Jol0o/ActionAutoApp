@@ -1,6 +1,6 @@
 "use client"
 
-import { LogOut, LayoutDashboard, CarFront, MapIcon, Wallet, Settings } from "lucide-react"
+import { LogOut, LayoutDashboard, CarFront, MapIcon, Wallet, Settings, CreditCard } from "lucide-react"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
@@ -29,6 +29,11 @@ const navItems = [
         title: "My Garage",
         url: "/customer",
         icon: LayoutDashboard,
+    },
+    {
+        title: "Payments",
+        url: "/customer/payments",
+        icon: CreditCard,
     },
     {
         title: "Service Network",
