@@ -30,6 +30,8 @@ export interface Vehicle {
     marketPrice?: number;
     notes?: any[]; // Keep flexible as we don't know the note structure yet
     dateAdded?: string;
+    featured?: boolean;
+    engine?: string;
 }
 
 export interface FilterOptions {
