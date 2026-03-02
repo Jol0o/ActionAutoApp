@@ -29,7 +29,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useUser, useClerk, useOrganization } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { useOrg } from "@/hooks/useOrg";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfileContext } from "@/context/ProfileContext";
@@ -143,8 +143,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { signOut } = useClerk();
 
   const { isLoaded, isCustomer } = useOrg();
-
-  const { organization } = useOrganization();
   const { avatarUrl } = useProfileContext();
 
   const activeNavMain = isCustomer ? customerData.navMain : data.navMain;
@@ -153,20 +151,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
       <SidebarHeader className="h-16 border-b flex items-center px-6">
         <div className="flex items-center gap-2">
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
-            {organization?.imageUrl ? (
-              <img
-                src={organization.imageUrl}
-                alt={organization.name}
-                className="size-full object-cover"
-              />
-            ) : (
-              <Car className="size-5" />
-            )}
-          </div>
           <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
             <span className="font-bold text-sm tracking-tight uppercase truncate max-w-[140px]">
-              {organization?.name || "ACTION AUTO UTAH"}
+              ACTION AUTO UTAH
             </span>
             <span className="text-[9px] font-extrabold text-green-600 uppercase tracking-widest leading-tight">
               Powered by Supra AI

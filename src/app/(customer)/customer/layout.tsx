@@ -87,7 +87,7 @@ function CustomerLayoutContent({ children }: { children: React.ReactNode }) {
                     </header>
 
                     <main className="flex-1 overflow-auto p-4 lg:p-8">
-                        <div className="mx-auto max-w-7xl">
+                        <div className="mx-auto container">
                             {children}
                         </div>
                     </main>

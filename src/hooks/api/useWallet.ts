@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getWalletDashboard, linkReferral, requestWithdrawal } from '../../lib/api/wallet';
-import { toast } from 'sonner';
+import { useAlert } from '@/components/AlertDialog';
 
 export const WALLET_QUERY_KEY = ['wallet'];
 

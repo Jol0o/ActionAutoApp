@@ -21,7 +21,7 @@ export function PremiumVehicleCard({
     onCallUs
 }: PremiumVehicleCardProps) {
     // Mocking "Retail Price" vs "One Time Payment" for the UI showcase
-    const retailPrice = vehicle.price + 1635; // Mock markup
+    const retailPrice = vehicle.price + 0; // Mock markup
     const memberPrice = vehicle.price;
 
     return (

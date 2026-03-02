@@ -304,7 +304,7 @@ function ShopVehiclesContent() {
             {/* Content Area */}
             <div className="flex-1 min-h-0 pt-2">
                 {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {[...Array(6)].map((_, i) => (
                             <div key={i} className="h-[450px] bg-zinc-100 dark:bg-zinc-900 rounded-2xl animate-pulse" />
                         ))}
@@ -327,7 +327,7 @@ function ShopVehiclesContent() {
                 ) : (
                     <div className="space-y-8">
                         {/* Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {vehicles.map((vehicle) => (
                                 <PremiumVehicleCard
                                     key={vehicle.id}
