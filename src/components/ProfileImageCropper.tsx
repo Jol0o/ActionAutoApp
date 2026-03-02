@@ -11,7 +11,7 @@ import { Camera, Upload, ZoomIn, ZoomOut, RotateCw, Check, X, Loader2, ImageIcon
 interface ProfileImageCropperProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (croppedImage: string) => Promise<void>;
+  onSave: (croppedImageBlob: Blob) => Promise<void>;
   currentImage?: string;
 }
 
@@ -29,7 +29,7 @@ const getCroppedImg = async (
   imageSrc: string,
   pixelCrop: Area,
   rotation = 0
-): Promise<string> => {
+): Promise<Blob> => {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -79,8 +79,20 @@ const getCroppedImg = async (
   
   finalCtx.drawImage(canvas, 0, 0, maxDimension, maxDimension);
   
-  // Return as base64 data URL with reduced quality (0.7 = ~70% quality)
-  return finalCanvas.toDataURL('image/jpeg', 0.7);
+  // Return as Blob (JPEG at 70% quality) instead of base64
+  return new Promise<Blob>((resolve, reject) => {
+    finalCanvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to create image blob'));
+        }
+      },
+      'image/jpeg',
+      0.7
+    );
+  });
 };
 
 export default function ProfileImageCropper({
@@ -121,11 +133,12 @@ export default function ProfileImageCropper({
     if (!imageSrc || !croppedAreaPixels) return;
     
     try {
-      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
-      setPreviewUrl(croppedImage);
+      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
+      const previewDataUrl = URL.createObjectURL(croppedBlob);
+      setPreviewUrl(previewDataUrl);
       
-      // Calculate file size
-      const sizeInBytes = croppedImage.length * 0.75; // Estimate binary size from base64
+      // Calculate file size from the blob
+      const sizeInBytes = croppedBlob.size;
       let sizeDisplay = '';
       if (sizeInBytes > 1024 * 1024) {
         sizeDisplay = (sizeInBytes / (1024 * 1024)).toFixed(2) + ' MB';
@@ -145,20 +158,18 @@ export default function ProfileImageCropper({
 
     setIsSaving(true);
     try {
-      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
+      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
       
-      // Check file size before sending
-      const sizeInBytes = croppedImage.length * 0.75; // Estimate binary size
-      const sizeInKB = sizeInBytes / 1024;
-      const sizeInMB = sizeInKB / 1024;
+      // Check file size
+      const sizeInMB = croppedBlob.size / (1024 * 1024);
       
-      console.log(`Image size: ${sizeInMB > 1 ? sizeInMB.toFixed(2) + 'MB' : sizeInKB.toFixed(2) + 'KB'}`);
+      console.log(`Image size: ${sizeInMB > 1 ? sizeInMB.toFixed(2) + 'MB' : (croppedBlob.size / 1024).toFixed(2) + 'KB'}`);
       
       if (sizeInMB > 5) {
         throw new Error(`Image too large: ${sizeInMB.toFixed(2)}MB (max 5MB)`);
       }
       
-      await onSave(croppedImage);
+      await onSave(croppedBlob);
       handleClose();
     } catch (e) {
       console.error('Error saving image:', e);

@@ -113,7 +113,11 @@ export default function DriverLayout({
     <ThemeProvider>
       <NotificationProvider>
         <DriverLayoutContent>{children}</DriverLayoutContent>
-      </NotificationProvider>
-    </ThemeProvider>
-  );
+      <ProfileProvider>
+        <ProfileToastProvider>
+          <NotificationProvider>
+            <DriverLayoutContent>{children}</DriverLayoutContent>
+          </NotificationProvider>
+        </ProfileToastProvider>
+      </Profile
 }

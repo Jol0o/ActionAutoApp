@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useClerk, useUser, useAuth } from "@clerk/nextjs";
 import { useTheme } from '@/context/ThemeContext';
-import { useAlert } from '@/components/AlertDialog';
+import { useProfileContext } from '@/context/ProfileContext';
+import { useProfileToast } from '@/components/ProfileToast';
 import { useOrg } from '@/hooks/useOrg';
 import ProfileImageCropper from '@/components/ProfileImageCropper';
 import {
@@ -59,9 +60,12 @@ import {
   Timer,
   Navigation,
   Route,
-  Gauge
+  Gauge,
+  Trash2,
+  Link2,
+  Plus,
 } from 'lucide-react';
-import { UserProfile, OnlineStatus, PersonalInfo, RecentActivity } from '@/types/user';
+import { UserProfile, OnlineStatus, PersonalInfo, RecentActivity, SocialLink } from '@/types/user';
 import { NotificationPreferences } from '@/types/notification';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
@@ -91,12 +95,31 @@ const activityIcons: Record<string, React.ReactNode> = {
   other: <Activity className="size-4" />,
 };
 
+// Curse word filter
+const curseWords = ['fuck', 'shit', 'ass', 'damn', 'bitch', 'crap', 'dick', 'piss', 'bastard', 'cunt'];
+const containsCurseWord = (text: string): boolean => {
+  if (!text) return false;
+  const lowerText = text.toLowerCase();
+  return curseWords.some(word => lowerText.includes(word));
+};
+
+// Helper to resolve avatar URL (local uploads need backend URL prefix)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const getAvatarUrl = (avatar?: string | null): string | undefined => {
+  if (!avatar) return undefined;
+  if (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('data:')) {
+    return avatar;
+  }
+  return `${API_BASE_URL}${avatar}`;
+};
+
 export default function DriverProfilePage() {
   const { user: clerkUser } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const { getToken } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { showAlert, AlertComponent } = useAlert();
+  const { setAvatarUrl } = useProfileContext();
+  const toast = useProfileToast();
   const { organization } = useOrg();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -115,6 +138,8 @@ export default function DriverProfilePage() {
   // Personal info state
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({});
   const [editingPersonalInfo, setEditingPersonalInfo] = useState(false);
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [phoneCountryCode, setPhoneCountryCode] = useState('');
 
   // Notification preferences
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
@@ -122,13 +147,14 @@ export default function DriverProfilePage() {
   // Recent activities
   const [activities, setActivities] = useState<RecentActivity[]>([]);
 
-  // Driver stats (mock data - would come from backend)
-  const [driverStats] = useState({
-    deliveriesCompleted: 156,
-    onTimeRate: 98.5,
-    totalMiles: 12450,
-    rating: 4.9,
-    activeDeliveries: 2,
+  // Driver stats (fetched from backend)
+  const [driverStats, setDriverStats] = useState({
+    deliveriesCompleted: 0,
+    onTimeRate: 0,
+    totalMiles: 0,
+    rating: 0,
+    activeDeliveries: 0,
+    totalAssigned: 0,
   });
 
   useEffect(() => {
@@ -146,6 +172,20 @@ export default function DriverProfilePage() {
       setCustomStatus(data.data.customStatus || '');
       setPersonalInfo(data.data.personalInfo || {});
       setActivities(data.data.recentActivities || []);
+
+      // Sync avatar to sidebar context
+      const avatarResolved = getAvatarUrl(data.data.avatar);
+      setAvatarUrl(avatarResolved || data.data.avatar || null);
+
+      // Fetch real driver stats
+      try {
+        const statsRes = await apiClient.get('/api/profile/driver-stats', { headers: { Authorization: `Bearer ${token}` } });
+        if (statsRes.data?.data) {
+          setDriverStats(prev => ({ ...prev, ...statsRes.data.data }));
+        }
+      } catch (statsErr) {
+        console.error('Error fetching driver stats:', statsErr);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -153,57 +193,94 @@ export default function DriverProfilePage() {
     }
   };
 
-  const handleSaveProfilePicture = async (croppedImage: string) => {
+  const handleSaveProfilePicture = async (croppedImageBlob: Blob) => {
     setIsSaving(true);
     try {
-      // Check image size (base64 string, ~33% larger than binary)
-      const imageSizeInBytes = croppedImage.length * 0.75;
-      const imageSizeInMB = imageSizeInBytes / (1024 * 1024);
+      // Check image size
+      const imageSizeInMB = croppedImageBlob.size / (1024 * 1024);
       
       if (imageSizeInMB > 5) {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Image Too Large',
-          message: `Image size is ${imageSizeInMB.toFixed(2)}MB. Please use a smaller image (max 5MB).`,
+          message: `Image size is ${imageSizeInMB.toFixed(1)}MB. Max 5MB allowed.`,
         });
         setIsSaving(false);
         return;
       }
 
+      const formData = new FormData();
+      formData.append('avatar', croppedImageBlob, 'avatar.jpg');
+
       const token = await getToken();
-      const response = await apiClient.patch('/api/profile/avatar', { avatar: croppedImage }, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await apiClient.patch('/api/profile/avatar', formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       
-      showAlert({
+      const updatedUser = response.data?.data;
+      const newAvatarUrl = updatedUser?.avatar ? getAvatarUrl(updatedUser.avatar) : null;
+
+      toast.addToast({
         type: 'success',
         title: 'Profile Picture Updated',
         message: 'Your profile picture has been successfully updated.',
       });
+      if (newAvatarUrl) {
+        setAvatarUrl(newAvatarUrl);
+      }
       fetchProfile();
     } catch (error: any) {
       console.error('Error updating profile picture:', error);
       const status = error.response?.status;
       const errorMessage = error.response?.data?.message || 'Failed to update profile picture.';
       
-      // Handle specific error codes
       if (status === 413) {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Image Too Large',
           message: 'The image is too large. Please use a smaller image.',
         });
       } else if (status === 400) {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Invalid Image',
           message: errorMessage,
         });
       } else {
-        showAlert({
+        toast.addToast({
           type: 'error',
           title: 'Error',
           message: errorMessage,
         });
       }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setIsSaving(true);
+    try {
+      const token = await getToken();
+      await apiClient.delete('/api/profile/avatar', { headers: { Authorization: `Bearer ${token}` } });
+      
+      toast.addToast({
+        type: 'success',
+        title: 'Profile Picture Removed',
+        message: 'Your profile picture has been removed.',
+      });
+      setAvatarUrl(null);
+      fetchProfile();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to remove profile picture.';
+      toast.addToast({
+        type: 'error',
+        title: 'Error',
+        message: errorMessage,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -215,7 +292,7 @@ export default function DriverProfilePage() {
       const token = await getToken();
       await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus }, { headers: { Authorization: `Bearer ${token}` } });
       
-      showAlert({
+      toast.addToast({
         type: 'success',
         title: 'Status Updated',
         message: 'Your availability status has been updated.',
@@ -224,7 +301,7 @@ export default function DriverProfilePage() {
       fetchProfile();
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to update status.';
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: errorMessage,
@@ -235,12 +312,25 @@ export default function DriverProfilePage() {
   };
 
   const handleSavePersonalInfo = async () => {
+    // Profanity check on text fields
+    const fieldsToCheck = [personalInfo.displayName, personalInfo.bio, personalInfo.address];
+    for (const val of fieldsToCheck) {
+      if (val && containsCurseWord(val)) {
+        toast.addToast({
+          type: 'error',
+          title: 'Inappropriate Content',
+          message: 'Please remove inappropriate language before saving.',
+        });
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const token = await getToken();
       await apiClient.patch('/api/profile/personal-info', personalInfo, { headers: { Authorization: `Bearer ${token}` } });
       
-      showAlert({
+      toast.addToast({
         type: 'success',
         title: 'Information Saved',
         message: 'Your personal information has been updated.',
@@ -249,7 +339,7 @@ export default function DriverProfilePage() {
       fetchProfile();
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to save information.';
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: errorMessage,
@@ -270,7 +360,7 @@ export default function DriverProfilePage() {
       await apiClient.patch('/api/profile/notification-preferences', { [key]: value }, { headers: { Authorization: `Bearer ${token}` } });
     } catch (error: any) {
       setPreferences(preferences);
-      showAlert({
+      toast.addToast({
         type: 'error',
         title: 'Error',
         message: error.response?.data?.message || 'Failed to update notification preferences.',
@@ -306,12 +396,12 @@ export default function DriverProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-emerald-50 to-teal-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
-      <AlertComponent />
+
       <ProfileImageCropper
         isOpen={showImageCropper}
         onClose={() => setShowImageCropper(false)}
         onSave={handleSaveProfilePicture}
-        currentImage={profile?.avatar || clerkUser?.imageUrl}
+        currentImage={getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl}
       />
 
       {/* Background Pattern */}
@@ -342,9 +432,9 @@ export default function DriverProfilePage() {
                   className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-4 border-white/40 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer"
                   onClick={() => setShowImageCropper(true)}
                 >
-                  {(profile?.avatar || clerkUser?.imageUrl) ? (
+                  {(getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl) ? (
                     <img 
-                      src={profile?.avatar || clerkUser?.imageUrl} 
+                      src={getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl} 
                       alt="Profile" 
                       className="w-full h-full object-cover"
                     />
@@ -404,6 +494,12 @@ export default function DriverProfilePage() {
                   <CircleDot className="size-4 mr-2" />
                   <span className="hidden sm:inline">Set Status</span>
                 </Button>
+                {profile?.avatar && (
+                  <Button onClick={handleRemoveAvatar} variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-red-500/30" disabled={isSaving}>
+                    <Trash2 className="size-4 mr-2" />
+                    <span className="hidden sm:inline">Remove Photo</span>
+                  </Button>
+                )}
                 <Button onClick={handleLogout} variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
                   <LogOut className="size-4 mr-2" />
                   <span className="hidden sm:inline">Logout</span>

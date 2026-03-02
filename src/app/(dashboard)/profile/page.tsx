@@ -241,6 +241,16 @@ const getNotificationCategoriesByRole = (role?: string) => {
   );
 };
 
+// Helper to resolve avatar URL (local uploads need backend URL prefix)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const getAvatarUrl = (avatar?: string | null): string | undefined => {
+  if (!avatar) return undefined;
+  if (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('data:')) {
+    return avatar;
+  }
+  return `${API_BASE_URL}${avatar}`;
+};
+
 export default function ProfilePage() {
   const { user: clerkUser } = useUser();
   const { signOut, openUserProfile } = useClerk();
@@ -350,12 +360,11 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveProfilePicture = async (croppedImage: string) => {
+  const handleSaveProfilePicture = async (croppedImageBlob: Blob) => {
     setIsSaving(true);
     try {
-      // Check image size (base64 string, ~33% larger than binary)
-      const imageSizeInBytes = croppedImage.length * 0.75;
-      const imageSizeInMB = imageSizeInBytes / (1024 * 1024);
+      // Check image size
+      const imageSizeInMB = croppedImageBlob.size / (1024 * 1024);
       
       if (imageSizeInMB > 5) {
         toast.addToast({
@@ -367,22 +376,34 @@ export default function ProfilePage() {
         return;
       }
 
+      const formData = new FormData();
+      formData.append('avatar', croppedImageBlob, 'avatar.jpg');
+
       const token = await getToken();
-      const response = await apiClient.patch('/api/profile/avatar', { avatar: croppedImage }, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await apiClient.patch('/api/profile/avatar', formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       
+      const updatedUser = response.data?.data;
+      const newAvatarUrl = updatedUser?.avatar ? getAvatarUrl(updatedUser.avatar) : null;
+
       toast.addToast({
         type: 'success',
         title: 'Profile Picture Updated',
         message: 'Your profile picture has been successfully updated.',
       });
-      setAvatarUrl(croppedImage);
+      if (newAvatarUrl) {
+        setAvatarUrl(newAvatarUrl);
+      }
       fetchProfile();
     } catch (error: any) {
       console.error('Error updating profile picture:', error);
       const status = error.response?.status;
       const errorMessage = error.response?.data?.message || 'Failed to update profile picture.';
       
-      // Handle specific error codes
       if (status === 413) {
         toast.addToast({
           type: 'error',
