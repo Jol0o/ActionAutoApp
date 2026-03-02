@@ -7,6 +7,38 @@
 @import "mapbox-gl/dist/mapbox-gl.css";
 
 
+/* ── Fullscreen mode ─────────────────────────────────── */
+
+body.app-fullscreen [data-sidebar],
+body.app-fullscreen aside,
+body.app-fullscreen nav[aria-label="sidebar"],
+body.app-fullscreen .sidebar,
+body.app-fullscreen #sidebar {
+  display: none !important;
+}
+
+body.app-fullscreen [data-topbar],
+body.app-fullscreen header[role="banner"],
+body.app-fullscreen .topbar,
+body.app-fullscreen #topbar,
+body.app-fullscreen nav[aria-label="main"] {
+  display: none !important;
+}
+
+body.app-fullscreen {
+  overflow: hidden;
+}
+
+body.app-fullscreen main,
+body.app-fullscreen [data-main-content],
+body.app-fullscreen .main-content {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+
 :root {
   --background: oklch(0.99 0 0);
   --foreground: oklch(0.35 0.02 165.48);

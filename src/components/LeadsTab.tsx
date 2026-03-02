@@ -12,6 +12,7 @@ import {
   Mail, Phone, Calendar, MoreHorizontal, X, Send, Clock3,
   XCircle, LockOpen, Lock, ChevronLeft, RefreshCw, Search,
   CheckCircle2, AlertCircle, Info, ChevronDown, PhoneIncoming,
+  Columns2, LayoutList, Maximize2, Minimize2, GripVertical,
 } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
@@ -24,6 +25,11 @@ import {
   DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { InboundCallsTab } from "@/components/inbound-calls/InboundCallsTab"
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -107,6 +113,54 @@ function StatusPill({ status }: { status: string }) {
   )
 }
 
+// ─── Leads Split Pane Resizer ────────────────────────────────────────────────
+
+function LeadsPaneResizer({ onDrag }: { onDrag: (deltaX: number) => void }) {
+  const [isDragging, setIsDragging] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isDragging) return
+    const handleMouseMove = (e: MouseEvent) => { e.preventDefault(); onDrag(e.movementX) }
+    const handleMouseUp = () => setIsDragging(false)
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
+    return () => { window.removeEventListener("mousemove", handleMouseMove); window.removeEventListener("mouseup", handleMouseUp) }
+  }, [isDragging, onDrag])
+
+  const lastTouchX = React.useRef(0)
+  React.useEffect(() => {
+    if (!isDragging) return
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault()
+      const delta = e.touches[0].clientX - lastTouchX.current
+      lastTouchX.current = e.touches[0].clientX
+      onDrag(delta)
+    }
+    const handleTouchEnd = () => setIsDragging(false)
+    window.addEventListener("touchmove", handleTouchMove, { passive: false })
+    window.addEventListener("touchend", handleTouchEnd)
+    return () => { window.removeEventListener("touchmove", handleTouchMove); window.removeEventListener("touchend", handleTouchEnd) }
+  }, [isDragging, onDrag])
+
+  return (
+    <div
+      onMouseDown={(e) => { e.preventDefault(); setIsDragging(true) }}
+      onTouchStart={(e) => { lastTouchX.current = e.touches[0].clientX; setIsDragging(true) }}
+      className={`
+        relative flex-shrink-0 w-[6px] cursor-col-resize hidden lg:flex
+        items-center justify-center group/divider z-10 transition-colors duration-150
+        ${isDragging ? "bg-emerald-500/20" : "hover:bg-muted/60"}
+      `}
+    >
+      <div className={`flex flex-col items-center gap-0.5 rounded-full px-[3px] py-2 transition-all duration-150
+        ${isDragging ? "bg-emerald-500 text-white shadow-sm" : "bg-border/60 text-muted-foreground/40 group-hover/divider:bg-emerald-500/60 group-hover/divider:text-white"}`}>
+        <GripVertical className="h-3 w-3" />
+      </div>
+      <div className="absolute inset-y-0 -left-1 -right-1" />
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function LeadsTab() {
@@ -131,6 +185,37 @@ export function LeadsTab() {
   const [selectedLeadClosed, setSelectedLeadClosed] = React.useState(false)
   const [messageThreads, setMessageThreads]       = React.useState<Record<string, any[]>>({})
   const [isSyncing, setIsSyncing]                 = React.useState(false)
+
+  // ── Leads split-pane state ─────────────────────────────────────────────────
+  const [leadsMultiPane, setLeadsMultiPane] = React.useState(false)
+  const [listPaneSize, setListPaneSize]     = React.useState(40) // percentage
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  // Restore from session
+  React.useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("leads-pane-config")
+      if (saved) {
+        const cfg = JSON.parse(saved)
+        if (typeof cfg.leadsMultiPane === "boolean") setLeadsMultiPane(cfg.leadsMultiPane)
+        if (typeof cfg.listPaneSize === "number") setListPaneSize(cfg.listPaneSize)
+      }
+    } catch {}
+  }, [])
+
+  // Persist to session
+  React.useEffect(() => {
+    try {
+      sessionStorage.setItem("leads-pane-config", JSON.stringify({ leadsMultiPane, listPaneSize }))
+    } catch {}
+  }, [leadsMultiPane, listPaneSize])
+
+  const handlePaneResize = React.useCallback((deltaX: number) => {
+    if (!containerRef.current) return
+    const containerWidth = containerRef.current.getBoundingClientRect().width
+    const deltaPct = (deltaX / containerWidth) * 100
+    setListPaneSize((prev) => Math.max(20, Math.min(65, prev + deltaPct)))
+  }, [])
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -332,6 +417,27 @@ export function LeadsTab() {
         </div>
         {statusFilter !== 'Inbound Calls' && (
           <div className="flex gap-2">
+            {/* Leads split-pane toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => setLeadsMultiPane((p) => !p)}
+                  variant="outline"
+                  size="sm"
+                  className={`h-8 w-8 p-0 rounded-lg transition-all ${
+                    leadsMultiPane
+                      ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 hover:text-white"
+                      : "border-border/50 hover:border-emerald-500/40"
+                  }`}
+                >
+                  {leadsMultiPane ? <LayoutList className="h-3.5 w-3.5" /> : <Columns2 className="h-3.5 w-3.5" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {leadsMultiPane ? "Single pane view" : "Split pane view"}
+              </TooltipContent>
+            </Tooltip>
+
             <Button
               onClick={handleSyncEmails}
               disabled={!gmailSynced || isSyncing}
@@ -408,21 +514,42 @@ export function LeadsTab() {
             />
           </div>
 
-          {/* ── Two-pane layout ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.55fr)_minmax(0,1.45fr)] gap-4 min-h-[600px]">
+          {/* ── Two-pane layout (with resizable split in multi-pane mode) ── */}
+          <div
+            ref={containerRef}
+            className={`min-h-[600px] ${
+              leadsMultiPane
+                ? "flex rounded-2xl border border-border/50 overflow-hidden"
+                : "grid grid-cols-1 lg:grid-cols-[minmax(0,0.55fr)_minmax(0,1.45fr)] gap-4"
+            }`}
+          >
 
             {/* ── List pane ── */}
-            <div className={`${selectedLead ? 'hidden lg:flex' : 'flex'} flex-col rounded-2xl border border-border/50 bg-card overflow-hidden`}>
+            <div
+              className={`${
+                leadsMultiPane
+                  ? "flex flex-col overflow-hidden border-r border-border/40"
+                  : `${selectedLead ? 'hidden lg:flex' : 'flex'} flex-col rounded-2xl border border-border/50 bg-card overflow-hidden`
+              }`}
+              style={leadsMultiPane ? { flexBasis: `${listPaneSize}%`, flexGrow: 0, flexShrink: 0, minWidth: 0 } : undefined}
+            >
               {/* pane header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">Messages</p>
-                <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  {filteredLeads.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  {leadsMultiPane && (
+                    <span className="text-[9px] tabular-nums text-muted-foreground/30 font-mono">
+                      {Math.round(listPaneSize)}%
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    {filteredLeads.length}
+                  </span>
+                </div>
               </div>
 
               {/* pane body */}
-              <div className="flex-1 overflow-y-auto divide-y divide-border/40">
+              <div className="flex-1 overflow-y-auto divide-y divide-border/40 bg-card">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <p className="text-xs text-muted-foreground/50">Loading…</p>
@@ -447,7 +574,6 @@ export function LeadsTab() {
                       >
                         <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div className="flex items-center gap-2 min-w-0">
-                            {/* avatar */}
                             <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                               {getInitials(lead.firstName, lead.lastName)}
                             </div>
@@ -479,8 +605,18 @@ export function LeadsTab() {
               </div>
             </div>
 
+            {/* ── Resizer (only in multi-pane mode) ── */}
+            {leadsMultiPane && <LeadsPaneResizer onDrag={handlePaneResize} />}
+
             {/* ── Detail pane ── */}
-            <div className={`${!selectedLead ? 'hidden lg:flex' : 'flex'} flex-col rounded-2xl border border-border/50 bg-card overflow-hidden`}>
+            <div
+              className={`${
+                leadsMultiPane
+                  ? "flex flex-col overflow-hidden bg-card"
+                  : `${!selectedLead ? 'hidden lg:flex' : 'flex'} flex-col rounded-2xl border border-border/50 bg-card overflow-hidden`
+              }`}
+              style={leadsMultiPane ? { flex: 1, minWidth: 0 } : undefined}
+            >
               {selectedLead ? (
                 <>
                   {/* Detail header */}
@@ -489,7 +625,7 @@ export function LeadsTab() {
                       <div className="flex items-center gap-2 min-w-0">
                         <button
                           onClick={() => setSelectedLead(null)}
-                          className="lg:hidden p-1.5 rounded-lg hover:bg-muted/40 transition-colors shrink-0"
+                          className={`${leadsMultiPane ? 'hidden' : 'lg:hidden'} p-1.5 rounded-lg hover:bg-muted/40 transition-colors shrink-0`}
                         >
                           <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                         </button>
@@ -598,7 +734,6 @@ export function LeadsTab() {
                       />
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap gap-2">
-                          {/* Status dropdown */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 rounded-lg">
@@ -660,8 +795,7 @@ export function LeadsTab() {
                   )}
                 </>
               ) : (
-                /* Empty state */
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16 bg-card">
                   <div className="h-16 w-16 rounded-2xl border-2 border-dashed border-border/30 flex items-center justify-center">
                     <Mail className="h-7 w-7 text-muted-foreground/20" />
                   </div>

@@ -16,10 +16,34 @@ import { GoogleCalendarSyncButton } from "@/components/GoogleCalendarSyncButton"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@clerk/nextjs"
+import {
+  FullscreenProvider,
+  useFullscreen,
+  TabOption,
+} from "@/components/FullscreenProvider"
+import {
+  PaneToolbar,
+  MultiPaneContainer,
+  FullscreenWrapper,
+} from "@/components/MultiPaneLayout"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
-export default function AppointmentsPage() {
+// ─── Available tabs ──────────────────────────────────────────────────────────
+
+const TAB_OPTIONS: TabOption[] = [
+  { id: "leads",    label: "Leads",         icon: <Mail     className="h-3.5 w-3.5" /> },
+  { id: "calendar", label: "Calendar View", icon: <Calendar className="h-3.5 w-3.5" /> },
+  { id: "upcoming", label: "Upcoming",      icon: <Clock    className="h-3.5 w-3.5" /> },
+  { id: "booked",   label: "Booked",        icon: <Users    className="h-3.5 w-3.5" /> },
+]
+
+// ─── Inner Page ──────────────────────────────────────────────────────────────
+
+function AppointmentsPageInner() {
   const { getToken } = useAuth()
   const queryClient = useQueryClient()
+  const { isFullscreen } = useFullscreen()
+
   const [activeTab, setActiveTab] = React.useState("leads")
   const [createModalOpen, setCreateModalOpen] = React.useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = React.useState(false)
@@ -89,7 +113,6 @@ export default function AppointmentsPage() {
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
-
     return {
       total: appointments.length,
       upcoming: appointments.filter((apt: any) => {
@@ -105,7 +128,6 @@ export default function AppointmentsPage() {
   }, [appointments])
 
   const handleCreateAppointment = React.useCallback(() => {
-    console.log('[AppointmentsPage] New Appointment clicked — opening modal')
     setPreselectedDate(undefined)
     setCreateModalOpen(true)
   }, [])
@@ -121,57 +143,41 @@ export default function AppointmentsPage() {
   }, [])
 
   const handleUpdateAppointment = async (id: string, data: any) => {
-    try {
-      const headers = await getAuthHeaders()
-      await apiClient.patch(`/api/appointments/${id}`, data, headers)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
-      ])
-    } catch (error) {
-      throw error
-    }
+    const headers = await getAuthHeaders()
+    await apiClient.patch(`/api/appointments/${id}`, data, headers)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+      queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
+    ])
   }
 
   const handleCancelAppointment = async (id: string) => {
-    try {
-      const headers = await getAuthHeaders()
-      await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
-      ])
-    } catch (error) {
-      throw error
-    }
+    const headers = await getAuthHeaders()
+    await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+      queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
+    ])
   }
 
   const handleDeleteAppointment = async (id: string) => {
-    try {
-      const headers = await getAuthHeaders()
-      await apiClient.delete(`/api/appointments/${id}`, headers)
-      setDetailsModalOpen(false)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
-      ])
-    } catch (error) {
-      throw error
-    }
+    const headers = await getAuthHeaders()
+    await apiClient.delete(`/api/appointments/${id}`, headers)
+    setDetailsModalOpen(false)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+      queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
+    ])
   }
 
   const handleSyncComplete = async () => {
-    try {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'active' }),
-        queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'], refetchType: 'active' }),
-      ])
-      setTimeout(async () => {
-        await Promise.all([refetchAppointments(), refetchCustomerBookings()])
-      }, 500)
-    } catch (error) {
-      console.error('[AppointmentsPage] ❌ Error refreshing data:', error)
-    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'active' }),
+      queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'], refetchType: 'active' }),
+    ])
+    setTimeout(async () => {
+      await Promise.all([refetchAppointments(), refetchCustomerBookings()])
+    }, 500)
   }
 
   const handleCreateAppointmentSubmit = async (data: any) => {
@@ -183,146 +189,36 @@ export default function AppointmentsPage() {
     ])
   }
 
-  return (
-    <>
-      <div className="container mx-auto py-6 space-y-6">
+  // ── Render any tab by id (used by MultiPaneContainer in fullscreen) ──────
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Appointments</h1>
-            <p className="text-muted-foreground">
-              Manage your leads, appointments, and events
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <GoogleCalendarSyncButton onSyncComplete={handleSyncComplete} />
-            <Button type="button" onClick={handleCreateAppointment}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Appointment
-            </Button>
-          </div>
-        </div>
-
-        {/* Google Calendar Connection */}
-        <GoogleCalendarConnect />
-
-        {/* Statistics */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              {isFetching && (
-                <p className="text-xs text-muted-foreground mt-1">Updating...</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Today</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.today}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
-              <RefreshCw className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.upcoming}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Customer Bookings</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{customerBookingsCount}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Error */}
-        {appointmentsError && (
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="pt-6">
-              <p className="text-sm text-red-600">
-                Failed to load appointments. Please try refreshing the page.
-              </p>
-              <Button variant="outline" size="sm" className="mt-2" onClick={() => refetchAppointments()}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Loading */}
-        {isLoading && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-muted-foreground">Loading appointments...</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Tabs — always rendered, not gated by isLoading */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="leads">
-              <Mail className="mr-2 h-4 w-4" />
-              Leads
-            </TabsTrigger>
-            <TabsTrigger value="calendar">
-              <Calendar className="mr-2 h-4 w-4" />
-              Calendar View
-            </TabsTrigger>
-            <TabsTrigger value="upcoming">
-              <Clock className="mr-2 h-4 w-4" />
-              Upcoming
-              {stats.upcoming > 0 && (
-                <Badge className="ml-2" variant="secondary">{stats.upcoming}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="booked">
-              <Users className="mr-2 h-4 w-4" />
-              Booked
-              {customerBookingsCount > 0 && (
-                <Badge className="ml-2" variant="secondary">{customerBookingsCount}</Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="leads" className="space-y-4">
+  const renderTabContent = React.useCallback((tabId: string) => {
+    switch (tabId) {
+      case "leads":
+        return (
+          <div className="p-4">
             <LeadsTab />
-          </TabsContent>
-
-          <TabsContent value="calendar" className="space-y-4">
-            {!isLoading && (
+          </div>
+        )
+      case "calendar":
+        return (
+          <div className="p-4">
+            {!isLoading ? (
               <AppointmentCalendar
                 appointments={appointments}
                 onCreateAppointment={handleDateClick}
                 onSelectAppointment={handleAppointmentClick}
               />
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
             )}
-          </TabsContent>
-
-          <TabsContent value="upcoming" className="space-y-4">
-            <Card>
+          </div>
+        )
+      case "upcoming":
+        return (
+          <div className="p-4">
+            <Card className="border-0 shadow-none">
               <CardHeader>
                 <CardTitle>Upcoming Appointments</CardTitle>
               </CardHeader>
@@ -397,28 +293,224 @@ export default function AppointmentsPage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="booked" className="space-y-4">
+          </div>
+        )
+      case "booked":
+        return (
+          <div className="p-4">
             <BookedTab />
-          </TabsContent>
-        </Tabs>
-      </div>
+          </div>
+        )
+      default:
+        return (
+          <div className="flex items-center justify-center h-full text-xs text-muted-foreground/30 py-16">
+            Unknown tab: {tabId}
+          </div>
+        )
+    }
+  }, [appointments, isLoading, stats.upcoming, handleCreateAppointment, handleDateClick, handleAppointmentClick])
 
-      {/*
-        MODALS ARE OUTSIDE THE CONTAINER DIV — this is intentional and important.
+  // ── Render ───────────────────────────────────────────────────────────────
 
-        shadcn's <Dialog> renders via a React portal into document.body. However,
-        if any ancestor element has CSS properties that create a new stacking
-        context (transform, filter, will-change, isolation, etc.) or overflow:hidden,
-        the portal overlay can appear clipped or invisible even though React thinks
-        it's mounted. Placing modals as siblings to the page <div> (inside a <>
-        Fragment) ensures they are completely unaffected by container styles.
-      */}
+  return (
+    <>
+      <FullscreenWrapper>
+        <div className={`${isFullscreen ? "flex flex-col h-full overflow-hidden" : "container mx-auto py-6 space-y-6"}`}>
+
+          {/* Header */}
+          <div className={`flex items-center justify-between ${isFullscreen ? "px-5 py-3 border-b border-border/50 bg-card shrink-0" : ""}`}>
+            <div>
+              <h1 className={`font-bold ${isFullscreen ? "text-xl" : "text-3xl"}`}>Appointments</h1>
+              {!isFullscreen && (
+                <p className="text-muted-foreground">
+                  Manage your leads, appointments, and events
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <PaneToolbar tabOptions={TAB_OPTIONS} />
+              <GoogleCalendarSyncButton onSyncComplete={handleSyncComplete} />
+              <Button type="button" onClick={handleCreateAppointment} size={isFullscreen ? "sm" : "default"}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Appointment
+              </Button>
+            </div>
+          </div>
+
+          {/* ═══ FULLSCREEN MODE ═══ */}
+          {isFullscreen ? (
+            <div className="flex-1 overflow-hidden">
+              <MultiPaneContainer
+                tabOptions={TAB_OPTIONS}
+                renderTab={renderTabContent}
+              />
+            </div>
+          ) : (
+            /* ═══ NORMAL MODE ═══ */
+            <div className="space-y-6">
+
+              <GoogleCalendarConnect />
+
+              {/* Statistics */}
+              <div className="grid gap-4 md:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.total}</div>
+                    {isFetching && <p className="text-xs text-muted-foreground mt-1">Updating...</p>}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Today</CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.today}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
+                    <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.upcoming}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Customer Bookings</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{customerBookingsCount}</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {appointmentsError && (
+                <Card className="border-red-200 bg-red-50">
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-red-600">Failed to load appointments. Please try refreshing.</p>
+                    <Button variant="outline" size="sm" className="mt-2" onClick={() => refetchAppointments()}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Retry
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {isLoading && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-center py-8">
+                      <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-muted-foreground">Loading appointments...</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Normal tab interface */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="leads">
+                    <Mail className="mr-2 h-4 w-4" /> Leads
+                  </TabsTrigger>
+                  <TabsTrigger value="calendar">
+                    <Calendar className="mr-2 h-4 w-4" /> Calendar View
+                  </TabsTrigger>
+                  <TabsTrigger value="upcoming">
+                    <Clock className="mr-2 h-4 w-4" /> Upcoming
+                    {stats.upcoming > 0 && <Badge className="ml-2" variant="secondary">{stats.upcoming}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="booked">
+                    <Users className="mr-2 h-4 w-4" /> Booked
+                    {customerBookingsCount > 0 && <Badge className="ml-2" variant="secondary">{customerBookingsCount}</Badge>}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="leads" className="space-y-4">
+                  <LeadsTab />
+                </TabsContent>
+                <TabsContent value="calendar" className="space-y-4">
+                  {!isLoading && (
+                    <AppointmentCalendar
+                      appointments={appointments}
+                      onCreateAppointment={handleDateClick}
+                      onSelectAppointment={handleAppointmentClick}
+                    />
+                  )}
+                </TabsContent>
+                <TabsContent value="upcoming" className="space-y-4">
+                  <Card>
+                    <CardHeader><CardTitle>Upcoming Appointments</CardTitle></CardHeader>
+                    <CardContent>
+                      {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : stats.upcoming === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                          <p>No upcoming appointments</p>
+                          <Button type="button" variant="outline" className="mt-4" onClick={handleCreateAppointment}>
+                            Create Appointment
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {appointments
+                            .filter((apt: any) => {
+                              const start = new Date(apt.startTime)
+                              const today = new Date(); today.setHours(0,0,0,0)
+                              return start >= today && apt.status !== 'cancelled'
+                            })
+                            .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                            .slice(0, 10)
+                            .map((appointment: any) => (
+                              <Card key={appointment._id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="space-y-1 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="font-semibold">{appointment.title}</h4>
+                                        <Badge variant={appointment.status === 'confirmed' ? 'default' : appointment.status === 'cancelled' ? 'destructive' : 'secondary'} className={appointment.status === 'confirmed' ? 'bg-green-500' : ''}>
+                                          {appointment.status}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-sm text-muted-foreground">
+                                        {new Date(appointment.startTime).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                        {' at '}
+                                        {new Date(appointment.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                      </p>
+                                      {appointment.location && <p className="text-sm text-muted-foreground">Location: {appointment.location}</p>}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                <TabsContent value="booked" className="space-y-4">
+                  <BookedTab />
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </div>
+      </FullscreenWrapper>
+
+      {/* Modals */}
       <CreateAppointmentModal
         open={createModalOpen}
         onOpenChange={(open) => {
-          console.log('[AppointmentsPage] CreateModal open state changing to:', open)
           setCreateModalOpen(open)
           if (!open) setPreselectedDate(undefined)
         }}
@@ -426,7 +518,6 @@ export default function AppointmentsPage() {
         conversations={[]}
         preselectedDate={preselectedDate}
       />
-
       {selectedAppointment && (
         <AppointmentDetailsModal
           open={detailsModalOpen}
@@ -441,5 +532,17 @@ export default function AppointmentsPage() {
         />
       )}
     </>
+  )
+}
+
+// ─── Exported Page ───────────────────────────────────────────────────────────
+
+export default function AppointmentsPage() {
+  return (
+    <TooltipProvider>
+      <FullscreenProvider defaultTab="leads">
+        <AppointmentsPageInner />
+      </FullscreenProvider>
+    </TooltipProvider>
   )
 }
