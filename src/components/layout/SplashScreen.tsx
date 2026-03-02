@@ -118,7 +118,6 @@ export const SplashScreen = () => {
                                 {letters.map((letter, index) => (
                                     <motion.span
                                         key={index}
-                                        variants={letterVariants}
                                         className={`text-6xl md:text-9xl font-black font-mono tracking-tighter ${letter === '.' ? 'text-green-500' : 'text-white'
                                             }`}
                                     >

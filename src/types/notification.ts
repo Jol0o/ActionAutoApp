@@ -53,6 +53,12 @@ export interface NotificationPreferences {
   passwordChanged: boolean;
   emailChanged: boolean;
   profileUpdated: boolean;
+  loginAlerts: boolean;
+  appointmentCreated: boolean;
+  appointmentUpdated: boolean;
+  appointmentCancelled: boolean;
+  driverRequests: boolean;
+  crmActivity: boolean;
 }
 
 export const defaultNotificationPreferences: NotificationPreferences = {
@@ -65,4 +71,10 @@ export const defaultNotificationPreferences: NotificationPreferences = {
   passwordChanged: true,
   emailChanged: true,
   profileUpdated: true,
+  loginAlerts: true,
+  appointmentCreated: true,
+  appointmentUpdated: true,
+  appointmentCancelled: true,
+  driverRequests: true,
+  crmActivity: true,
 };

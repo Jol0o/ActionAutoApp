@@ -69,6 +69,7 @@ export default function RootLayout({
 
       <html lang="en" className="dark scrollbar-thin">
         <body
+          suppressHydrationWarning
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <SplashScreen />

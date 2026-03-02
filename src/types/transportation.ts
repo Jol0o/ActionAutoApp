@@ -62,6 +62,13 @@ export interface Shipment {
       };
   assignedAt?: string;
   driverAcceptedAt?: string;
+  proofOfDelivery?: {
+    imageUrl: string;
+    submittedAt: string;
+    note?: string;
+    confirmedAt?: string;
+    confirmedBy?: string;
+  };
 }
 
 export interface ShipmentStats {
