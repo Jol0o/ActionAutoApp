@@ -4,19 +4,26 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   Car,
   ChevronRight,
   ClipboardList,
+  DollarSign,
+  Home,
   LayoutDashboard,
+  Search,
   Settings,
+  Tag,
   Truck,
+  AlertCircle,
   User,
+  Calendar,
+  Inbox,
   CreditCard,
-  Users,
   Wrench,
   MapPin,
   Gift,
-  Wallet,
+  Wallet
 } from "lucide-react"
 
 import {
@@ -27,12 +34,16 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useOrg } from "@/hooks/useOrg";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useProfileContext } from "@/context/ProfileContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,70 +58,6 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 
-const data = {
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "CRM",
-      url: "/crm",
-      icon: Users,
-    },
-    {
-      title: "All Inventory",
-      url: "/inventory",
-      icon: Car,
-    },
-  ],
-
-  services: [
-    {
-      title: "Transportation",
-      url: "/transportation",
-      icon: Truck,
-    },
-    {
-      title: "Driver Tracker",
-      url: "/driver-tracker",
-      icon: User,
-    },
-    {
-      title: "Reports",
-      url: "/reports",
-      icon: ClipboardList,
-      items: [
-        {
-          title: "Sales Report",
-          url: "#",
-        },
-        {
-          title: "Inventory Health",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Billing",
-      url: "/billing",
-      icon: CreditCard,
-    },
-  ],
-  account: [
-    {
-      title: "Profile",
-      url: "/profile",
-      icon: User,
-    },
-    {
-      title: "Settings",
-      url: "/settings",
-      icon: Settings,
-    },
-  ],
-};
 
 const customerData = {
   navMain: [
@@ -137,23 +84,30 @@ const customerData = {
   ]
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function CustomerSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useUser();
   const { signOut } = useClerk();
-
-  const { isLoaded, isCustomer } = useOrg();
-  const { avatarUrl } = useProfileContext();
-
-  const activeNavMain = isCustomer ? customerData.navMain : data.navMain;
+  const { organization } = useOrg();
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
       <SidebarHeader className="h-16 border-b flex items-center px-6">
         <div className="flex items-center gap-2">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
+            {organization?.imageUrl ? (
+              <img
+                src={organization.imageUrl}
+                alt={organization.name}
+                className="size-full object-cover"
+              />
+            ) : (
+              <Car className="size-5" />
+            )}
+          </div>
           <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
             <span className="font-bold text-sm tracking-tight uppercase truncate max-w-[140px]">
-              ACTION AUTO UTAH
+              {organization?.name || "ACTION AUTO UTAH"}
             </span>
             <span className="text-[9px] font-extrabold text-green-600 uppercase tracking-widest leading-tight">
               Powered by Supra AI
@@ -163,63 +117,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {activeNavMain.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                asChild
-                tooltip={item.title}
-                isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
-              >
-                <Link href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-
-        {!isCustomer && (
-          <>
-            <div className="px-4 py-2 mt-4 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider group-data-[collapsible=icon]:hidden">
-              Services
-            </div>
-
-            <SidebarMenu>
-              {data.services.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  {item.items ? (
-                    <SidebarMenuButton asChild tooltip={item.title}>
-                      <div className="flex items-center w-full">
-                        <item.icon />
-                        <span className="flex-1">{item.title}</span>
-                        <ChevronRight className="ml-auto size-4 group-data-[state=open]/collapsible:rotate-90" />
-                      </div>
-                    </SidebarMenuButton>
-                  ) : (
-                    <SidebarMenuButton
-                      asChild
-                      tooltip={item.title}
-                      isActive={pathname === item.url}
-                    >
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </>
-        )}
-
-        <div className="px-4 py-2 mt-4 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider group-data-[collapsible=icon]:hidden">
-          Account
-        </div>
-
-        <SidebarMenu>
-          {data.account.map((item) => (
+          {customerData.navMain.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
@@ -243,7 +141,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton className="h-12 w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage
-                      src={avatarUrl || user?.imageUrl}
+                      src={user?.imageUrl}
                       alt={user?.fullName || ""}
                     />
                     <AvatarFallback className="rounded-lg">
@@ -271,7 +169,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarImage
-                        src={avatarUrl || user?.imageUrl}
+                        src={user?.imageUrl}
                         alt={user?.fullName || ""}
                       />
                       <AvatarFallback className="rounded-lg">

@@ -236,7 +236,7 @@ const allNotificationCategories = [
 const getNotificationCategoriesByRole = (role?: string) => {
   // Always show all categories for super_admin and admin
   if (!role || role === 'super_admin' || role === 'admin') return allNotificationCategories;
-  return allNotificationCategories.filter(category => 
+  return allNotificationCategories.filter(category =>
     category.roles.includes(role) || category.roles.length === 0
   );
 };
@@ -293,8 +293,8 @@ export default function ProfilePage() {
 
   // Custom status validation - max 20 chars
   const MAX_CUSTOM_STATUS_LENGTH = 20;
-  const customStatusError = customStatus.length > MAX_CUSTOM_STATUS_LENGTH 
-    ? `Max ${MAX_CUSTOM_STATUS_LENGTH} characters` 
+  const customStatusError = customStatus.length > MAX_CUSTOM_STATUS_LENGTH
+    ? `Max ${MAX_CUSTOM_STATUS_LENGTH} characters`
     : '';
 
   const handleCustomStatusChange = (value: string) => {
@@ -356,7 +356,7 @@ export default function ProfilePage() {
       // Check image size (base64 string, ~33% larger than binary)
       const imageSizeInBytes = croppedImage.length * 0.75;
       const imageSizeInMB = imageSizeInBytes / (1024 * 1024);
-      
+
       if (imageSizeInMB > 5) {
         toast.addToast({
           type: 'error',
@@ -369,7 +369,7 @@ export default function ProfilePage() {
 
       const token = await getToken();
       const response = await apiClient.patch('/api/profile/avatar', { avatar: croppedImage }, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       toast.addToast({
         type: 'success',
         title: 'Profile Picture Updated',
@@ -381,7 +381,7 @@ export default function ProfilePage() {
       console.error('Error updating profile picture:', error);
       const status = error.response?.status;
       const errorMessage = error.response?.data?.message || 'Failed to update profile picture.';
-      
+
       // Handle specific error codes
       if (status === 413) {
         toast.addToast({
@@ -412,7 +412,7 @@ export default function ProfilePage() {
     try {
       const token = await getToken();
       await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus }, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       toast.addToast({
         type: 'success',
         title: 'Status Updated',
@@ -485,7 +485,7 @@ export default function ProfilePage() {
 
       const token = await getToken();
       await apiClient.patch('/api/profile/personal-info', updatedInfo, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       toast.addToast({
         type: 'success',
         title: 'Information Saved',
@@ -555,7 +555,7 @@ export default function ProfilePage() {
     try {
       const token = await getToken();
       await apiClient.patch('/api/profile/notification-preferences', allEnabled, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       toast.addToast({
         type: 'success',
         title: 'Notifications Enabled',
@@ -599,7 +599,7 @@ export default function ProfilePage() {
     try {
       const token = await getToken();
       await apiClient.patch('/api/profile/notification-preferences', allDisabled, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       toast.addToast({
         type: 'warning',
         title: 'Notifications Disabled',
@@ -675,7 +675,7 @@ export default function ProfilePage() {
       // Redirect to Google Calendar OAuth endpoint
       const response = await apiClient.get('/api/google-calendar/auth-url');
       const data = response.data;
-      
+
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -698,7 +698,7 @@ export default function ProfilePage() {
   const handleDisconnectGoogleCalendar = async () => {
     try {
       await apiClient.post('/api/google-calendar/disconnect');
-      
+
       toast.addToast({
         type: 'success',
         title: 'Disconnected',
@@ -756,7 +756,7 @@ export default function ProfilePage() {
     if (jobTitle) {
       return { label: jobTitle, className: 'bg-blue-500/10 text-blue-600 border-blue-200' };
     }
-    
+
     switch (role) {
       case 'super_admin':
         return { label: 'Super Admin', className: 'bg-purple-500/10 text-purple-600 border-purple-200' };
@@ -813,19 +813,19 @@ export default function ProfilePage() {
           <div className="absolute inset-0 overflow-hidden">
             {/* Shimmer effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
-            
+
             {/* Floating particles */}
             <div className="absolute top-10 left-[10%] w-3 h-3 bg-white/20 rounded-full animate-float" style={{ animationDelay: '0s' }} />
             <div className="absolute top-20 left-[25%] w-2 h-2 bg-white/15 rounded-full animate-float" style={{ animationDelay: '1s' }} />
             <div className="absolute top-8 right-[20%] w-4 h-4 bg-white/10 rounded-full animate-float" style={{ animationDelay: '2s' }} />
             <div className="absolute bottom-16 right-[15%] w-2 h-2 bg-white/20 rounded-full animate-float" style={{ animationDelay: '0.5s' }} />
             <div className="absolute bottom-24 left-[40%] w-3 h-3 bg-white/15 rounded-full animate-float" style={{ animationDelay: '1.5s' }} />
-            
+
             {/* Glowing orbs */}
             <div className="absolute -top-20 -left-20 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-pulse-glow" />
             <div className="absolute -bottom-20 -right-20 w-60 h-60 bg-emerald-300/20 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1.5s' }} />
           </div>
-          
+
           {/* Truck SVG decoration */}
           <div className="absolute inset-0 overflow-hidden opacity-20 hidden sm:block">
             <svg viewBox="0 0 1200 400" className="absolute right-0 bottom-0 w-full h-full animate-truck-drive" preserveAspectRatio="xMaxYMax slice">
@@ -842,14 +842,14 @@ export default function ProfilePage() {
               {/* Profile Picture */}
               <div className="relative group animate-slide-in-left">
                 <div className="absolute -inset-1 bg-gradient-to-r from-white/40 via-emerald-300 to-white/40 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
-                <div 
+                <div
                   className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-[5px] border-white/60 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer transition-all hover:scale-110 profile-picture-glow"
                   onClick={() => setShowImageCropper(true)}
                 >
                   {(profile?.avatar || clerkUser?.imageUrl) ? (
-                    <img 
-                      src={profile?.avatar || clerkUser?.imageUrl} 
-                      alt="Profile" 
+                    <img
+                      src={profile?.avatar || clerkUser?.imageUrl}
+                      alt="Profile"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -859,7 +859,7 @@ export default function ProfilePage() {
                     <Camera className="size-6 sm:size-8 text-white animate-subtle-scale" />
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowStatusDialog(true)}
                   className={cn(
                     "absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-4 border-white shadow-lg flex items-center justify-center transition-all hover:scale-125 z-20 animate-status-aura",
@@ -927,43 +927,43 @@ export default function ProfilePage() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full flex flex-wrap justify-start gap-1.5 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-2 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-lg animate-slide-down">
-            <TabsTrigger 
-              value="overview" 
+            <TabsTrigger
+              value="overview"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/25 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <User className="size-4" />
               <span className="hidden sm:inline font-medium">Overview</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="personal" 
+            <TabsTrigger
+              value="personal"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/25 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <UserCog className="size-4" />
               <span className="hidden sm:inline font-medium">Personal Info</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="security" 
+            <TabsTrigger
+              value="security"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <ShieldCheck className="size-4" />
               <span className="hidden sm:inline font-medium">Security</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="notifications" 
+            <TabsTrigger
+              value="notifications"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-green-500/25 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <Bell className="size-4" />
               <span className="hidden sm:inline font-medium">Notifications</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="activity" 
+            <TabsTrigger
+              value="activity"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/25 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <History className="size-4" />
               <span className="hidden sm:inline font-medium">Activity</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="support" 
+            <TabsTrigger
+              value="support"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/25 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <HelpCircle className="size-4" />
@@ -992,8 +992,8 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-2">
                         <div className={cn(
                           "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
-                          profile?.accountStatus?.isActive 
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400" 
+                          profile?.accountStatus?.isActive
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
                             : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
                         )}>
                           <div className={cn(
@@ -1047,8 +1047,8 @@ export default function ProfilePage() {
                     <div className="flex flex-wrap gap-3 mb-6">
                       <Badge className={cn(
                         "px-4 py-2 text-sm gap-2 transition-all",
-                        profile?.accountStatus?.isActive 
-                          ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300 dark:border-green-700" 
+                        profile?.accountStatus?.isActive
+                          ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300 dark:border-green-700"
                           : "bg-red-100 text-red-700 border-red-300"
                       )}>
                         {profile?.accountStatus?.isActive ? (
@@ -1060,8 +1060,8 @@ export default function ProfilePage() {
                       </Badge>
                       <Badge className={cn(
                         "px-4 py-2 text-sm gap-2 transition-all",
-                        profile?.accountStatus?.isVerified 
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-300 dark:border-blue-700" 
+                        profile?.accountStatus?.isVerified
+                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-300 dark:border-blue-700"
                           : "bg-gray-100 text-gray-700 border-gray-300"
                       )}>
                         <Shield className="size-4" />
@@ -1081,7 +1081,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-right">
                         <span className="text-sm font-medium block">
-                          {profile?.accountStatus?.lastActive 
+                          {profile?.accountStatus?.lastActive
                             ? formatDistanceToNow(new Date(profile.accountStatus.lastActive), { addSuffix: true })
                             : 'Just now'}
                         </span>
@@ -1244,9 +1244,9 @@ export default function ProfilePage() {
                             Connected {formatDistanceToNow(new Date(profile.googleCalendar.connectedAt), { addSuffix: true })}
                           </p>
                         )}
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="w-full text-red-600 hover:text-red-700"
                           onClick={handleDisconnectGoogleCalendar}
                         >
@@ -1254,7 +1254,7 @@ export default function ProfilePage() {
                         </Button>
                       </div>
                     ) : (
-                      <Button 
+                      <Button
                         className="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white"
                         onClick={handleConnectGoogleCalendar}
                       >
@@ -1339,11 +1339,11 @@ export default function ProfilePage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Input 
-                        id="phone" 
-                        value={personalInfo.phone || ''} 
-                        onChange={(e) => setPersonalInfo({ ...personalInfo, phone: e.target.value })} 
-                        disabled={!editingPersonalInfo} 
+                      <Input
+                        id="phone"
+                        value={personalInfo.phone || ''}
+                        onChange={(e) => setPersonalInfo({ ...personalInfo, phone: e.target.value })}
+                        disabled={!editingPersonalInfo}
                         placeholder="(555) 123-4567"
                         className="flex-1 rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                       />
@@ -1354,7 +1354,7 @@ export default function ProfilePage() {
                     <Label htmlFor="location" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
                       <MapPin className="size-4 text-emerald-600" />Location
                     </Label>
-                    <Input id="location" value={personalInfo.location || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, location: e.target.value })} disabled={!editingPersonalInfo} placeholder="City, State" 
+                    <Input id="location" value={personalInfo.location || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, location: e.target.value })} disabled={!editingPersonalInfo} placeholder="City, State"
                       className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                     />
                   </div>
@@ -1363,11 +1363,11 @@ export default function ProfilePage() {
                     <Label htmlFor="dateOfBirth" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
                       <Calendar className="size-4 text-emerald-600" />Date of Birth
                     </Label>
-                    <Input 
-                      id="dateOfBirth" 
+                    <Input
+                      id="dateOfBirth"
                       type="date"
-                      value={personalInfo.dateOfBirth || ''} 
-                      onChange={(e) => setPersonalInfo({ ...personalInfo, dateOfBirth: e.target.value })} 
+                      value={personalInfo.dateOfBirth || ''}
+                      onChange={(e) => setPersonalInfo({ ...personalInfo, dateOfBirth: e.target.value })}
                       disabled={!editingPersonalInfo}
                       className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                     />
@@ -1391,7 +1391,7 @@ export default function ProfilePage() {
                     <Label htmlFor="jobTitle" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
                       <Briefcase className="size-4 text-emerald-600" />Job Title
                     </Label>
-                    <Input id="jobTitle" value={personalInfo.jobTitle || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, jobTitle: e.target.value })} disabled={!editingPersonalInfo} placeholder="Sales Manager" 
+                    <Input id="jobTitle" value={personalInfo.jobTitle || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, jobTitle: e.target.value })} disabled={!editingPersonalInfo} placeholder="Sales Manager"
                       className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                     />
                   </div>
@@ -1400,7 +1400,7 @@ export default function ProfilePage() {
                     <Label htmlFor="department" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
                       <Building2 className="size-4 text-emerald-600" />Department
                     </Label>
-                    <Input id="department" value={personalInfo.department || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, department: e.target.value })} disabled={!editingPersonalInfo} placeholder="Sales" 
+                    <Input id="department" value={personalInfo.department || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, department: e.target.value })} disabled={!editingPersonalInfo} placeholder="Sales"
                       className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                     />
                   </div>
@@ -1473,10 +1473,10 @@ export default function ProfilePage() {
                               />
                             </div>
                             {editingPersonalInfo && (
-                              <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => removeSocialLink(index)}
                                 className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                               >
@@ -1710,10 +1710,10 @@ export default function ProfilePage() {
                       ).length;
                       const allEnabled = categoryEnabled === category.items.length;
                       const someEnabled = categoryEnabled > 0 && categoryEnabled < category.items.length;
-                      
+
                       return (
-                        <div 
-                          key={category.title} 
+                        <div
+                          key={category.title}
                           className="space-y-3 animate-slide-up"
                           style={{ animationDelay: `${categoryIndex * 0.1}s` }}
                         >
@@ -1775,20 +1775,20 @@ export default function ProfilePage() {
                               </Button>
                             </div>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pl-2">
                             {category.items.map((item, itemIndex) => {
                               const Icon = item.icon;
                               const isEnabled = preferences[item.key as keyof NotificationPreferences];
                               const isSaving = savingPreference === item.key;
-                              
+
                               return (
-                                <div 
-                                  key={item.key} 
+                                <div
+                                  key={item.key}
                                   className={cn(
                                     "group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-300 hover-card-lift",
-                                    isEnabled 
-                                      ? "border-green-300 bg-gradient-to-br from-green-50 to-emerald-50/50 dark:border-green-700 dark:from-green-900/30 dark:to-emerald-900/20 shadow-sm" 
+                                    isEnabled
+                                      ? "border-green-300 bg-gradient-to-br from-green-50 to-emerald-50/50 dark:border-green-700 dark:from-green-900/30 dark:to-emerald-900/20 shadow-sm"
                                       : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-900",
                                     isSaving && "opacity-70 pointer-events-none"
                                   )}
@@ -1800,18 +1800,18 @@ export default function ProfilePage() {
                                       <Loader2 className="size-5 animate-spin text-green-600" />
                                     </div>
                                   )}
-                                  
+
                                   <div className="flex items-center gap-3">
                                     <div className={cn(
                                       "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300",
-                                      isEnabled 
-                                        ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25" 
+                                      isEnabled
+                                        ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25"
                                         : "bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700"
                                     )}>
                                       <Icon className={cn(
                                         "size-5 transition-all duration-300",
-                                        isEnabled 
-                                          ? "text-white" 
+                                        isEnabled
+                                          ? "text-white"
                                           : "text-gray-500 dark:text-gray-400"
                                       )} />
                                     </div>
@@ -1866,9 +1866,9 @@ export default function ProfilePage() {
                       <Activity className="size-3" />
                       {activities.length} events
                     </Badge>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => { fetchProfile(); toast.addToast({ type: 'info', title: 'Refreshed', message: 'Activity events reloaded.' }); }}
                       className="gap-2 border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all hover:scale-105 hover-lift"
                     >
@@ -1884,17 +1884,17 @@ export default function ProfilePage() {
                     <div className="relative">
                       {/* Timeline line */}
                       <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500 via-violet-500 to-transparent" />
-                      
+
                       <div className="space-y-4">
                         {activities.map((activity, index) => (
-                          <div 
-                            key={activity._id || index} 
+                          <div
+                            key={activity._id || index}
                             className="relative flex items-start gap-4 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-300 hover:shadow-md hover:-translate-y-1 ml-2 animate-slide-up"
                             style={{ animationDelay: `${index * 0.05}s` }}
                           >
                             {/* Timeline dot */}
                             <div className="absolute -left-4 top-6 w-3 h-3 rounded-full bg-purple-500 border-2 border-white dark:border-gray-900 shadow-md animate-pulse" />
-                            
+
                             <div className={cn(
                               "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-110 shadow-md",
                               activity.type === 'login' && "bg-gradient-to-br from-green-500 to-emerald-600 text-white",
@@ -1977,8 +1977,8 @@ export default function ProfilePage() {
                     </Button>
                     <Badge className="absolute top-1/2 right-3 -translate-y-1/2 bg-amber-100 text-amber-700 text-[10px] animate-soft-pulse">Coming Soon</Badge>
                   </div>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full justify-start btn-hover-scale animate-slide-up stagger-3"
                     onClick={() => window.open('https://mail.google.com/mail/?view=cm&to=support@actionautoutah.com&su=Support%20Request', '_blank')}
                   >
@@ -2040,8 +2040,8 @@ export default function ProfilePage() {
                         Permanently delete your account and all associated data. This action cannot be undone.
                       </p>
                     </div>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950 btn-hover-scale animate-button-entry"
                       onClick={() => setShowDeleteDialog(true)}
                     >
@@ -2091,7 +2091,7 @@ export default function ProfilePage() {
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={() => {
                 setShowDeleteDialog(false);
@@ -2143,7 +2143,7 @@ export default function ProfilePage() {
             }}>
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               disabled={deleteConfirmText !== 'DELETE'}
               onClick={handleDeleteAccount}
@@ -2223,11 +2223,11 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="customStatus">Custom Status Message</Label>
-              <Input 
-                id="customStatus" 
-                value={customStatus} 
-                onChange={(e) => handleCustomStatusChange(e.target.value)} 
-                placeholder="What's on your mind?" 
+              <Input
+                id="customStatus"
+                value={customStatus}
+                onChange={(e) => handleCustomStatusChange(e.target.value)}
+                placeholder="What's on your mind?"
                 maxLength={MAX_CUSTOM_STATUS_LENGTH}
                 className={cn(
                   customStatusError && "border-red-500 focus-visible:ring-red-500"

@@ -36,7 +36,7 @@ export default function SignUpPage() {
 
           <TabsContent value="dealer">
             <div className="flex justify-center">
-              <SignUp path="/sign-up" routing="path" signInUrl="/sign-in" />
+              <SignUp path="/sign-up" routing="path" signInUrl="/sign-in" fallbackRedirectUrl="/" />
             </div>
           </TabsContent>
 

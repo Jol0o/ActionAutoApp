@@ -102,7 +102,7 @@ export function useOrg() {
         }
     });
 
-    const userRole = orgContext?.data?.role as 'user' | 'admin' | 'super_admin' | 'driver' | undefined;
+    const userRole = orgContext?.data?.role as 'customer' | 'employee' | 'admin' | 'super_admin' | 'driver' | undefined;
 
     return {
         isLoaded: isLoaded && !isLoadingOrgContext && (!organizationId || !isLoadingOrgDetails),
@@ -110,6 +110,7 @@ export function useOrg() {
         organizationId: organizationId as string | undefined,
         role: orgRole as 'admin' | 'member' | 'driver' | undefined,
         userRole,
+        isCustomer: userRole === 'customer',
         isAdmin: orgRole === 'admin',
         isDriver: userRole === 'driver',
         isSuperAdmin: userRole === 'super_admin',

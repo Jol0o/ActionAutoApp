@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Search, ChevronDown, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useUser, useClerk, useOrganization } from "@clerk/nextjs"
+import { useUser, useClerk } from "@clerk/nextjs"
 import { NotificationBell } from "@/components/NotificationBell"
 import { NotificationProvider } from "@/context/NotificationContext"
 import { ThemeProvider } from "@/context/ThemeContext"
@@ -37,7 +37,7 @@ function DashboardLayoutContent({
     const { signOut } = useClerk();
     const { avatarUrl } = useProfileContext();
     // Use custom hook for organization context
-    const { organization, isLoaded, isSuperAdmin, isDriver } = useOrg();
+    const { organization, isLoaded, isSuperAdmin, isDriver, userRole } = useOrg();
     const router = useRouter();
     const { isImpersonating } = adminStore.useStore();
 
@@ -60,11 +60,22 @@ function DashboardLayoutContent({
             return;
         }
 
-        // If no organization is found, redirect to selection/onboarding
-        if (!organization) {
-            router.push('/org-selection');
+        const isCustomer = userRole === 'customer';
+        const isEmployee = userRole === 'employee';
+
+        // Strict isolation: Customers must never view the organization/employee layout
+        if (isCustomer) {
+            router.push('/customer');
+            return;
         }
-    }, [isLoaded, organization, isSuperAdmin, isDriver, router, isImpersonating]);
+
+        // If employee has no organization, they must go to org-selection
+        if (!organization && isEmployee) {
+            router.push('/org-selection');
+            return;
+        }
+
+    }, [isLoaded, organization, isSuperAdmin, isDriver, router, isImpersonating, userRole]);
 
     return (
         <SidebarProvider>
