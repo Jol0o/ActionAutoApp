@@ -3,6 +3,7 @@
 import { LogOut, LayoutDashboard, CarFront, MapIcon, Wallet, Settings } from "lucide-react"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
 
 import {
     Sidebar,
@@ -73,10 +74,10 @@ export function CustomerSidebar() {
                                             tooltip={item.title}
                                             className={`h-11 rounded-lg transition-all ${isActive ? 'bg-green-500/10 text-green-600 font-semibold' : 'text-zinc-500 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                                         >
-                                            <a href={item.url} className="flex items-center gap-3">
+                                            <Link href={item.url} className="flex gap-3">
                                                 <item.icon className={`w-5 h-5 ${isActive ? 'text-green-600' : 'text-zinc-400'}`} />
-                                                <span>{item.title}</span>
-                                            </a>
+                                                {item.title}
+                                            </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
                                 )
@@ -93,10 +94,10 @@ export function CustomerSidebar() {
                             asChild
                             className="h-11 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                         >
-                            <a href="/customer/settings" className="flex items-center gap-3">
+                            <Link href="/customer/settings" className="flex gap-3">
                                 <Settings className="w-5 h-5 text-zinc-400" />
                                 <span>Settings</span>
-                            </a>
+                            </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

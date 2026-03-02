@@ -13,6 +13,10 @@ import {
   User,
   CreditCard,
   Users,
+  Wrench,
+  MapPin,
+  Gift,
+  Wallet,
 } from "lucide-react"
 
 import {

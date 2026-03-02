@@ -23,6 +23,7 @@ export default clerkMiddleware(async (auth, request) => {
         // If there's truly no userId attached to the request headers, we redirect to sign-in
         // But we DO NOT call auth.protect() which throws a hard 401 and kills the session loop.
         const signInUrl = new URL('/sign-in', request.url);
+        signInUrl.search = new URL(request.url).search; // PRESERVE ?ref= URL parameters!
         return NextResponse.redirect(signInUrl);
     }
 
