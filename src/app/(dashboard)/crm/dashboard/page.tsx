@@ -46,6 +46,9 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { apiClient } from "@/lib/api-client"
 import AppointmentsPage from "@/app/(dashboard)/appointments/page"
+// ─── Supra Leo AI — Floating widget for entire CRM ──────────────────────────
+import { SupraLeoAI } from "@/components/supra-leo-ai/SupraLeoAI"
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -589,6 +592,16 @@ export default function CrmDashboardPage() {
         <AppointmentsPage />
 
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          SUPRA LEO AI — Floating Widget (CRM-wide)
+          ─────────────────────────────────────────────────────────────────────
+          Mounted at dashboard level so it persists across ALL views:
+          Leads, Calendar, Upcoming, Booked, Timeproof, Account, etc.
+          Renders fixed bottom-right at z-[9999]. Zero layout impact.
+      ══════════════════════════════════════════════════════════════════════ */}
+      <SupraLeoAI />
+
     </TooltipProvider>
   )
 }
