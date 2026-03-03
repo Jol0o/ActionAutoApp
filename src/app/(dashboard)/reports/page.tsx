@@ -1,210 +1,545 @@
 "use client"
 
 import * as React from "react"
+import { useAuth } from "@clerk/nextjs"
+import { apiClient } from "@/lib/api-client"
 import {
-    FileText,
-    Download,
-    Archive,
-    MapPin,
-    CreditCard,
-    Truck,
-    CheckSquare,
-    Calendar,
-    HardDrive,
+    FileText, Archive, MapPin, CreditCard, Truck,
+    CheckSquare, Loader2, AlertCircle, Download, Calendar, Database, Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
+import { formatCurrency } from "@/utils/format"
+import { Payment } from "@/types/billing"
+import { DriverPayout } from "@/types/driver-payout"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ReportCategory = "Transportation" | "Driver Tracker" | "Billings"
-type TabValue = "ALL" | "Transportation" | "Driver Tracker" | "Billings"
+type TabValue = "ALL" | "Transportation" | "Driver Reports" | "Billings"
 
-interface Report {
-    id: string
-    title: string
-    description: string
-    category: ReportCategory
-    date: string
-    size: string
-    format: "PDF"
+interface AssignedDriver { _id: string; name: string; email: string }
+
+interface Shipment {
+    _id: string
+    status: "Available for Pickup" | "Cancelled" | "Delivered" | "Dispatched" | "In-Route"
+    origin: string
+    destination: string
+    trackingNumber?: string
+    pickedUp?: string
+    delivered?: string
+    assignedDriverId?: AssignedDriver | string | null
+    assignedAt?: string
+    proofOfDelivery?: { submittedAt?: string; confirmedAt?: string }
+    preservedQuoteData?: { firstName?: string; lastName?: string; vehicleName?: string; rate?: number }
+    createdAt: string
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const REPORTS: Report[] = [
-    // Transportation — left empty intentionally (teammate will fill)
-    // Driver Tracker
-    {
-        id: "dt-001",
-        title: "Driver Activity Summary",
-        description: "Daily activity logs and summaries for all active drivers",
-        category: "Driver Tracker",
-        date: "Mar 2, 2026",
-        size: "1.2 MB",
-        format: "PDF",
-    },
-    {
-        id: "dt-002",
-        title: "Trip Completion Report",
-        description: "Completed trips with timestamps, routes, and durations",
-        category: "Driver Tracker",
-        date: "Mar 1, 2026",
-        size: "2.0 MB",
-        format: "PDF",
-    },
-    {
-        id: "dt-003",
-        title: "Driver Performance Metrics",
-        description: "On-time delivery rate, distance covered, and efficiency scores",
-        category: "Driver Tracker",
-        date: "Feb 28, 2026",
-        size: "1.7 MB",
-        format: "PDF",
-    },
-    {
-        id: "dt-004",
-        title: "Live Route History",
-        description: "Historical GPS route data and stops for all tracked drivers",
-        category: "Driver Tracker",
-        date: "Feb 25, 2026",
-        size: "3.1 MB",
-        format: "PDF",
-    },
-    {
-        id: "dt-005",
-        title: "Driver Status Overview",
-        description: "Active, idle, and offline driver breakdown by date range",
-        category: "Driver Tracker",
-        date: "Feb 20, 2026",
-        size: "0.9 MB",
-        format: "PDF",
-    },
-    // Billings
-    {
-        id: "bi-001",
-        title: "Payment Summary Report",
-        description: "All succeeded, pending, and failed payments for the period",
-        category: "Billings",
-        date: "Mar 1, 2026",
-        size: "1.5 MB",
-        format: "PDF",
-    },
-    {
-        id: "bi-002",
-        title: "Invoice History",
-        description: "Complete invoice log with numbers, customers, and amounts",
-        category: "Billings",
-        date: "Mar 1, 2026",
-        size: "2.2 MB",
-        format: "PDF",
-    },
-    {
-        id: "bi-003",
-        title: "Revenue Analysis",
-        description: "Monthly revenue breakdown by payment status and source",
-        category: "Billings",
-        date: "Feb 28, 2026",
-        size: "1.8 MB",
-        format: "PDF",
-    },
-    {
-        id: "bi-004",
-        title: "Driver Payout Report",
-        description: "All driver payouts processed via Stripe Connect",
-        category: "Billings",
-        date: "Feb 25, 2026",
-        size: "1.1 MB",
-        format: "PDF",
-    },
-    {
-        id: "bi-005",
-        title: "Outstanding Payments",
-        description: "Overdue and pending invoices with customer contact details",
-        category: "Billings",
-        date: "Feb 20, 2026",
-        size: "0.8 MB",
-        format: "PDF",
-    },
-]
-
-// ─── Category badge classes (light + dark) ────────────────────────────────────
-
-const BADGE_CLASS: Record<ReportCategory, string> = {
-    Transportation:
-        "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-    "Driver Tracker":
-        "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
-    Billings:
-        "bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800",
+interface ReportData {
+    shipments: Shipment[]   // already month-filtered
+    payments: Payment[]     // already month-filtered
+    payouts: DriverPayout[] // already month-filtered
 }
 
-const TABS: TabValue[] = ["ALL", "Transportation", "Driver Tracker", "Billings"]
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// ─── Tab Icon ─────────────────────────────────────────────────────────────────
+function driverName(s: Shipment): string {
+    if (!s.assignedDriverId) return "—"
+    if (typeof s.assignedDriverId === "object") return s.assignedDriverId.name || "—"
+    return "—"
+}
+
+function customerName(s: Shipment): string {
+    return [s.preservedQuoteData?.firstName, s.preservedQuoteData?.lastName].filter(Boolean).join(" ") || "—"
+}
+
+function calcDuration(pickedUp?: string, delivered?: string): string {
+    if (!pickedUp || !delivered) return "—"
+    const diff = new Date(delivered).getTime() - new Date(pickedUp).getTime()
+    const h = Math.floor(diff / 3_600_000)
+    const m = Math.floor((diff % 3_600_000) / 60_000)
+    return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+function fmtDate(d?: string): string {
+    if (!d) return "—"
+    return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url; a.download = filename; a.click()
+    URL.revokeObjectURL(url)
+}
+
+// ─── PDF generators ───────────────────────────────────────────────────────────
+
+async function generateDriverReportPdf(data: ReportData, monthLabel: string): Promise<Blob> {
+    const { jsPDF } = await import("jspdf")
+    const autoTable = (await import("jspdf-autotable")).default
+    const doc = new jsPDF({ orientation: "landscape" })
+
+    const assigned = data.shipments.filter(s => s.assignedDriverId != null)
+
+    // Unique drivers
+    const driverMap = new Map<string, { name: string; loads: Shipment[] }>()
+    assigned.forEach(s => {
+        const d = typeof s.assignedDriverId === "object" ? s.assignedDriverId : null
+        if (!d) return
+        if (!driverMap.has(d._id)) driverMap.set(d._id, { name: d.name, loads: [] })
+        driverMap.get(d._id)!.loads.push(s)
+    })
+
+    const delivered = assigned.filter(s => s.status === "Delivered").length
+    const approved = assigned.filter(s => !!s.proofOfDelivery?.confirmedAt).length
+    const pendingApproval = assigned.filter(s => s.proofOfDelivery?.submittedAt && !s.proofOfDelivery?.confirmedAt).length
+
+    // ── Header ────────────────────────────────────────────────────────────────
+    doc.setFillColor(30, 100, 200)
+    doc.rect(0, 0, 297, 22, "F")
+    doc.setTextColor(255)
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(14)
+    doc.text("ACTION AUTO UTAH", 14, 10)
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    doc.text("Driver Reports", 14, 17)
+    doc.setTextColor(0)
+
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "bold")
+    doc.text(`Period: ${monthLabel}`, 14, 29)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8)
+    doc.setTextColor(100)
+    doc.text(`Generated: ${new Date().toLocaleDateString("en-US", { dateStyle: "long" })}`, 14, 35)
+    doc.setTextColor(0)
+
+    // ── Summary stats row ─────────────────────────────────────────────────────
+    const stats = [
+        { label: "Total Drivers", value: String(driverMap.size) },
+        { label: "Assigned Loads", value: String(assigned.length) },
+        { label: "Delivered", value: String(delivered) },
+        { label: "Pending Approval", value: String(pendingApproval) },
+        { label: "Dealer Approved", value: String(approved) },
+    ]
+    const boxW = 50, boxH = 14, startX = 14, startY = 41
+    stats.forEach((stat, i) => {
+        const x = startX + i * (boxW + 4)
+        doc.setFillColor(245, 247, 252)
+        doc.roundedRect(x, startY, boxW, boxH, 2, 2, "F")
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(11)
+        doc.setTextColor(30, 100, 200)
+        doc.text(stat.value, x + boxW / 2, startY + 7, { align: "center" })
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(6.5)
+        doc.setTextColor(100)
+        doc.text(stat.label, x + boxW / 2, startY + 12, { align: "center" })
+    })
+    doc.setTextColor(0)
+
+    // ── Section 1: All Assigned Loads ─────────────────────────────────────────
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(9)
+    doc.text("All Assigned Loads", 14, 63)
+
+    autoTable(doc, {
+        startY: 66,
+        head: [["Driver", "Vehicle", "Customer", "Origin", "Destination", "Pick-Up Date", "Delivered", "Duration", "Status", "Dealer Approved"]],
+        body: assigned.length > 0
+            ? assigned.map(s => [
+                driverName(s),
+                s.preservedQuoteData?.vehicleName || "—",
+                customerName(s),
+                s.origin || "—",
+                s.destination || "—",
+                fmtDate(s.pickedUp),
+                fmtDate(s.delivered),
+                calcDuration(s.pickedUp, s.delivered),
+                s.status,
+                s.proofOfDelivery?.confirmedAt ? "Approved" : s.proofOfDelivery?.submittedAt ? "Pending Review" : "—",
+            ])
+            : [["No loads assigned this period", "", "", "", "", "", "", "", "", ""]],
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [30, 100, 200], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 255] },
+        margin: { left: 14, right: 14 },
+    })
+
+    // ── Section 2: Per-Driver Breakdown ───────────────────────────────────────
+    doc.addPage()
+
+    doc.setFillColor(30, 100, 200)
+    doc.rect(0, 0, 297, 10, "F")
+    doc.setTextColor(255)
+    doc.setFontSize(8)
+    doc.setFont("helvetica", "bold")
+    doc.text(`ACTION AUTO UTAH  —  Driver Reports  —  ${monthLabel}  (continued)`, 14, 7)
+    doc.setTextColor(0)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(9)
+    doc.text("Per-Driver Summary", 14, 20)
+
+    const driverRows = Array.from(driverMap.values()).map(({ name, loads }) => {
+        const dDelivered = loads.filter(x => x.status === "Delivered").length
+        const dApproved = loads.filter(x => !!x.proofOfDelivery?.confirmedAt).length
+        const dPending = loads.filter(x => x.proofOfDelivery?.submittedAt && !x.proofOfDelivery?.confirmedAt).length
+        const dInProgress = loads.filter(x => x.status === "In-Route" || x.status === "Dispatched").length
+        const dCancelled = loads.filter(x => x.status === "Cancelled").length
+        const rate = loads.length > 0 ? `${Math.round((dDelivered / loads.length) * 100)}%` : "0%"
+        const vehicles = [...new Set(loads.map(x => x.preservedQuoteData?.vehicleName).filter(Boolean))].join(", ") || "—"
+        return [name, String(loads.length), String(dDelivered), rate, String(dApproved), String(dPending), String(dInProgress), String(dCancelled), vehicles]
+    })
+
+    autoTable(doc, {
+        startY: 23,
+        head: [["Driver", "Total Loads", "Delivered", "Success Rate", "Approved", "Pending Approval", "In Progress", "Cancelled", "Vehicles Handled"]],
+        body: driverRows.length > 0 ? driverRows : [["No drivers assigned", "", "", "", "", "", "", "", ""]],
+        styles: { fontSize: 7.5, cellPadding: 2.5 },
+        headStyles: { fillColor: [30, 100, 200], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 255] },
+        margin: { left: 14, right: 14 },
+    })
+
+    // ── Section 3: Pending Approvals ──────────────────────────────────────────
+    const lastY2 = (doc as any).lastAutoTable?.finalY ?? 80
+    if (lastY2 < 170) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(9)
+        doc.text("Pending Dealer Approvals", 14, lastY2 + 12)
+
+        const pendingRows = assigned
+            .filter(s => s.proofOfDelivery?.submittedAt && !s.proofOfDelivery?.confirmedAt)
+            .map(s => [driverName(s), customerName(s), s.preservedQuoteData?.vehicleName || "—",
+                `${s.origin} → ${s.destination}`, fmtDate(s.proofOfDelivery?.submittedAt), s.status])
+
+        autoTable(doc, {
+            startY: lastY2 + 15,
+            head: [["Driver", "Customer", "Vehicle", "Route", "Proof Submitted", "Status"]],
+            body: pendingRows.length > 0 ? pendingRows : [["No pending approvals", "", "", "", "", ""]],
+            styles: { fontSize: 7.5, cellPadding: 2.5 },
+            headStyles: { fillColor: [230, 120, 20], textColor: 255, fontStyle: "bold" },
+            alternateRowStyles: { fillColor: [255, 252, 245] },
+            margin: { left: 14, right: 14 },
+        })
+    }
+
+    return doc.output("blob")
+}
+
+async function generateBillingReportPdf(data: ReportData, monthLabel: string): Promise<Blob> {
+    const { jsPDF } = await import("jspdf")
+    const autoTable = (await import("jspdf-autotable")).default
+    const doc = new jsPDF({ orientation: "landscape" })
+
+    const totalRevenue = data.payments.filter(p => p.status === "succeeded").reduce((s, p) => s + p.amount, 0)
+    const totalPending = data.payments.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0)
+    const totalPaidOut = data.payouts.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0)
+    const totalPendingOut = data.payouts.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0)
+
+    // ── Header ────────────────────────────────────────────────────────────────
+    doc.setFillColor(100, 40, 180)
+    doc.rect(0, 0, 297, 22, "F")
+    doc.setTextColor(255)
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(14)
+    doc.text("ACTION AUTO UTAH", 14, 10)
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    doc.text("Billing Report", 14, 17)
+    doc.setTextColor(0)
+
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "bold")
+    doc.text(`Period: ${monthLabel}`, 14, 29)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8)
+    doc.setTextColor(100)
+    doc.text(`Generated: ${new Date().toLocaleDateString("en-US", { dateStyle: "long" })}`, 14, 35)
+    doc.setTextColor(0)
+
+    // ── Summary stats ─────────────────────────────────────────────────────────
+    const stats = [
+        { label: "Total Revenue", value: formatCurrency(totalRevenue) },
+        { label: "Pending Payments", value: formatCurrency(totalPending) },
+        { label: "Driver Payouts Sent", value: formatCurrency(totalPaidOut) },
+        { label: "Pending Payouts", value: formatCurrency(totalPendingOut) },
+        { label: "Total Transactions", value: String(data.payments.length + data.payouts.length) },
+    ]
+    const boxW = 50, boxH = 14, startX = 14, startY = 41
+    stats.forEach((stat, i) => {
+        const x = startX + i * (boxW + 4)
+        doc.setFillColor(248, 245, 255)
+        doc.roundedRect(x, startY, boxW, boxH, 2, 2, "F")
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(9)
+        doc.setTextColor(100, 40, 180)
+        doc.text(stat.value, x + boxW / 2, startY + 7, { align: "center" })
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(6.5)
+        doc.setTextColor(100)
+        doc.text(stat.label, x + boxW / 2, startY + 12, { align: "center" })
+    })
+    doc.setTextColor(0)
+
+    // ── Section 1: Customer Payments ──────────────────────────────────────────
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(9)
+    doc.text("Customer Payments to Dealer", 14, 63)
+
+    autoTable(doc, {
+        startY: 66,
+        head: [["Invoice #", "Customer", "Email", "Description", "Amount", "Status", "Date"]],
+        body: data.payments.length > 0
+            ? data.payments.map(p => [
+                p.invoiceNumber || "—",
+                p.customerName,
+                p.customerEmail,
+                p.description,
+                formatCurrency(p.amount),
+                p.status,
+                fmtDate(p.paidAt || p.createdAt),
+            ])
+            : [["No payments this period", "", "", "", "", "", ""]],
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [100, 40, 180], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [252, 250, 255] },
+        margin: { left: 14, right: 14 },
+    })
+
+    // ── Section 2: Driver Payouts ─────────────────────────────────────────────
+    doc.addPage()
+
+    doc.setFillColor(100, 40, 180)
+    doc.rect(0, 0, 297, 10, "F")
+    doc.setTextColor(255)
+    doc.setFontSize(8)
+    doc.setFont("helvetica", "bold")
+    doc.text(`ACTION AUTO UTAH  —  Billing Report  —  ${monthLabel}  (continued)`, 14, 7)
+    doc.setTextColor(0)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(9)
+    doc.text("Driver Payouts from Dealer", 14, 20)
+
+    autoTable(doc, {
+        startY: 23,
+        head: [["Payout #", "Driver", "Driver Email", "Amount", "Status", "Description", "Paid Date"]],
+        body: data.payouts.length > 0
+            ? data.payouts.map(p => [
+                p.payoutNumber || "—",
+                p.driverName,
+                p.driverEmail,
+                formatCurrency(p.amount),
+                p.status,
+                p.description || "—",
+                fmtDate(p.paidAt || p.createdAt),
+            ])
+            : [["No driver payouts this period", "", "", "", "", "", ""]],
+        styles: { fontSize: 7.5, cellPadding: 2.5 },
+        headStyles: { fillColor: [100, 40, 180], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [252, 250, 255] },
+        margin: { left: 14, right: 14 },
+    })
+
+    // ── Section 3: Billing Summary by Status ──────────────────────────────────
+    const lastY = (doc as any).lastAutoTable?.finalY ?? 80
+    if (lastY < 170) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(9)
+        doc.text("Payment Summary by Status", 14, lastY + 12)
+
+        const byStatus: Record<string, { count: number; total: number }> = {}
+        data.payments.forEach(p => {
+            if (!byStatus[p.status]) byStatus[p.status] = { count: 0, total: 0 }
+            byStatus[p.status].count++
+            byStatus[p.status].total += p.amount
+        })
+
+        autoTable(doc, {
+            startY: lastY + 15,
+            head: [["Status", "No. of Payments", "Total Amount"]],
+            body: Object.entries(byStatus).length > 0
+                ? Object.entries(byStatus).map(([status, { count, total }]) => [
+                    status.charAt(0).toUpperCase() + status.slice(1),
+                    String(count),
+                    formatCurrency(total),
+                ])
+                : [["No data", "", ""]],
+            styles: { fontSize: 8, cellPadding: 3 },
+            headStyles: { fillColor: [100, 40, 180], textColor: 255, fontStyle: "bold" },
+            alternateRowStyles: { fillColor: [252, 250, 255] },
+            margin: { left: 14, right: 110 },
+        })
+    }
+
+    return doc.output("blob")
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TABS: TabValue[] = ["ALL", "Transportation", "Driver Reports", "Billings"]
 
 function TabIcon({ tab }: { tab: TabValue }) {
     if (tab === "ALL") return <CheckSquare className="size-3.5" />
     if (tab === "Transportation") return <Truck className="size-3.5" />
-    if (tab === "Driver Tracker") return <MapPin className="size-3.5" />
+    if (tab === "Driver Reports") return <MapPin className="size-3.5" />
     return <CreditCard className="size-3.5" />
+}
+
+function getMonthOptions() {
+    const now = new Date()
+    return Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        return {
+            value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+            label: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+        }
+    })
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
+    const { getToken } = useAuth()
     const [activeTab, setActiveTab] = React.useState<TabValue>("ALL")
+    const [selectedMonth, setSelectedMonth] = React.useState(() => {
+        const now = new Date()
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    })
     const [selected, setSelected] = React.useState<Set<string>>(new Set())
+    const [downloading, setDownloading] = React.useState<string | null>(null)
 
-    const filtered = React.useMemo(() => {
-        if (activeTab === "ALL") return REPORTS
-        return REPORTS.filter((r) => r.category === activeTab)
-    }, [activeTab])
+    const [rawShipments, setRawShipments] = React.useState<Shipment[]>([])
+    const [rawPayments, setRawPayments] = React.useState<Payment[]>([])
+    const [rawPayouts, setRawPayouts] = React.useState<DriverPayout[]>([])
+    const [loading, setLoading] = React.useState(true)
+    const [error, setError] = React.useState<string | null>(null)
 
-    const counts: Record<ReportCategory, number> = {
-        Transportation: 0,
-        "Driver Tracker": REPORTS.filter((r) => r.category === "Driver Tracker").length,
-        Billings: REPORTS.filter((r) => r.category === "Billings").length,
-    }
+    const monthOptions = React.useMemo(() => getMonthOptions(), [])
 
-    const isAllSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id))
+    const fetchAll = React.useCallback(async () => {
+        setLoading(true); setError(null)
+        try {
+            const token = await getToken()
+            const headers = token ? { Authorization: `Bearer ${token}` } : {}
+            const [sRes, pRes, payRes] = await Promise.all([
+                apiClient.get("/api/shipments", { headers }),
+                apiClient.get("/api/payments", { headers }),
+                apiClient.get("/api/driver-payouts", { headers }),
+            ])
+            setRawShipments(Array.isArray(sRes.data?.data) ? sRes.data.data : [])
+            setRawPayments(Array.isArray(pRes.data?.data?.payments) ? pRes.data.data.payments : [])
+            setRawPayouts(Array.isArray(payRes.data?.data) ? payRes.data.data : [])
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || "Failed to load reports.")
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    React.useEffect(() => { fetchAll() }, [fetchAll])
+
+    // Month-filtered data
+    const reportData: ReportData = React.useMemo(() => ({
+        shipments: rawShipments.filter(s => (s.assignedAt || s.createdAt)?.startsWith(selectedMonth)),
+        payments: rawPayments.filter(p => p.createdAt?.startsWith(selectedMonth)),
+        payouts: rawPayouts.filter(p => p.createdAt?.startsWith(selectedMonth)),
+    }), [rawShipments, rawPayments, rawPayouts, selectedMonth])
+
+    const monthLabel = monthOptions.find(o => o.value === selectedMonth)?.label ?? selectedMonth
+
+    // Derived counts
+    const assignedLoads = reportData.shipments.filter(s => s.assignedDriverId != null)
+    const uniqueDrivers = new Set(assignedLoads.map(s =>
+        typeof s.assignedDriverId === "object" ? s.assignedDriverId?._id : s.assignedDriverId
+    ).filter(Boolean)).size
+    const deliveredCount = assignedLoads.filter(s => s.status === "Delivered").length
+    const pendingApprovalCount = assignedLoads.filter(s => s.proofOfDelivery?.submittedAt && !s.proofOfDelivery?.confirmedAt).length
+    const totalRevenue = reportData.payments.filter(p => p.status === "succeeded").reduce((s, p) => s + p.amount, 0)
+    const totalPaidOut = reportData.payouts.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0)
+
+    // Selection
+    const visibleIds = activeTab === "ALL"
+        ? ["driver-report", "billing-report"]
+        : activeTab === "Driver Reports" ? ["driver-report"]
+        : activeTab === "Billings" ? ["billing-report"]
+        : []
+
+    const isAllSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id))
     const selectedCount = selected.size
 
     function toggleSelect(id: string) {
-        setSelected((prev) => {
-            const next = new Set(prev)
-            next.has(id) ? next.delete(id) : next.add(id)
-            return next
-        })
+        setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
     }
 
     function toggleSelectAll() {
-        setSelected((prev) => {
-            const next = new Set(prev)
-            if (isAllSelected) {
-                filtered.forEach((r) => next.delete(r.id))
-            } else {
-                filtered.forEach((r) => next.add(r.id))
-            }
-            return next
+        setSelected(prev => {
+            const n = new Set(prev)
+            if (isAllSelected) visibleIds.forEach(id => n.delete(id))
+            else visibleIds.forEach(id => n.add(id))
+            return n
         })
     }
 
-    function handlePdf() {
-        const picks = REPORTS.filter((r) => selected.has(r.id))
-        if (picks.length === 0) return toast.info("Select at least one report to download.")
-        if (picks.length === 1) return toast.success(`Downloading "${picks[0].title}" as PDF…`)
-        toast.info("Select only 1 report to download as PDF. Use ZIP for multiple.")
+    async function downloadReport(id: string) {
+        setDownloading(id)
+        try {
+            if (id === "driver-report") {
+                const blob = await generateDriverReportPdf(reportData, monthLabel)
+                triggerDownload(blob, `Driver Reports - ${monthLabel}.pdf`)
+                toast.success(`Driver Reports — ${monthLabel} downloaded.`)
+            } else {
+                const blob = await generateBillingReportPdf(reportData, monthLabel)
+                triggerDownload(blob, `Billing Report - ${monthLabel}.pdf`)
+                toast.success(`Billing Report — ${monthLabel} downloaded.`)
+            }
+        } catch {
+            toast.error("Failed to generate PDF.")
+        } finally {
+            setDownloading(null)
+        }
     }
 
-    function handleZip() {
-        const picks = REPORTS.filter((r) => selected.has(r.id))
-        if (picks.length < 2) return toast.info("Select 2 or more reports to download as ZIP.")
-        toast.success(`Downloading ${picks.length} reports as ZIP…`)
+    async function handlePdf() {
+        const picks = [...selected]
+        if (picks.length === 0) return toast.info("Select a report to download.")
+        if (picks.length > 1) return toast.info("Select only 1 report for PDF. Use ZIP for multiple.")
+        await downloadReport(picks[0])
     }
+
+    async function handleZip() {
+        const picks = [...selected]
+        if (picks.length < 2) return toast.info("Select 2 reports to download as ZIP.")
+        setDownloading("zip")
+        try {
+            const JSZip = (await import("jszip")).default
+            const zip = new JSZip()
+            if (picks.includes("driver-report")) {
+                const blob = await generateDriverReportPdf(reportData, monthLabel)
+                zip.file(`Driver Reports - ${monthLabel}.pdf`, blob)
+            }
+            if (picks.includes("billing-report")) {
+                const blob = await generateBillingReportPdf(reportData, monthLabel)
+                zip.file(`Billing Report - ${monthLabel}.pdf`, blob)
+            }
+            const zipBlob = await zip.generateAsync({ type: "blob" })
+            triggerDownload(zipBlob, `ActionAuto Reports - ${monthLabel}.zip`)
+            toast.success(`Reports downloaded as ZIP.`)
+            setSelected(new Set())
+        } catch {
+            toast.error("Failed to generate ZIP.")
+        } finally {
+            setDownloading(null)
+        }
+    }
+
+    const showDriver = activeTab === "ALL" || activeTab === "Driver Reports"
+    const showBilling = activeTab === "ALL" || activeTab === "Billings"
 
     return (
         <div className="p-4 sm:p-6 space-y-5 min-h-screen">
@@ -212,31 +547,35 @@ export default function ReportsPage() {
             {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                        Reports Dashboard
-                    </h1>
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Reports Dashboard</h1>
                     <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
                         View, filter, and download reports across all categories
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2 text-xs sm:text-sm border-border"
-                        onClick={handlePdf}
-                        disabled={selectedCount === 0}
+                    <select
+                        value={selectedMonth}
+                        onChange={e => { setSelectedMonth(e.target.value); setSelected(new Set()) }}
+                        className="h-8 rounded-md border border-border bg-background text-foreground text-xs px-2 focus:outline-none focus:ring-1 focus:ring-primary"
                     >
-                        <FileText className="size-3.5 sm:size-4" />
-                        PDF
+                        {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <Button
+                        variant="outline" size="sm"
+                        className="gap-2 text-xs border-border"
+                        onClick={handlePdf}
+                        disabled={selectedCount !== 1 || !!downloading}
+                    >
+                        <FileText className="size-3.5" /> PDF
                     </Button>
                     <Button
-                        size="sm"
-                        className="gap-2 text-xs sm:text-sm"
+                        size="sm" className="gap-2 text-xs"
                         onClick={handleZip}
-                        disabled={selectedCount < 2}
+                        disabled={selectedCount < 2 || !!downloading}
                     >
-                        <Archive className="size-3.5 sm:size-4" />
+                        {downloading === "zip"
+                            ? <Loader2 className="size-3.5 animate-spin" />
+                            : <Archive className="size-3.5" />}
                         ZIP
                     </Button>
                 </div>
@@ -245,14 +584,10 @@ export default function ReportsPage() {
             {/* ── Tabs ── */}
             <div className="border-b border-border">
                 <div className="flex">
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
+                    {TABS.map(tab => (
+                        <button key={tab} onClick={() => setActiveTab(tab)}
                             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                                activeTab === tab
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                activeTab === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
                             }`}
                         >
                             <TabIcon tab={tab} />
@@ -263,41 +598,89 @@ export default function ReportsPage() {
             </div>
 
             {/* ── Stats bar ── */}
-            <Card className="border-border shadow-sm">
-                <CardContent className="px-5 py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div className="flex flex-wrap items-center gap-6">
-                            <StatItem label="Total Reports" value={REPORTS.length} />
-                            <div className="w-px h-8 bg-border" />
-                            <StatItem label="Selected" value={selectedCount} highlight />
-                            <div className="w-px h-8 bg-border hidden sm:block" />
-                            <StatItem label="Transportation" value={counts["Transportation"]} muted />
-                            <StatItem label="Driver Tracker" value={counts["Driver Tracker"]} muted />
-                            <StatItem label="Billings" value={counts["Billings"]} muted />
-                        </div>
-                        <button
-                            onClick={toggleSelectAll}
-                            className="text-sm font-medium text-primary hover:underline underline-offset-2 transition-colors"
-                        >
-                            {isAllSelected ? "Deselect All" : "Select All"}
-                        </button>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-card rounded-xl border border-border px-5 py-4 shadow-sm">
+                <div className="flex flex-wrap items-center gap-6">
+                    <StatItem label="Total Reports" value={2} />
+                    <div className="w-px h-8 bg-border" />
+                    <StatItem label="Selected" value={selectedCount} highlight />
+                    <div className="w-px h-8 bg-border hidden sm:block" />
+                    <StatItem label="Transportation" value={0} muted />
+                    <StatItem label="Driver Reports" value={1} muted />
+                    <StatItem label="Billings" value={1} muted />
+                </div>
+                <button
+                    onClick={toggleSelectAll}
+                    className="text-sm font-medium text-primary hover:underline underline-offset-2 transition-colors"
+                >
+                    {isAllSelected ? "Deselect All" : "Select All"}
+                </button>
+            </div>
 
-            {/* ── Report Cards Grid ── */}
-            {filtered.length === 0 ? (
-                <EmptyState tab={activeTab} />
+            {/* ── Content ── */}
+            {loading ? (
+                <div className="flex items-center justify-center py-32">
+                    <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                </div>
+            ) : error ? (
+                <div className="flex flex-col items-center justify-center py-32 gap-3">
+                    <AlertCircle className="size-8 text-destructive" />
+                    <p className="text-sm text-destructive font-medium">{error}</p>
+                    <Button variant="outline" size="sm" onClick={fetchAll}>Try Again</Button>
+                </div>
+            ) : activeTab === "Transportation" ? (
+                <EmptyState icon={<Truck className="size-6" />}
+                    title="Transportation reports coming soon"
+                    description="This section is being handled by another team member." />
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filtered.map((report) => (
+
+                    {/* Driver Report Card */}
+                    {showDriver && (
                         <ReportCard
-                            key={report.id}
-                            report={report}
-                            isSelected={selected.has(report.id)}
-                            onToggle={() => toggleSelect(report.id)}
+                            title={`Driver Reports`}
+                            subtitle={monthLabel}
+                            description="All driver assignments, delivery outcomes, per-driver performance, and dealer approval status"
+                            category="Driver Reports"
+                            categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                            stats={[
+                                { icon: <Users className="size-3" />, label: `${uniqueDrivers} drivers` },
+                                { icon: <Database className="size-3" />, label: `${assignedLoads.length} loads` },
+                                { icon: <Calendar className="size-3" />, label: monthLabel },
+                            ]}
+                            highlights={[
+                                { label: "Delivered", value: deliveredCount, color: "text-emerald-600 dark:text-emerald-400" },
+                                { label: "Pending Approval", value: pendingApprovalCount, color: "text-amber-600 dark:text-amber-400" },
+                            ]}
+                            isSelected={selected.has("driver-report")}
+                            isDownloading={downloading === "driver-report"}
+                            onToggle={() => toggleSelect("driver-report")}
+                            onDownload={() => downloadReport("driver-report")}
                         />
-                    ))}
+                    )}
+
+                    {/* Billing Report Card */}
+                    {showBilling && (
+                        <ReportCard
+                            title={`Billing Report`}
+                            subtitle={monthLabel}
+                            description="Customer payments to dealer, driver payouts, and full transaction history for the period"
+                            category="Billings"
+                            categoryClass="bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
+                            stats={[
+                                { icon: <CreditCard className="size-3" />, label: `${reportData.payments.length} payments` },
+                                { icon: <Database className="size-3" />, label: `${reportData.payouts.length} payouts` },
+                                { icon: <Calendar className="size-3" />, label: monthLabel },
+                            ]}
+                            highlights={[
+                                { label: "Revenue", value: formatCurrency(totalRevenue), color: "text-emerald-600 dark:text-emerald-400" },
+                                { label: "Paid to Drivers", value: formatCurrency(totalPaidOut), color: "text-blue-600 dark:text-blue-400" },
+                            ]}
+                            isSelected={selected.has("billing-report")}
+                            isDownloading={downloading === "billing-report"}
+                            onToggle={() => toggleSelect("billing-report")}
+                            onDownload={() => downloadReport("billing-report")}
+                        />
+                    )}
                 </div>
             )}
         </div>
@@ -306,29 +689,13 @@ export default function ReportsPage() {
 
 // ─── Stat Item ────────────────────────────────────────────────────────────────
 
-function StatItem({
-    label,
-    value,
-    highlight,
-    muted,
-}: {
-    label: string
-    value: number
-    highlight?: boolean
-    muted?: boolean
+function StatItem({ label, value, highlight, muted }: {
+    label: string; value: number; highlight?: boolean; muted?: boolean
 }) {
     return (
         <div className="flex flex-col">
             <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
-            <span
-                className={`text-xl font-bold leading-tight ${
-                    highlight
-                        ? "text-primary"
-                        : muted
-                        ? "text-muted-foreground"
-                        : "text-foreground"
-                }`}
-            >
+            <span className={`text-xl font-bold leading-tight ${highlight ? "text-primary" : muted ? "text-muted-foreground" : "text-foreground"}`}>
                 {value}
             </span>
         </div>
@@ -338,21 +705,26 @@ function StatItem({
 // ─── Report Card ──────────────────────────────────────────────────────────────
 
 function ReportCard({
-    report,
-    isSelected,
-    onToggle,
+    title, subtitle, description, category, categoryClass,
+    stats, highlights, isSelected, isDownloading, onToggle, onDownload,
 }: {
-    report: Report
+    title: string
+    subtitle: string
+    description: string
+    category: string
+    categoryClass: string
+    stats: { icon: React.ReactNode; label: string }[]
+    highlights: { label: string; value: string | number; color: string }[]
     isSelected: boolean
+    isDownloading: boolean
     onToggle: () => void
+    onDownload: () => void
 }) {
     return (
         <div
             onClick={onToggle}
-            className={`relative rounded-xl border shadow-sm cursor-pointer transition-all duration-150 p-5 space-y-4 group bg-card ${
-                isSelected
-                    ? "border-primary ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/50 hover:shadow-md"
+            className={`relative bg-card rounded-xl border shadow-sm cursor-pointer transition-all duration-150 p-5 space-y-4 group ${
+                isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40 hover:shadow-md"
             }`}
         >
             {/* Checkbox */}
@@ -360,72 +732,68 @@ function ReportCard({
                 <Checkbox
                     checked={isSelected}
                     onCheckedChange={onToggle}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
                 />
             </div>
 
             {/* Icon */}
-            <div className="size-11 bg-muted rounded-lg flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors border border-border">
+            <div className="size-11 bg-muted rounded-lg flex items-center justify-center text-muted-foreground border border-border group-hover:text-primary transition-colors">
                 <FileText className="size-5" />
             </div>
 
-            {/* Title & Description */}
-            <div className="space-y-1 pr-6">
-                <h3 className="font-bold text-sm text-foreground leading-snug">{report.title}</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {report.description}
-                </p>
+            {/* Title */}
+            <div className="space-y-0.5 pr-6">
+                <h3 className="font-bold text-sm text-foreground leading-snug">{title}</h3>
+                <p className="text-xs font-semibold text-primary">{subtitle}</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">{description}</p>
             </div>
 
-            {/* Category Badge */}
-            <Badge variant="outline" className={`text-[10px] font-semibold px-2 py-0.5 ${BADGE_CLASS[report.category]}`}>
-                {report.category}
+            {/* Category */}
+            <Badge variant="outline" className={`text-[10px] font-semibold px-2 py-0.5 ${categoryClass}`}>
+                {category}
             </Badge>
 
-            {/* Meta */}
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                    <Calendar className="size-3" />
-                    {report.date}
-                </span>
-                <span className="flex items-center gap-1">
-                    <HardDrive className="size-3" />
-                    {report.size}
-                </span>
-                <span className="font-semibold">• {report.format}</span>
+            {/* Highlights (live stats) */}
+            <div className="flex items-center gap-3">
+                {highlights.map(h => (
+                    <div key={h.label} className="bg-muted/50 border border-border rounded-lg px-2.5 py-1.5 text-center">
+                        <p className="text-[9px] text-muted-foreground font-medium">{h.label}</p>
+                        <p className={`text-sm font-bold ${h.color}`}>{h.value}</p>
+                    </div>
+                ))}
             </div>
 
-            {/* Per-card download (hover, only when not selected) */}
-            {!isSelected && (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation()
-                        toast.success(`Downloading "${report.title}" as PDF…`)
-                    }}
-                    className="absolute bottom-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-primary"
-                >
-                    <Download className="size-4" />
-                </button>
-            )}
+            {/* Meta row */}
+            <div className="flex items-center flex-wrap gap-3 text-[11px] text-muted-foreground">
+                {stats.map((s, i) => (
+                    <span key={i} className="flex items-center gap-1">{s.icon}{s.label}</span>
+                ))}
+                <span className="font-semibold">• PDF</span>
+            </div>
+
+            {/* Download button on hover */}
+            <button
+                onClick={e => { e.stopPropagation(); onDownload() }}
+                disabled={isDownloading}
+                className="absolute bottom-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-primary disabled:opacity-50"
+            >
+                {isDownloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            </button>
         </div>
     )
 }
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
-function EmptyState({ tab }: { tab: TabValue }) {
+function EmptyState({ icon, title, description }: {
+    icon: React.ReactNode; title: string; description: string
+}) {
     return (
         <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-            <div className="size-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                <FileText className="size-6" />
-            </div>
+            <div className="size-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground">{icon}</div>
             <div>
-                <p className="font-semibold text-foreground text-sm">No reports yet</p>
-                <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-                    {tab === "Transportation"
-                        ? "Transportation reports are coming soon. Your teammate is working on this section."
-                        : `No reports found under ${tab}.`}
-                </p>
+                <p className="font-semibold text-foreground text-sm">{title}</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xs">{description}</p>
             </div>
         </div>
     )
