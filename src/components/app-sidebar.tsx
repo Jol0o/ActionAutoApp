@@ -81,16 +81,6 @@ const data = {
       title: "Reports",
       url: "/reports",
       icon: ClipboardList,
-      items: [
-        {
-          title: "Sales Report",
-          url: "#",
-        },
-        {
-          title: "Inventory Health",
-          url: "#",
-        },
-      ],
     },
     {
       title: "Billing",
@@ -188,26 +178,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenu>
               {data.services.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  {item.items ? (
-                    <SidebarMenuButton asChild tooltip={item.title}>
-                      <div className="flex items-center w-full">
-                        <item.icon />
-                        <span className="flex-1">{item.title}</span>
-                        <ChevronRight className="ml-auto size-4 group-data-[state=open]/collapsible:rotate-90" />
-                      </div>
-                    </SidebarMenuButton>
-                  ) : (
-                    <SidebarMenuButton
-                      asChild
-                      tooltip={item.title}
-                      isActive={pathname === item.url}
-                    >
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  )}
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={item.title}
+                    isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
+                  >
+                    <Link href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
