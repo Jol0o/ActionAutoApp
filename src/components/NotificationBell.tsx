@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Bell, Check, Trash2, Package, Truck, ShieldCheck, Mail, User, CheckCheck, AlertCircle, UserPlus, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Bell, Check, Trash2, Package, Truck, ShieldCheck, Mail, User, CheckCheck, AlertCircle, UserPlus, CheckCircle2, XCircle, Loader2, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -47,6 +47,10 @@ const getNotificationIcon = (type: string) => {
       return <CheckCircle2 className="size-5" />;
     case 'driver_request_rejected':
       return <XCircle className="size-5" />;
+    case 'referral_joined':
+      return <UserPlus className="size-5" />;
+    case 'referral_rewarded':
+      return <DollarSign className="size-5" />;
     default:
       return <Bell className="size-5" />;
   }
@@ -77,6 +81,10 @@ const getNotificationColor = (type: string) => {
       return 'from-green-500 to-emerald-500';
     case 'driver_request_rejected':
       return 'from-red-500 to-rose-500';
+    case 'referral_joined':
+      return 'from-blue-500 to-indigo-500';
+    case 'referral_rewarded':
+      return 'from-emerald-500 to-green-600';
     default:
       return 'from-gray-500 to-slate-500';
   }

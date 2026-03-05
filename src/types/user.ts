@@ -68,15 +68,20 @@ export interface GoogleCalendarStatus {
 export interface UserProfile {
   _id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
+  clerkId?: string;
   avatar?: string;
-  role: 'user' | 'admin' | 'super_admin' | 'driver';
+  avatarUrl?: string;
+  role: 'user' | 'admin' | 'super_admin' | 'driver' | 'customer';
   onlineStatus: OnlineStatus;
   customStatus?: string;
   personalInfo?: PersonalInfo;
   securityStatus?: SecurityStatus;
   accountStatus?: AccountStatus;
   recentActivities?: RecentActivity[];
+  socialLinks?: SocialLink[];
   googleCalendar?: GoogleCalendarStatus;
   notificationPreferences: NotificationPreferences;
   theme: 'light' | 'dark';

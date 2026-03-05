@@ -19,6 +19,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ProfileProvider } from "@/context/ProfileContext";
+import { ProfileToastProvider } from "@/components/ProfileToast";
 
 function DriverLayoutContent({
   children,
@@ -113,11 +115,14 @@ export default function DriverLayout({
     <ThemeProvider>
       <NotificationProvider>
         <DriverLayoutContent>{children}</DriverLayoutContent>
-      <ProfileProvider>
-        <ProfileToastProvider>
-          <NotificationProvider>
-            <DriverLayoutContent>{children}</DriverLayoutContent>
-          </NotificationProvider>
-        </ProfileToastProvider>
-      </Profile
+        <ProfileProvider>
+          <ProfileToastProvider>
+            <NotificationProvider>
+              <DriverLayoutContent>{children}</DriverLayoutContent>
+            </NotificationProvider>
+          </ProfileToastProvider>
+        </ProfileProvider>
+      </NotificationProvider>
+    </ThemeProvider>
+  );
 }

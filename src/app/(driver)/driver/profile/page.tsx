@@ -198,7 +198,7 @@ export default function DriverProfilePage() {
     try {
       // Check image size
       const imageSizeInMB = croppedImageBlob.size / (1024 * 1024);
-      
+
       if (imageSizeInMB > 5) {
         toast.addToast({
           type: 'error',
@@ -219,7 +219,7 @@ export default function DriverProfilePage() {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
       const updatedUser = response.data?.data;
       const newAvatarUrl = updatedUser?.avatar ? getAvatarUrl(updatedUser.avatar) : null;
 
@@ -236,7 +236,7 @@ export default function DriverProfilePage() {
       console.error('Error updating profile picture:', error);
       const status = error.response?.status;
       const errorMessage = error.response?.data?.message || 'Failed to update profile picture.';
-      
+
       if (status === 413) {
         toast.addToast({
           type: 'error',
@@ -266,7 +266,7 @@ export default function DriverProfilePage() {
     try {
       const token = await getToken();
       await apiClient.delete('/api/profile/avatar', { headers: { Authorization: `Bearer ${token}` } });
-      
+
       toast.addToast({
         type: 'success',
         title: 'Profile Picture Removed',
@@ -291,7 +291,7 @@ export default function DriverProfilePage() {
     try {
       const token = await getToken();
       await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus }, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       toast.addToast({
         type: 'success',
         title: 'Status Updated',
@@ -313,7 +313,7 @@ export default function DriverProfilePage() {
 
   const handleSavePersonalInfo = async () => {
     // Profanity check on text fields
-    const fieldsToCheck = [personalInfo.displayName, personalInfo.bio, personalInfo.address];
+    const fieldsToCheck = [personalInfo.bio, personalInfo.phone, personalInfo.location];
     for (const val of fieldsToCheck) {
       if (val && containsCurseWord(val)) {
         toast.addToast({
@@ -329,7 +329,7 @@ export default function DriverProfilePage() {
     try {
       const token = await getToken();
       await apiClient.patch('/api/profile/personal-info', personalInfo, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       toast.addToast({
         type: 'success',
         title: 'Information Saved',
@@ -428,14 +428,14 @@ export default function DriverProfilePage() {
               {/* Profile Picture */}
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-white/40 via-teal-300 to-white/40 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
-                <div 
+                <div
                   className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-4 border-white/40 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer"
                   onClick={() => setShowImageCropper(true)}
                 >
                   {(getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl) ? (
-                    <img 
-                      src={getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl} 
-                      alt="Profile" 
+                    <img
+                      src={getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl}
+                      alt="Profile"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -445,7 +445,7 @@ export default function DriverProfilePage() {
                     <Camera className="size-6 sm:size-8 text-white" />
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowStatusDialog(true)}
                   className={cn(
                     "absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-4 border-white shadow-lg flex items-center justify-center transition-colors animate-status-aura",
@@ -714,7 +714,7 @@ export default function DriverProfilePage() {
                     <div className="flex justify-between">
                       <span className="text-gray-500 dark:text-gray-400">Last Active</span>
                       <span className="font-medium">
-                        {profile?.accountStatus?.lastActive 
+                        {profile?.accountStatus?.lastActive
                           ? formatDistanceToNow(new Date(profile.accountStatus.lastActive), { addSuffix: true })
                           : 'Now'
                         }

@@ -6,6 +6,8 @@ import { CustomerSidebar } from "@/components/customer/CustomerSidebar"
 import { NotificationBell } from "@/components/NotificationBell"
 import { NotificationProvider } from "@/context/NotificationContext"
 import { ThemeProvider } from "@/context/ThemeContext"
+import { ProfileProvider } from "@/context/ProfileContext"
+import { ProfileToastProvider } from "@/components/ProfileToast"
 import { useRouter } from "next/navigation"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { useOrg } from "@/hooks/useOrg"
@@ -104,9 +106,13 @@ export default function CustomerLayout({
 }) {
     return (
         <ThemeProvider>
-            <NotificationProvider>
-                <CustomerLayoutContent>{children}</CustomerLayoutContent>
-            </NotificationProvider>
+            <ProfileProvider>
+                <ProfileToastProvider>
+                    <NotificationProvider>
+                        <CustomerLayoutContent>{children}</CustomerLayoutContent>
+                    </NotificationProvider>
+                </ProfileToastProvider>
+            </ProfileProvider>
         </ThemeProvider>
     )
 }

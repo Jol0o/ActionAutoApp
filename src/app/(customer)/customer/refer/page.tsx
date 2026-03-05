@@ -121,6 +121,13 @@ export default function ReferAndEarnPage() {
     const referralCode = dashboard?.referralCode || "PENDING";
     const transactions = dashboard?.recentTransactions || [];
 
+    // Calculate pending withdrawals to show "Net Available"
+    const totalPendingWithdrawals = transactions
+        .filter(t => t.type === 'withdrawal' && t.status === 'pending')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    const netAvailableBalance = Math.max(0, walletBalance - totalPendingWithdrawals);
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
@@ -152,12 +159,17 @@ export default function ReferAndEarnPage() {
                                 <h2 className="text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400">
                                     ${walletBalance.toFixed(2)}
                                 </h2>
+                                {totalPendingWithdrawals > 0 && (
+                                    <p className="text-orange-400 text-sm font-medium mt-1">
+                                        (${totalPendingWithdrawals.toFixed(2)} pending) — ${netAvailableBalance.toFixed(2)} available
+                                    </p>
+                                )}
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <Button
                                     onClick={() => setIsWithdrawModalOpen(true)}
-                                    disabled={walletBalance <= 0}
+                                    disabled={netAvailableBalance <= 0}
                                     className="bg-green-600 hover:bg-green-500 text-white border-none shadow-lg h-12 px-6 rounded-xl font-bold disabled:opacity-50">
                                     Withdraw Funds
                                 </Button>
@@ -272,12 +284,12 @@ export default function ReferAndEarnPage() {
 
                     <form onSubmit={handleWithdrawSubmit} className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="amount">Amount to Withdraw (Max: ${walletBalance.toFixed(2)})</Label>
+                            <Label htmlFor="amount">Amount to Withdraw (Max: ${netAvailableBalance.toFixed(2)})</Label>
                             <Input
                                 id="amount"
                                 type="number"
                                 step="0.01"
-                                max={walletBalance}
+                                max={netAvailableBalance}
                                 placeholder="0.00"
                                 value={withdrawAmount}
                                 onChange={(e) => setWithdrawAmount(e.target.value)}

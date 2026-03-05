@@ -56,6 +56,11 @@ const data = {
             title: "Users",
             url: "/admin/users",
             icon: Users,
+        },
+        {
+            title: "Payouts",
+            url: "/admin/payouts",
+            icon: CreditCard,
         }
     ],
 }

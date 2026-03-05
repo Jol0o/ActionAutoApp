@@ -1,4 +1,4 @@
-export type NotificationType = 
+export type NotificationType =
   | 'quote_created'
   | 'quote_updated'
   | 'quote_deleted'
@@ -15,7 +15,9 @@ export type NotificationType =
   | 'profile_updated'
   | 'driver_request'
   | 'driver_request_approved'
-  | 'driver_request_rejected';
+  | 'driver_request_rejected'
+  | 'referral_joined'
+  | 'referral_rewarded';
 
 export interface Notification {
   _id: string;
@@ -59,6 +61,8 @@ export interface NotificationPreferences {
   appointmentCancelled: boolean;
   driverRequests: boolean;
   crmActivity: boolean;
+  referral_joined: boolean;
+  referral_rewarded: boolean;
 }
 
 export const defaultNotificationPreferences: NotificationPreferences = {
@@ -77,4 +81,6 @@ export const defaultNotificationPreferences: NotificationPreferences = {
   appointmentCancelled: true,
   driverRequests: true,
   crmActivity: true,
+  referral_joined: true,
+  referral_rewarded: true,
 };

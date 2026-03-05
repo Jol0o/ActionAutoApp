@@ -28,7 +28,7 @@ export function QuoteResultModal({
   if (!quote) return null
 
   const vehicle = quote.vehicleId
-  const vehicleName = vehicle 
+  const vehicleName = vehicle
     ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
     : quote.vehicleName || 'Vehicle'
 
@@ -41,10 +41,10 @@ export function QuoteResultModal({
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-bold text-gray-900">
+              <DialogTitle className="text-2xl font-bold text-foreground">
                 Quote Calculated Successfully
               </DialogTitle>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Your shipping quote is ready for review
               </p>
             </div>
@@ -55,8 +55,8 @@ export function QuoteResultModal({
           {/* Vehicle Information */}
           {quote.vehicleImage && (
             <div className="relative rounded-lg overflow-hidden">
-              <img 
-                src={quote.vehicleImage} 
+              <img
+                src={quote.vehicleImage}
                 alt={vehicleName}
                 className="w-full h-48 object-cover"
               />
@@ -73,30 +73,30 @@ export function QuoteResultModal({
           )}
 
           {/* Customer Information */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <div className="bg-card border border-blue-200 rounded-lg p-4">
+            <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
               <Package className="w-4 h-4 text-blue-600" />
               Customer Details
             </h4>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-gray-500">Name</p>
-                <p className="font-medium text-gray-900">{quote.firstName} {quote.lastName}</p>
+                <p className="text-muted-foreground">Name</p>
+                <p className="font-medium text-foreground">{quote.firstName} {quote.lastName}</p>
               </div>
               <div>
-                <p className="text-gray-500">Email</p>
-                <p className="font-medium text-gray-900">{quote.email}</p>
+                <p className="text-muted-foreground">Email</p>
+                <p className="font-medium text-foreground">{quote.email}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-gray-500">Phone</p>
-                <p className="font-medium text-gray-900">{quote.phone}</p>
+                <p className="text-muted-foreground">Phone</p>
+                <p className="font-medium text-foreground">{quote.phone}</p>
               </div>
             </div>
           </div>
 
           {/* Route Information */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-card border border-gray-200 rounded-lg p-4">
+            <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-blue-600" />
               Route Details
             </h4>
@@ -108,78 +108,78 @@ export function QuoteResultModal({
               </div>
               <div className="flex-1 space-y-6">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Origin</p>
-                  <p className="font-semibold text-gray-900">{quote.fromAddress}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Origin</p>
+                  <p className="font-semibold text-foreground">{quote.fromAddress}</p>
                   <p className="text-sm text-gray-600">{quote.fromZip}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Destination</p>
-                  <p className="font-semibold text-gray-900">{quote.toAddress}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Destination</p>
+                  <p className="font-semibold text-foreground">{quote.toAddress}</p>
                   <p className="text-sm text-gray-600">{quote.toZip}</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-500 mb-1">Distance</p>
-                <p className="text-lg font-bold text-gray-900">{quote.miles} mi</p>
+                <p className="text-xs text-muted-foreground mb-1">Distance</p>
+                <p className="text-lg font-bold text-foreground">{quote.miles} mi</p>
               </div>
             </div>
           </div>
 
           {/* Pricing and Timeline */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+            <div className="bg-gradient-to-br from-primary/50 to-primary/10 border border-primary/20 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-5 h-5 text-green-600" />
-                <h4 className="font-semibold text-gray-900">Transport Rate</h4>
+                <DollarSign className="w-5 h-5 text-primary" />
+                <h4 className="font-semibold text-foreground">Transport Rate</h4>
               </div>
-              <p className="text-3xl font-bold text-green-700">${quote.rate.toLocaleString()}</p>
-              <p className="text-xs text-gray-600 mt-1">Total shipping cost</p>
+              <p className="text-3xl font-bold text-primary">${quote.rate.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-1">Total shipping cost</p>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-gradient-to-br from-primary/50 to-primary/10 border border-primary/20 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-5 h-5 text-blue-600" />
-                <h4 className="font-semibold text-gray-900">Estimated Time</h4>
+                <Clock className="w-5 h-5 text-primary" />
+                <h4 className="font-semibold text-foreground">Estimated Time</h4>
               </div>
-              <p className="text-3xl font-bold text-blue-700">{quote.eta.min}-{quote.eta.max}</p>
-              <p className="text-xs text-gray-600 mt-1">days</p>
+              <p className="text-3xl font-bold text-primary">{quote.eta.min}-{quote.eta.max}</p>
+              <p className="text-xs text-muted-foreground mt-1">days</p>
             </div>
           </div>
 
           {/* Transport Options */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <p className="text-xs text-gray-500 mb-1">Transport Type</p>
-              <p className="text-sm font-semibold text-gray-900">
+            <div className="bg-card rounded-lg p-3 border border-gray-200">
+              <p className="text-xs text-muted-foreground mb-1">Transport Type</p>
+              <p className="text-sm font-semibold text-foreground">
                 {quote.enclosedTrailer ? 'Enclosed' : 'Open'}
               </p>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <p className="text-xs text-gray-500 mb-1">Vehicle Status</p>
-              <p className="text-sm font-semibold text-gray-900">
+            <div className="bg-card rounded-lg p-3 border border-gray-200">
+              <p className="text-xs text-muted-foreground mb-1">Vehicle Status</p>
+              <p className="text-sm font-semibold text-foreground">
                 {quote.vehicleInoperable ? 'Inoperable' : 'Operable'}
               </p>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <p className="text-xs text-gray-500 mb-1">Units</p>
-              <p className="text-sm font-semibold text-gray-900">{quote.units}</p>
+            <div className="bg-card rounded-lg p-3 border border-gray-200">
+              <p className="text-xs text-muted-foreground mb-1">Units</p>
+              <p className="text-sm font-semibold text-foreground">{quote.units}</p>
             </div>
           </div>
 
           {/* VIN and Stock Info */}
           {(quote.vin || quote.stockNumber) && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="bg-card border border-gray-200 rounded-lg p-4">
               <div className="grid grid-cols-2 gap-4">
                 {quote.vin && (
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">VIN Number</p>
-                    <p className="text-sm font-semibold text-gray-900">{quote.vin}</p>
+                    <p className="text-xs text-muted-foreground mb-1">VIN Number</p>
+                    <p className="text-sm font-semibold text-foreground">{quote.vin}</p>
                   </div>
                 )}
                 {quote.stockNumber && (
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Stock Number</p>
-                    <p className="text-sm font-semibold text-gray-900">{quote.stockNumber}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Stock Number</p>
+                    <p className="text-sm font-semibold text-foreground">{quote.stockNumber}</p>
                   </div>
                 )}
               </div>
