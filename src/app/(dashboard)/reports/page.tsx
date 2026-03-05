@@ -5,15 +5,17 @@ import { useAuth } from "@clerk/nextjs"
 import { apiClient } from "@/lib/api-client"
 import {
     FileText, Archive, MapPin, CreditCard, Truck,
-    CheckSquare, Loader2, AlertCircle, Download, Calendar, Database, Users,
+    CheckSquare, Loader2, AlertCircle, Calendar, Database, Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import { formatCurrency } from "@/utils/format"
 import { Payment } from "@/types/billing"
 import { DriverPayout } from "@/types/driver-payout"
+import { ReportCard } from "@/components/reports/ReportCard"
+import { EmptyState } from "@/components/reports/EmptyState"
+import { ReportPreviewModal } from "@/components/reports/ReportPreviewModal"
+import { ReportsAnalytics } from "@/components/reports/ReportsAnalytics"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -413,6 +415,7 @@ export default function ReportsPage() {
     })
     const [selected, setSelected] = React.useState<Set<string>>(new Set())
     const [downloading, setDownloading] = React.useState<string | null>(null)
+    const [preview, setPreview] = React.useState<"driver" | "billing" | null>(null)
 
     const [rawShipments, setRawShipments] = React.useState<Shipment[]>([])
     const [rawPayments, setRawPayments] = React.useState<Payment[]>([])
@@ -632,6 +635,15 @@ export default function ReportsPage() {
                     title="Transportation reports coming soon"
                     description="This section is being handled by another team member." />
             ) : (
+                <div className="space-y-4">
+                    {activeTab === "ALL" && (
+                        <ReportsAnalytics
+                            shipments={reportData.shipments}
+                            rawPayments={rawPayments}
+                            monthLabel={monthLabel}
+                        />
+                    )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
                     {/* Driver Report Card */}
@@ -655,6 +667,7 @@ export default function ReportsPage() {
                             isDownloading={downloading === "driver-report"}
                             onToggle={() => toggleSelect("driver-report")}
                             onDownload={() => downloadReport("driver-report")}
+                            onPreview={() => setPreview("driver")}
                         />
                     )}
 
@@ -679,9 +692,26 @@ export default function ReportsPage() {
                             isDownloading={downloading === "billing-report"}
                             onToggle={() => toggleSelect("billing-report")}
                             onDownload={() => downloadReport("billing-report")}
+                            onPreview={() => setPreview("billing")}
                         />
                     )}
                 </div>
+                </div>
+            )}
+
+            {/* Report Preview Modal */}
+            {preview && (
+                <ReportPreviewModal
+                    open={!!preview}
+                    onClose={() => setPreview(null)}
+                    reportType={preview}
+                    shipments={reportData.shipments}
+                    payments={reportData.payments}
+                    payouts={reportData.payouts}
+                    monthLabel={monthLabel}
+                    isDownloading={downloading === preview + "-report"}
+                    onDownload={() => downloadReport(preview + "-report")}
+                />
             )}
         </div>
     )
@@ -698,103 +728,6 @@ function StatItem({ label, value, highlight, muted }: {
             <span className={`text-xl font-bold leading-tight ${highlight ? "text-primary" : muted ? "text-muted-foreground" : "text-foreground"}`}>
                 {value}
             </span>
-        </div>
-    )
-}
-
-// ─── Report Card ──────────────────────────────────────────────────────────────
-
-function ReportCard({
-    title, subtitle, description, category, categoryClass,
-    stats, highlights, isSelected, isDownloading, onToggle, onDownload,
-}: {
-    title: string
-    subtitle: string
-    description: string
-    category: string
-    categoryClass: string
-    stats: { icon: React.ReactNode; label: string }[]
-    highlights: { label: string; value: string | number; color: string }[]
-    isSelected: boolean
-    isDownloading: boolean
-    onToggle: () => void
-    onDownload: () => void
-}) {
-    return (
-        <div
-            onClick={onToggle}
-            className={`relative bg-card rounded-xl border shadow-sm cursor-pointer transition-all duration-150 p-5 space-y-4 group ${
-                isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40 hover:shadow-md"
-            }`}
-        >
-            {/* Checkbox */}
-            <div className="absolute top-3.5 right-3.5">
-                <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={onToggle}
-                    onClick={e => e.stopPropagation()}
-                />
-            </div>
-
-            {/* Icon */}
-            <div className="size-11 bg-muted rounded-lg flex items-center justify-center text-muted-foreground border border-border group-hover:text-primary transition-colors">
-                <FileText className="size-5" />
-            </div>
-
-            {/* Title */}
-            <div className="space-y-0.5 pr-6">
-                <h3 className="font-bold text-sm text-foreground leading-snug">{title}</h3>
-                <p className="text-xs font-semibold text-primary">{subtitle}</p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">{description}</p>
-            </div>
-
-            {/* Category */}
-            <Badge variant="outline" className={`text-[10px] font-semibold px-2 py-0.5 ${categoryClass}`}>
-                {category}
-            </Badge>
-
-            {/* Highlights (live stats) */}
-            <div className="flex items-center gap-3">
-                {highlights.map(h => (
-                    <div key={h.label} className="bg-muted/50 border border-border rounded-lg px-2.5 py-1.5 text-center">
-                        <p className="text-[9px] text-muted-foreground font-medium">{h.label}</p>
-                        <p className={`text-sm font-bold ${h.color}`}>{h.value}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Meta row */}
-            <div className="flex items-center flex-wrap gap-3 text-[11px] text-muted-foreground">
-                {stats.map((s, i) => (
-                    <span key={i} className="flex items-center gap-1">{s.icon}{s.label}</span>
-                ))}
-                <span className="font-semibold">• PDF</span>
-            </div>
-
-            {/* Download button on hover */}
-            <button
-                onClick={e => { e.stopPropagation(); onDownload() }}
-                disabled={isDownloading}
-                className="absolute bottom-3.5 right-3.5 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-primary disabled:opacity-50"
-            >
-                {isDownloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            </button>
-        </div>
-    )
-}
-
-// ─── Empty State ──────────────────────────────────────────────────────────────
-
-function EmptyState({ icon, title, description }: {
-    icon: React.ReactNode; title: string; description: string
-}) {
-    return (
-        <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-            <div className="size-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground">{icon}</div>
-            <div>
-                <p className="font-semibold text-foreground text-sm">{title}</p>
-                <p className="text-xs text-muted-foreground mt-1 max-w-xs">{description}</p>
-            </div>
         </div>
     )
 }
