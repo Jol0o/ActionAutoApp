@@ -21,6 +21,7 @@ import {
   Hash,
   Shield,
   Zap,
+  Fingerprint,
 } from "lucide-react"
 import {
   Card,
@@ -300,7 +301,7 @@ export default function CrmDashboardPage() {
   return (
     <TooltipProvider>
       {/* Centered layout wrapper */}
-      <div className="w-full space-y-5 pb-10 px-4 sm:px-6 lg:px-10 xl:px-16">
+      <div className="w-full space-y-5 pb-10 px-4 sm:px-6 lg:px-10 xl:px-16 min-h-screen">
 
         {/* ══════════════════════════════════════════════
             TOPBAR
@@ -536,7 +537,7 @@ export default function CrmDashboardPage() {
         {/* ══════════════════════════════════════════════
             STAT ROW
         ══════════════════════════════════════════════ */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
 
           {/* Status */}
           <StatCard
@@ -572,6 +573,21 @@ export default function CrmDashboardPage() {
             <div className="min-w-0 flex-1">
               <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium leading-none">Quick Link</p>
               <p className="text-sm font-semibold mt-1 leading-none text-foreground">My Account</p>
+            </div>
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+          </button>
+
+          {/* ── Biometric Security ── */}
+          <button
+            onClick={() => router.push("/crm/biometrics")}
+            className="group rounded-xl border border-border/50 bg-card px-4 py-3 flex items-center gap-3 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all duration-200 text-left cursor-pointer"
+          >
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
+              <Fingerprint className="h-4 w-4 text-emerald-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium leading-none">Quick Link</p>
+              <p className="text-sm font-semibold mt-1 leading-none text-foreground">Biometric Security</p>
             </div>
             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all shrink-0" />
           </button>

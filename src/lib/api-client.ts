@@ -2,7 +2,6 @@ import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://xj3pd14h-5000.asse.devtunnels.ms';
 
-// This will log when the module loads
 console.log('[apiClient] Initialized with baseURL:', API_URL);
 
 class ApiClient {
@@ -15,16 +14,16 @@ class ApiClient {
                 'Content-Type': 'application/json',
             },
             timeout: 30000,
-            withCredentials: true, // Important for CORS with credentials
+            withCredentials: true,
         });
 
+        // ── Request interceptor ──────────────────────────────────────────────
         this.client.interceptors.request.use(
             async (config) => {
                 const fullUrl = `${config.baseURL}${config.url}`;
                 console.log(`[apiClient] ${config.method?.toUpperCase()} ${fullUrl}`);
 
-                // --- AUTO AUTH TOKEN INJECTION START ---
-                // Automatically inject Clerk auth token if available and not already set
+                // Auto-inject Clerk auth token if not already set
                 if (typeof window !== 'undefined' && !config.headers.Authorization) {
                     try {
                         const clerkInstance = (window as any).Clerk;
@@ -35,13 +34,11 @@ class ApiClient {
                             }
                         }
                     } catch (e) {
-                        // Silently fail - some requests may not need auth
                         console.warn('[apiClient] Could not get auth token:', e);
                     }
                 }
-                // --- AUTO AUTH TOKEN INJECTION END ---
 
-                // --- IMPERSONATION INJECTION START ---
+                // Inject impersonation header if present
                 if (typeof window !== 'undefined') {
                     const impersonatedOrgId = localStorage.getItem('admin_impersonate_org_id');
                     if (impersonatedOrgId) {
@@ -49,7 +46,6 @@ class ApiClient {
                         console.log('[apiClient] 🕵️ Impersonating Org:', impersonatedOrgId);
                     }
                 }
-                // --- IMPERSONATION INJECTION END ---
 
                 return config;
             },
@@ -59,22 +55,20 @@ class ApiClient {
             }
         );
 
+        // ── Response interceptor (single — no duplicate) ─────────────────────
         this.client.interceptors.response.use(
             (response) => {
                 console.log(`[apiClient] Response ${response.status} from ${response.config.url}`);
                 return response;
             },
             (error) => {
-                // --- SUSPENSION HANDLING START ---
-                if (error.response && error.response.status === 403) {
+                // Handle org suspension redirect
+                if (error.response?.status === 403) {
                     const msg = error.response.data?.message || '';
-                    if (msg.includes('Suspended')) {
-                        if (typeof window !== 'undefined') {
-                            window.location.href = '/suspended';
-                        }
+                    if (msg.includes('Suspended') && typeof window !== 'undefined') {
+                        window.location.href = '/suspended';
                     }
                 }
-                // --- SUSPENSION HANDLING END ---
 
                 if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
                     const attemptedUrl = `${error.config?.baseURL}${error.config?.url}`;
@@ -83,31 +77,14 @@ class ApiClient {
                     console.error('   This means: Cannot reach backend server');
                     console.error('   Check: Is backend running on http://localhost:5000?');
                 } else if (error.response) {
-                    console.error(`[apiClient] Server responded with ${error.response.status}:`, error.response.data);
+                    console.error(
+                        `[apiClient] Server responded with ${error.response.status}:`,
+                        error.response.data
+                    );
                 } else {
                     console.error('[apiClient] Error:', error.message);
                 }
-                return Promise.reject(error);
-            }
-        );
 
-        this.client.interceptors.response.use(
-            (response) => {
-                console.log(`[apiClient] Response ${response.status} from ${response.config.url}`);
-                return response;
-            },
-            (error) => {
-                if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-                    const attemptedUrl = `${error.config?.baseURL}${error.config?.url}`;
-                    console.error('[apiClient] NETWORK ERROR');
-                    console.error('   Attempted URL:', attemptedUrl);
-                    console.error('   This means: Cannot reach backend server');
-                    console.error('   Check: Is backend running on http://localhost:5000?');
-                } else if (error.response) {
-                    console.error(`[apiClient] Server responded with ${error.response.status}:`, error.response.data);
-                } else {
-                    console.error('[apiClient] Error:', error.message);
-                }
                 return Promise.reject(error);
             }
         );
@@ -133,7 +110,22 @@ class ApiClient {
         return this.client.put<T>(url, data, config);
     }
 
-    // Organization Methods
+    // Extended timeout (120s) for long-running operations like Gmail sync.
+    // Uses a one-off axios instance so the global 30s default is not affected.
+    async syncPost<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+        const syncClient = axios.create({
+            baseURL: this.client.defaults.baseURL,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(config?.headers || {}),
+            },
+            timeout: 120000,
+            withCredentials: true,
+        });
+        return syncClient.post<T>(url, data, config);
+    }
+
+    // ── Organization Methods ─────────────────────────────────────────────────
     async createOrganization(data: { name: string; slug: string }, config?: AxiosRequestConfig) {
         return this.post('/api/organizations', data, config);
     }
@@ -162,7 +154,7 @@ class ApiClient {
         return this.delete(`/api/organizations/${orgId}/members/${userId}`, config);
     }
 
-    // Invitation Methods
+    // ── Invitation Methods ───────────────────────────────────────────────────
     async sendInvite(data: { email: string; role: string }, config?: AxiosRequestConfig) {
         return this.post('/api/invitations', data, config);
     }
@@ -175,7 +167,7 @@ class ApiClient {
         return this.post('/api/invitations/accept', { token }, config);
     }
 
-    // Driver Request Methods
+    // ── Driver Request Methods ───────────────────────────────────────────────
     async createDriverRequest(data?: Record<string, unknown>, config?: AxiosRequestConfig) {
         return this.post('/api/driver-requests', data, config);
     }
