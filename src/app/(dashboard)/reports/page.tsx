@@ -299,7 +299,7 @@ async function generateBillingReportPdf(data: ReportData, monthLabel: string): P
     })
     doc.setTextColor(0)
 
-    // ── Section 1: Customer Payments ──────────────────────────────────────────
+    // ── Customer Payments ──────────────────────────────────────────
     doc.setFont("helvetica", "bold")
     doc.setFontSize(9)
     doc.text("Customer Payments to Dealer", 14, 63)
@@ -324,7 +324,7 @@ async function generateBillingReportPdf(data: ReportData, monthLabel: string): P
         margin: { left: 14, right: 14 },
     })
 
-    // ── Section 2: Driver Payouts ─────────────────────────────────────────────
+    // ── Driver Payouts ─────────────────────────────────────────────
     doc.addPage()
 
     doc.setFillColor(100, 40, 180)
@@ -359,7 +359,7 @@ async function generateBillingReportPdf(data: ReportData, monthLabel: string): P
         margin: { left: 14, right: 14 },
     })
 
-    // ── Section 3: Billing Summary by Status ──────────────────────────────────
+    // ── Billing Summary by Status ──────────────────────────────────
     const lastY = (doc as any).lastAutoTable?.finalY ?? 80
     if (lastY < 170) {
         doc.setFont("helvetica", "bold")

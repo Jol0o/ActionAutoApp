@@ -11,16 +11,18 @@ export interface Lead {
   phone: string
   senderEmail?: string
   senderName?: string
-  
+
   // Email Fields
   subject?: string
   body?: string
+  parsedContent?: string
   threadId?: string
   messageId?: string
   isRead?: boolean
   isPending?: boolean
   labels?: string[]
-  
+  channel?: string
+
   // Lead Information
   source: string
   status: 'New' | 'Contacted' | 'Pending' | 'Appointment Set' | 'Closed'
@@ -30,119 +32,99 @@ export interface Lead {
     model: string
   }
   comments: string
+  appointment?: any
   createdAt: string
   updatedAt: string
 }
+
+// ─── Small helper so every post-sync refetch waits for DB writes ─────────────
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
 export const useLeads = () => {
   const { getToken } = useAuth()
   const queryClient = useQueryClient()
 
-  // Helper to get auth headers
   const getAuthHeaders = async () => {
     const token = await getToken()
     return { headers: { Authorization: `Bearer ${token}` } }
   }
 
-  // Fetch all leads
+  // ── Fetch all leads ────────────────────────────────────────────────────────
   const { data: leads = [], isLoading, refetch } = useQuery({
     queryKey: ['leads'],
     queryFn: async () => {
       const headers = await getAuthHeaders()
       const response = await apiClient.get('/api/leads', headers)
-      return response.data || []
+      // Backend returns array directly or wrapped in data field
+      return Array.isArray(response.data) ? response.data : response.data?.data || []
     },
+    // Always re-fetch from network — never serve stale leads from cache
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   })
 
-  // Update lead status
+  // ── Shared invalidation helper — waits for DB then refreshes ──────────────
+  const invalidateAndRefetch = async (waitMs = 600) => {
+    await delay(waitMs)
+    await queryClient.invalidateQueries({ queryKey: ['leads'] })
+    await refetch()
+  }
+
+  // ── Update lead status ─────────────────────────────────────────────────────
   const updateLeadMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const headers = await getAuthHeaders()
-      const response = await apiClient.patch(
-        `/api/leads/${id}`,
-        { status },
-        headers
-      )
+      const response = await apiClient.patch(`/api/leads/${id}`, { status }, headers)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] })
-      refetch()
-    },
+    onSuccess: () => invalidateAndRefetch(300),
   })
 
-  // Mark as read
+  // ── Mark as read ───────────────────────────────────────────────────────────
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
       const headers = await getAuthHeaders()
-      const response = await apiClient.patch(
-        `/api/leads/${id}/read`,
-        {},
-        headers
-      )
+      const response = await apiClient.patch(`/api/leads/${id}/read`, {}, headers)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] })
-      refetch()
-    },
+    onSuccess: () => invalidateAndRefetch(300),
   })
 
-  // Mark as pending
+  // ── Mark as pending ────────────────────────────────────────────────────────
   const markAsPendingMutation = useMutation({
     mutationFn: async (id: string) => {
       const headers = await getAuthHeaders()
-      const response = await apiClient.patch(
-        `/api/leads/${id}/pending`,
-        {},
-        headers
-      )
+      const response = await apiClient.patch(`/api/leads/${id}/pending`, {}, headers)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] })
-      refetch()
-    },
+    onSuccess: () => invalidateAndRefetch(300),
   })
 
-  // Reply to inquiry
+  // ── Reply to inquiry ───────────────────────────────────────────────────────
   const replyMutation = useMutation({
     mutationFn: async ({ id, message }: { id: string; message: string }) => {
       const headers = await getAuthHeaders()
-      const response = await apiClient.post(
-        `/api/leads/${id}/reply`,
-        { message },
-        headers
-      )
+      const response = await apiClient.post(`/api/leads/${id}/reply`, { message }, headers)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] })
-      refetch()
-    },
+    onSuccess: () => invalidateAndRefetch(300),
   })
 
-  // Sync Gmail inquiries
+  // ── Sync Gmail (legacy endpoint kept for compat) ───────────────────────────
   const syncGmailMutation = useMutation({
     mutationFn: async () => {
       const headers = await getAuthHeaders()
-      const response = await apiClient.post(
-        `/api/leads/sync-gmail`,
-        {},
-        headers
-      )
+      const response = await apiClient.syncPost(`/api/leads/sync-central`, {}, headers)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] })
-      refetch()
-    },
+    // After sync, wait 1s for all DB writes to settle before refetching
+    onSuccess: () => invalidateAndRefetch(1000),
   })
 
   return {
     leads,
     isLoading,
-    refetch,
+    refetch: () => invalidateAndRefetch(0),
     updateLeadStatus: updateLeadMutation.mutate,
     markAsRead: markAsReadMutation.mutate,
     markAsPending: markAsPendingMutation.mutate,
