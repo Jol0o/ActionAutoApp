@@ -16,6 +16,17 @@ import { ReportCard } from "@/components/reports/ReportCard"
 import { EmptyState } from "@/components/reports/EmptyState"
 import { ReportPreviewModal } from "@/components/reports/ReportPreviewModal"
 import { ReportsAnalytics } from "@/components/reports/ReportsAnalytics"
+import { Quote as TransportQuote, Shipment as TransportShipment } from "@/types/transportation"
+import {
+    TransportationAnalytics,
+    TransportationPreviewModal,
+    generateShipmentReportPdf,
+    generateQuoteReportPdf,
+    buildShipmentSummary,
+    buildQuoteSummary,
+    fmtCurrency as transportFmtCurrency,
+    fmtNumber,
+} from "@/components/reports/transportation"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -416,8 +427,11 @@ export default function ReportsPage() {
     const [selected, setSelected] = React.useState<Set<string>>(new Set())
     const [downloading, setDownloading] = React.useState<string | null>(null)
     const [preview, setPreview] = React.useState<"driver" | "billing" | null>(null)
+    const [transportPreview, setTransportPreview] = React.useState<"shipment" | "quote" | null>(null)
 
     const [rawShipments, setRawShipments] = React.useState<Shipment[]>([])
+    const [rawTransportShipments, setRawTransportShipments] = React.useState<TransportShipment[]>([])
+    const [rawQuotes, setRawQuotes] = React.useState<TransportQuote[]>([])
     const [rawPayments, setRawPayments] = React.useState<Payment[]>([])
     const [rawPayouts, setRawPayouts] = React.useState<DriverPayout[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -430,14 +444,18 @@ export default function ReportsPage() {
         try {
             const token = await getToken()
             const headers = token ? { Authorization: `Bearer ${token}` } : {}
-            const [sRes, pRes, payRes] = await Promise.all([
+            const [sRes, pRes, payRes, qRes] = await Promise.all([
                 apiClient.get("/api/shipments", { headers }),
                 apiClient.get("/api/payments", { headers }),
                 apiClient.get("/api/driver-payouts", { headers }),
+                apiClient.get("/api/quotes", { headers }),
             ])
-            setRawShipments(Array.isArray(sRes.data?.data) ? sRes.data.data : [])
+            const shipmentData = Array.isArray(sRes.data?.data) ? sRes.data.data : []
+            setRawShipments(shipmentData)
+            setRawTransportShipments(shipmentData)
             setRawPayments(Array.isArray(pRes.data?.data?.payments) ? pRes.data.data.payments : [])
             setRawPayouts(Array.isArray(payRes.data?.data) ? payRes.data.data : [])
+            setRawQuotes(Array.isArray(qRes.data?.data) ? qRes.data.data : [])
         } catch (err: any) {
             setError(err.response?.data?.message || err.message || "Failed to load reports.")
         } finally {
@@ -454,6 +472,11 @@ export default function ReportsPage() {
         payouts: rawPayouts.filter(p => p.createdAt?.startsWith(selectedMonth)),
     }), [rawShipments, rawPayments, rawPayouts, selectedMonth])
 
+    const filteredTransportShipments = React.useMemo(() => rawTransportShipments.filter(s => s.createdAt?.startsWith(selectedMonth)), [rawTransportShipments, selectedMonth])
+    const filteredQuotes = React.useMemo(() => rawQuotes.filter(q => q.createdAt?.startsWith(selectedMonth)), [rawQuotes, selectedMonth])
+    const shipmentSummary = React.useMemo(() => buildShipmentSummary(filteredTransportShipments), [filteredTransportShipments])
+    const quoteSummary = React.useMemo(() => buildQuoteSummary(filteredQuotes), [filteredQuotes])
+
     const monthLabel = monthOptions.find(o => o.value === selectedMonth)?.label ?? selectedMonth
 
     // Derived counts
@@ -468,9 +491,10 @@ export default function ReportsPage() {
 
     // Selection
     const visibleIds = activeTab === "ALL"
-        ? ["driver-report", "billing-report"]
+        ? ["driver-report", "billing-report", "shipment-report", "quote-report"]
         : activeTab === "Driver Reports" ? ["driver-report"]
         : activeTab === "Billings" ? ["billing-report"]
+        : activeTab === "Transportation" ? ["shipment-report", "quote-report"]
         : []
 
     const isAllSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id))
@@ -496,10 +520,18 @@ export default function ReportsPage() {
                 const blob = await generateDriverReportPdf(reportData, monthLabel)
                 triggerDownload(blob, `Driver Reports - ${monthLabel}.pdf`)
                 toast.success(`Driver Reports — ${monthLabel} downloaded.`)
-            } else {
+            } else if (id === "billing-report") {
                 const blob = await generateBillingReportPdf(reportData, monthLabel)
                 triggerDownload(blob, `Billing Report - ${monthLabel}.pdf`)
                 toast.success(`Billing Report — ${monthLabel} downloaded.`)
+            } else if (id === "shipment-report") {
+                const blob = await generateShipmentReportPdf(filteredTransportShipments, monthLabel)
+                triggerDownload(blob, `Shipment Report - ${monthLabel}.pdf`)
+                toast.success(`Shipment Report — ${monthLabel} downloaded.`)
+            } else if (id === "quote-report") {
+                const blob = await generateQuoteReportPdf(filteredQuotes, monthLabel)
+                triggerDownload(blob, `Quotes Report - ${monthLabel}.pdf`)
+                toast.success(`Quotes Report — ${monthLabel} downloaded.`)
             }
         } catch {
             toast.error("Failed to generate PDF.")
@@ -517,7 +549,7 @@ export default function ReportsPage() {
 
     async function handleZip() {
         const picks = [...selected]
-        if (picks.length < 2) return toast.info("Select 2 reports to download as ZIP.")
+        if (picks.length < 2) return toast.info("Select 2 or more reports to download as ZIP.")
         setDownloading("zip")
         try {
             const JSZip = (await import("jszip")).default
@@ -529,6 +561,14 @@ export default function ReportsPage() {
             if (picks.includes("billing-report")) {
                 const blob = await generateBillingReportPdf(reportData, monthLabel)
                 zip.file(`Billing Report - ${monthLabel}.pdf`, blob)
+            }
+            if (picks.includes("shipment-report")) {
+                const blob = await generateShipmentReportPdf(filteredTransportShipments, monthLabel)
+                zip.file(`Shipment Report - ${monthLabel}.pdf`, blob)
+            }
+            if (picks.includes("quote-report")) {
+                const blob = await generateQuoteReportPdf(filteredQuotes, monthLabel)
+                zip.file(`Quotes Report - ${monthLabel}.pdf`, blob)
             }
             const zipBlob = await zip.generateAsync({ type: "blob" })
             triggerDownload(zipBlob, `ActionAuto Reports - ${monthLabel}.zip`)
@@ -543,6 +583,7 @@ export default function ReportsPage() {
 
     const showDriver = activeTab === "ALL" || activeTab === "Driver Reports"
     const showBilling = activeTab === "ALL" || activeTab === "Billings"
+    const showTransportation = activeTab === "ALL" || activeTab === "Transportation"
 
     return (
         <div className="p-4 sm:p-6 space-y-5 min-h-screen">
@@ -603,11 +644,11 @@ export default function ReportsPage() {
             {/* ── Stats bar ── */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-card rounded-xl border border-border px-5 py-4 shadow-sm">
                 <div className="flex flex-wrap items-center gap-6">
-                    <StatItem label="Total Reports" value={2} />
+                    <StatItem label="Total Reports" value={4} />
                     <div className="w-px h-8 bg-border" />
                     <StatItem label="Selected" value={selectedCount} highlight />
                     <div className="w-px h-8 bg-border hidden sm:block" />
-                    <StatItem label="Transportation" value={0} muted />
+                    <StatItem label="Transportation" value={2} muted />
                     <StatItem label="Driver Reports" value={1} muted />
                     <StatItem label="Billings" value={1} muted />
                 </div>
@@ -631,9 +672,59 @@ export default function ReportsPage() {
                     <Button variant="outline" size="sm" onClick={fetchAll}>Try Again</Button>
                 </div>
             ) : activeTab === "Transportation" ? (
-                <EmptyState icon={<Truck className="size-6" />}
-                    title="Transportation reports coming soon"
-                    description="This section is being handled by another team member." />
+                <div className="space-y-4">
+                    <TransportationAnalytics
+                        shipments={filteredTransportShipments}
+                        quotes={filteredQuotes}
+                        rawShipments={rawTransportShipments}
+                        rawQuotes={rawQuotes}
+                        monthLabel={monthLabel}
+                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <ReportCard
+                        title="Shipment Report"
+                        subtitle={monthLabel}
+                        description="Complete shipment tracking, delivery performance, route analysis, and revenue breakdown"
+                        category="Transportation"
+                        categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                        stats={[
+                            { icon: <Truck className="size-3" />, label: `${shipmentSummary.total} shipments` },
+                            { icon: <MapPin className="size-3" />, label: `${fmtNumber(shipmentSummary.totalMiles)} mi` },
+                            { icon: <Calendar className="size-3" />, label: monthLabel },
+                        ]}
+                        highlights={[
+                            { label: "Delivered", value: shipmentSummary.delivered, color: "text-emerald-600 dark:text-emerald-400" },
+                            { label: "Revenue", value: transportFmtCurrency(shipmentSummary.totalRate), color: "text-blue-600 dark:text-blue-400" },
+                        ]}
+                        isSelected={selected.has("shipment-report")}
+                        isDownloading={downloading === "shipment-report"}
+                        onToggle={() => toggleSelect("shipment-report")}
+                        onDownload={() => downloadReport("shipment-report")}
+                        onPreview={() => setTransportPreview("shipment")}
+                    />
+                    <ReportCard
+                        title="Quotes & Drafts Report"
+                        subtitle={monthLabel}
+                        description="Quote volume, conversion rates, pricing analysis, and service type breakdown"
+                        category="Transportation"
+                        categoryClass="bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                        stats={[
+                            { icon: <FileText className="size-3" />, label: `${quoteSummary.total} quotes` },
+                            { icon: <Database className="size-3" />, label: `${quoteSummary.conversionRate}% converted` },
+                            { icon: <Calendar className="size-3" />, label: monthLabel },
+                        ]}
+                        highlights={[
+                            { label: "Booked", value: quoteSummary.booked, color: "text-emerald-600 dark:text-emerald-400" },
+                            { label: "Pending", value: quoteSummary.pending, color: "text-amber-600 dark:text-amber-400" },
+                        ]}
+                        isSelected={selected.has("quote-report")}
+                        isDownloading={downloading === "quote-report"}
+                        onToggle={() => toggleSelect("quote-report")}
+                        onDownload={() => downloadReport("quote-report")}
+                        onPreview={() => setTransportPreview("quote")}
+                    />
+                </div>
+                </div>
             ) : (
                 <div className="space-y-4">
                     {activeTab === "ALL" && (
@@ -695,11 +786,58 @@ export default function ReportsPage() {
                             onPreview={() => setPreview("billing")}
                         />
                     )}
+
+                    {showTransportation && (
+                        <ReportCard
+                            title="Shipment Report"
+                            subtitle={monthLabel}
+                            description="Complete shipment tracking, delivery performance, route analysis, and revenue breakdown"
+                            category="Transportation"
+                            categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                            stats={[
+                                { icon: <Truck className="size-3" />, label: `${shipmentSummary.total} shipments` },
+                                { icon: <MapPin className="size-3" />, label: `${fmtNumber(shipmentSummary.totalMiles)} mi` },
+                                { icon: <Calendar className="size-3" />, label: monthLabel },
+                            ]}
+                            highlights={[
+                                { label: "Delivered", value: shipmentSummary.delivered, color: "text-emerald-600 dark:text-emerald-400" },
+                                { label: "Revenue", value: transportFmtCurrency(shipmentSummary.totalRate), color: "text-blue-600 dark:text-blue-400" },
+                            ]}
+                            isSelected={selected.has("shipment-report")}
+                            isDownloading={downloading === "shipment-report"}
+                            onToggle={() => toggleSelect("shipment-report")}
+                            onDownload={() => downloadReport("shipment-report")}
+                            onPreview={() => setTransportPreview("shipment")}
+                        />
+                    )}
+
+                    {showTransportation && (
+                        <ReportCard
+                            title="Quotes & Drafts Report"
+                            subtitle={monthLabel}
+                            description="Quote volume, conversion rates, pricing analysis, and service type breakdown"
+                            category="Transportation"
+                            categoryClass="bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                            stats={[
+                                { icon: <FileText className="size-3" />, label: `${quoteSummary.total} quotes` },
+                                { icon: <Database className="size-3" />, label: `${quoteSummary.conversionRate}% converted` },
+                                { icon: <Calendar className="size-3" />, label: monthLabel },
+                            ]}
+                            highlights={[
+                                { label: "Booked", value: quoteSummary.booked, color: "text-emerald-600 dark:text-emerald-400" },
+                                { label: "Pending", value: quoteSummary.pending, color: "text-amber-600 dark:text-amber-400" },
+                            ]}
+                            isSelected={selected.has("quote-report")}
+                            isDownloading={downloading === "quote-report"}
+                            onToggle={() => toggleSelect("quote-report")}
+                            onDownload={() => downloadReport("quote-report")}
+                            onPreview={() => setTransportPreview("quote")}
+                        />
+                    )}
                 </div>
                 </div>
             )}
 
-            {/* Report Preview Modal */}
             {preview && (
                 <ReportPreviewModal
                     open={!!preview}
@@ -711,6 +849,19 @@ export default function ReportsPage() {
                     monthLabel={monthLabel}
                     isDownloading={downloading === preview + "-report"}
                     onDownload={() => downloadReport(preview + "-report")}
+                />
+            )}
+
+            {transportPreview && (
+                <TransportationPreviewModal
+                    open={!!transportPreview}
+                    onClose={() => setTransportPreview(null)}
+                    reportType={transportPreview}
+                    shipments={filteredTransportShipments}
+                    quotes={filteredQuotes}
+                    monthLabel={monthLabel}
+                    isDownloading={downloading === transportPreview + "-report"}
+                    onDownload={() => downloadReport(transportPreview + "-report")}
                 />
             )}
         </div>
