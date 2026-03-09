@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client"
 import {
     FileText, Archive, MapPin, CreditCard, Truck,
     CheckSquare, Loader2, AlertCircle, Calendar, Database, Users,
+    Search, X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -428,6 +429,8 @@ export default function ReportsPage() {
     const [downloading, setDownloading] = React.useState<string | null>(null)
     const [preview, setPreview] = React.useState<"driver" | "billing" | null>(null)
     const [transportPreview, setTransportPreview] = React.useState<"shipment" | "quote" | null>(null)
+    const [driverSearch, setDriverSearch] = React.useState("")
+    const [statusFilter, setStatusFilter] = React.useState("all")
 
     const [rawShipments, setRawShipments] = React.useState<Shipment[]>([])
     const [rawTransportShipments, setRawTransportShipments] = React.useState<TransportShipment[]>([])
@@ -479,15 +482,40 @@ export default function ReportsPage() {
 
     const monthLabel = monthOptions.find(o => o.value === selectedMonth)?.label ?? selectedMonth
 
-    // Derived counts
-    const assignedLoads = reportData.shipments.filter(s => s.assignedDriverId != null)
+    // Reset filters when tab or month changes
+    React.useEffect(() => {
+        setDriverSearch("")
+        setStatusFilter("all")
+    }, [activeTab, selectedMonth])
+
+    // Apply tab-specific filters on top of the month-filtered data
+    const filteredData: ReportData = React.useMemo(() => {
+        let { shipments, payments, payouts } = reportData
+
+        if (driverSearch.trim()) {
+            const q = driverSearch.toLowerCase()
+            shipments = shipments.filter(s => {
+                if (typeof s.assignedDriverId !== "object" || !s.assignedDriverId) return false
+                return s.assignedDriverId.name.toLowerCase().includes(q)
+            })
+        }
+
+        if (statusFilter !== "all") {
+            payments = payments.filter(p => p.status === statusFilter)
+        }
+
+        return { shipments, payments, payouts }
+    }, [reportData, driverSearch, statusFilter])
+
+    // Derived counts — from filtered data so card stats react to filters
+    const assignedLoads = filteredData.shipments.filter(s => s.assignedDriverId != null)
     const uniqueDrivers = new Set(assignedLoads.map(s =>
         typeof s.assignedDriverId === "object" ? s.assignedDriverId?._id : s.assignedDriverId
     ).filter(Boolean)).size
     const deliveredCount = assignedLoads.filter(s => s.status === "Delivered").length
     const pendingApprovalCount = assignedLoads.filter(s => s.proofOfDelivery?.submittedAt && !s.proofOfDelivery?.confirmedAt).length
-    const totalRevenue = reportData.payments.filter(p => p.status === "succeeded").reduce((s, p) => s + p.amount, 0)
-    const totalPaidOut = reportData.payouts.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0)
+    const totalRevenue = filteredData.payments.filter(p => p.status === "succeeded").reduce((s, p) => s + p.amount, 0)
+    const totalPaidOut = filteredData.payouts.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0)
 
     // Selection
     const visibleIds = activeTab === "ALL"
@@ -517,11 +545,11 @@ export default function ReportsPage() {
         setDownloading(id)
         try {
             if (id === "driver-report") {
-                const blob = await generateDriverReportPdf(reportData, monthLabel)
+                const blob = await generateDriverReportPdf(filteredData, monthLabel)
                 triggerDownload(blob, `Driver Reports - ${monthLabel}.pdf`)
                 toast.success(`Driver Reports — ${monthLabel} downloaded.`)
             } else if (id === "billing-report") {
-                const blob = await generateBillingReportPdf(reportData, monthLabel)
+                const blob = await generateBillingReportPdf(filteredData, monthLabel)
                 triggerDownload(blob, `Billing Report - ${monthLabel}.pdf`)
                 toast.success(`Billing Report — ${monthLabel} downloaded.`)
             } else if (id === "shipment-report") {
@@ -555,11 +583,11 @@ export default function ReportsPage() {
             const JSZip = (await import("jszip")).default
             const zip = new JSZip()
             if (picks.includes("driver-report")) {
-                const blob = await generateDriverReportPdf(reportData, monthLabel)
+                const blob = await generateDriverReportPdf(filteredData, monthLabel)
                 zip.file(`Driver Reports - ${monthLabel}.pdf`, blob)
             }
             if (picks.includes("billing-report")) {
-                const blob = await generateBillingReportPdf(reportData, monthLabel)
+                const blob = await generateBillingReportPdf(filteredData, monthLabel)
                 zip.file(`Billing Report - ${monthLabel}.pdf`, blob)
             }
             if (picks.includes("shipment-report")) {
@@ -640,6 +668,50 @@ export default function ReportsPage() {
                     ))}
                 </div>
             </div>
+
+            {/* ── Filter toolbar ── */}
+            {(activeTab === "Driver Reports" || activeTab === "Billings") && !loading && !error && (
+                <div className="flex items-center gap-3">
+                    {activeTab === "Driver Reports" && (
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="Filter by driver name..."
+                                value={driverSearch}
+                                onChange={e => setDriverSearch(e.target.value)}
+                                className="h-8 pl-8 pr-7 rounded-md border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary w-56"
+                            />
+                            {driverSearch && (
+                                <button
+                                    onClick={() => setDriverSearch("")}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="size-3" />
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    {activeTab === "Billings" && (
+                        <select
+                            value={statusFilter}
+                            onChange={e => setStatusFilter(e.target.value)}
+                            className="h-8 rounded-md border border-border bg-background text-foreground text-xs px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                            <option value="all">All Statuses</option>
+                            <option value="succeeded">Succeeded</option>
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="failed">Failed</option>
+                            <option value="refunded">Refunded</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    )}
+                    {(driverSearch || statusFilter !== "all") && (
+                        <span className="text-xs text-muted-foreground">Showing filtered results</span>
+                    )}
+                </div>
+            )}
 
             {/* ── Stats bar ── */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-card rounded-xl border border-border px-5 py-4 shadow-sm">
@@ -771,8 +843,8 @@ export default function ReportsPage() {
                             category="Billings"
                             categoryClass="bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
                             stats={[
-                                { icon: <CreditCard className="size-3" />, label: `${reportData.payments.length} payments` },
-                                { icon: <Database className="size-3" />, label: `${reportData.payouts.length} payouts` },
+                                { icon: <CreditCard className="size-3" />, label: `${filteredData.payments.length} payments` },
+                                { icon: <Database className="size-3" />, label: `${filteredData.payouts.length} payouts` },
                                 { icon: <Calendar className="size-3" />, label: monthLabel },
                             ]}
                             highlights={[
@@ -843,9 +915,9 @@ export default function ReportsPage() {
                     open={!!preview}
                     onClose={() => setPreview(null)}
                     reportType={preview}
-                    shipments={reportData.shipments}
-                    payments={reportData.payments}
-                    payouts={reportData.payouts}
+                    shipments={filteredData.shipments}
+                    payments={filteredData.payments}
+                    payouts={filteredData.payouts}
                     monthLabel={monthLabel}
                     isDownloading={downloading === preview + "-report"}
                     onDownload={() => downloadReport(preview + "-report")}
