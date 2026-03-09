@@ -117,6 +117,18 @@ export function ReportsAnalytics({ shipments, rawPayments, monthLabel }: Props) 
   const deliveryData = React.useMemo(() => buildDeliveryData(shipments), [shipments])
   const revenueData  = React.useMemo(() => buildRevenueData(rawPayments), [rawPayments])
 
+  const [tickColor, setTickColor] = React.useState("#6b7280")
+  React.useEffect(() => {
+    const update = () => {
+      const isDark = document.documentElement.classList.contains("dark")
+      setTickColor(isDark ? "#9ca3af" : "#6b7280")
+    }
+    update()
+    const observer = new MutationObserver(update)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
+
   const totalShipments  = shipments.length
   const delivered       = shipments.filter(s => s.status === "Delivered").length
   const successRate     = totalShipments > 0 ? Math.round((delivered / totalShipments) * 100) : 0
@@ -247,13 +259,13 @@ export function ReportsAnalytics({ shipments, rawPayments, monthLabel }: Props) 
                     dataKey="month"
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 11, fill: tickColor }}
                   />
                   <YAxis
                     tickLine={false}
                     axisLine={false}
                     width={46}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 11, fill: tickColor }}
                     tickFormatter={v => v === 0 ? "$0" : v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
                   />
                   <Tooltip
