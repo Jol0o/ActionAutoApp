@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, Users, Plus, RefreshCw, Mail } from "lucide-react"
+import { Calendar, Clock, Users, Plus, RefreshCw, Mail, ArrowLeft } from "lucide-react"
 import { AppointmentCalendar } from "@/components/AppointmentCalendar"
 import { BookedTab } from "@/components/BookedTab"
 import { LeadsTab } from "@/components/LeadsTab"
@@ -40,6 +41,7 @@ const TAB_OPTIONS: TabOption[] = [
 // ─── Inner Page ──────────────────────────────────────────────────────────────
 
 function AppointmentsPageInner() {
+  const router = useRouter()
   const { getToken } = useAuth()
   const queryClient = useQueryClient()
   const { isFullscreen } = useFullscreen()
@@ -319,13 +321,23 @@ function AppointmentsPageInner() {
 
           {/* Header */}
           <div className={`flex items-center justify-between ${isFullscreen ? "px-5 py-3 border-b border-border/50 bg-card shrink-0" : ""}`}>
-            <div>
-              <h1 className={`font-bold ${isFullscreen ? "text-xl" : "text-3xl"}`}>Appointments</h1>
-              {!isFullscreen && (
-                <p className="text-muted-foreground">
-                  Manage your leads, appointments, and events
-                </p>
-              )}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/crm/dashboard")}
+                className="h-8 w-8 rounded-lg border border-border/50 hover:border-emerald-500/50 hover:bg-emerald-500/5 p-0 transition-all"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className={`font-bold ${isFullscreen ? "text-xl" : "text-3xl"}`}>Appointments</h1>
+                {!isFullscreen && (
+                  <p className="text-muted-foreground">
+                    Manage your leads, appointments, and events
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <PaneToolbar tabOptions={TAB_OPTIONS} />

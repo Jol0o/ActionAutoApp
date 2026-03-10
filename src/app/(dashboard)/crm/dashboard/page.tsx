@@ -11,26 +11,22 @@ import {
   ChevronDown,
   Loader2,
   CheckCircle2,
-  Timer,
   CalendarDays,
   Sun,
   Moon,
   Sunset,
   ArrowRight,
-  CircleDot,
-  Hash,
-  Shield,
-  Zap,
   Fingerprint,
+  CalendarCheck,
+  Activity,
+  Sparkles,
+  Coffee,
+  Play,
+  MessageSquare,
 } from "lucide-react"
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,12 +40,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Progress } from "@/components/ui/progress"
 import { apiClient } from "@/lib/api-client"
-import AppointmentsPage from "@/app/(dashboard)/appointments/page"
-// ─── Supra Leo AI — Floating widget for entire CRM ──────────────────────────
 import { SupraLeoAI } from "@/components/supra-leo-ai/SupraLeoAI"
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,10 +63,8 @@ interface CrmUserData {
 
 function getGreeting(name: string) {
   const h = new Date().getHours()
-  if (h >= 5 && h < 12)
-    return { text: `Good Morning, ${name}`, icon: <Sun className="h-4 w-4 text-amber-400" /> }
-  if (h >= 12 && h < 18)
-    return { text: `Good Afternoon, ${name}`, icon: <Sunset className="h-4 w-4 text-orange-400" /> }
+  if (h >= 5 && h < 12) return { text: `Good Morning, ${name}`, icon: <Sun className="h-4 w-4 text-amber-400" /> }
+  if (h >= 12 && h < 18) return { text: `Good Afternoon, ${name}`, icon: <Sunset className="h-4 w-4 text-orange-400" /> }
   return { text: `Good Evening, ${name}`, icon: <Moon className="h-4 w-4 text-indigo-400" /> }
 }
 
@@ -98,9 +88,12 @@ function LiveClock() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1 bg-background/80 backdrop-blur-sm cursor-default select-none">
-          <Clock className="h-3 w-3 text-muted-foreground/60" />
-          <span className="font-mono text-xs font-medium tabular-nums text-foreground/80">
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 px-3.5 py-1.5 bg-emerald-500/5 cursor-default select-none">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+          </span>
+          <span className="font-mono text-xs font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
             {now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}
           </span>
         </div>
@@ -116,87 +109,105 @@ function LiveClock() {
 
 // ─── Shift Timer ─────────────────────────────────────────────────────────────
 
-function ShiftTimer({ startTime }: { startTime: string }) {
-  const [elapsed, setElapsed] = React.useState({ h: 0, m: 0, s: 0 })
+interface ShiftTimerProps {
+  startTime: string
+  // Total milliseconds already spent on break before this render cycle
+  breakAccumulatedMs: number
+  // If currently on break, the timestamp when break started
+  breakStartedAt: number | null
+}
+
+function ShiftTimer({ startTime, breakAccumulatedMs, breakStartedAt }: ShiftTimerProps) {
+  const [, forceUpdate] = React.useReducer((x) => x + 1, 0)
 
   React.useEffect(() => {
-    const tick = () => {
-      const diff = Date.now() - new Date(startTime).getTime()
-      setElapsed({
-        h: Math.floor(diff / 3600000),
-        m: Math.floor((diff % 3600000) / 60000),
-        s: Math.floor((diff % 60000) / 1000),
-      })
-    }
-    tick()
-    const id = setInterval(tick, 1000)
+    const id = setInterval(forceUpdate, 1000)
     return () => clearInterval(id)
-  }, [startTime])
+  }, [])
+
+  const now = Date.now()
+  const totalElapsedMs = now - new Date(startTime).getTime()
+  // Current break duration: already accumulated + ongoing break if active
+  const currentBreakMs = breakAccumulatedMs + (breakStartedAt ? now - breakStartedAt : 0)
+  // Net worked time = total elapsed minus all break time
+  const workedMs = Math.max(0, totalElapsedMs - currentBreakMs)
 
   const pad = (n: number) => n.toString().padStart(2, "0")
-  const totalMin = elapsed.h * 60 + elapsed.m
-  const progress = Math.min((totalMin / 480) * 100, 100)
+  const toHMS = (ms: number) => ({
+    h: Math.floor(ms / 3600000),
+    m: Math.floor((ms % 3600000) / 60000),
+    s: Math.floor((ms % 60000) / 1000),
+  })
+
+  const worked = toHMS(workedMs)
+  const breakTime = toHMS(currentBreakMs)
+  const isOnBreak = breakStartedAt !== null
 
   return (
-    <div className="space-y-4 w-full">
-      <div className="flex items-end justify-center gap-0.5">
-        {[
-          { v: pad(elapsed.h), l: "h" },
-          { v: pad(elapsed.m), l: "m" },
-          { v: pad(elapsed.s), l: "s" },
-        ].map((item, i) => (
+    <div className="w-full space-y-5">
+      {/* Main timer */}
+      <div className="flex items-end justify-center gap-1">
+        {[{ v: pad(worked.h), l: "hrs" }, { v: pad(worked.m), l: "min" }, { v: pad(worked.s), l: "sec" }].map((item, i) => (
           <React.Fragment key={item.l}>
             {i > 0 && (
-              <span className="text-xl font-light text-muted-foreground/30 pb-1 mx-0.5">:</span>
+              <span className={`text-2xl font-thin pb-2 mx-1 transition-colors duration-300 ${isOnBreak ? "text-amber-400/30" : "text-muted-foreground/20"}`}>:</span>
             )}
-            <div className="flex items-end gap-0.5">
-              <span className="text-3xl font-mono font-semibold tabular-nums tracking-tight leading-none text-foreground">
+            <div className="flex flex-col items-center gap-1">
+              <span className={`text-5xl font-mono font-bold tabular-nums tracking-tighter leading-none transition-colors duration-300 ${isOnBreak ? "text-muted-foreground/40" : ""}`}>
                 {item.v}
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">
-                {item.l}
-              </span>
+              <span className="text-[9px] uppercase tracking-widest text-muted-foreground/30 font-medium">{item.l}</span>
             </div>
           </React.Fragment>
         ))}
       </div>
-      <div className="space-y-1.5 px-2">
-        <Progress value={progress} className="h-[3px] bg-muted/40" />
-        <p className="text-[10px] text-muted-foreground/50 text-center tabular-nums">
-          {progress.toFixed(0)}% of 8-hour shift
-        </p>
-      </div>
+
+      {/* Break indicator */}
+      {isOnBreak && (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2">
+          <Coffee className="h-3.5 w-3.5 text-amber-500/70" />
+          <span className="text-xs font-semibold text-amber-500/70">On Break</span>
+          <span className="font-mono text-xs text-amber-500/50 tabular-nums ml-1">
+            {pad(breakTime.h)}:{pad(breakTime.m)}:{pad(breakTime.s)}
+          </span>
+        </div>
+      )}
+
+      {/* Break time summary (only when not on break and has taken breaks) */}
+      {!isOnBreak && currentBreakMs > 0 && (
+        <div className="flex items-center justify-center gap-2">
+          <Coffee className="h-3 w-3 text-muted-foreground/25" />
+          <span className="text-[10px] text-muted-foreground/30 tabular-nums">
+            Break: {pad(breakTime.h)}:{pad(breakTime.m)}:{pad(breakTime.s)}
+          </span>
+        </div>
+      )}
+
+      {/* Elapsed label */}
+      {!isOnBreak && currentBreakMs === 0 && (
+        <div className="flex justify-center">
+          <span className="text-[10px] text-muted-foreground/30 tabular-nums">
+            {worked.h > 0 ? `${worked.h}h ${worked.m}m worked` : `${worked.m}m worked`}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── Stat Pill ────────────────────────────────────────────────────────────────
+// ─── Quick Action Button ──────────────────────────────────────────────────────
 
-function StatCard({
-  icon,
-  label,
-  value,
-  accent,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  accent: string
-}) {
+function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <div className="group relative rounded-xl border border-border/50 bg-card px-4 py-3 flex items-center gap-3 hover:border-border transition-colors duration-200">
-      <div className={`h-8 w-8 rounded-lg ${accent} flex items-center justify-center shrink-0`}>
+    <button
+      onClick={onClick}
+      className="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/40 bg-card p-5 hover:border-emerald-500/25 hover:bg-emerald-500/[0.02] transition-all duration-200 cursor-pointer w-full aspect-square sm:aspect-auto sm:py-6"
+    >
+      <div className="h-11 w-11 rounded-xl bg-muted/40 flex items-center justify-center group-hover:bg-emerald-500/10 transition-colors duration-200">
         {icon}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium leading-none">
-          {label}
-        </p>
-        <p className="text-sm font-semibold truncate mt-1 leading-none text-foreground">
-          {value}
-        </p>
-      </div>
-    </div>
+      <span className="text-xs font-semibold">{label}</span>
+    </button>
   )
 }
 
@@ -210,6 +221,10 @@ export default function CrmDashboardPage() {
   const [todayLogs, setTodayLogs] = React.useState<CrmUserData["todayTimeLogs"]>([])
   const [isClocking, setIsClocking] = React.useState(false)
   const [clockMsg, setClockMsg] = React.useState("")
+  // Break state — tracked client-side (also sent to API)
+  const [isOnBreak, setIsOnBreak] = React.useState(false)
+  const [breakStartedAt, setBreakStartedAt] = React.useState<number | null>(null)
+  const [breakAccumulatedMs, setBreakAccumulatedMs] = React.useState(0)
 
   React.useEffect(() => {
     const check = async () => {
@@ -246,6 +261,12 @@ export default function CrmDashboardPage() {
       const res = await apiClient.post("/api/crm/time-clock", { type }, { headers: { Authorization: `Bearer ${token}` } })
       const data = res.data?.data || res.data
       setTodayLogs(data.todayLogs || [])
+      // Reset break state on end shift
+      if (type === "time-out") {
+        setIsOnBreak(false)
+        setBreakStartedAt(null)
+        setBreakAccumulatedMs(0)
+      }
       setClockMsg(`${type === "time-in" ? "Clocked in" : "Clocked out"} at ${fmt(new Date())}`)
     } catch (err: any) {
       setClockMsg(err?.response?.data?.message || "Failed")
@@ -254,27 +275,55 @@ export default function CrmDashboardPage() {
     }
   }
 
-  const timeIn = todayLogs?.find((l) => l.type === "time-in")
+  const handleBreak = async () => {
+    setClockMsg("")
+    if (!isOnBreak) {
+      // Start break
+      const now = Date.now()
+      setIsOnBreak(true)
+      setBreakStartedAt(now)
+      try {
+        await apiClient.post("/api/crm/time-clock", { type: "break-start" }, { headers: { Authorization: `Bearer ${token}` } })
+      } catch { /* non-blocking */ }
+      setClockMsg(`Break started at ${fmt(new Date())}`)
+    } else {
+      // End break — accumulate
+      const now = Date.now()
+      const elapsed = breakStartedAt ? now - breakStartedAt : 0
+      setBreakAccumulatedMs((prev) => prev + elapsed)
+      setIsOnBreak(false)
+      setBreakStartedAt(null)
+      try {
+        await apiClient.post("/api/crm/time-clock", { type: "break-end" }, { headers: { Authorization: `Bearer ${token}` } })
+      } catch { /* non-blocking */ }
+      setClockMsg(`Break ended at ${fmt(new Date())}`)
+    }
+  }
+
+  const timeIn  = todayLogs?.find((l) => l.type === "time-in")
   const timeOut = todayLogs?.find((l) => l.type === "time-out")
-  const hasClockedIn = !!timeIn
+  const hasClockedIn  = !!timeIn
   const hasClockedOut = !!timeOut
-  const isActive = hasClockedIn && !hasClockedOut
+  const isActive   = hasClockedIn && !hasClockedOut
   const isComplete = hasClockedOut
 
   const finalHours = React.useMemo(() => {
     if (!timeIn || !timeOut) return null
-    const diff = new Date(timeOut.timestamp).getTime() - new Date(timeIn.timestamp).getTime()
-    return `${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`
-  }, [timeIn, timeOut])
+    const totalMs = new Date(timeOut.timestamp).getTime() - new Date(timeIn.timestamp).getTime()
+    const workedMs = Math.max(0, totalMs - breakAccumulatedMs)
+    const h = Math.floor(workedMs / 3600000)
+    const m = Math.floor((workedMs % 3600000) / 60000)
+    return `${h}h ${m}m`
+  }, [timeIn, timeOut, breakAccumulatedMs])
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-emerald-600/10 flex items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
           </div>
-          <p className="text-xs text-muted-foreground/60 tracking-wide">Loading workspace…</p>
+          <p className="text-xs text-muted-foreground/40 tracking-widest uppercase">Loading</p>
         </div>
       </div>
     )
@@ -283,341 +332,270 @@ export default function CrmDashboardPage() {
   if (!user) return null
 
   const greeting = getGreeting(user.fullName.split(" ")[0])
-
   const todayStr = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
   })
-
-  const statusConfig = {
-    active: { label: "Active", classes: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
-    complete: { label: "Complete", classes: "bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 border-emerald-600/25" },
-    idle: { label: "Idle", classes: "bg-muted/60 text-muted-foreground border-border/50" },
-  }
-  const currentStatus = isActive ? statusConfig.active : isComplete ? statusConfig.complete : statusConfig.idle
 
   return (
     <TooltipProvider>
-      {/* Centered layout wrapper */}
-      <div className="w-full space-y-5 pb-10 px-4 sm:px-6 lg:px-10 xl:px-16 min-h-screen">
+      <div className="min-h-screen w-full bg-background">
 
-        {/* ══════════════════════════════════════════════
-            TOPBAR
-        ══════════════════════════════════════════════ */}
-        <div className="flex items-center justify-between pt-1">
-          {/* Brand */}
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-              <Car className="h-4 w-4 text-white" />
+        {/* ── Topbar ── */}
+        <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/90 backdrop-blur-xl">
+          <div className="flex items-center justify-between h-14 px-6">
+            {/* Brand */}
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center shadow-sm">
+                <Car className="h-4 w-4 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-sm font-bold leading-none">Action Auto</p>
+                <p className="text-[9px] uppercase tracking-[0.25em] text-emerald-600 mt-0.5 font-bold">Workspace</p>
+              </div>
             </div>
-            <div className="leading-none">
-              <span className="text-sm font-bold tracking-tight">Action Auto</span>
-              <span className="block text-[8px] font-bold uppercase tracking-[0.25em] text-emerald-600 mt-0.5">CRM</span>
-            </div>
-          </div>
 
-          {/* Right controls */}
-          <div className="flex items-center gap-2">
-            <LiveClock />
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 rounded-full gap-2 pl-1 pr-2.5 border border-border/50 hover:border-border hover:bg-muted/40 transition-all"
-                >
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={user.avatar} />
-                    <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">
-                      {ini(user.fullName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden sm:inline text-xs font-medium max-w-[100px] truncate">
-                    {user.fullName}
-                  </span>
-                  <ChevronDown className="h-3 w-3 text-muted-foreground/50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-xl p-0 overflow-hidden shadow-lg border-border/50">
-                <div className="p-3.5 bg-muted/30">
-                  <div className="flex items-center gap-2.5">
-                    <Avatar className="h-9 w-9">
+            {/* Right */}
+            <div className="flex items-center gap-3">
+              <LiveClock />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-9 gap-2 pl-1.5 pr-3 rounded-full border border-border/40 hover:bg-muted/50">
+                    <Avatar className="h-6 w-6">
                       <AvatarImage src={user.avatar} />
-                      <AvatarFallback className="bg-emerald-600 text-white text-xs font-bold">
-                        {ini(user.fullName)}
-                      </AvatarFallback>
+                      <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">{ini(user.fullName)}</AvatarFallback>
                     </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">{user.fullName}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                    <span className="hidden sm:inline text-xs font-medium max-w-[100px] truncate">{user.fullName}</span>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground/40" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-2xl p-0 overflow-hidden shadow-xl border-border/40">
+                  <div className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={user.avatar} />
+                        <AvatarFallback className="bg-emerald-600 text-white text-xs font-bold">{ini(user.fullName)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold truncate">{user.fullName}</p>
+                        <p className="text-[11px] text-muted-foreground/50 truncate">{user.email}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-1.5 mt-2.5">
-                    <Badge variant="secondary" className="text-[9px] h-4.5 px-1.5 rounded-full">{user.username}</Badge>
-                    <Badge variant="outline" className="text-[9px] h-4.5 px-1.5 rounded-full capitalize">{user.role}</Badge>
+                  <DropdownMenuSeparator className="m-0" />
+                  <div className="p-1.5">
+                    <DropdownMenuItem className="rounded-xl text-xs h-9 gap-2.5 cursor-pointer">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" /> My Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="rounded-xl text-xs h-9 gap-2.5 cursor-pointer">
+                      <Settings className="h-3.5 w-3.5 text-muted-foreground" /> Settings
+                    </DropdownMenuItem>
                   </div>
-                </div>
-                <DropdownMenuSeparator className="m-0" />
-                <div className="p-1">
-                  <DropdownMenuItem className="rounded-lg text-xs h-8 gap-2 cursor-pointer">
-                    <User className="h-3.5 w-3.5 text-muted-foreground" /> My Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-lg text-xs h-8 gap-2 cursor-pointer">
-                    <Settings className="h-3.5 w-3.5 text-muted-foreground" /> Settings
-                  </DropdownMenuItem>
-                </div>
-                <DropdownMenuSeparator className="m-0" />
-                <div className="p-1">
-                  <DropdownMenuItem
-                    onClick={handleExit}
-                    className="rounded-lg text-xs h-8 gap-2 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/5"
-                  >
-                    <LogOut className="h-3.5 w-3.5" /> Exit CRM
-                  </DropdownMenuItem>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuSeparator className="m-0" />
+                  <div className="p-1.5">
+                    <DropdownMenuItem onClick={handleExit} className="rounded-xl text-xs h-9 gap-2.5 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/5">
+                      <LogOut className="h-3.5 w-3.5" /> Exit CRM
+                    </DropdownMenuItem>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </div>
+        </header>
 
-        {/* ══════════════════════════════════════════════
-            PAGE HEADING
-        ══════════════════════════════════════════════ */}
-        <div className="text-center space-y-1 py-2">
-          <div className="flex items-center justify-center gap-2">
-            {greeting.icon}
-            <h1 className="text-2xl font-bold tracking-tight">{greeting.text}</h1>
-          </div>
-          <p className="text-sm text-muted-foreground/60">{todayStr}</p>
-        </div>
+        {/* ── Page content ── */}
+        <main className="max-w-screen-xl mx-auto px-6 py-8 space-y-6">
 
-        {/* ══════════════════════════════════════════════
-            MAIN CARDS
-        ══════════════════════════════════════════════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* ── Identity Card ── */}
-          <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-                Employee
-              </p>
-              <Badge
-                className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${currentStatus.classes}`}
-              >
-                {currentStatus.label}
+          {/* Greeting */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              {greeting.icon}
+              <h1 className="text-xl font-bold tracking-tight">{greeting.text}</h1>
+              <Badge variant="outline" className="text-[10px] h-5 px-2 rounded-full capitalize font-semibold hidden sm:inline-flex">
+                {user.role}
               </Badge>
             </div>
-
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12 ring-2 ring-emerald-500/20">
-                <AvatarImage src={user.avatar} />
-                <AvatarFallback className="bg-emerald-600 text-white text-sm font-bold">
-                  {ini(user.fullName)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-base font-semibold leading-tight">{user.fullName}</p>
-                <p className="text-xs text-muted-foreground/60 mt-0.5">{user.email}</p>
-              </div>
-            </div>
-
-            <Separator className="opacity-40" />
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
-                <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/50 font-medium">Username</p>
-                <p className="text-lg font-bold mt-1 leading-none">{user.username}</p>
-              </div>
-              <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
-                <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/50 font-medium">Role</p>
-                <p className="text-lg font-bold mt-1 leading-none capitalize">{user.role}</p>
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground/40 hidden sm:block">{todayStr}</p>
           </div>
 
-          {/* ── Time Clock Card ── */}
-          <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-                Time Clock
-              </p>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    isActive ? "bg-emerald-500 animate-pulse" : isComplete ? "bg-emerald-600" : "bg-muted-foreground/30"
-                  }`}
-                />
-                <span className={`text-[10px] font-medium ${
-                  isActive ? "text-emerald-600 dark:text-emerald-400"
-                  : isComplete ? "text-emerald-700 dark:text-emerald-300"
-                  : "text-muted-foreground/50"
-                }`}>
-                  {isActive ? "Shift active" : isComplete ? "Shift complete" : "Not clocked in"}
-                </span>
-              </div>
-            </div>
+          {/* Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-            {/* Timer / Done / Idle display */}
-            <div className="flex items-center justify-center min-h-[80px]">
-              {isActive && timeIn && <ShiftTimer startTime={timeIn.timestamp} />}
-              {isComplete && (
-                <div className="text-center space-y-1.5">
-                  <CheckCircle2 className="h-7 w-7 text-emerald-500 mx-auto" />
-                  <p className="text-2xl font-bold tracking-tight leading-none">{finalHours}</p>
-                  <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">Total hours</p>
+            {/* ─── Time Clock ─── */}
+            <div className="lg:col-span-5 rounded-2xl border border-border/40 bg-card flex flex-col">
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border/30">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground/40" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40">Time Clock</span>
                 </div>
-              )}
-              {!hasClockedIn && (
-                <div className="text-center space-y-1.5">
-                  <div className="h-10 w-10 rounded-full border-2 border-dashed border-border/50 flex items-center justify-center mx-auto">
-                    <Clock className="h-4 w-4 text-muted-foreground/30" />
+                <div className="flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${isOnBreak ? "bg-amber-400 animate-pulse" : isActive ? "bg-emerald-500 animate-pulse" : isComplete ? "bg-emerald-500" : "bg-muted-foreground/20"}`} />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${isOnBreak ? "text-amber-500" : isActive ? "text-emerald-500" : isComplete ? "text-emerald-600" : "text-muted-foreground/30"}`}>
+                    {isOnBreak ? "On Break" : isActive ? "On Shift" : isComplete ? "Completed" : "Off Clock"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Timer */}
+              <div className="flex-1 flex items-center justify-center px-8 py-10 min-h-[200px]">
+                {isActive && timeIn && (
+                  <ShiftTimer
+                    startTime={timeIn.timestamp}
+                    breakAccumulatedMs={breakAccumulatedMs}
+                    breakStartedAt={breakStartedAt}
+                  />
+                )}
+                {isComplete && (
+                  <div className="text-center space-y-3">
+                    <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
+                    <p className="text-5xl font-mono font-bold tracking-tighter">{finalHours}</p>
+                    <p className="text-xs text-muted-foreground/40 uppercase tracking-widest">Shift Complete</p>
                   </div>
-                  <p className="text-xs text-muted-foreground/40">Ready to start</p>
+                )}
+                {!hasClockedIn && (
+                  <div className="text-center space-y-3">
+                    <div className="h-16 w-16 rounded-2xl border-2 border-dashed border-border/25 flex items-center justify-center mx-auto">
+                      <Activity className="h-7 w-7 text-muted-foreground/15" />
+                    </div>
+                    <p className="text-sm text-muted-foreground/30">Not clocked in yet</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-5 border-t border-border/30 space-y-4 bg-muted/[0.015]">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-widest text-muted-foreground/30 font-semibold mb-1.5">Time In</p>
+                    <p className="text-2xl font-mono font-bold tabular-nums leading-none">
+                      {timeIn ? fmt(new Date(timeIn.timestamp)) : "——"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-widest text-muted-foreground/30 font-semibold mb-1.5">Time Out</p>
+                    <p className="text-2xl font-mono font-bold tabular-nums leading-none">
+                      {timeOut ? fmt(new Date(timeOut.timestamp)) : "——"}
+                    </p>
+                  </div>
                 </div>
-              )}
+
+                {!hasClockedIn && (
+                  <Button
+                    onClick={() => handleClock("time-in")}
+                    disabled={isClocking}
+                    className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-2 shadow-md shadow-emerald-600/15"
+                  >
+                    {isClocking
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <><Sparkles className="h-4 w-4" /> Start Shift <ArrowRight className="h-4 w-4 ml-auto opacity-50" /></>}
+                  </Button>
+                )}
+                {isActive && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Break / Resume */}
+                    <Button
+                      onClick={handleBreak}
+                      variant="outline"
+                      className={`h-11 rounded-xl font-semibold gap-2 transition-all ${
+                        isOnBreak
+                          ? "border-amber-500/30 bg-amber-500/5 text-amber-600 hover:bg-amber-500/10 hover:border-amber-500/40"
+                          : "border-border/50 hover:border-amber-500/30 hover:bg-amber-500/5 hover:text-amber-600"
+                      }`}
+                    >
+                      {isOnBreak
+                        ? <><Play className="h-4 w-4" /> Resume</>
+                        : <><Coffee className="h-4 w-4" /> Break</>}
+                    </Button>
+                    {/* End Shift — disabled while on break */}
+                    <Button
+                      onClick={() => handleClock("time-out")}
+                      disabled={isClocking || isOnBreak}
+                      variant="destructive"
+                      className="h-11 rounded-xl font-semibold gap-2 transition-all disabled:opacity-40"
+                    >
+                      {isClocking
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <><LogOut className="h-4 w-4" /> End Shift</>}
+                    </Button>
+                  </div>
+                )}
+
+                {clockMsg && (
+                  <p className="text-xs text-center text-emerald-500/60 font-medium">{clockMsg}</p>
+                )}
+              </div>
             </div>
 
-            <Separator className="opacity-40" />
+            {/* ─── Right column ─── */}
+            <div className="lg:col-span-7 flex flex-col gap-6">
 
-            {/* Clock In / Out times */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/50 font-medium">Clock In</p>
-                <p className="text-sm font-semibold tabular-nums mt-0.5">
-                  {timeIn ? fmt(new Date(timeIn.timestamp)) : "—"}
-                </p>
+              {/* Profile */}
+              <div className="rounded-2xl border border-border/40 bg-card p-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">My Profile</p>
+
+                <div className="flex items-center gap-4 pb-5 border-b border-border/30">
+                  <Avatar className="h-14 w-14 ring-2 ring-border/40">
+                    <AvatarImage src={user.avatar} />
+                    <AvatarFallback className="bg-emerald-600 text-white text-base font-bold">{ini(user.fullName)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-base font-bold">{user.fullName}</p>
+                    <p className="text-sm text-muted-foreground/50 mt-0.5">{user.email}</p>
+                    <div className="flex gap-1.5 mt-2">
+                      <Badge variant="secondary" className="text-[10px] h-5 px-2 rounded-full font-semibold">{user.username}</Badge>
+                      <Badge variant="outline"   className="text-[10px] h-5 px-2 rounded-full capitalize font-semibold">{user.role}</Badge>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 pt-4">
+                  {[
+                    { label: "Full Name", value: user.fullName },
+                    { label: "Username",  value: user.username },
+                    { label: "Role",      value: user.role },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl bg-muted/30 px-4 py-3">
+                      <p className="text-[9px] uppercase tracking-widest text-muted-foreground/40 font-semibold">{item.label}</p>
+                      <p className="text-sm font-bold mt-1.5 truncate capitalize">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/50 font-medium">Clock Out</p>
-                <p className="text-sm font-semibold tabular-nums mt-0.5">
-                  {timeOut ? fmt(new Date(timeOut.timestamp)) : "—"}
-                </p>
+
+              {/* Quick Actions */}
+              <div className="rounded-2xl border border-border/40 bg-card p-6 flex-1">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">Quick Actions</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <QuickAction
+                    icon={<CalendarCheck className="h-5 w-5 text-emerald-500" />}
+                    label="Appointments"
+                    onClick={() => router.push("/crm/appointments")}
+                  />
+                  <QuickAction
+                    icon={<CalendarDays className="h-5 w-5 text-emerald-500" />}
+                    label="Timeproof"
+                    onClick={() => router.push("/crm/timeproof")}
+                  />
+                  <QuickAction
+                    icon={<MessageSquare className="h-5 w-5 text-emerald-500" />}
+                    label="Supra Space"
+                    onClick={() => router.push("/crm/supra-space")}
+                  />
+                  <QuickAction
+                    icon={<Fingerprint className="h-5 w-5 text-emerald-500" />}
+                    label="Biometrics"
+                    onClick={() => router.push("/crm/biometrics")}
+                  />
+                </div>
               </div>
+
             </div>
-
-            {/* Action button */}
-            {!hasClockedIn && (
-              <Button
-                onClick={() => handleClock("time-in")}
-                disabled={isClocking}
-                size="sm"
-                className="w-full h-9 text-xs rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium gap-2 transition-all"
-              >
-                {isClocking
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <><Clock className="h-3.5 w-3.5" /> Clock In <ArrowRight className="h-3.5 w-3.5 ml-auto" /></>
-                }
-              </Button>
-            )}
-            {isActive && (
-              <Button
-                onClick={() => handleClock("time-out")}
-                disabled={isClocking}
-                variant="destructive"
-                size="sm"
-                className="w-full h-9 text-xs rounded-xl font-medium gap-2 transition-all"
-              >
-                {isClocking
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <><LogOut className="h-3.5 w-3.5" /> Clock Out <ArrowRight className="h-3.5 w-3.5 ml-auto" /></>
-                }
-              </Button>
-            )}
-
-            {clockMsg && (
-              <p className="text-[11px] text-center text-muted-foreground/50">{clockMsg}</p>
-            )}
           </div>
-        </div>
-
-        {/* ══════════════════════════════════════════════
-            STAT ROW
-        ══════════════════════════════════════════════ */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-
-          {/* Status */}
-          <StatCard
-            icon={<Zap className="h-4 w-4 text-emerald-600" />}
-            accent="bg-emerald-500/10"
-            label="Status"
-            value={isActive ? "Active" : isComplete ? "Complete" : "Inactive"}
-          />
-
-          {/* View Timeproof Calendar */}
-          <button
-            onClick={() => router.push("/crm/timeproof")}
-            className="group rounded-xl border border-border/50 bg-card px-4 py-3 flex items-center gap-3 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all duration-200 text-left cursor-pointer"
-          >
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
-              <CalendarDays className="h-4 w-4 text-emerald-600" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium leading-none">Quick Link</p>
-              <p className="text-sm font-semibold mt-1 leading-none text-foreground truncate">View Timeproof Calendar</p>
-            </div>
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-          </button>
-
-          {/* My Account */}
-          <button
-            onClick={() => router.push("/crm/account")}
-            className="group rounded-xl border border-border/50 bg-card px-4 py-3 flex items-center gap-3 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all duration-200 text-left cursor-pointer"
-          >
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
-              <User className="h-4 w-4 text-emerald-600" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium leading-none">Quick Link</p>
-              <p className="text-sm font-semibold mt-1 leading-none text-foreground">My Account</p>
-            </div>
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-          </button>
-
-          {/* ── Biometric Security ── */}
-          <button
-            onClick={() => router.push("/crm/biometrics")}
-            className="group rounded-xl border border-border/50 bg-card px-4 py-3 flex items-center gap-3 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all duration-200 text-left cursor-pointer"
-          >
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
-              <Fingerprint className="h-4 w-4 text-emerald-600" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium leading-none">Quick Link</p>
-              <p className="text-sm font-semibold mt-1 leading-none text-foreground">Biometric Security</p>
-            </div>
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-          </button>
-
-          {/* Role */}
-          <StatCard
-            icon={<Shield className="h-4 w-4 text-emerald-600" />}
-            accent="bg-emerald-500/10"
-            label="Role"
-            value={user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-          />
-
-        </div>
-
-        {/* ══════════════════════════════════════════════
-            APPOINTMENTS
-        ══════════════════════════════════════════════ */}
-        <AppointmentsPage />
-
+        </main>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          SUPRA LEO AI — Floating Widget (CRM-wide)
-          ─────────────────────────────────────────────────────────────────────
-          Mounted at dashboard level so it persists across ALL views:
-          Leads, Calendar, Upcoming, Booked, Timeproof, Account, etc.
-          Renders fixed bottom-right at z-[9999]. Zero layout impact.
-      ══════════════════════════════════════════════════════════════════════ */}
       <SupraLeoAI />
-
     </TooltipProvider>
   )
 }

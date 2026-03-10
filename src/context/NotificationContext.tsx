@@ -56,15 +56,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 setNotifications(data.data.notifications);
                 setUnreadCount(data.data.unreadCount);
                 setError(null);
-                pollDelayRef.current = 30000; // Reset delay on success
+                pollDelayRef.current = 30000;
             } else {
-                // If unauthorized, stop polling
                 if (response.status === 401) {
-                    console.log('[NotificationContext] Unauthorized, stopping polling');
                     setError(null);
                     if (pollIntervalRef.current) {
                         clearInterval(pollIntervalRef.current);
                     }
+                    return;
+                }
+                if (response.status === 404) {
+                    setNotifications([]);
+                    setUnreadCount(0);
+                    setError(null);
                     return;
                 }
                 throw new Error(`Failed to fetch notifications: ${response.status}`);

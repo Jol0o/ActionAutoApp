@@ -49,15 +49,16 @@ import {
 
 const data = {
   navMain: [
+     {
+      title: "CRM",
+      url: "/crm",
+      icon: Users,
+    },
+    
     {
       title: "Dashboard",
       url: "/",
       icon: LayoutDashboard,
-    },
-    {
-      title: "CRM",
-      url: "/crm",
-      icon: Users,
     },
     {
       title: "All Inventory",
