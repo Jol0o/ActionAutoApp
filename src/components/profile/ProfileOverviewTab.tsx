@@ -28,14 +28,14 @@ import { toast } from 'sonner';
 
 interface ProfileOverviewTabProps {
     profile: UserProfile | null;
-    clerkUser: any;
+    authUser: any;
     activities: RecentActivity[];
     handleTabChange: (tab: string) => void;
 }
 
 export const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
     profile,
-    clerkUser,
+    authUser,
     activities,
     handleTabChange,
 }) => {

@@ -17,7 +17,7 @@ import { format } from 'date-fns';
 
 interface ProfileHeroSectionProps {
   profile: UserProfile | null;
-  clerkUser: any;
+  authUser: any;
   currentStatusOption: any;
   roleBadge: any;
   customStatus: string;
@@ -31,7 +31,7 @@ interface ProfileHeroSectionProps {
 
 export function ProfileHeroSection({
   profile,
-  clerkUser,
+  authUser,
   currentStatusOption,
   roleBadge,
   customStatus,
@@ -71,14 +71,14 @@ export function ProfileHeroSection({
           {/* Profile Picture */}
           <div className="relative group animate-slide-in-left">
             <div className="absolute -inset-1 bg-gradient-to-r from-white/40 via-emerald-300 to-white/40 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
-            <div 
+            <div
               className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-[5px] border-white/60 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer transition-all hover:scale-110 profile-picture-glow"
               onClick={onChangePhoto}
             >
-              {(getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl) ? (
-                <img 
-                  src={getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl} 
-                  alt="Profile" 
+              {(getAvatarUrl(profile?.avatar) || authUser?.imageUrl) ? (
+                <img
+                  src={getAvatarUrl(profile?.avatar) || authUser?.imageUrl}
+                  alt="Profile"
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -88,7 +88,7 @@ export function ProfileHeroSection({
                 <Camera className="size-6 sm:size-8 text-white animate-subtle-scale" />
               </div>
             </div>
-            <button 
+            <button
               onClick={onStatusClick}
               className={cn(
                 "absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-4 border-white shadow-lg flex items-center justify-center transition-all hover:scale-125 z-20 animate-status-aura",
@@ -103,14 +103,14 @@ export function ProfileHeroSection({
           <div className="flex-1 text-center sm:text-left animate-slide-in-right">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-2 sm:mb-3">
               <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight drop-shadow-lg">
-                {profile?.name || clerkUser?.fullName || 'User'}
+                {profile?.name || authUser?.fullName || 'User'}
               </h1>
               <Badge className={cn("text-xs sm:text-sm px-3 py-1 border transition-transform hover:scale-105", roleBadge.className)}>
                 {roleBadge.label}
               </Badge>
             </div>
             <p className="text-white/90 text-sm sm:text-base mb-1">
-              {profile?.email || clerkUser?.primaryEmailAddress?.emailAddress}
+              {profile?.email || authUser?.primaryEmailAddress?.emailAddress}
             </p>
             <p className="text-white/60 text-[11px] sm:text-xs mb-3">
               <Clock className="size-3 inline mr-1" />

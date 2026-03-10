@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useNotifications } from '@/context/NotificationContext';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from '@/lib/api-client';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Notification } from '@/types/notification';

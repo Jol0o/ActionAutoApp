@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Search, ChevronDown, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useUser, useClerk } from "@clerk/nextjs"
+import { useUser, useClerk } from "@/providers/AuthProvider"
 import { NotificationBell } from "@/components/NotificationBell"
 import { NotificationProvider } from "@/context/NotificationContext"
 import { ThemeProvider } from "@/context/ThemeContext"
@@ -41,6 +41,15 @@ function DashboardLayoutContent({
     const router = useRouter();
     const { isImpersonating } = adminStore.useStore();
 
+    console.log('isSuperAdmin', isSuperAdmin);
+    console.log('isDriver', isDriver);
+    console.log('userRole', userRole);
+    console.log('isImpersonating', isImpersonating);
+    console.log('isLoaded', isLoaded);
+    console.log('organization', organization);
+
+    const [isRedirecting, setIsRedirecting] = React.useState(false);
+
     React.useEffect(() => {
         // Wait until org context is fully loaded before making routing decisions
         if (!isLoaded) return;
@@ -49,6 +58,7 @@ function DashboardLayoutContent({
         // FAILSAFE: If impersonating, DO NOT redirect to admin dashboard
         if (isSuperAdmin && !isImpersonating) {
             if (window.location.pathname === '/' || window.location.pathname === '/org-selection') {
+                setIsRedirecting(true);
                 router.push('/admin/dashboard');
             }
             return;
@@ -76,6 +86,21 @@ function DashboardLayoutContent({
         }
 
     }, [isLoaded, organization, isSuperAdmin, isDriver, router, isImpersonating, userRole]);
+
+    const isCustomer = userRole === 'customer';
+    const isEmployee = userRole === 'employee';
+
+    // Prevent flashing the dealer dashboard to unauthorized roles while redirecting
+    if (!isLoaded || isCustomer || isDriver || (!organization && isEmployee && !isSuperAdmin) || isRedirecting) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-muted-foreground animate-pulse">Loading workspace...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <SidebarProvider>

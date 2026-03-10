@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { useClerk } from "@clerk/nextjs"
+import { useClerk } from "@/providers/AuthProvider"
 import {
     DropdownMenu,
     DropdownMenuContent,

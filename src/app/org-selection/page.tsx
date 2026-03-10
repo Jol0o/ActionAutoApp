@@ -34,10 +34,7 @@ export default function OrgSelectionPage() {
         try {
             const slug = newOrgName.toLowerCase().replace(/[^a-z0-9]/g, '-')
             await createOrganization({ name: newOrgName, slug })
-            // Success logic is handled by useOrg hook (invalidation)
-            // But we might want to select it automatically or reset form
-            setIsCreatingNew(false)
-            setNewOrgName("")
+            window.location.href = '/'
         } catch (error) {
             console.error("Failed to create organization", error)
         }
@@ -46,7 +43,7 @@ export default function OrgSelectionPage() {
     const handleSelect = async (orgId: string) => {
         try {
             await selectOrganization(orgId)
-            router.push('/')
+            window.location.href = '/'
         } catch (error) {
             console.error("Failed to select organization", error)
         }

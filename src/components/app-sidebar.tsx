@@ -29,7 +29,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser, useClerk } from "@/providers/AuthProvider";
 import { useOrg } from "@/hooks/useOrg";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfileContext } from "@/context/ProfileContext";

@@ -7,8 +7,9 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { useRouter } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser, useClerk, useAuth } from "@/providers/AuthProvider";
 import { useOrg } from "@/hooks/useOrg";
+import { apiClient } from "@/lib/api-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,25 +28,52 @@ function DriverLayoutContent({
 }: Readonly<{ children: React.ReactNode }>) {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { getToken } = useAuth();
   const { isLoaded, isDriver, userRole } = useOrg();
   const router = useRouter();
   const [guardPassed, setGuardPassed] = React.useState(false);
 
   React.useEffect(() => {
-    if (!isLoaded) return;
+    const checkApproval = async () => {
+      if (!isLoaded) return;
 
-    // Wait until role data has resolved
-    if (userRole === undefined) return;
+      // Wait until role data has resolved
+      if (userRole === undefined) return;
 
-    // If not a driver, redirect to dealer dashboard
-    if (!isDriver) {
-      router.push("/");
-      return;
-    }
+      // If not a driver role, redirect to dealer dashboard
+      if (!isDriver) {
+        router.push("/");
+        return;
+      }
 
-    // Driver is approved — grant access
-    setGuardPassed(true);
-  }, [isLoaded, isDriver, userRole, router]);
+      try {
+        const token = await getToken();
+        const response = await apiClient.get('/api/driver-requests/my-status', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const requestData = response.data?.data;
+
+        if (!requestData || requestData.status !== 'approved') {
+          // If no request exists, create one (silent onboarding)
+          if (!requestData || requestData.status === 'no-request') {
+            await apiClient.post('/api/driver-requests', {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          }
+          router.push("/driver/pending");
+          return;
+        }
+
+        // Driver is approved — grant access
+        setGuardPassed(true);
+      } catch (err) {
+        console.error("[DriverLayout] Approval check failed:", err);
+        router.push("/driver/pending");
+      }
+    };
+
+    checkApproval();
+  }, [isLoaded, isDriver, userRole, router, getToken]);
 
   // Show loading while guard is checking
   if (!guardPassed) {

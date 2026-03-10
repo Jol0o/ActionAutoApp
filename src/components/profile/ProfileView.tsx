@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useClerk, useUser, useAuth } from "@clerk/nextjs";
+import { useClerk, useUser, useAuth } from "@/providers/AuthProvider";
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
 import { useProfileContext } from '@/context/ProfileContext';
@@ -34,7 +34,7 @@ import { ProfileDialogs } from './ProfileDialogs';
 import { allNotificationCategories, containsCurseWord } from './profile-constants';
 
 export const ProfileView: React.FC = () => {
-    const { user: clerkUser } = useUser();
+    const { user: authUser } = useUser();
     const { signOut, openUserProfile } = useClerk();
     const { getToken } = useAuth();
     const { setAvatarUrl, triggerRefresh } = useProfileContext();
@@ -312,7 +312,7 @@ export const ProfileView: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
             <ProfileHeader
                 profile={profile}
-                clerkUser={clerkUser}
+                authUser={authUser}
                 onlineStatus={onlineStatus}
                 customStatus={customStatus}
                 triggerRefresh={triggerRefresh}
@@ -348,7 +348,7 @@ export const ProfileView: React.FC = () => {
                 <TabsContent value="overview">
                     <ProfileOverviewTab
                         profile={profile}
-                        clerkUser={clerkUser}
+                        authUser={authUser}
                         activities={activities}
                         handleTabChange={handleTabChange}
                     />

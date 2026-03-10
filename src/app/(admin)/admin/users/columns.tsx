@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/providers/AuthProvider";
 import { ColumnDef } from "@tanstack/react-table"
 import { MoreHorizontal, ShieldBan, ShieldCheck, UserCog } from "lucide-react"
 import { Button } from "@/components/ui/button"

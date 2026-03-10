@@ -15,7 +15,7 @@ import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
 import { GoogleCalendarSyncButton } from "@/components/GoogleCalendarSyncButton"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 import {
   FullscreenProvider,
   useFullscreen,

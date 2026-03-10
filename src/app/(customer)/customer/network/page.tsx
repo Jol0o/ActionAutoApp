@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Search, MapPin, Navigation, Phone, Clock, Navigation2, Gift, Crosshair, RefreshCw } from "lucide-react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 import { apiClient } from "@/lib/api-client"
 
 function getDistanceFromLatLonInMiles(lat1: number, lon1: number, lat2: number, lon2: number) {

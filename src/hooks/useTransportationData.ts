@@ -3,7 +3,7 @@ import { apiClient } from "@/lib/api-client";
 import { AxiosError } from "axios";
 import { Vehicle, ShippingQuoteFormData } from "@/types/inventory";
 import { Shipment, Quote, ShipmentStats } from "@/types/transportation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/providers/AuthProvider";
 
 export function useTransportationData() {
   const [isLoading, setIsLoading] = React.useState(true);

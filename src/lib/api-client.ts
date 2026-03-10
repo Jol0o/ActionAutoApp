@@ -23,18 +23,15 @@ class ApiClient {
                 const fullUrl = `${config.baseURL}${config.url}`;
                 console.log(`[apiClient] ${config.method?.toUpperCase()} ${fullUrl}`);
 
-                // Auto-inject Clerk auth token if not already set
+                // Auto-inject native auth token if not already set
                 if (typeof window !== 'undefined' && !config.headers.Authorization) {
                     try {
-                        const clerkInstance = (window as any).Clerk;
-                        if (clerkInstance?.session) {
-                            const token = await clerkInstance.session.getToken();
-                            if (token) {
-                                config.headers.Authorization = `Bearer ${token}`;
-                            }
+                        const token = (window as any).__AUTH_TOKEN__;
+                        if (token) {
+                            config.headers.Authorization = `Bearer ${token}`;
                         }
                     } catch (e) {
-                        console.warn('[apiClient] Could not get auth token:', e);
+                        console.warn('[apiClient] Could not get native auth token:', e);
                     }
                 }
 

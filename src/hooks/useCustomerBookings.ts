@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api-client'
-import { useAuth } from '@clerk/nextjs'
+import { useAuth } from "@/providers/AuthProvider"
 
 interface CustomerBooking {
   _id: string

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
 import { Payment, PaymentStats, CreatePaymentData } from "@/types/billing";
 import { DriverPayout, DeliverableShipment, DriverPayoutStats } from "@/types/driver-payout";

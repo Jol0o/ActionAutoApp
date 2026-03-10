@@ -1,7 +1,7 @@
 "use client"
 
 import { LogOut, LayoutDashboard, CarFront, MapIcon, Wallet, Settings, CreditCard } from "lucide-react"
-import { useClerk, useUser } from "@clerk/nextjs"
+import { useClerk, useUser } from "@/providers/AuthProvider"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
