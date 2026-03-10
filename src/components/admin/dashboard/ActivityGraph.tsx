@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { useQuery } from "@tanstack/react-query"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 import { apiClient } from "@/lib/api-client"
 import {
     Card,

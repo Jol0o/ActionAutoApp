@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useClerk, useUser, useAuth } from "@clerk/nextjs";
+import { useAuthActions, useUser, useAuth } from "@/providers/AuthProvider";
 import { useTheme } from '@/context/ThemeContext';
 import { useProfileContext } from '@/context/ProfileContext';
 import { useProfileToast } from '@/components/ProfileToast';
@@ -114,8 +114,8 @@ const getAvatarUrl = (avatar?: string | null): string | undefined => {
 };
 
 export default function DriverProfilePage() {
-  const { user: clerkUser } = useUser();
-  const { signOut, openUserProfile } = useClerk();
+  const { user: authUser } = useUser();
+  const { signOut, openUserProfile } = useAuthActions();
   const { getToken } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { setAvatarUrl } = useProfileContext();
@@ -401,7 +401,7 @@ export default function DriverProfilePage() {
         isOpen={showImageCropper}
         onClose={() => setShowImageCropper(false)}
         onSave={handleSaveProfilePicture}
-        currentImage={getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl}
+        currentImage={getAvatarUrl(profile?.avatar)}
       />
 
       {/* Background Pattern */}
@@ -432,9 +432,9 @@ export default function DriverProfilePage() {
                   className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-4 border-white/40 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer"
                   onClick={() => setShowImageCropper(true)}
                 >
-                  {(getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl) ? (
+                  {(getAvatarUrl(profile?.avatar)) ? (
                     <img
-                      src={getAvatarUrl(profile?.avatar) || clerkUser?.imageUrl}
+                      src={getAvatarUrl(profile?.avatar)}
                       alt="Profile"
                       className="w-full h-full object-cover"
                     />
@@ -460,14 +460,14 @@ export default function DriverProfilePage() {
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-2 sm:mb-3">
                   <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight drop-shadow-lg">
-                    {profile?.name || clerkUser?.fullName || 'Driver'}
+                    {profile?.name || authUser?.fullName || 'Driver'}
                   </h1>
                   <Badge className="bg-emerald-500/20 text-white border border-white/30 text-xs sm:text-sm px-3 py-1">
                     <Truck className="size-3 mr-1.5" />Driver
                   </Badge>
                 </div>
                 <p className="text-white/90 text-sm sm:text-base mb-2">
-                  {profile?.email || clerkUser?.primaryEmailAddress?.emailAddress}
+                  {profile?.email || authUser?.primaryEmailAddress?.emailAddress}
                 </p>
                 {organization && (
                   <p className="text-white/80 text-xs sm:text-sm mb-3 flex items-center justify-center sm:justify-start gap-1">
@@ -870,7 +870,7 @@ export default function DriverProfilePage() {
                       <div>
                         <p className="font-medium">Password</p>
                         <p className="text-sm text-gray-500">
-                          {profile?.securityStatus?.lastPasswordChange ? `Last changed ${formatDistanceToNow(new Date(profile.securityStatus.lastPasswordChange), { addSuffix: true })}` : 'Managed by Clerk'}
+                          {profile?.securityStatus?.lastPasswordChange ? `Last changed ${formatDistanceToNow(new Date(profile.securityStatus.lastPasswordChange), { addSuffix: true })}` : 'Action Auto Account'}
                         </p>
                       </div>
                     </div>
@@ -900,7 +900,7 @@ export default function DriverProfilePage() {
                     </div>
                     <div>
                       <CardTitle>Account Security</CardTitle>
-                      <CardDescription>Manage via Clerk</CardDescription>
+                      <CardDescription>Action Auto Security</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -910,9 +910,9 @@ export default function DriverProfilePage() {
                       <div className="flex items-start gap-3">
                         <AlertCircle className="size-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                         <div>
-                          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Managed by Clerk</p>
+                          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">System Managed</p>
                           <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                            Email and password changes are handled through Clerk for your security.
+                            Email and password changes are handled securely through your Action Auto account.
                           </p>
                         </div>
                       </div>

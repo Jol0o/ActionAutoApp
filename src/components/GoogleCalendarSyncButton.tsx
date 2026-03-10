@@ -4,7 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, Check, AlertCircle } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 
 interface GoogleCalendarSyncButtonProps {
   onSyncComplete?: () => void

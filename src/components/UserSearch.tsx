@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, ChevronsUpDown, X, UserPlus, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiClient } from "@/lib/api-client"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 
 interface User {
   _id: string

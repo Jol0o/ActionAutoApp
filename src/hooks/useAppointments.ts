@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { Appointment } from '@/types/appointment';
 import { AxiosError } from 'axios';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth } from "@/providers/AuthProvider";
 
 export function useAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);

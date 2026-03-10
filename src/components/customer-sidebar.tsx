@@ -41,7 +41,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser, useAuthActions } from "@/providers/AuthProvider";
 import { useOrg } from "@/hooks/useOrg";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -87,7 +87,7 @@ const customerData = {
 export function CustomerSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut } = useAuthActions();
   const { organization } = useOrg();
 
   return (

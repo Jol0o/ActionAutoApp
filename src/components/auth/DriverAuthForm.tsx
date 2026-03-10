@@ -1,12 +1,15 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
-import { useSignUp } from "@clerk/nextjs";
+import { useSignUp } from "@/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, Check, X } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, ArrowLeft, Check, X, Mail, Lock, User, ShieldCheck, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 const passwordRules = [
   { key: "length", label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -27,7 +30,7 @@ export function DriverAuthForm() {
   const [pendingVerification, setPendingVerification] = React.useState(false);
   const [verificationCode, setVerificationCode] = React.useState("");
 
-  const handleRegister = async (e: React.FormEvent) => { 
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isSignUpLoaded || !signUp) return;
     setError(null);
@@ -45,11 +48,24 @@ export function DriverAuthForm() {
       const nameParts = regName.trim().split(" ");
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
-      await signUp.create({ emailAddress: regEmail, password: regPassword, firstName, lastName });
+      const result = await signUp.create({
+        emailAddress: regEmail,
+        password: regPassword,
+        firstName,
+        lastName,
+        role: 'driver'
+      });
+
+      if (result?.status === 'complete') {
+        await setSignUpActive({ session: result.createdSessionId });
+        window.location.href = '/driver'; // Driver layout will redirect to pending if unapproved
+        return;
+      }
+
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setPendingVerification(true);
     } catch (err: any) {
-      const msg = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || "Registration failed. Please try again.";
+      const msg = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || "Registration failed";
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -65,9 +81,6 @@ export function DriverAuthForm() {
       const result = await signUp.attemptEmailAddressVerification({ code: verificationCode });
       if (result.status === "complete" && result.createdSessionId) {
         await setSignUpActive({ session: result.createdSessionId });
-        // Navigate IMMEDIATELY after setSignUpActive — no awaits in between.
-        // Any await here gives Clerk's deferred redirect time to fire (→ / → org-selection).
-        // The pending page handles createDriverRequest on its own.
         window.location.href = "/driver/pending";
       }
     } catch (err: any) {
@@ -78,72 +91,183 @@ export function DriverAuthForm() {
     }
   };
 
-  if (pendingVerification) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold text-foreground">Verify Your Email</h3>
-          <p className="text-sm text-muted-foreground">We sent a verification code to <strong>{regEmail}</strong></p>
-        </div>
-        <form onSubmit={handleVerifyEmail} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="code">Verification Code</Label>
-            <Input id="code" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} placeholder="Enter 6-digit code" className="text-center text-lg tracking-widest" required />
-          </div>
-          {error && <p className="text-xs text-destructive text-center">{error}</p>}
-          <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
-            Verify & Continue
-          </Button>
-          <Button type="button" variant="ghost" className="w-full text-xs" onClick={() => { setPendingVerification(false); setVerificationCode(""); setError(null); }}>
-            <ArrowLeft className="size-3 mr-1" />
-            Back to registration
-          </Button>
-        </form>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {error && <p className="text-xs text-destructive text-center bg-destructive/10 rounded-md p-2">{error}</p>}
-      <form onSubmit={handleRegister} className="space-y-3">
-        <div className="space-y-2">
-          <Label htmlFor="reg-name">Full Name</Label>
-          <Input id="reg-name" value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="John Doe" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="reg-email">Email</Label>
-          <Input id="reg-email" type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="driver@email.com" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="reg-password">Password</Label>
-          <Input id="reg-password" type="password" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="Create a password" required />
-          {regPassword.length > 0 && (
-            <div className="grid grid-cols-2 gap-1 pt-1">
-              {passwordRules.map((rule) => {
-                const passed = rule.test(regPassword);
-                return (
-                  <div key={rule.key} className={cn("flex items-center gap-1 text-[11px]", passed ? "text-emerald-600" : "text-muted-foreground")}>
-                    {passed ? <Check className="size-3" /> : <X className="size-3" />}
-                    {rule.label}
-                  </div>
-                );
-              })}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="w-full max-w-md mx-auto"
+    >
+      <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+        <CardHeader className="space-y-1 pb-6">
+          <div className="flex justify-center mb-2">
+            <div className="bg-emerald-500/10 p-3 rounded-2xl">
+              <ShieldCheck className="h-8 w-8 text-emerald-500" />
             </div>
-          )}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="reg-confirm">Confirm Password</Label>
-          <Input id="reg-confirm" type="password" value={regConfirmPassword} onChange={(e) => setRegConfirmPassword(e.target.value)} placeholder="Confirm your password" required />
-        </div>
-        <div id="clerk-captcha" />
-        <p className="text-[11px] text-muted-foreground pt-1">After registering, the admin will be notified and will approve your driver account.</p>
-        <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
-          Create Driver Account
-        </Button>
-      </form>
-    </div>
+          </div>
+          <CardTitle className="text-2xl font-bold tracking-tight text-center">Driver Registration</CardTitle>
+          <CardDescription className="text-center text-muted-foreground">
+            {pendingVerification ? "Verify your email to continue" : "Join our fleet today"}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <AnimatePresence mode="wait">
+            {pendingVerification ? (
+              <motion.div
+                key="verify"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                <div className="text-center text-sm text-muted-foreground mb-4">
+                  We sent a code to <span className="text-foreground font-medium">{regEmail}</span>
+                </div>
+                <form onSubmit={handleVerifyEmail} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="code" className="sr-only">Verification Code</Label>
+                    <Input
+                      id="code"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      placeholder="XXXXXX"
+                      className="text-center text-2xl tracking-[0.5em] font-mono h-14 bg-background/50"
+                      maxLength={6}
+                      required
+                    />
+                  </div>
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 text-xs font-medium bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <Button type="submit" className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify & Start Working"}
+                  </Button>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-emerald-500 transition-colors w-full text-center"
+                    onClick={() => { setPendingVerification(false); setVerificationCode(""); setError(null); }}
+                  >
+                    Wrong email? Go back
+                  </button>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.form
+                key="register"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                onSubmit={handleRegister}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="reg-name">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reg-name"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      placeholder="John Doe"
+                      className="pl-10 h-11 bg-background/50"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reg-email"
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="driver@example.com"
+                      className="pl-10 h-11 bg-background/50"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-password">Security Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reg-password"
+                      type="password"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="pl-10 h-11 bg-background/50"
+                      required
+                    />
+                  </div>
+                  {regPassword.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      {passwordRules.map((rule) => {
+                        const passed = rule.test(regPassword);
+                        return (
+                          <div key={rule.key} className={cn("flex items-center gap-1.5 text-[10px] font-medium transition-colors", passed ? "text-emerald-500" : "text-muted-foreground")}>
+                            {passed ? <Check className="size-3.5" /> : <X className="size-3.5 opacity-50" />}
+                            {rule.label}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-confirm">Confirm Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reg-confirm"
+                      type="password"
+                      value={regConfirmPassword}
+                      onChange={(e) => setRegConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="pl-10 h-11 bg-background/50"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+                  <p className="text-[10px] text-muted-foreground">
+                    After registration, a dealer admin will review and approve your account. You will be notified via email.
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 p-3 text-xs font-medium bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-lg shadow-emerald-500/20" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="size-5 animate-spin" /> : "Apply as Driver"}
+                </Button>
+              </motion.form>
+            )}
+          </AnimatePresence>
+        </CardContent>
+        <CardFooter className="pt-0 pb-8 flex flex-col gap-4">
+          <div className="text-sm text-center text-muted-foreground w-full">
+            Not a driver?{" "}
+            <Link href="/sign-up" className="text-primary font-semibold hover:underline">
+              Standard Sign Up
+            </Link>
+          </div>
+        </CardFooter>
+      </Card>
+    </motion.div>
   );
 }

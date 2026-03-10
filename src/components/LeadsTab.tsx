@@ -15,7 +15,7 @@ import {
   Columns2, LayoutList, GripVertical, MessageSquare, Globe,
   Zap, FileText,
 } from "lucide-react"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 import { apiClient } from "@/lib/api-client"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,

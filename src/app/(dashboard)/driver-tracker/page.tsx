@@ -5,7 +5,7 @@ import mapboxgl from "mapbox-gl";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api-client";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/providers/AuthProvider";
 import { DriverTrackingItem, DriverStatus } from "@/types/driver-tracking";
 import { Shipment } from "@/types/transportation";
 import { DriverTrackerMap } from "@/components/driver-tracker/DriverTrackerMap";

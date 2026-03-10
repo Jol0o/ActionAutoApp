@@ -23,7 +23,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser, useAuthActions } from "@/providers/AuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -51,7 +51,7 @@ const accountItems = [
 export function DriverSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut } = useAuthActions();
   const { organization } = useOrg();
 
   return (

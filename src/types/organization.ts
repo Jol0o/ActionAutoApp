@@ -9,7 +9,7 @@ export interface Organization {
 
 export interface OrganizationMember {
     _id: string;
-    clerkId: string;
+    userId: string;
     organizationId: string;
     role: string; // Global system role
     organizationRole: 'admin' | 'member'; // Context-specific role

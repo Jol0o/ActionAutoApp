@@ -7,7 +7,7 @@ import {
   Info,
   X,
 } from "lucide-react"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 import { apiClient } from "@/lib/api-client"
 import { AgentControlPanel } from "./AgentControlPanel"
 import { LiveCallPanel } from "./LiveCallPanel"

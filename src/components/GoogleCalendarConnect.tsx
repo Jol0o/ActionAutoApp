@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Calendar, Check, X, Loader2, AlertCircle } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 
 export interface GoogleCalendarConnectProps {
   title?: string

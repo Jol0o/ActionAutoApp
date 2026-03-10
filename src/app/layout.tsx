@@ -38,9 +38,8 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-import { ClerkProvider } from '@clerk/nextjs'
+import { AuthProvider } from '@/providers/AuthProvider'
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
-import { dark } from '@clerk/themes'
 
 import { Toaster } from "@/components/ui/sonner"
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
@@ -54,19 +53,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      appearance={{
-        baseTheme: dark,
-        captcha: {
-          theme: 'auto',
-          size: 'flexible',
-          language: 'en',
-        },
-      }}
-    >
-
+    <AuthProvider>
       <html lang="en" className="dark scrollbar-thin">
         <body
           suppressHydrationWarning
@@ -86,6 +73,6 @@ export default function RootLayout({
           <InstallPrompt />
         </body>
       </html>
-    </ClerkProvider>
+    </AuthProvider>
   );
 }
