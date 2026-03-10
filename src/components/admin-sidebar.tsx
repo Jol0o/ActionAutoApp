@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { useClerk } from "@/providers/AuthProvider"
+import { useAuthActions, useUser } from "@/providers/AuthProvider"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -67,7 +67,8 @@ const data = {
 
 export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname()
-    const { signOut, user } = useClerk()
+    const { signOut } = useAuthActions()
+    const { user } = useUser()
 
     return (
         <Sidebar variant="inset" {...props}>

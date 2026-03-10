@@ -2,8 +2,6 @@ import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://xj3pd14h-5000.asse.devtunnels.ms';
 
-console.log('[apiClient] Initialized with baseURL:', API_URL);
-
 class ApiClient {
     private client: AxiosInstance;
 
@@ -21,7 +19,6 @@ class ApiClient {
         this.client.interceptors.request.use(
             async (config) => {
                 const fullUrl = `${config.baseURL}${config.url}`;
-                console.log(`[apiClient] ${config.method?.toUpperCase()} ${fullUrl}`);
 
                 // Auto-inject native auth token if not already set
                 if (typeof window !== 'undefined' && !config.headers.Authorization) {
@@ -31,7 +28,7 @@ class ApiClient {
                             config.headers.Authorization = `Bearer ${token}`;
                         }
                     } catch (e) {
-                        console.warn('[apiClient] Could not get native auth token:', e);
+                        // Ignore
                     }
                 }
 
@@ -40,7 +37,6 @@ class ApiClient {
                     const impersonatedOrgId = localStorage.getItem('admin_impersonate_org_id');
                     if (impersonatedOrgId) {
                         config.headers['x-impersonate-org-id'] = impersonatedOrgId;
-                        console.log('[apiClient] 🕵️ Impersonating Org:', impersonatedOrgId);
                     }
                 }
 
@@ -55,7 +51,6 @@ class ApiClient {
         // ── Response interceptor (single — no duplicate) ─────────────────────
         this.client.interceptors.response.use(
             (response) => {
-                console.log(`[apiClient] Response ${response.status} from ${response.config.url}`);
                 return response;
             },
             (error) => {
@@ -183,6 +178,11 @@ class ApiClient {
 
     async rejectDriverRequest(id: string, config?: AxiosRequestConfig) {
         return this.patch(`/api/driver-requests/${id}/reject`, {}, config);
+    }
+
+    // ── Auth Methods ─────────────────────────────────────────────────────────
+    async completeOnboarding(role: string, config?: AxiosRequestConfig) {
+        return this.post('/api/auth/complete-onboarding', { role }, config);
     }
 }
 

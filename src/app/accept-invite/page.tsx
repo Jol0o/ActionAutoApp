@@ -55,7 +55,7 @@ function AcceptInviteContent() {
     const handleAccept = async () => {
         if (!isSignedIn) {
             // Redirect to sign in, preserving the return URL
-            // Clerk handles this via middleware mostly, but explicit redirect is good
+            // Middleware handles core auth, but explicit redirect is good for UX
             router.push(`/sign-in?redirect_url=${encodeURIComponent(`/accept-invite?token=${token}`)}`)
             return
         }

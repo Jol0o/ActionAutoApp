@@ -3,20 +3,34 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
-import { UserProfile } from '@/types/user';
 import { toast } from 'sonner';
 
-// --- TYPES & INTERFACES (Mimicking Clerk) ---
+// --- TYPES & INTERFACES (Action Auto Security) ---
+export interface AuthUser {
+    _id: string;
+    email: string;
+    name: string;
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    avatarUrl?: string;
+    role: string;
+    organizationId?: string;
+    organizationRole?: string;
+    isActive: boolean;
+    isApproved: boolean;
+    onboardingCompleted: boolean;
+}
 
 interface AuthContextType {
-    user: UserProfile | null;
+    user: AuthUser | null;
     accessToken: string | null;
     isLoaded: boolean;
     isSignedIn: boolean;
     organizationId: string | null;
     organizationRole: string | null;
     setAccessToken: (token: string | null) => void;
-    setUser: (user: UserProfile | null) => void;
+    setUser: (user: AuthUser | null) => void;
     getToken: () => Promise<string | null>;
     signOut: () => Promise<void>;
     refreshUser: () => Promise<void>;
@@ -26,10 +40,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Module-level variable to track ongoing refresh requests across all hooks/components
+let globalRefreshPromise: Promise<string | null> | null = null;
+
 // --- PROVIDER COMPONENT ---
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<UserProfile | null>(null);
+    const [user, setUser] = useState<AuthUser | null>(null);
     const [accessToken, setAccessTokenState] = useState<string | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [signUpState, setSignUpState] = useState<any>({ status: 'missing' });
@@ -52,8 +69,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (!currentToken) {
-                const tokenRes = await apiClient.post('/api/auth/refresh-tokens');
-                currentToken = tokenRes.data?.data?.accessToken || tokenRes.data?.accessToken;
+                // Check if a refresh is already in progress globally
+                if (globalRefreshPromise) {
+                    currentToken = await globalRefreshPromise;
+                } else {
+                    globalRefreshPromise = (async () => {
+                        try {
+                            const tokenRes = await apiClient.post('/api/auth/refresh-tokens');
+                            const token = tokenRes.data?.data?.accessToken || tokenRes.data?.accessToken;
+                            return token || null;
+                        } catch (err) {
+                            console.error('[AuthProvider] Global refresh failed:', err);
+                            return null;
+                        } finally {
+                            globalRefreshPromise = null;
+                        }
+                    })();
+                    currentToken = await globalRefreshPromise;
+                }
+
                 if (currentToken) {
                     setAccessToken(currentToken);
                 } else {
@@ -79,8 +113,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                     // 1. Force Email Verification
                     if (!userData.emailVerified && !isPublic) {
-                        console.log('[AuthProvider] Unverified user detected on private route. Redirecting to verify...');
                         router.push(`/verify-email?email=${encodeURIComponent(userData.email)}`);
+                        return;
+                    }
+
+                    // 1.5. Force Onboarding
+                    if (!userData.onboardingCompleted && path !== '/onboarding/role-selection') {
+                        router.push('/onboarding/role-selection');
                         return;
                     }
 
@@ -96,7 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                     // 3. Forced Onboarding for Admin
                     if (!isPublic && userData.role === 'admin' && !userData.organizationId && path !== '/org-selection') {
-                        console.log('[AuthProvider] Admin without organization detected. Redirecting to setup...');
                         router.push('/org-selection');
                         return;
                     }
@@ -145,6 +183,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [router]);
 
+    // Role-based onboarding guard
+    useEffect(() => {
+        if (isLoaded && user && user.onboardingCompleted === false) {
+            const path = window.location.pathname;
+            if (path !== '/onboarding/role-selection') {
+                router.push('/onboarding/role-selection');
+            }
+        }
+    }, [isLoaded, user, router]);
+
     useEffect(() => {
         refreshUser();
     }, [refreshUser]);
@@ -157,13 +205,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (accessToken) return accessToken;
 
         // Otherwise, try to refresh
+        if (globalRefreshPromise) {
+            return globalRefreshPromise;
+        }
+
         try {
-            const response = await apiClient.post('/api/auth/refresh-tokens');
-            const token = response.data?.data?.accessToken || response.data?.accessToken;
-            if (token) {
-                setAccessToken(token);
-                return token;
-            }
+            globalRefreshPromise = (async () => {
+                try {
+                    const response = await apiClient.post('/api/auth/refresh-tokens');
+                    const token = response.data?.data?.accessToken || response.data?.accessToken;
+                    if (token) {
+                        setAccessToken(token);
+                        return token;
+                    }
+                    return null;
+                } catch (e) {
+                    console.warn('[AuthProvider] Token refresh request failed');
+                    return null;
+                } finally {
+                    globalRefreshPromise = null;
+                }
+            })();
+
+            return await globalRefreshPromise;
         } catch (e) {
             console.warn('[AuthProvider] Failed to refresh token');
         }
@@ -216,11 +280,12 @@ export function useAuth() {
     return {
         isLoaded: context.isLoaded,
         isSignedIn: context.isSignedIn,
-        userId: context.user?._id || context.user?.clerkId || null,
+        userId: context.user?._id || null,
         orgId: context.organizationId,
         orgRole: context.organizationRole,
         getToken: context.getToken,
-        signOut: context.signOut
+        signOut: context.signOut,
+        refreshUser: context.refreshUser
     };
 }
 
@@ -228,9 +293,9 @@ export function useUser() {
     const context = useContext(AuthContext);
     if (!context) throw new Error('useUser must be used within an AuthProvider');
 
-    // Mimic Clerk's User object structure
+    // Standardized User object structure
     const userProxy = context.user ? {
-        id: context.user._id || context.user.clerkId,
+        id: context.user._id,
         primaryEmailAddress: { emailAddress: context.user.email },
         fullName: context.user.name,
         firstName: context.user.firstName || context.user.name?.split(' ')[0] || '',
@@ -253,17 +318,19 @@ export function useUser() {
     };
 }
 
-export function useClerk() {
+export function useAuthActions() {
     const context = useContext(AuthContext);
     const router = useRouter();
-    if (!context) throw new Error('useClerk must be used within an AuthProvider');
+    if (!context) throw new Error('useAuthActions must be used within an AuthProvider');
 
     return {
         signOut: context.signOut,
+        refreshUser: context.refreshUser,
         openUserProfile: () => router.push('/profile'),
         user: context.user
     };
 }
+
 
 /**
  * useSignUp - Shadow hook for multi-step registration (used in DriverAuthForm)
@@ -339,9 +406,7 @@ export function useSignUp() {
         attemptEmailAddressVerification: async (params: any) => {
             try {
                 // Use provided email or fallback to state
-                console.log('[AuthProvider] attemptEmailAddressVerification called with:', params);
                 const emailToVerify = params.email || signUpState.emailAddress;
-                console.log('[AuthProvider] Computed emailToVerify:', emailToVerify);
 
                 const response = await apiClient.post('/api/auth/verify-email', {
                     email: emailToVerify,

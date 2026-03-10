@@ -29,7 +29,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useUser, useClerk } from "@/providers/AuthProvider";
+import { useUser, useAuthActions } from "@/providers/AuthProvider";
 import { useOrg } from "@/hooks/useOrg";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfileContext } from "@/context/ProfileContext";
@@ -49,12 +49,12 @@ import {
 
 const data = {
   navMain: [
-     {
+    {
       title: "CRM",
       url: "/crm",
       icon: Users,
     },
-    
+
     {
       title: "Dashboard",
       url: "/",
@@ -131,7 +131,7 @@ const customerData = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut } = useAuthActions();
 
   const { isLoaded, isCustomer } = useOrg();
   const { avatarUrl } = useProfileContext();

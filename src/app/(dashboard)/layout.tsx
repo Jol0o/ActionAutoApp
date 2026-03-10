@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Search, ChevronDown, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useUser, useClerk } from "@/providers/AuthProvider"
+import { useUser, useAuthActions } from "@/providers/AuthProvider"
 import { NotificationBell } from "@/components/NotificationBell"
 import { NotificationProvider } from "@/context/NotificationContext"
 import { ThemeProvider } from "@/context/ThemeContext"
@@ -34,19 +34,12 @@ function DashboardLayoutContent({
     children: React.ReactNode;
 }>) {
     const { user } = useUser();
-    const { signOut } = useClerk();
+    const { signOut } = useAuthActions();
     const { avatarUrl } = useProfileContext();
     // Use custom hook for organization context
     const { organization, isLoaded, isSuperAdmin, isDriver, userRole } = useOrg();
     const router = useRouter();
     const { isImpersonating } = adminStore.useStore();
-
-    console.log('isSuperAdmin', isSuperAdmin);
-    console.log('isDriver', isDriver);
-    console.log('userRole', userRole);
-    console.log('isImpersonating', isImpersonating);
-    console.log('isLoaded', isLoaded);
-    console.log('organization', organization);
 
     const [isRedirecting, setIsRedirecting] = React.useState(false);
 

@@ -134,8 +134,8 @@ export function OrganizationMembersSettings() {
     const updateJobTitleMutation = useMutation({
         mutationFn: async () => {
             const token = await getToken()
-            return apiClient.patch('/api/profile/personal-info', 
-                { jobTitle: tempJobTitle }, 
+            return apiClient.patch('/api/profile/personal-info',
+                { jobTitle: tempJobTitle },
                 { headers: { Authorization: `Bearer ${token}` } }
             )
         },
@@ -202,15 +202,15 @@ export function OrganizationMembersSettings() {
                                 />
                             </div>
                             <div className="flex gap-2 justify-end">
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onClick={handleCancelRank}
                                     disabled={updateJobTitleMutation.isPending}
                                 >
                                     <X className="w-4 h-4 mr-2" />
                                     Cancel
                                 </Button>
-                                <Button 
+                                <Button
                                     onClick={handleSaveRank}
                                     disabled={updateJobTitleMutation.isPending}
                                 >
@@ -330,7 +330,7 @@ export function OrganizationMembersSettings() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {isAdmin && member.clerkId !== user?.id && (
+                                        {isAdmin && member.userId !== user?.id && (
                                             <Button
                                                 variant="ghost"
                                                 size="sm"

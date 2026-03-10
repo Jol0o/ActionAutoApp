@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useClerk, useUser, useAuth } from "@/providers/AuthProvider";
+import { useAuthActions, useUser, useAuth } from "@/providers/AuthProvider";
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
 import { useProfileContext } from '@/context/ProfileContext';
@@ -35,7 +35,7 @@ import { allNotificationCategories, containsCurseWord } from './profile-constant
 
 export const ProfileView: React.FC = () => {
     const { user: authUser } = useUser();
-    const { signOut, openUserProfile } = useClerk();
+    const { signOut, openUserProfile } = useAuthActions();
     const { getToken } = useAuth();
     const { setAvatarUrl, triggerRefresh } = useProfileContext();
     const toast = useProfileToast();
@@ -265,7 +265,7 @@ export const ProfileView: React.FC = () => {
     };
 
     const handleVerifyEmail = async () => {
-        toast.addToast({ type: 'info', title: 'Verification', message: 'Please check your email for a verification link from Clerk.' });
+        toast.addToast({ type: 'info', title: 'Verification', message: 'Please check your email for a verification link from Action Auto.' });
         openUserProfile();
     };
 

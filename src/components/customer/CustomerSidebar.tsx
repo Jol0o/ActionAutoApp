@@ -1,7 +1,7 @@
 "use client"
 
 import { LogOut, LayoutDashboard, CarFront, MapIcon, Wallet, Settings, CreditCard } from "lucide-react"
-import { useClerk, useUser } from "@/providers/AuthProvider"
+import { useAuthActions, useUser } from "@/providers/AuthProvider"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
@@ -48,7 +48,7 @@ const navItems = [
 ]
 
 export function CustomerSidebar() {
-    const { signOut } = useClerk()
+    const { signOut } = useAuthActions()
     const pathname = usePathname()
     const { state } = useSidebar()
 
