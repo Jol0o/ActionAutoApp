@@ -31,6 +31,16 @@ export interface Quote {
   eta: { min: number; max: number };
   status: string;
   createdAt: string;
+  createdBy?: {
+    _id: string;
+    name?: string;
+    email?: string;
+    avatar?: string | null;
+  };
+  organization?: {
+    name: string;
+    logoUrl?: string;
+  };
 }
 
 export interface Shipment {
@@ -68,6 +78,16 @@ export interface Shipment {
     note?: string;
     confirmedAt?: string;
     confirmedBy?: string;
+  };
+  createdBy?: {
+    _id: string;
+    name?: string;
+    email?: string;
+    avatar?: string | null;
+  };
+  organization?: {
+    name: string;
+    logoUrl?: string;
   };
 }
 

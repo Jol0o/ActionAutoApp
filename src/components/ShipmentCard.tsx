@@ -1,4 +1,4 @@
-import { MapPin, Truck, Download, Package, Calendar, CheckCircle, Clock, ArrowRight, Trash2, Mail } from "lucide-react"
+import { MapPin, Truck, Download, Package, Calendar, CheckCircle, Clock, ArrowRight, Trash2, Mail, User, Building2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -249,6 +249,32 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                                 Added {formatDate(shipment.createdAt)}
                                             </span>
                                         </div>
+                                        {shipment.organization && (
+                                            <div className="flex items-center gap-1.5">
+                                                <Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-400 dark:text-gray-500" />
+                                                <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                                    {shipment.organization.name}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {shipment.createdBy && (
+                                            <div className="flex items-center gap-1.5">
+                                                {shipment.createdBy.avatar ? (
+                                                    <img
+                                                        src={shipment.createdBy.avatar}
+                                                        alt={shipment.createdBy.name || shipment.createdBy.email}
+                                                        className="w-3.5 h-3.5 rounded-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-3.5 h-3.5 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                                                        <User className="w-2 h-2 text-green-600 dark:text-green-400" />
+                                                    </div>
+                                                )}
+                                                <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                                    By <span className="font-medium text-gray-700 dark:text-gray-300">{shipment.createdBy.name || shipment.createdBy.email || "Unknown"}</span>
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

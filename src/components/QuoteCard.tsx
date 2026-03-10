@@ -1,4 +1,4 @@
-import { Check, ChevronDown, MapPin, Calendar, Package, Clock, Trash2 } from "lucide-react"
+import { Check, MapPin, Calendar, Package, Clock, Trash2, User, Building2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -173,6 +173,28 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                                     <Calendar className="w-3 h-3" />
                                     Added {formatDate(quote.createdAt)}
                                 </div>
+
+                                {quote.createdBy && (
+                                    <div className="flex items-center gap-1.5 pt-1">
+                                        {quote.createdBy.avatar ? (
+                                            <img
+                                                src={quote.createdBy.avatar}
+                                                alt={quote.createdBy.name || quote.createdBy.email}
+                                                className="w-4 h-4 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-4 h-4 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                                                <User className="w-2.5 h-2.5 text-green-600 dark:text-green-400" />
+                                            </div>
+                                        )}
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            By{" "}
+                                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                                                {quote.createdBy.name || quote.createdBy.email || "Unknown"}
+                                            </span>
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -180,9 +202,17 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                         <div className="w-full lg:w-2/3 p-4 sm:p-6 bg-white dark:bg-gray-800">
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wider uppercase">Shipment Details</h3>
-                                <Badge className="bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900 border border-yellow-200 dark:border-yellow-700">
-                                    Pending Assignment
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                    {quote.organization && (
+                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                            <Building2 className="w-3 h-3" />
+                                            <span className="font-medium text-gray-700 dark:text-gray-300">{quote.organization.name}</span>
+                                        </div>
+                                    )}
+                                    <Badge className="bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900 border border-yellow-200 dark:border-yellow-700">
+                                        Pending Assignment
+                                    </Badge>
+                                </div>
                             </div>
 
                             <div className="space-y-5">
