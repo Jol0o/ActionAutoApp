@@ -11,31 +11,12 @@ const publicRoutes = [
 ];
 
 export async function middleware(request: any) {
-    const { pathname } = request.nextUrl;
-
-    // 1. Check if route is public
-    const isPublic = publicRoutes.some(route => pathname.startsWith(route));
-
-    // 2. Check for native refresh token cookie
-    // Note: HttpOnly cookies ARE accessible in Middleware (Edge Runtime)
-    const refreshToken = request.cookies.get('refreshToken');
-    const isSignedIn = !!refreshToken;
-
-    console.log(`[Middleware] URL: ${pathname} | SignedIn: ${isSignedIn}`);
-
-    // 3. Redirect logic
-    if (!isPublic && !isSignedIn) {
-        const signInUrl = new URL('/sign-in', request.url);
-        // Preserve redirect_url
-        signInUrl.searchParams.set('redirect_url', pathname);
-        return NextResponse.redirect(signInUrl);
-    }
-
-    // Optional: If signed in and on sign-in page, redirect to home
-    if (isPublic && isSignedIn && (pathname === '/sign-in' || pathname === '/sign-up')) {
-        return NextResponse.redirect(new URL('/', request.url));
-    }
-
+    // The previous authentication logic here was checking for a 'refreshToken' cookie.
+    // In production, the backend is on a separate domain (e.g. api.actionauto.com), 
+    // so Next.js Middleware cannot see the HttpOnly cookies set by the backend.
+    // 
+    // All authentication routing guards are now safely managed by the AuthProvider.tsx
+    // running on the client-side which can make cross-origin API verify requests.
     return NextResponse.next();
 }
 
