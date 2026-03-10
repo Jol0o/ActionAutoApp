@@ -32,7 +32,7 @@ interface AuthContextType {
     setAccessToken: (token: string | null) => void;
     setUser: (user: AuthUser | null) => void;
     getToken: () => Promise<string | null>;
-    signOut: () => Promise<void>;
+    signOut: (options?: { redirectUrl?: string }) => Promise<void>;
     refreshUser: () => Promise<void>;
     signUpState: any;
     setSignUpState: (state: any) => void;
@@ -235,15 +235,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [accessToken]);
 
     // 3. Sign Out
-    const signOut = useCallback(async () => {
+    const signOut = useCallback(async (options?: { redirectUrl?: string }) => {
         try {
             await apiClient.post('/api/auth/logout');
         } catch (e) {
-            console.error('[AuthProvider] Logout failed:', e);
+            // Ignore
         } finally {
             setUser(null);
             setAccessToken(null);
-            router.push('/sign-in');
+            router.push(options?.redirectUrl || '/sign-in');
             router.refresh();
         }
     }, [router]);
@@ -297,11 +297,13 @@ export function useUser() {
     const userProxy = context.user ? {
         id: context.user._id,
         primaryEmailAddress: { emailAddress: context.user.email },
+        emailAddresses: [{ emailAddress: context.user.email }],
         fullName: context.user.name,
         firstName: context.user.firstName || context.user.name?.split(' ')[0] || '',
         lastName: context.user.lastName || context.user.name?.split(' ').slice(1).join(' ') || '',
         imageUrl: context.user.avatar || context.user.avatarUrl || '/placeholder-avatar.png',
         role: context.user.role,
+        onboardingCompleted: context.user.onboardingCompleted,
         publicMetadata: {},
         unsafeMetadata: {},
         update: async (data: any) => {
