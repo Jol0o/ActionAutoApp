@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth } from "@/providers/AuthProvider";
 import { initializeSocket, disconnectSocket, joinConversation, leaveConversation } from '@/lib/socket.client';
 
 interface Message {

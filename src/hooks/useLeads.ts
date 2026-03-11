@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import { useAuth } from '@clerk/nextjs'
+import { useAuth } from "@/providers/AuthProvider"
 
 export interface Lead {
   _id: string

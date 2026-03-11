@@ -71,7 +71,6 @@ export interface UserProfile {
   firstName?: string;
   lastName?: string;
   email: string;
-  clerkId?: string;
   avatar?: string;
   avatarUrl?: string;
   role: 'user' | 'admin' | 'super_admin' | 'driver' | 'customer';

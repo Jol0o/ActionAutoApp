@@ -28,7 +28,7 @@ import {
 } from "lucide-react"
 import { Appointment } from "@/types/appointment"
 import { format } from "date-fns"
-import { useUser } from "@clerk/nextjs"
+import { useUser } from "@/providers/AuthProvider"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"

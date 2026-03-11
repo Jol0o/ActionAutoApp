@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth } from "@/providers/AuthProvider";
 import { useLinkReferral } from '@/hooks/api/useWallet';
 
 export function ReferralCatcher() {

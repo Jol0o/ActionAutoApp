@@ -72,7 +72,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
                             <div>
                                 <p className="font-semibold text-gray-900 dark:text-white">Password</p>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {profile?.securityStatus?.lastPasswordChange ? `Last changed ${formatDistanceToNow(new Date(profile.securityStatus.lastPasswordChange), { addSuffix: true })}` : 'Managed by Clerk'}
+                                    {profile?.securityStatus?.lastPasswordChange ? `Last changed ${formatDistanceToNow(new Date(profile.securityStatus.lastPasswordChange), { addSuffix: true })}` : 'Native Account'}
                                 </p>
                             </div>
                         </div>
@@ -117,7 +117,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
                         </div>
                         <div>
                             <CardTitle className="text-xl">Account Security</CardTitle>
-                            <CardDescription>Manage via Clerk</CardDescription>
+                            <CardDescription>Managed via Profile Settings</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -127,9 +127,9 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
                             <div className="flex items-start gap-3">
                                 <AlertCircle className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                                 <div>
-                                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Managed by Clerk</p>
+                                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Account Control</p>
                                     <p className="text-sm text-blue-700 dark:text-blue-300 mt-1.5 leading-relaxed">
-                                        Email changes, password updates, and account recovery are handled through Clerk.
+                                        Email changes, password updates, and account recovery are handled natively through your Action Auto account.
                                     </p>
                                 </div>
                             </div>

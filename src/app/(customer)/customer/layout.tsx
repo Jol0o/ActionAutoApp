@@ -9,7 +9,7 @@ import { ThemeProvider } from "@/context/ThemeContext"
 import { ProfileProvider } from "@/context/ProfileContext"
 import { ProfileToastProvider } from "@/components/ProfileToast"
 import { useRouter } from "next/navigation"
-import { useClerk, useUser } from "@clerk/nextjs"
+import { useAuthActions, useUser } from "@/providers/AuthProvider"
 import { useOrg } from "@/hooks/useOrg"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -24,7 +24,7 @@ import {
 
 function CustomerLayoutContent({ children }: { children: React.ReactNode }) {
     const { user } = useUser()
-    const { signOut } = useClerk()
+    const { signOut } = useAuthActions()
     const { userRole, isLoaded } = useOrg()
     const router = useRouter()
 

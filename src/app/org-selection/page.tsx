@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "sonner"
 
 export default function OrgSelectionPage() {
     const {
@@ -34,21 +35,24 @@ export default function OrgSelectionPage() {
         try {
             const slug = newOrgName.toLowerCase().replace(/[^a-z0-9]/g, '-')
             await createOrganization({ name: newOrgName, slug })
-            // Success logic is handled by useOrg hook (invalidation)
-            // But we might want to select it automatically or reset form
-            setIsCreatingNew(false)
-            setNewOrgName("")
-        } catch (error) {
+            toast.success("Dealership created successfully")
+            window.location.href = '/'
+        } catch (error: any) {
             console.error("Failed to create organization", error)
+            const message = error.response?.data?.message || "Failed to create dealership. Please try again."
+            toast.error(message)
         }
     }
 
     const handleSelect = async (orgId: string) => {
         try {
             await selectOrganization(orgId)
-            router.push('/')
-        } catch (error) {
+            toast.success("Dealership selected")
+            window.location.href = '/'
+        } catch (error: any) {
             console.error("Failed to select organization", error)
+            const message = error.response?.data?.message || "Failed to select dealership. Please try again."
+            toast.error(message)
         }
     }
 

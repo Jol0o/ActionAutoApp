@@ -24,7 +24,7 @@ import { Separator } from "@/components/ui/separator"
 import { apiClient } from "@/lib/api-client"
 import type { FilterOptions } from "@/types/inventory"
 
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 
 interface InventoryFiltersProps {
     filters: any

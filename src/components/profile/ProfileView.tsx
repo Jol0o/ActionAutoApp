@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+<<<<<<< HEAD
 import { useClerk, useUser, useAuth } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from 'next/navigation';
+=======
+import { useAuthActions, useUser, useAuth } from "@/providers/AuthProvider";
+import { useRouter } from 'next/navigation';
+>>>>>>> 873d02b32a973ece2d0bdd5816aaf9fbdb6be8b8
 import { useTheme } from '@/context/ThemeContext';
 import { useProfileContext } from '@/context/ProfileContext';
 import { useProfileToast } from '@/components/ProfileToast';
@@ -34,8 +39,8 @@ import { ProfileDialogs } from './ProfileDialogs';
 import { allNotificationCategories, containsCurseWord } from './profile-constants';
 
 export const ProfileView: React.FC = () => {
-    const { user: clerkUser } = useUser();
-    const { signOut, openUserProfile } = useClerk();
+    const { user: authUser } = useUser();
+    const { signOut, openUserProfile } = useAuthActions();
     const { getToken } = useAuth();
     const { setAvatarUrl, triggerRefresh } = useProfileContext();
     const toast = useProfileToast();
@@ -266,7 +271,7 @@ export const ProfileView: React.FC = () => {
     };
 
     const handleVerifyEmail = async () => {
-        toast.addToast({ type: 'info', title: 'Verification', message: 'Please check your email for a verification link from Clerk.' });
+        toast.addToast({ type: 'info', title: 'Verification', message: 'Please check your email for a verification link from Action Auto.' });
         openUserProfile();
     };
 
@@ -313,7 +318,7 @@ export const ProfileView: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
             <ProfileHeader
                 profile={profile}
-                clerkUser={clerkUser}
+                authUser={authUser}
                 onlineStatus={onlineStatus}
                 customStatus={customStatus}
                 triggerRefresh={triggerRefresh}
@@ -349,7 +354,7 @@ export const ProfileView: React.FC = () => {
                 <TabsContent value="overview">
                     <ProfileOverviewTab
                         profile={profile}
-                        clerkUser={clerkUser}
+                        authUser={authUser}
                         activities={activities}
                         handleTabChange={handleTabChange}
                     />

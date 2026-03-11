@@ -22,7 +22,7 @@ import { onlineStatusOptions } from './profile-constants';
 
 interface ProfileHeaderProps {
     profile: UserProfile | null;
-    clerkUser: any;
+    authUser: any;
     onlineStatus: OnlineStatus;
     customStatus: string;
     triggerRefresh: () => void;
@@ -34,7 +34,7 @@ interface ProfileHeaderProps {
 
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     profile,
-    clerkUser,
+    authUser,
     onlineStatus,
     customStatus,
     triggerRefresh,
@@ -88,7 +88,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 <div className="relative group/avatar">
                     <div className="relative w-40 h-40 rounded-3xl overflow-hidden ring-4 ring-white/50 shadow-2xl transition-all duration-500 group-hover/avatar:ring-white group-hover/avatar:scale-105 group-hover/avatar:rotate-2 cursor-pointer" onClick={() => setIsCropperOpen(true)}>
                         <img
-                            src={profile?.avatarUrl || profile?.avatar || clerkUser?.imageUrl || ''}
+                            src={profile?.avatarUrl || profile?.avatar || authUser?.imageUrl || ''}
                             alt="Profile"
                             className="w-full h-full object-cover"
                         />
@@ -101,7 +101,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                         isOpen={isCropperOpen}
                         onClose={() => setIsCropperOpen(false)}
                         onSave={handleSaveAvatar}
-                        currentImage={profile?.avatarUrl || profile?.avatar || clerkUser?.imageUrl || ''}
+                        currentImage={profile?.avatarUrl || profile?.avatar || authUser?.imageUrl || ''}
                     />
 
                     {/* Enhanced Online Status Badge */}
@@ -119,7 +119,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 <div className="flex-1 text-center md:text-left space-y-4">
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
                         <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg animate-fade-in-left">
-                            {profile?.name || (profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}` : clerkUser?.firstName || 'User')}
+                            {profile?.name || (profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}` : authUser?.firstName || 'User')}
                         </h1>
                         <div className="flex gap-2 animate-fade-in-right">
                             {profile?.role === 'super_admin' && (

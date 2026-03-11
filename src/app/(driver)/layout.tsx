@@ -7,8 +7,9 @@ import { NotificationBell } from "@/components/notifications";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { useRouter } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser, useAuthActions, useAuth } from "@/providers/AuthProvider";
 import { useOrg } from "@/hooks/useOrg";
+import { apiClient } from "@/lib/api-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,34 +27,59 @@ function DriverLayoutContent({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut } = useAuthActions();
+  const { getToken } = useAuth();
   const { isLoaded, isDriver, userRole } = useOrg();
   const router = useRouter();
   const [guardPassed, setGuardPassed] = React.useState(false);
 
   React.useEffect(() => {
-    if (!isLoaded) return;
+    const checkApproval = async () => {
+      if (!isLoaded) return;
 
-    // Wait until role data has resolved
-    if (userRole === undefined) return;
+      // Wait until role data has resolved
+      if (userRole === undefined) return;
 
-    // If not a driver, redirect to dealer dashboard
-    if (!isDriver) {
-      router.push("/");
-      return;
-    }
+      // If not a driver role, redirect to dealer dashboard
+      if (!isDriver) {
+        router.push("/");
+        return;
+      }
 
-    // Driver is approved — grant access
-    setGuardPassed(true);
-  }, [isLoaded, isDriver, userRole, router]);
+      try {
+        const token = await getToken();
+        // The backend now creates the DriverRequest automatically in authService.completeOnboarding
+        // or during Google Sign-Up. We just need to check the status here.
+        const response = await apiClient.get('/api/driver-requests/my-status', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const requestData = response.data?.data;
+
+        if (!requestData || requestData.status !== 'approved') {
+          router.push("/driver/pending");
+          return;
+        }
+
+        // Driver is approved — grant access
+        setGuardPassed(true);
+      } catch (err) {
+        console.error("[DriverLayout] Approval check failed:", err);
+        router.push("/driver/pending");
+      }
+    };
+
+    checkApproval();
+  }, [isLoaded, isDriver, userRole, router, getToken]);
 
   // Show loading while guard is checking
   if (!guardPassed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+          <p className="text-sm text-emerald-500/60 font-medium uppercase tracking-widest italic animate-pulse">
+            Verifying Credentials...
+          </p>
         </div>
       </div>
     );
@@ -63,7 +89,7 @@ function DriverLayoutContent({
     <SidebarProvider>
       <DriverSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between px-2 sm:px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="flex h-16 shrink-0 items-center justify-between px-2 sm:px-4 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl sticky top-0 z-40">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
           </div>
@@ -71,38 +97,49 @@ function DriverLayoutContent({
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-xl overflow-hidden border border-white/5 hover:bg-white/5 transition-all">
+                  <Avatar className="h-10 w-10">
                     <AvatarImage src={user?.imageUrl} alt={user?.fullName || ""} />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-emerald-500/10 text-emerald-500 font-bold">
                       {user?.firstName?.substring(0, 1).toUpperCase() || "DR"}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
+              <DropdownMenuContent className="w-64 mt-2 bg-[#0a0a0a] border-white/5 shadow-2xl rounded-2xl" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal p-4">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.fullName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
+                    <p className="text-sm font-bold text-white leading-none">{user?.fullName}</p>
+                    <p className="text-xs leading-none text-zinc-500">
                       {user?.primaryEmailAddress?.emailAddress}
                     </p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/driver/profile")}>
-                  Profile
+                <DropdownMenuSeparator className="bg-white/5" />
+                <DropdownMenuItem
+                  onClick={() => router.push("/driver/profile")}
+                  className="p-3 text-zinc-400 focus:text-white focus:bg-emerald-500/10 cursor-pointer"
+                >
+                  Account Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/driver/settings")}>
-                  Settings
+                <DropdownMenuItem
+                  onClick={() => router.push("/driver/settings")}
+                  className="p-3 text-zinc-400 focus:text-white focus:bg-emerald-500/10 cursor-pointer"
+                >
+                  System Settings
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut()}>Log out</DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-white/5" />
+                <DropdownMenuItem
+                  onClick={() => signOut()}
+                  className="p-3 text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-medium"
+                >
+                  Sign Out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 overflow-hidden bg-background">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-[#020202] p-6 lg:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

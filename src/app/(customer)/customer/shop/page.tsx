@@ -8,7 +8,7 @@ import { apiClient } from "@/lib/api-client"
 import { AxiosError } from "axios"
 import { InventoryFilters } from "@/components/inventory-filters"
 import { InventoryPagination } from "@/components/inventory-pagination"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth } from "@/providers/AuthProvider"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 
 type SortOption =

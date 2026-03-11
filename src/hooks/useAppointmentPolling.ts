@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { apiClient } from '@/lib/api-client';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth } from "@/providers/AuthProvider";
 
 interface UseAppointmentPollingOptions {
   appointmentId: string | null;
