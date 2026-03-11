@@ -2,12 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Notification } from '@/types/notification';
-<<<<<<< HEAD
-import { useAuth } from '@clerk/nextjs';
-import { getSocket } from '@/lib/socket.client';
-=======
 import { useAuth } from "@/providers/AuthProvider";
->>>>>>> 873d02b32a973ece2d0bdd5816aaf9fbdb6be8b8
+import { getSocket } from '@/lib/socket.client';
 
 interface NotificationContextType {
     notifications: Notification[];

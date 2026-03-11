@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { UserPlus, CheckCircle2, XCircle, Loader2, Mail } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/lib/api-client';
 import { formatNotificationDate } from './notification-utils';
 import { Notification } from '@/types/notification';

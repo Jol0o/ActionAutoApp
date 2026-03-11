@@ -8,13 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Search, ChevronDown, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-<<<<<<< HEAD
-import { useUser, useClerk } from "@clerk/nextjs"
-import { NotificationBell } from "@/components/notifications"
-=======
 import { useUser, useAuthActions } from "@/providers/AuthProvider"
-import { NotificationBell } from "@/components/NotificationBell"
->>>>>>> 873d02b32a973ece2d0bdd5816aaf9fbdb6be8b8
+import { NotificationBell } from "@/components/notifications"
 import { NotificationProvider } from "@/context/NotificationContext"
 import { ThemeProvider } from "@/context/ThemeContext"
 import { ProfileProvider, useProfileContext } from "@/context/ProfileContext"

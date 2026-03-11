@@ -1,13 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-<<<<<<< HEAD
-import { useClerk, useUser, useAuth } from "@clerk/nextjs";
-import { useRouter, useSearchParams } from 'next/navigation';
-=======
 import { useAuthActions, useUser, useAuth } from "@/providers/AuthProvider";
-import { useRouter } from 'next/navigation';
->>>>>>> 873d02b32a973ece2d0bdd5816aaf9fbdb6be8b8
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
 import { useProfileContext } from '@/context/ProfileContext';
 import { useProfileToast } from '@/components/ProfileToast';
