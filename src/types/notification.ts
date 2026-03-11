@@ -2,26 +2,66 @@ export type NotificationType =
   | 'quote_created'
   | 'quote_updated'
   | 'quote_deleted'
+  | 'quote_converted'
   | 'shipment_created'
   | 'shipment_updated'
   | 'shipment_deleted'
+  | 'shipment_status_changed'
+  | 'shipment_assigned'
+  | 'shipment_picked_up'
+  | 'shipment_delivered'
+  | 'proof_of_delivery'
+  | 'vehicle_added'
+  | 'vehicle_updated'
+  | 'vehicle_sold'
+  | 'vehicle_status_changed'
+  | 'inventory_sync'
+  | 'new_inventory_alert'
   | 'appointment_created'
   | 'appointment_updated'
   | 'appointment_cancelled'
   | 'appointment_reminder'
-  | 'guest_response' // NEW: For guest RSVP changes
-  | 'password_changed'
-  | 'email_changed'
-  | 'profile_updated'
+  | 'guest_response'
+  | 'new_lead'
+  | 'lead_assigned'
+  | 'lead_status_changed'
+  | 'crm_message'
+  | 'crm_task_assigned'
+  | 'crm_task_due'
+  | 'crm_biometric'
+  | 'crm_timeproof'
   | 'driver_request'
   | 'driver_request_approved'
   | 'driver_request_rejected'
+  | 'driver_assigned'
+  | 'driver_location_update'
+  | 'driver_payout'
+  | 'payment_received'
+  | 'payment_pending'
+  | 'payment_failed'
+  | 'payment_request'
+  | 'payout_processed'
+  | 'team_invite_sent'
+  | 'team_member_joined'
+  | 'team_member_left'
+  | 'role_changed'
+  | 'password_changed'
+  | 'email_changed'
+  | 'profile_updated'
+  | 'login_alert'
+  | 'system_announcement'
+  | 'message_received'
+  | 'reminder'
+  | 'general'
   | 'referral_joined'
-  | 'referral_rewarded';
+  | 'referral_rewarded'
+  | 'delivery_confirmed'
+  | 'proof_submitted';
 
 export interface Notification {
   _id: string;
-  userId: string;
+  userId?: string;
+  organizationId?: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -29,18 +69,26 @@ export interface Notification {
     quoteId?: string;
     shipmentId?: string;
     appointmentId?: string;
+    vehicleId?: string;
+    leadId?: string;
+    driverRequestId?: string;
+    paymentId?: string;
     guestEmail?: string;
     guestName?: string;
     guestPhone?: string;
-    status?: 'accepted' | 'declined' | 'pending';
+    status?: string;
     previousStatus?: string;
     respondedAt?: string;
     vehicleName?: string;
     customerName?: string;
+    driverName?: string;
+    driverEmail?: string;
     trackingNumber?: string;
+    amount?: number;
     [key: string]: any;
   };
   isRead: boolean;
+  isBroadcast?: boolean;
   createdAt: string;
   updatedAt: string;
 }

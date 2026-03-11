@@ -3,7 +3,7 @@
 import * as React from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { DriverSidebar } from "@/components/driver-sidebar";
-import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationBell } from "@/components/notifications";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { useRouter } from "next/navigation";
@@ -113,16 +113,13 @@ export default function DriverLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <ThemeProvider>
-      <NotificationProvider>
-        <DriverLayoutContent>{children}</DriverLayoutContent>
-        <ProfileProvider>
-          <ProfileToastProvider>
-            <NotificationProvider>
-              <DriverLayoutContent>{children}</DriverLayoutContent>
-            </NotificationProvider>
-          </ProfileToastProvider>
-        </ProfileProvider>
-      </NotificationProvider>
+      <ProfileProvider>
+        <ProfileToastProvider>
+          <NotificationProvider>
+            <DriverLayoutContent>{children}</DriverLayoutContent>
+          </NotificationProvider>
+        </ProfileToastProvider>
+      </ProfileProvider>
     </ThemeProvider>
   );
 }
