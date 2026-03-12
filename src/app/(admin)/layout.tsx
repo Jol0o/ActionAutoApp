@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { NotificationProvider } from "@/context/NotificationContext";
-import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationBell } from "@/components/notifications";
 
 function AdminLayoutContent({
     children,
@@ -20,7 +20,7 @@ function AdminLayoutContent({
                     <div className="flex items-center gap-2">
                         <SidebarTrigger className="-ml-1" />
                         <Separator orientation="vertical" className="mr-2 h-4" />
-                        <span className="font-medium">Admin Dashboard</span>
+                        <span className="font-medium">Admin Dashboard </span>
                     </div>
                     <NotificationBell />
                 </header>

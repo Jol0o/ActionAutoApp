@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthActions, useUser, useAuth } from "@/providers/AuthProvider";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
 import { useProfileContext } from '@/context/ProfileContext';
 import { useProfileToast } from '@/components/ProfileToast';
@@ -40,11 +40,12 @@ export const ProfileView: React.FC = () => {
     const { setAvatarUrl, triggerRefresh } = useProfileContext();
     const toast = useProfileToast();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // State Management
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
 
     // Personal Info State
     const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({});

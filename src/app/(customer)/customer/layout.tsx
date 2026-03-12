@@ -3,7 +3,7 @@
 import * as React from "react"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { CustomerSidebar } from "@/components/customer/CustomerSidebar"
-import { NotificationBell } from "@/components/NotificationBell"
+import { NotificationBell } from "@/components/notifications"
 import { NotificationProvider } from "@/context/NotificationContext"
 import { ThemeProvider } from "@/context/ThemeContext"
 import { ProfileProvider } from "@/context/ProfileContext"

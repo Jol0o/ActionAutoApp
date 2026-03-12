@@ -2,10 +2,11 @@
 
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
-import { Truck, Search, Menu, Filter, Plus } from "lucide-react"
+import { Truck, Search, Menu, Plus, RefreshCw, X, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ShippingQuoteModal } from "@/components/shipping-quote-modal"
 import { QuoteResultModal } from "@/components/QuoteResultModal"
 import { TransportationSidebar } from "@/components/TransportationSidebar"
@@ -13,7 +14,7 @@ import { ShipmentCard } from "@/components/ShipmentCard"
 import { QuoteCard } from "@/components/QuoteCard"
 import { useTransportationData } from "@/hooks/useTransportationData"
 import { useAlert } from "@/components/AlertDialog"
-import { Quote, Shipment } from "@/types/transportation"
+import { Quote } from "@/types/transportation"
 
 export default function TransportationPage() {
     const searchParams = useSearchParams()
@@ -24,16 +25,21 @@ export default function TransportationPage() {
     const [isQuoteModalOpen, setIsQuoteModalOpen] = React.useState(false)
     const [isQuoteResultModalOpen, setIsQuoteResultModalOpen] = React.useState(false)
     const [calculatedQuote, setCalculatedQuote] = React.useState<Quote | null>(null)
+    const [secondsAgo, setSecondsAgo] = React.useState<number | null>(null)
 
     const { showAlert, AlertComponent } = useAlert()
 
     const {
         isLoading,
+        isSilentRefreshing,
         error,
         shipments,
         quotes,
         vehicles,
         stats,
+        lastUpdated,
+        hasNewEntries,
+        dismissNewEntries,
         fetchData,
         handleCalculateQuote,
         handleCreateShipment,
@@ -47,6 +53,32 @@ export default function TransportationPage() {
         fetchData()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    // Update "X seconds ago" every second
+    React.useEffect(() => {
+        if (!lastUpdated) return
+        const update = () => {
+            setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000))
+        }
+        update()
+        const interval = setInterval(update, 1000)
+        return () => clearInterval(interval)
+    }, [lastUpdated])
+
+    // Auto-dismiss new entries banner after 8 seconds
+    React.useEffect(() => {
+        if (!hasNewEntries) return
+        const timer = setTimeout(() => dismissNewEntries(), 8000)
+        return () => clearTimeout(timer)
+    }, [hasNewEntries, dismissNewEntries])
+
+    const getLastUpdatedLabel = () => {
+        if (secondsAgo === null) return ""
+        if (secondsAgo < 10) return "just now"
+        if (secondsAgo < 60) return `${secondsAgo}s ago`
+        const mins = Math.floor(secondsAgo / 60)
+        return `${mins}m ago`
+    }
 
     const handleCalculateQuoteWrapper = async (formData: any) => {
         try {
@@ -115,14 +147,26 @@ export default function TransportationPage() {
         return filtered
     }, [shipments, selectedStatus, searchQuery])
 
-    if (error && !isLoading && vehicles.length === 0) {
+    const filteredQuotes = React.useMemo(() => {
+        if (!searchQuery) return quotes
+        const query = searchQuery.toLowerCase()
+        return quotes.filter(q =>
+            q.firstName?.toLowerCase().includes(query) ||
+            q.lastName?.toLowerCase().includes(query) ||
+            q.vin?.toLowerCase().includes(query) ||
+            q.stockNumber?.toLowerCase().includes(query) ||
+            q.email?.toLowerCase().includes(query)
+        )
+    }, [quotes, searchQuery])
+
+    if (error && !isLoading && shipments.length === 0 && quotes.length === 0) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center p-4">
                 <Card className="max-w-md w-full border-border">
                     <CardContent className="p-6 text-center">
                         <h3 className="text-lg font-medium text-destructive mb-2">Error Loading Data</h3>
                         <p className="text-sm text-muted-foreground mb-4">{error}</p>
-                        <Button onClick={fetchData} className="bg-green-500 hover:bg-green-600 text-white">
+                        <Button onClick={() => fetchData()} className="bg-green-500 hover:bg-green-600 text-white">
                             Retry
                         </Button>
                     </CardContent>
@@ -134,6 +178,25 @@ export default function TransportationPage() {
     return (
         <div className="min-h-screen bg-background">
             <AlertComponent />
+
+            {/* New entries banner */}
+            {hasNewEntries && (
+                <div className="bg-green-50 dark:bg-green-950 border-b border-green-200 dark:border-green-800 px-3 sm:px-4 md:px-6 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0"></span>
+                        New entries detected — the list has been refreshed automatically.
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900"
+                        onClick={dismissNewEntries}
+                    >
+                        <X className="w-3.5 h-3.5" />
+                    </Button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="bg-card border-b border-border px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                 <div className="flex flex-col gap-3 sm:gap-4">
@@ -193,6 +256,36 @@ export default function TransportationPage() {
                             />
                         </div>
                     </div>
+
+                    {/* Live status bar */}
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground border-t border-border pt-2">
+                        <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                Live
+                            </span>
+                            {lastUpdated && (
+                                <span className="text-muted-foreground">
+                                    · Updated {getLastUpdatedLabel()}
+                                </span>
+                            )}
+                            {isSilentRefreshing && (
+                                <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                                    · <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Refreshing
+                                </span>
+                            )}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 gap-1 text-[10px] sm:text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => fetchData()}
+                            disabled={isLoading || isSilentRefreshing}
+                        >
+                            <RefreshCw className={`w-3 h-3 ${isLoading || isSilentRefreshing ? "animate-spin" : ""}`} />
+                            Refresh
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -219,11 +312,32 @@ export default function TransportationPage() {
                 <div className="flex-1 p-3 sm:p-4 md:p-6 bg-background">
                     {activeTab === "shipments" ? (
                         isLoading ? (
-                            <Card className="border-border">
-                                <CardContent className="p-12 text-center">
-                                    <p className="text-muted-foreground">Loading shipments...</p>
-                                </CardContent>
-                            </Card>
+                            <div className="space-y-3 sm:space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <Card key={i} className="border-border overflow-hidden">
+                                        <CardContent className="p-0">
+                                            <Skeleton className="w-full h-40 sm:h-56 md:h-64 rounded-none" />
+                                            <div className="p-4 sm:p-5 space-y-3">
+                                                <div className="flex justify-between">
+                                                    <div className="space-y-2">
+                                                        <Skeleton className="h-4 w-40" />
+                                                        <Skeleton className="h-3 w-28" />
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Skeleton className="h-8 w-16 rounded-md" />
+                                                        <Skeleton className="h-8 w-16 rounded-md" />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <Skeleton className="h-20 rounded-lg" />
+                                                    <Skeleton className="h-20 rounded-lg" />
+                                                </div>
+                                                <Skeleton className="h-40 w-full rounded-lg" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
                         ) : filteredShipments.length === 0 ? (
                             <Card className="border-border">
                                 <CardContent className="p-6 sm:p-8 md:p-12 text-center">
@@ -257,22 +371,56 @@ export default function TransportationPage() {
                             </div>
                         )
                     ) : (
-                        <div className="space-y-3 sm:space-y-4">
-                            {quotes.length === 0 ? (
-                                <Card className="border-border">
-                                    <CardContent className="p-12 text-center">
-                                        <h3 className="text-lg font-medium text-foreground mb-2">No Quotes Found</h3>
-                                        <p className="text-sm text-muted-foreground mb-6">Create a new quote to get started.</p>
-                                        <Button
-                                            className="bg-green-500 hover:bg-green-600 text-white"
-                                            onClick={() => setIsQuoteModalOpen(true)}
-                                        >
-                                            Create Quote
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                quotes.map((quote) => (
+                        isLoading ? (
+                            <div className="space-y-3 sm:space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <Card key={i} className="border-border overflow-hidden">
+                                        <CardContent className="p-0">
+                                            <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-700">
+                                                <div className="w-full lg:w-1/3 p-4 sm:p-6 space-y-3">
+                                                    <Skeleton className="h-4 w-24" />
+                                                    <Skeleton className="h-40 w-full rounded-lg" />
+                                                    <Skeleton className="h-4 w-3/4" />
+                                                    <Skeleton className="h-4 w-1/2" />
+                                                </div>
+                                                <div className="w-full lg:w-2/3 p-4 sm:p-6 space-y-4">
+                                                    <Skeleton className="h-4 w-32" />
+                                                    <Skeleton className="h-24 w-full rounded-lg" />
+                                                    <div className="grid grid-cols-3 gap-3">
+                                                        <Skeleton className="h-16 rounded-lg" />
+                                                        <Skeleton className="h-16 rounded-lg" />
+                                                        <Skeleton className="h-16 rounded-lg" />
+                                                    </div>
+                                                    <Skeleton className="h-20 w-full rounded-lg" />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : filteredQuotes.length === 0 ? (
+                            <Card className="border-border">
+                                <CardContent className="p-6 sm:p-8 md:p-12 text-center">
+                                    <Package className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
+                                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-foreground mb-2">
+                                        No Drafts Found
+                                    </h3>
+                                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground mb-4 sm:mb-6 px-2 sm:px-4">
+                                        {searchQuery
+                                            ? "No quotes match your search criteria."
+                                            : "You don't have any draft quotes yet. Create a new quote to get started."}
+                                    </p>
+                                    <Button
+                                        className="bg-green-500 hover:bg-green-600 text-white text-xs sm:text-sm h-8 sm:h-9 md:h-10"
+                                        onClick={() => setIsQuoteModalOpen(true)}
+                                    >
+                                        Create New Quote
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="space-y-3 sm:space-y-4">
+                                {filteredQuotes.map((quote) => (
                                     <QuoteCard
                                         key={quote._id}
                                         quote={quote}
@@ -280,9 +428,9 @@ export default function TransportationPage() {
                                         onDelete={handleDeleteQuote}
                                         onUpdate={handleUpdateQuote}
                                     />
-                                ))
-                            )}
-                        </div>
+                                ))}
+                            </div>
+                        )
                     )}
                 </div>
             </div>
