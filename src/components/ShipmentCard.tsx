@@ -178,7 +178,7 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                         className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-500"
                                     />
                                     {/* Gradient overlay */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                                    <div className="absolute inset-08 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
                                     {/* Top badges */}
                                     <div className="absolute top-2 left-2 right-2 flex items-start justify-between flex-wrap gap-1.5">
@@ -253,7 +253,7 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                             <div className="flex items-center gap-1.5">
                                                 <Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-400 dark:text-gray-500" />
                                                 <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                                    {shipment.organization.name}
+                                                    Organization: <span className="font-medium text-gray-700 dark:text-gray-300">{shipment.organization.name}</span>
                                                 </span>
                                             </div>
                                         )}
@@ -270,9 +270,15 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                                         <User className="w-2 h-2 text-green-600 dark:text-green-400" />
                                                     </div>
                                                 )}
-                                                <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                                    By <span className="font-medium text-gray-700 dark:text-gray-300">{shipment.createdBy.name || shipment.createdBy.email || "Unknown"}</span>
-                                                </span>
+                                                {shipment.createdBy.name || shipment.createdBy.email ? (
+                                                    <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
+                                                        By <span className="font-medium text-gray-700 dark:text-gray-300">{shipment.createdBy.name || shipment.createdBy.email}</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] sm:text-xs text-red-400 dark:text-red-500 italic">
+                                                        Deleted User
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                     </div>
