@@ -152,16 +152,33 @@ function getXmlAttr(xml: string, tag: string, attr: string): string {
   return m ? m[1] : ''
 }
 function isAdfBody(raw: string): boolean {
-  return /(<adf>|adf version|<prospect|<vehicle interest)/i.test(raw)
+  // Check both literal tags and HTML-encoded tags (&lt;adf&gt;)
+  // Also catch <!--?ADF and <!--?xml ... ADF wrappers that email clients produce
+  const t = raw.toLowerCase()
+  return (
+    t.includes('<adf>')        || t.includes('&lt;adf')      ||
+    t.includes('adf version')  || t.includes('adf%20version') ||
+    t.includes('<prospect ')   || t.includes('&lt;prospect ') ||
+    t.includes('<vehicle ')    || t.includes('&lt;vehicle ')  ||
+    (t.includes('<!--?') && (t.includes('adf') || t.includes('requestdate')))
+  )
 }
 
 // ── ADF lead card ────────────────────────────────────────────
 function AdfContent({ rawBody }: { rawBody: string }) {
   // Decode HTML-encoded XML (emails often wrap ADF in HTML)
+  // Decode HTML-encoded XML that email clients produce
   const decoded = rawBody
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/<!--\?[^>]*-->/g, '') // strip <?xml?> and <?ADF?> PI comments
+    .replace(/&#\d+;/g, ' ')
+    .replace(/<!--\?xml[^>]*-->/gi, '')   // strip <!--?xml ... --> PI wrappers
+    .replace(/<!--\?ADF[^>]*-->/gi, '')   // strip <!--?ADF ... --> PI wrappers
+    .replace(/<\?xml[^>]*\?>/gi, '')      // strip <?xml ... ?> declarations
+    .replace(/<\?ADF[^>]*\?>/gi, '')      // strip <?ADF ... ?> declarations
+    .replace(/<html[^>]*>|<\/html>/gi, '')
+    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+    .replace(/<body[^>]*>|<\/body>/gi, '')
 
   // Vehicle fields
   const vYear   = getXmlText(decoded, 'year')
