@@ -5,8 +5,11 @@ import { Vehicle, ShippingQuoteFormData } from "@/types/inventory";
 import { Shipment, Quote, ShipmentStats } from "@/types/transportation";
 import { useAuth } from "@/providers/AuthProvider";
 
+const POLL_INTERVAL_MS = 30_000; // 30 seconds
+
 export function useTransportationData() {
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isSilentRefreshing, setIsSilentRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [shipments, setShipments] = React.useState<Shipment[]>([]);
   const [quotes, setQuotes] = React.useState<Quote[]>([]);
@@ -19,7 +22,14 @@ export function useTransportationData() {
     Dispatched: 0,
     "In-Route": 0,
   });
+  const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
+  const [hasNewEntries, setHasNewEntries] = React.useState(false);
+
   const { getToken, isLoaded, isSignedIn } = useAuth();
+
+  // Track previous counts to detect new entries during background polls
+  const prevCountsRef = React.useRef<{ shipments: number; quotes: number } | null>(null);
+  const isInitializedRef = React.useRef(false);
 
   const extractData = React.useCallback((response: any) => {
     if (response.data?.data !== undefined) {
@@ -65,14 +75,20 @@ export function useTransportationData() {
     [],
   );
 
-  const fetchData = React.useCallback(async () => {
+  const fetchData = React.useCallback(async (options?: { silent?: boolean }) => {
     if (!isSignedIn) return;
 
-    setIsLoading(true);
+    const silent = options?.silent ?? false;
+
+    if (silent) {
+      setIsSilentRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
-      console.log("[TransportationData] Fetching all data...");
+      console.log(`[TransportationData] ${silent ? "Silent poll" : "Fetching"} all data...`);
 
       const token = await getToken();
       const config = {
@@ -115,6 +131,22 @@ export function useTransportationData() {
       if (statsData && typeof statsData === "object") {
         setStats(statsData);
       }
+
+      setLastUpdated(new Date());
+
+      // Detect new entries during background polls (not on first load)
+      if (silent && isInitializedRef.current && prevCountsRef.current) {
+        if (
+          shipmentsData.length > prevCountsRef.current.shipments ||
+          quotesData.length > prevCountsRef.current.quotes
+        ) {
+          setHasNewEntries(true);
+        }
+      }
+
+      prevCountsRef.current = { shipments: shipmentsData.length, quotes: quotesData.length };
+      isInitializedRef.current = true;
+
     } catch (error) {
       console.error("[TransportationData] Error fetching data:", error);
       const axiosError = error as AxiosError;
@@ -123,13 +155,36 @@ export function useTransportationData() {
         axiosError.message ||
         "Failed to load data";
       setError(errorMessage);
-      setShipments([]);
-      setQuotes([]);
-      setVehicles([]);
+
+      // Only clear data on non-silent failures to avoid wiping the list on a bad poll
+      if (!silent) {
+        setShipments([]);
+        setQuotes([]);
+        setVehicles([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (silent) {
+        setIsSilentRefreshing(false);
+      } else {
+        setIsLoading(false);
+      }
     }
   }, [extractData, transformVehicles, getToken, isSignedIn]);
+
+  // Background polling every 30 seconds
+  React.useEffect(() => {
+    if (!isSignedIn || !isLoaded) return;
+
+    const interval = setInterval(() => {
+      fetchData({ silent: true });
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [fetchData, isSignedIn, isLoaded]);
+
+  const dismissNewEntries = React.useCallback(() => {
+    setHasNewEntries(false);
+  }, []);
 
   const handleCalculateQuote = React.useCallback(
     async (formData: ShippingQuoteFormData) => {
@@ -377,11 +432,15 @@ export function useTransportationData() {
 
   return {
     isLoading,
+    isSilentRefreshing,
     error,
     shipments,
     quotes,
     vehicles,
     stats,
+    lastUpdated,
+    hasNewEntries,
+    dismissNewEntries,
     fetchData,
     handleCalculateQuote,
     handleCreateShipment,

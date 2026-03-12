@@ -187,12 +187,18 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                                                 <User className="w-2.5 h-2.5 text-green-600 dark:text-green-400" />
                                             </div>
                                         )}
-                                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                                            By{" "}
-                                            <span className="font-medium text-gray-700 dark:text-gray-300">
-                                                {quote.createdBy.name || quote.createdBy.email || "Unknown"}
+                                        {quote.createdBy.name || quote.createdBy.email ? (
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                By{" "}
+                                                <span className="font-medium text-gray-700 dark:text-gray-300">
+                                                    {quote.createdBy.name || quote.createdBy.email}
+                                                </span>
                                             </span>
-                                        </span>
+                                        ) : (
+                                            <span className="text-xs text-red-400 dark:text-red-500 italic">
+                                                Deleted User
+                                            </span>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -206,7 +212,7 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                                     {quote.organization && (
                                         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                                             <Building2 className="w-3 h-3" />
-                                            <span className="font-medium text-gray-700 dark:text-gray-300">{quote.organization.name}</span>
+                                            <span>Organization: <span className="font-medium text-gray-700 dark:text-gray-300">{quote.organization.name}</span></span>
                                         </div>
                                     )}
                                     <Badge className="bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900 border border-yellow-200 dark:border-yellow-700">
