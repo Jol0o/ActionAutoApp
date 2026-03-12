@@ -22,8 +22,9 @@ function CallbackContent() {
         // the session will be automatically detected and synchronized.
         // We just need to wait a tick and push them into the dashboard.
         if (token) {
-            // Push to dashboard and force a full refresh so layout triggers the token sync properly.
-            router.push("/");
+            // Push to dashboard or specify redirect and force a full refresh so layout triggers the token sync properly.
+            const redirectUrl = searchParams.get("redirect_url");
+            router.push(redirectUrl || "/");
             router.refresh();
         } else {
             router.push("/sign-in");

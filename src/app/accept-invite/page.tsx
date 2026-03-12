@@ -19,7 +19,7 @@ function AcceptInviteContent() {
     const searchParams = useSearchParams()
     const token = searchParams.get("token")
     const router = useRouter()
-    const { getToken, isLoaded, isSignedIn } = useAuth()
+    const { getToken, isLoaded, isSignedIn, refreshUser } = useAuth()
 
     const [isLoading, setIsLoading] = useState(true)
     const [isAccepting, setIsAccepting] = useState(false)
@@ -66,6 +66,8 @@ function AcceptInviteContent() {
             await apiClient.acceptInvite(token!, {
                 headers: { Authorization: `Bearer ${authToken}` }
             })
+            // Refresh user state to update onboardingCompleted and organizationId
+            await refreshUser()
             // Redirect to dashboard
             router.push("/")
         } catch (err: any) {

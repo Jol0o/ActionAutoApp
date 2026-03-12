@@ -168,7 +168,7 @@ export function OrganizationMembersSettings() {
     return (
         <div className="space-y-6">
             {/* Your Rank Card */}
-            <Card className="border-l-4 border-l-blue-500">
+            {/* <Card className="border-l-4 border-l-blue-500">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Briefcase className="w-5 h-5" />
@@ -222,7 +222,7 @@ export function OrganizationMembersSettings() {
                         </div>
                     )}
                 </CardContent>
-            </Card>
+            </Card> */}
 
             <div className="flex items-center justify-between ">
                 <div>

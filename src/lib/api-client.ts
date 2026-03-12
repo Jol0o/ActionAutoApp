@@ -181,6 +181,11 @@ class ApiClient {
     }
 
     // ── Auth Methods ─────────────────────────────────────────────────────────
+    // ── Dashboard Methods ────────────────────────────────────────────────────
+    async getDashboardMetrics(params: { period?: string; month?: string }, config?: AxiosRequestConfig) {
+        return this.get('/api/dashboard/metrics', { ...config, params });
+    }
+
     async completeOnboarding(role: string, config?: AxiosRequestConfig) {
         return this.post('/api/auth/complete-onboarding', { role }, config);
     }

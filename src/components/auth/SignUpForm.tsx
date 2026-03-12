@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Mail, Lock, User, ArrowRight, AlertCircle, Sparkles, Car, ShieldCheck, UserCheck, Briefcase } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 type SignUpStep = "details" | "identity";
@@ -16,6 +16,7 @@ type UserRole = "customer" | "driver" | "dealership";
 export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
     const { signUp, isLoaded } = useSignUp();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [step, setStep] = useState<SignUpStep>("details");
     const [name, setName] = useState("");
@@ -63,7 +64,12 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
 
     const handleGoogleSignUp = (role: UserRole) => {
         const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://xj3pd14h-5000.asse.devtunnels.ms';
-        window.location.href = `${backendUrl}/api/auth/google?role=${role}`;
+        const redirectUrl = searchParams.get('redirect_url');
+        let url = `${backendUrl}/api/auth/google?role=${role}`;
+        if (redirectUrl) {
+            url += `&redirect_url=${encodeURIComponent(redirectUrl)}`;
+        }
+        window.location.href = url;
     };
 
     const containerVariants = {

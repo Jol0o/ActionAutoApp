@@ -20,6 +20,7 @@ export interface AuthUser {
     isActive: boolean;
     isApproved: boolean;
     onboardingCompleted: boolean;
+    theme?: 'light' | 'dark';
 }
 
 interface AuthContextType {
@@ -42,6 +43,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Module-level variable to track ongoing refresh requests across all hooks/components
 let globalRefreshPromise: Promise<string | null> | null = null;
+
+const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback', '/verify-email', '/accept-invite'];
+
+const isPublicRoute = (path: string) => {
+    return PUBLIC_ROUTES.some(r => path.startsWith(r));
+};
 
 // --- PROVIDER COMPONENT ---
 
@@ -108,8 +115,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // --- UNIVERSAL AUTH GUARD & REDIRECTS ---
                 if (typeof window !== 'undefined') {
                     const path = window.location.pathname;
-                    const publicRoutes = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback', '/verify-email'];
-                    const isPublic = publicRoutes.some(r => path.startsWith(r));
+                    const search = window.location.search;
+                    const isPublic = isPublicRoute(path);
+                    const hasInviteToken = search.includes('token=');
 
                     // 1. Force Email Verification
                     if (!userData.emailVerified && !isPublic) {
@@ -118,13 +126,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     }
 
                     // 1.5. Force Onboarding
-                    if (!userData.onboardingCompleted && path !== '/onboarding/role-selection') {
+                    if (!userData.onboardingCompleted && !isPublic && !hasInviteToken && path !== '/onboarding/role-selection') {
                         router.push('/onboarding/role-selection');
                         return;
                     }
 
                     // 2. Prevent Verified/Logged-in users from hitting Auth pages (Sign-in/Sign-up)
                     if (isPublic && (path === '/sign-in' || path === '/sign-up')) {
+                        const search = window.location.search;
+                        const params = new URLSearchParams(search);
+                        const redirectUrl = params.get('redirect_url');
+
+                        if (redirectUrl) {
+                            router.push(redirectUrl);
+                            return;
+                        }
+
                         if (userData.role === 'customer') router.push('/customer');
                         else if (userData.role === 'driver') router.push('/driver');
                         else if (userData.role === 'super_admin') router.push('/admin/dashboard');
@@ -134,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     }
 
                     // 3. Forced Onboarding for Admin
-                    if (!isPublic && userData.role === 'admin' && !userData.organizationId && path !== '/org-selection') {
+                    if (!isPublic && !hasInviteToken && userData.role === 'admin' && !userData.organizationId && path !== '/org-selection') {
                         router.push('/org-selection');
                         return;
                     }
@@ -151,15 +168,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(null);
                 setAccessToken(null);
 
-                // Force unauthenticated users out of private routes immediately
                 if (typeof window !== 'undefined') {
                     const path = window.location.pathname;
-                    const publicRoutes = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback', '/verify-email'];
-                    if (!publicRoutes.some(r => path.startsWith(r)) && path !== '/') {
-                        router.push('/sign-in');
+                    const search = window.location.search;
+                    if (!isPublicRoute(path) && path !== '/') {
+                        router.push('/sign-in' + search);
                     } else if (path === '/') {
                         // We also boot from root because '/' is the dealership dashboard
-                        router.push('/sign-in');
+                        router.push('/sign-in' + search);
                     }
                 }
             }
@@ -167,15 +183,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             setAccessToken(null);
 
-            // Force unauthenticated users out of private routes immediately
             if (typeof window !== 'undefined') {
                 const path = window.location.pathname;
-                const publicRoutes = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback'];
-                if (!publicRoutes.some(r => path.startsWith(r)) && path !== '/') {
-                    router.push('/sign-in');
+                const search = window.location.search;
+                if (!isPublicRoute(path) && path !== '/') {
+                    router.push('/sign-in' + search);
                 } else if (path === '/') {
                     // We also boot from root because '/' is the dealership dashboard
-                    router.push('/sign-in');
+                    router.push('/sign-in' + search);
                 }
             }
         } finally {
@@ -187,7 +202,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (isLoaded && user && user.onboardingCompleted === false) {
             const path = window.location.pathname;
-            if (path !== '/onboarding/role-selection') {
+            const search = window.location.search;
+            const isPublic = isPublicRoute(path);
+            const hasInviteToken = search.includes('token=');
+
+            if (!isPublic && !hasInviteToken && path !== '/onboarding/role-selection') {
                 router.push('/onboarding/role-selection');
             }
         }
@@ -304,6 +323,7 @@ export function useUser() {
         imageUrl: context.user.avatar || context.user.avatarUrl || '/placeholder-avatar.png',
         role: context.user.role,
         onboardingCompleted: context.user.onboardingCompleted,
+        theme: context.user.theme,
         publicMetadata: {},
         unsafeMetadata: {},
         update: async (data: any) => {
