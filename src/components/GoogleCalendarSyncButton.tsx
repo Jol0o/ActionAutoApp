@@ -24,10 +24,6 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
 
       const token = await getToken()
 
-      console.log('[GoogleCalendarSyncButton] Starting sync...')
-
-      // FIX: Corrected endpoint from '/api/appointments/sync/google-calendar'
-      // to '/api/google-calendar/sync-events' which actually exists in the router
       const response = await apiClient.post(
         '/api/google-calendar/sync-events',
         {},
@@ -40,15 +36,14 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
       const data = response.data?.data || response.data
       const syncedCount = data?.syncedAppointments ?? 0
 
-      console.log('[GoogleCalendarSyncButton] Sync successful:', syncedCount, 'events')
-
       setSyncResult('success')
       setMessage(`Synced ${syncedCount} event${syncedCount !== 1 ? 's' : ''} from Google Calendar.`)
 
+      // FIX: Only call onSyncComplete on success path, not unconditionally in
+      // the error branch. This prevents a double-refresh and avoids masking the
+      // error state with a stale-data refresh.
       if (onSyncComplete) {
-        console.log('[GoogleCalendarSyncButton] Calling onSyncComplete...')
         await onSyncComplete()
-        console.log('[GoogleCalendarSyncButton] onSyncComplete finished')
       }
     } catch (error: any) {
       console.error('[GoogleCalendarSyncButton] Sync error:', error)
@@ -60,7 +55,6 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
         setMessage('Cannot reach server. Check that the backend is running.')
       } else if (error.response?.status === 401) {
         const errMsg = error.response?.data?.message || ''
-        // FIX: Distinguish between "not connected" and "needs reconnection"
         if (errMsg.toLowerCase().includes('reconnect')) {
           setMessage('Google Calendar needs to be reconnected. Please disconnect and reconnect your calendar.')
         } else {
@@ -68,7 +62,6 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
         }
       } else if (error.response?.status === 500) {
         const errMsg = error.response?.data?.message || 'Server error during sync'
-        // FIX: Detect missing refresh token error and give actionable message
         if (
           errMsg.toLowerCase().includes('refresh token') ||
           errMsg.toLowerCase().includes('no refresh token')
@@ -81,14 +74,14 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
         setMessage(error.response?.data?.message || 'Failed to sync.')
       }
 
-      // Even on error, refresh data in case a partial sync occurred
-      if (onSyncComplete) {
-        console.log('[GoogleCalendarSyncButton] Error occurred, but refreshing data anyway...')
+      // FIX: Only refresh data on error if a partial sync might have occurred
+      // (i.e. we got a response back, not a pure network failure).
+      const isPartialSync = !!error.response
+      if (isPartialSync && onSyncComplete) {
         await onSyncComplete()
       }
     } finally {
       setSyncing(false)
-      // Clear message after 5 seconds
       setTimeout(() => {
         setSyncResult(null)
         setMessage(null)

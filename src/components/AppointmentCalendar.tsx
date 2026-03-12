@@ -25,16 +25,13 @@ interface AppointmentCalendarProps {
   onSelectAppointment: (appointment: Appointment) => void
 }
 
-// ─── Safe date helper ─────────────────────────────────────────────────────────
-// Handles string | Date | undefined without throwing
+// ─── Safe date helper ──────────────────────────────────────────────────────────
 function safeDate(value: unknown): Date | null {
   if (!value) return null
   const d = value instanceof Date ? value : new Date(value as string)
   return isNaN(d.getTime()) ? null : d
 }
 
-// Year/month/date comparison — immune to isSameDay edge-cases with
-// null values, timezone shifts, or non-standard date strings.
 function appointmentIsOnDay(apt: Appointment, day: Date): boolean {
   const start = safeDate(apt.startTime)
   if (!start) return false
@@ -52,55 +49,64 @@ function countInMonth(appointments: Appointment[], month: Date): number {
   }).length
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Derive the best initial/target month from appointments ───────────────────
+// Returns the month we SHOULD be showing given the current appointments list.
+// Priority:
+//   1. Current month — if it has any events, stay here
+//   2. Nearest upcoming non-cancelled event
+//   3. Most recent past event
+// Returns null if appointments is empty (caller should leave state unchanged).
+function deriveTargetMonth(appointments: Appointment[], todayDate: Date): Date | null {
+  if (appointments.length === 0) return null
 
+  const thisMonth = startOfMonth(todayDate)
+  if (countInMonth(appointments, thisMonth) > 0) return null // stay where we are
+
+  const validDates = appointments
+    .map((apt) => safeDate(apt.startTime))
+    .filter((d): d is Date => d !== null)
+
+  const futureDates = validDates
+    .filter((d) => d >= todayDate)
+    .sort((a, b) => a.getTime() - b.getTime())
+
+  if (futureDates.length > 0) return startOfMonth(futureDates[0])
+
+  const pastDates = validDates.sort((a, b) => b.getTime() - a.getTime())
+  if (pastDates.length > 0) return startOfMonth(pastDates[0])
+
+  return null
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export function AppointmentCalendar({
   appointments,
   onCreateAppointment,
   onSelectAppointment,
 }: AppointmentCalendarProps) {
-  const todayDate = React.useRef(new Date()).current          // stable reference
+  const todayDate = React.useRef(new Date()).current
   const [currentMonth, setCurrentMonth] = React.useState(startOfMonth(todayDate))
-  const hasAutoNavigated = React.useRef(false)
 
-  // ── Smart auto-navigation ───────────────────────────────────────────────────
-  //
-  // Priority order:
-  //   1. Current month — if it has ANY events, stay here (don't jump away)
-  //   2. Nearest upcoming event month — jump there if current month is empty
-  //   3. Most recent past event month — last resort if no future events exist
-  //
+  // FIX: Track the appointments length we last auto-navigated for, so that when
+  // the list goes from [] → populated we jump correctly, but we don't keep
+  // jumping every time a single appointment is added/removed after that.
+  const lastAutoNavCountRef = React.useRef<number>(-1)
+
   React.useEffect(() => {
-    if (hasAutoNavigated.current || appointments.length === 0) return
-    hasAutoNavigated.current = true
+    // Skip if we already handled this exact count
+    if (appointments.length === lastAutoNavCountRef.current) return
+    // Skip if still loading (empty)
+    if (appointments.length === 0) return
 
-    const thisMonth = startOfMonth(todayDate)
+    // Only auto-navigate on the initial data load:
+    // treat a jump from 0 → N as the "first real load"
+    const wasEmpty = lastAutoNavCountRef.current <= 0
+    lastAutoNavCountRef.current = appointments.length
 
-    // If the current month already has events, don't navigate anywhere
-    if (countInMonth(appointments, thisMonth) > 0) return
+    if (!wasEmpty) return // don't jump again once data is live
 
-    // Find the nearest upcoming non-cancelled event
-    const validDates = appointments
-      .map((apt) => safeDate(apt.startTime))
-      .filter((d): d is Date => d !== null)
-
-    const futureDates = validDates
-      .filter((d) => d >= todayDate)
-      .sort((a, b) => a.getTime() - b.getTime())
-
-    if (futureDates.length > 0) {
-      setCurrentMonth(startOfMonth(futureDates[0]))
-      return
-    }
-
-    // No future events — jump to the most recent past event
-    const pastDates = validDates
-      .filter((d) => d < todayDate)
-      .sort((a, b) => b.getTime() - a.getTime())
-
-    if (pastDates.length > 0) {
-      setCurrentMonth(startOfMonth(pastDates[0]))
-    }
+    const target = deriveTargetMonth(appointments, todayDate)
+    if (target) setCurrentMonth(target)
   }, [appointments, todayDate])
 
   // ── Calendar grid ───────────────────────────────────────────────────────────
@@ -110,9 +116,9 @@ export function AppointmentCalendar({
   const calendarEnd   = endOfWeek(monthEnd)
   const days          = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
-  const monthlyCount  = React.useMemo(() => countInMonth(appointments, currentMonth), [appointments, currentMonth])
-  const prevCount     = React.useMemo(() => countInMonth(appointments, subMonths(currentMonth, 1)), [appointments, currentMonth])
-  const nextCount     = React.useMemo(() => countInMonth(appointments, addMonths(currentMonth, 1)), [appointments, currentMonth])
+  const monthlyCount = React.useMemo(() => countInMonth(appointments, currentMonth), [appointments, currentMonth])
+  const prevCount    = React.useMemo(() => countInMonth(appointments, subMonths(currentMonth, 1)), [appointments, currentMonth])
+  const nextCount    = React.useMemo(() => countInMonth(appointments, addMonths(currentMonth, 1)), [appointments, currentMonth])
 
   const getAppointmentsForDay = (day: Date): Appointment[] =>
     appointments.filter((apt) => appointmentIsOnDay(apt, day))
@@ -127,13 +133,10 @@ export function AppointmentCalendar({
     }
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-2">
-
-          {/* Month title + event count */}
           <div className="flex items-center gap-2">
             <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
             {monthlyCount > 0 ? (
@@ -147,7 +150,6 @@ export function AppointmentCalendar({
             )}
           </div>
 
-          {/* Navigation */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -199,7 +201,6 @@ export function AppointmentCalendar({
       </CardHeader>
 
       <CardContent>
-        {/* Day-of-week headers */}
         <div className="grid grid-cols-7 gap-2">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
             <div key={d} className="p-2 text-center text-sm font-medium text-muted-foreground">
@@ -207,11 +208,10 @@ export function AppointmentCalendar({
             </div>
           ))}
 
-          {/* Day cells */}
           {days.map((day) => {
-            const dayAppointments  = getAppointmentsForDay(day)
-            const todayFlag        = isToday(day)
-            const currentMonthDay  = isSameMonth(day, currentMonth)
+            const dayAppointments = getAppointmentsForDay(day)
+            const todayFlag       = isToday(day)
+            const currentMonthDay = isSameMonth(day, currentMonth)
 
             return (
               <div
@@ -222,7 +222,6 @@ export function AppointmentCalendar({
                     : "bg-card hover:bg-accent/50"
                 } ${todayFlag ? "ring-2 ring-green-500" : ""}`}
               >
-                {/* Date number + add button */}
                 <div className="mb-1 flex items-center justify-between">
                   <div
                     className={
@@ -247,7 +246,6 @@ export function AppointmentCalendar({
                   )}
                 </div>
 
-                {/* Appointment pills */}
                 <div className="space-y-1">
                   {dayAppointments.slice(0, 3).map((apt) => {
                     const start = safeDate(apt.startTime)
@@ -281,7 +279,6 @@ export function AppointmentCalendar({
           })}
         </div>
 
-        {/* Empty-month hint shown only when data exists but not in this month */}
         {monthlyCount === 0 && appointments.length > 0 && (
           <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-dashed border-muted-foreground/30 py-8 text-center text-muted-foreground">
             <CalendarDays className="h-10 w-10 opacity-30" />
@@ -302,7 +299,6 @@ export function AppointmentCalendar({
 }
 
 // ─── Jump-to-nearest helper ───────────────────────────────────────────────────
-
 function JumpToNearestButton({
   appointments,
   onNavigate,
@@ -323,9 +319,7 @@ function JumpToNearestButton({
 
     if (future) return { date: future.d, label: "Jump to next upcoming event" }
 
-    const past = validWithDates
-      .sort((a, b) => b.d.getTime() - a.d.getTime())[0]
-
+    const past = validWithDates.sort((a, b) => b.d.getTime() - a.d.getTime())[0]
     if (past) return { date: past.d, label: "Jump to most recent event" }
 
     return null
