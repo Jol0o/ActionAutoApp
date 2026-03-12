@@ -27,7 +27,8 @@ import { SupraLeoReadButton } from "@/components/supra-leo-ai/SupraLeoReadButton
 // ─────────────────────────────────────────────────────────────
 const LEADS_SOURCE_EMAIL    = 'leads@dealerscloud.com'
 const LEADS_PER_PAGE        = 20
-const AUTO_SYNC_INTERVAL_MS = 30_000
+const AUTO_SYNC_INTERVAL_MS   = 30_000
+const THREAD_POLL_INTERVAL_MS = 15_000
 
 // ─────────────────────────────────────────────────────────────
 // Status config
@@ -152,8 +153,6 @@ function getXmlAttr(xml: string, tag: string, attr: string): string {
   return m ? m[1] : ''
 }
 function isAdfBody(raw: string): boolean {
-  // Check both literal tags and HTML-encoded tags (&lt;adf&gt;)
-  // Also catch <!--?ADF and <!--?xml ... ADF wrappers that email clients produce
   const t = raw.toLowerCase()
   return (
     t.includes('<adf>')        || t.includes('&lt;adf')      ||
@@ -166,21 +165,18 @@ function isAdfBody(raw: string): boolean {
 
 // ── ADF lead card ────────────────────────────────────────────
 function AdfContent({ rawBody }: { rawBody: string }) {
-  // Decode HTML-encoded XML (emails often wrap ADF in HTML)
-  // Decode HTML-encoded XML that email clients produce
   const decoded = rawBody
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/&#\d+;/g, ' ')
-    .replace(/<!--\?xml[^>]*-->/gi, '')   // strip <!--?xml ... --> PI wrappers
-    .replace(/<!--\?ADF[^>]*-->/gi, '')   // strip <!--?ADF ... --> PI wrappers
-    .replace(/<\?xml[^>]*\?>/gi, '')      // strip <?xml ... ?> declarations
-    .replace(/<\?ADF[^>]*\?>/gi, '')      // strip <?ADF ... ?> declarations
+    .replace(/<!--\?xml[^>]*-->/gi, '')
+    .replace(/<!--\?ADF[^>]*-->/gi, '')
+    .replace(/<\?xml[^>]*\?>/gi, '')
+    .replace(/<\?ADF[^>]*\?>/gi, '')
     .replace(/<html[^>]*>|<\/html>/gi, '')
     .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
     .replace(/<body[^>]*>|<\/body>/gi, '')
 
-  // Vehicle fields
   const vYear   = getXmlText(decoded, 'year')
   const vMake   = getXmlText(decoded, 'make')
   const vModel  = getXmlText(decoded, 'model')
@@ -193,20 +189,18 @@ function AdfContent({ rawBody }: { rawBody: string }) {
   const vStatus = getXmlAttr(decoded, 'vehicle', 'status')
   const vSource = getXmlAttr(decoded, 'id', 'source')
 
-  // Customer fields
   const cName  = getXmlText(decoded, 'name')
   const cEmail = getXmlText(decoded, 'email')
   const cPhone = getXmlText(decoded, 'phone')
 
-  // Comments — strip tracking noise after known separators
   let comments = getXmlText(decoded, 'comments')
   comments = comments
-    .replace(/\s*[-\u2014]{3,}[\s\S]*$/, '')       // strip trailing "--- Copy and paste..." blocks
-    .replace(/\s*VIN:[A-Z0-9]+[\s\S]*$/, '')   // strip trailing VIN tracking tags
-    .replace(/\s*TCPAOptIn:[\s\S]*$/i, '')      // strip TCPA opt-in noise
-    .replace(/\s*\([A-Za-z0-9+/]{10,}[^)]*\)/g, '') // strip base64 tracking tokens
-    .replace(/\s*CarGurus[^.]*\./g, '.')   // strip CarGurus deal rating suffix
-    .replace(/\s*\(CarGurus[^)]*\)/g, '')  // strip CarGurus in parens
+    .replace(/\s*[-\u2014]{3,}[\s\S]*$/, '')
+    .replace(/\s*VIN:[A-Z0-9]+[\s\S]*$/, '')
+    .replace(/\s*TCPAOptIn:[\s\S]*$/i, '')
+    .replace(/\s*\([A-Za-z0-9+/]{10,}[^)]*\)/g, '')
+    .replace(/\s*CarGurus[^.]*\./g, '.')
+    .replace(/\s*\(CarGurus[^)]*\)/g, '')
     .replace(/\s*\(Is From Shippable[^)]*\)/g, '')
     .replace(/\s*Delivery Cost:[^,]*,?/g, '')
     .replace(/\s*Price \+ Delivery:[^,).]*/g, '')
@@ -215,7 +209,6 @@ function AdfContent({ rawBody }: { rawBody: string }) {
     .replace(/\s{2,}/g, ' ')
     .trim()
 
-  // Request date
   const reqDate = getXmlText(decoded, 'requestdate')
   const fmtReqDate = reqDate ? (() => { try { return new Date(reqDate).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) } catch { return reqDate } })() : ''
 
@@ -233,8 +226,6 @@ function AdfContent({ rawBody }: { rawBody: string }) {
 
   return (
     <div className="space-y-5">
-
-      {/* ── Source badge ── */}
       {(vSource || vInt || vStatus) && (
         <div className="flex items-center gap-2 flex-wrap">
           {vSource && (
@@ -258,7 +249,6 @@ function AdfContent({ rawBody }: { rawBody: string }) {
         </div>
       )}
 
-      {/* ── Vehicle block ── */}
       {hasVehicle && (
         <div className="rounded-xl border border-emerald-900/30 bg-[#050f08] overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-emerald-900/20 bg-emerald-900/10">
@@ -279,7 +269,6 @@ function AdfContent({ rawBody }: { rawBody: string }) {
         </div>
       )}
 
-      {/* ── Customer block ── */}
       {(cName || cEmail || cPhone) && (
         <div className="rounded-xl border border-sky-900/25 bg-[#05090f] overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-sky-900/20 bg-sky-900/10">
@@ -294,7 +283,6 @@ function AdfContent({ rawBody }: { rawBody: string }) {
         </div>
       )}
 
-      {/* ── Comments block ── */}
       {comments && (
         <div className="rounded-xl border border-white/[0.06] bg-[#08080a] overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06]">
@@ -306,7 +294,6 @@ function AdfContent({ rawBody }: { rawBody: string }) {
           </div>
         </div>
       )}
-
     </div>
   )
 }
@@ -317,7 +304,6 @@ function AdfContent({ rawBody }: { rawBody: string }) {
 function ParsedContent({ content, rawBody }: { content?: string; rawBody?: string }) {
   const raw = rawBody || ''
 
-  // If raw body is ADF XML, use the structured ADF renderer
   if (isAdfBody(raw)) return <AdfContent rawBody={raw} />
 
   const text = content || cleanHTML(raw)
@@ -393,26 +379,30 @@ export function LeadsTab() {
   const { leads, isLoading, updateLeadStatus, markAsRead, refetch } = useLeads()
   const { getToken } = useAuth()
 
-  const [selectedLead, setSelectedLead]         = React.useState<Lead | null>(null)
-  const [statusFilter, setStatusFilter]         = React.useState<string | null>(null)
-  const [searchQuery, setSearchQuery]           = React.useState('')
-  const [currentPage, setCurrentPage]           = React.useState(1)
-  const [isSyncing, setIsSyncing]               = React.useState(false)
-  const [centralConnected, setCentralConnected] = React.useState(false)
-  const [centralEmail, setCentralEmail]         = React.useState('')
-  const [lastSyncTime, setLastSyncTime]         = React.useState<Date | null>(null)
-  const [syncCountdown, setSyncCountdown]       = React.useState(0)
-  const [replyMessage, setReplyMessage]         = React.useState('')
-  const [isSending, setIsSending]               = React.useState(false)
-  const [apptOpen, setApptOpen]                 = React.useState(false)
-  const [apptForm, setApptForm]                 = React.useState({ date:'', time:'', notes:'', locationOrVehicle:'' })
-  const [toasts, setToasts]                     = React.useState<Toast[]>([])
-  const [isClosed, setIsClosed]                 = React.useState(false)
-  const [threads, setThreads]                   = React.useState<Record<string, any[]>>({})
+  const [selectedLead, setSelectedLead]             = React.useState<Lead | null>(null)
+  const [statusFilter, setStatusFilter]             = React.useState<string | null>(null)
+  const [searchQuery, setSearchQuery]               = React.useState('')
+  const [currentPage, setCurrentPage]               = React.useState(1)
+  const [isSyncing, setIsSyncing]                   = React.useState(false)
+  const [centralConnected, setCentralConnected]     = React.useState(false)
+  // ── FIX: track whether we've received the sync-status response ──
+  // This prevents syncAndRefresh from firing the Gmail sync before
+  // we know whether the central account is actually connected,
+  // eliminating the race condition that caused the 400 error.
+  const [centralStatusLoaded, setCentralStatusLoaded] = React.useState(false)
+  const [centralEmail, setCentralEmail]             = React.useState('')
+  const [lastSyncTime, setLastSyncTime]             = React.useState<Date | null>(null)
+  const [syncCountdown, setSyncCountdown]           = React.useState(0)
+  const [replyMessage, setReplyMessage]             = React.useState('')
+  const [isSending, setIsSending]                   = React.useState(false)
+  const [apptOpen, setApptOpen]                     = React.useState(false)
+  const [apptForm, setApptForm]                     = React.useState({ date:'', time:'', notes:'', locationOrVehicle:'' })
+  const [toasts, setToasts]                         = React.useState<Toast[]>([])
+  const [isClosed, setIsClosed]                     = React.useState(false)
+  const [threads, setThreads]                       = React.useState<Record<string, any[]>>({})
 
-  // Independent scroll refs
-  const listRef    = React.useRef<HTMLDivElement>(null)
-  const msgRef     = React.useRef<HTMLDivElement>(null)
+  const listRef = React.useRef<HTMLDivElement>(null)
+  const msgRef  = React.useRef<HTMLDivElement>(null)
 
   // ── sync status on mount ──
   React.useEffect(() => {
@@ -423,23 +413,33 @@ export function LeadsTab() {
         const d = res.data?.data
         setCentralConnected(d?.connected || false)
         setCentralEmail(d?.email || '')
-      } catch { setCentralConnected(false) }
+      } catch {
+        setCentralConnected(false)
+      } finally {
+        // Always mark as loaded — even on error — so the sync loop
+        // can proceed (it will simply skip the Gmail sync branch).
+        setCentralStatusLoaded(true)
+      }
     })()
   }, [getToken])
 
   // ── 30s auto-sync + UI refresh ──
-  // Runs every 30s regardless of connection state so the list always stays fresh.
-  // Step 1 — try to pull new emails from Gmail into the DB.
-  // Step 2 — always refetch the leads list so any new leads appear in the UI.
   const syncAndRefresh = React.useCallback(async () => {
     try {
       const token = await getToken()
       if (!token) return
 
-      // Always refresh the UI list first so stale data is never shown
+      // Always refresh the UI list first
       await refetch()
 
-      // Attempt Gmail sync only if centralized account is connected
+      // ── FIX: only attempt Gmail sync after we've confirmed connection state ──
+      // Without this guard, syncAndRefresh could fire while centralConnected is
+      // still false (its initial value), skipping the sync correctly — but the
+      // useCallback re-creates when centralConnected flips to true, which causes
+      // the useEffect below to re-run and call syncAndRefresh a second time before
+      // the component is fully ready, producing a 400 from the backend.
+      if (!centralStatusLoaded) return
+
       if (centralConnected) {
         const r = await apiClient.syncPost(
           '/api/leads/sync-central',
@@ -448,44 +448,59 @@ export function LeadsTab() {
         )
         const n = r.data?.data?.syncedCount ?? 0
         if (n > 0) {
-          // New leads found — refresh the list again to show them immediately
           await refetch()
           addToast('success', `${n} new lead${n > 1 ? 's' : ''} added`)
         }
         setLastSyncTime(new Date())
       }
     } catch {
-      // Network error: still try to refresh UI from DB
       try { await refetch() } catch {}
     } finally {
       setSyncCountdown(AUTO_SYNC_INTERVAL_MS / 1000)
     }
-  }, [getToken, centralConnected, refetch])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getToken, centralConnected, centralStatusLoaded, refetch])
 
   React.useEffect(() => {
-    // Run immediately on mount so the list is populated right away
+    // Only start the sync loop once we know the connection state.
+    // This prevents a redundant immediate call before centralStatusLoaded is true.
+    if (!centralStatusLoaded) return
+
     syncAndRefresh()
 
-    // Then fire every 30 seconds
     setSyncCountdown(AUTO_SYNC_INTERVAL_MS / 1000)
     const sI = setInterval(syncAndRefresh, AUTO_SYNC_INTERVAL_MS)
-    // Countdown tick
     const cI = setInterval(() => setSyncCountdown(p => p > 0 ? p - 1 : 0), 1000)
     return () => { clearInterval(sI); clearInterval(cI) }
-  }, [syncAndRefresh])
+  }, [syncAndRefresh, centralStatusLoaded])
 
-  // ── fetch thread on lead select ──
+  // ── fetch thread on lead select + auto-poll every 15s while open ──
+  const fetchThread = React.useCallback(async (lead: Lead) => {
+    const threadId = (lead as any).threadId
+    if (!threadId || typeof threadId !== 'string' || !threadId.trim()) {
+      setThreads(p => ({ ...p, [lead._id]: [] }))
+      return
+    }
+    try {
+      const token = await getToken(); if (!token) return
+      const res = await apiClient.get(
+        `/api/leads/${lead._id}/thread`,
+        { headers: { Authorization: `Bearer ${token}` }, validateStatus: (s: number) => s < 500 }
+      )
+      if (res.status !== 200) { setThreads(p => ({ ...p, [lead._id]: [] })); return }
+      setThreads(p => ({ ...p, [lead._id]: res.data?.data?.messages || [] }))
+    } catch {
+      setThreads(p => ({ ...p, [lead._id]: [] }))
+    }
+  }, [getToken])
+
   React.useEffect(() => {
     if (!selectedLead) return
-    if (!(selectedLead as any).threadId) { setThreads(p => ({ ...p, [selectedLead._id]: [] })); return }
-    ;(async () => {
-      try {
-        const token = await getToken(); if (!token) return
-        const res = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${token}` } })
-        setThreads(p => ({ ...p, [selectedLead._id]: res.data?.data?.messages || [] }))
-      } catch { setThreads(p => ({ ...p, [selectedLead._id]: [] })) }
-    })()
-  }, [selectedLead, getToken])
+    fetchThread(selectedLead)
+    // Poll for new replies every 15s while this conversation is open
+    const tid = setInterval(() => fetchThread(selectedLead), THREAD_POLL_INTERVAL_MS)
+    return () => clearInterval(tid)
+  }, [selectedLead, fetchThread])
 
   // ── scroll messages to bottom ──
   React.useEffect(() => {
@@ -584,7 +599,6 @@ export function LeadsTab() {
   const activeThreads = selectedLead ? (threads[selectedLead._id] || []) : []
   const vehicle = selectedLead ? (selectedLead as any).vehicle : null
 
-  // ── Tab definitions ──
   const TABS = [
     { key: null,              label: 'All',           count: stats.total },
     { key: 'New',             label: 'New',           count: stats.new },
@@ -601,7 +615,6 @@ export function LeadsTab() {
 
       {/* ═══ TOPBAR ═══ */}
       <div className="px-6 pt-5 pb-0 shrink-0">
-        {/* Title row */}
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h1 className="text-xl font-semibold text-white tracking-tight">Inquiries & Leads</h1>
@@ -626,7 +639,7 @@ export function LeadsTab() {
               ) : (
                 <div className="flex items-center gap-1.5 text-[11px] text-amber-500/60">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500/60" />
-                  Centralized ingestion not configured
+                  {centralStatusLoaded ? 'Centralized ingestion not configured' : 'Checking sync status…'}
                 </div>
               )}
             </div>
@@ -706,7 +719,7 @@ export function LeadsTab() {
               )}
             </div>
 
-            {/* ── SCROLLABLE LIST (independent scroll) ── */}
+            {/* ── SCROLLABLE LIST ── */}
             <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3 py-20">
@@ -731,7 +744,6 @@ export function LeadsTab() {
                       onClick={() => { setSelectedLead(lead); if (!lead.isRead) markAsRead(lead._id); setIsClosed(lead.status === 'Closed') }}
                       className={`relative px-4 py-4 cursor-pointer transition-all group border-l-2 ${sel ? 'border-emerald-500 bg-[#0a1510]' : 'border-transparent hover:bg-[#07100b]'}`}
                     >
-                      {/* Top row */}
                       <div className="flex items-start gap-3">
                         <div className="relative">
                           <Avatar first={lead.firstName} last={lead.lastName} size="md" />
@@ -752,7 +764,6 @@ export function LeadsTab() {
                           </p>
                         </div>
                       </div>
-                      {/* Badge row */}
                       <div className="flex items-center gap-1.5 mt-2.5 ml-12">
                         <ChannelBadge channel={lead.channel} />
                         {sc && (
@@ -769,7 +780,6 @@ export function LeadsTab() {
                           <SupraLeoReadButton lead={lead} size="sm" />
                         </div>
                       </div>
-                      {/* Selected accent glow */}
                       {sel && <div className="absolute inset-y-0 left-0 w-0.5 bg-emerald-400 rounded-r" />}
                     </div>
                   )
@@ -777,7 +787,6 @@ export function LeadsTab() {
               )}
             </div>
 
-            {/* Pagination */}
             <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={filtered.length}
               onPageChange={p => { setCurrentPage(p); setSelectedLead(null) }} />
           </div>
@@ -852,7 +861,7 @@ export function LeadsTab() {
                   )}
                 </div>
 
-                {/* ── MESSAGE STREAM — INDEPENDENT SCROLL ── */}
+                {/* ── MESSAGE STREAM ── */}
                 <div
                   ref={msgRef}
                   className="flex-1 overflow-y-auto min-h-0 px-10 py-10 space-y-10"
@@ -872,7 +881,6 @@ export function LeadsTab() {
                     </div>
                   </div>
 
-                  {/* Thread separator */}
                   {activeThreads.length > 0 && (
                     <div className="flex items-center gap-3">
                       <div className="h-px flex-1 bg-[#0f1f16]" />
@@ -881,7 +889,6 @@ export function LeadsTab() {
                     </div>
                   )}
 
-                  {/* Replies */}
                   {activeThreads.map((msg: any) => {
                     const msgBody  = msg.message || msg.body || ''
                     const msgIsAdf = !msg.isOwn && isAdfBody(msgBody)
@@ -892,24 +899,20 @@ export function LeadsTab() {
                         ) : (
                           <Avatar first={msg.sender?.split(' ')[0]} size="sm" />
                         )}
-                        {/* Width: ADF cards take full available width; plain bubbles are capped */}
                         <div className={`flex flex-col ${msg.isOwn ? 'items-end max-w-2xl' : msgIsAdf ? 'flex-1 min-w-0' : 'items-start max-w-2xl'}`}>
                           <div className={`flex items-baseline gap-2 mb-2.5 ${msg.isOwn ? 'flex-row-reverse' : ''}`}>
                             <span className="text-[13px] font-semibold text-slate-200">{msg.isOwn ? 'You' : msg.sender}</span>
                             <span className="text-[11px] text-slate-600">{fmtFull(new Date(msg.timestamp))}</span>
                           </div>
                           {msg.isOwn ? (
-                            /* ── Your outgoing reply — plain green bubble ── */
                             <div className="px-6 py-5 text-[15px] leading-relaxed shadow-xl shadow-black/60 rounded-2xl rounded-tr-sm bg-emerald-700 text-emerald-50 border border-emerald-600/40">
                               {msgBody}
                             </div>
                           ) : msgIsAdf ? (
-                            /* ── Incoming ADF lead — structured card ── */
                             <div className="w-full rounded-2xl rounded-tl-sm border border-emerald-900/30 bg-black px-7 py-6 shadow-2xl shadow-black/80 ring-1 ring-inset ring-white/[0.03]">
                               <ParsedContent rawBody={msgBody} />
                             </div>
                           ) : (
-                            /* ── Incoming plain reply ── */
                             <div className="px-6 py-5 text-[15px] leading-relaxed shadow-xl shadow-black/60 rounded-2xl rounded-tl-sm bg-black text-slate-100 border border-emerald-900/25 ring-1 ring-inset ring-white/[0.02]">
                               {msgBody}
                             </div>
@@ -933,10 +936,8 @@ export function LeadsTab() {
                         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSend() } }}
                         className="w-full px-4 pt-4 pb-2 bg-transparent text-[14px] text-slate-100 placeholder:text-slate-700 resize-none outline-none leading-relaxed"
                       />
-                      {/* Toolbar */}
                       <div className="flex items-center justify-between px-3 py-2.5 border-t border-[#0d1f15]">
                         <div className="flex items-center gap-0.5">
-                          {/* Status */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium text-slate-600 hover:text-slate-200 hover:bg-[#0d1f15] transition-all">
@@ -954,12 +955,10 @@ export function LeadsTab() {
                                 ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          {/* Schedule */}
                           <button onClick={() => setApptOpen(true)}
                             className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium text-slate-600 hover:text-slate-200 hover:bg-[#0d1f15] transition-all">
                             <Calendar className="h-3 w-3" /> Schedule
                           </button>
-                          {/* Close lead */}
                           <button onClick={() => { handleStatus('Closed'); setIsClosed(true) }}
                             className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium text-rose-700/70 hover:text-rose-400 hover:bg-rose-500/5 transition-all">
                             <XCircle className="h-3 w-3" /> Close
