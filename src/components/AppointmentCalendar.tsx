@@ -12,7 +12,6 @@ import {
   endOfMonth,
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
   addMonths,
   subMonths,
   startOfWeek,
@@ -26,23 +25,16 @@ interface AppointmentCalendarProps {
   onSelectAppointment: (appointment: Appointment) => void
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Safely parse a startTime value that may be a string, Date, or garbage.
- * Returns null if the value produces an invalid Date.
- */
+// ─── Safe date helper ─────────────────────────────────────────────────────────
+// Handles string | Date | undefined without throwing
 function safeDate(value: unknown): Date | null {
   if (!value) return null
   const d = value instanceof Date ? value : new Date(value as string)
   return isNaN(d.getTime()) ? null : d
 }
 
-/**
- * Compare a parsed appointment date against a calendar-grid day using
- * explicit year/month/date components (immune to isSameDay edge-cases with
- * null values or non-standard date strings).
- */
+// Year/month/date comparison — immune to isSameDay edge-cases with
+// null values, timezone shifts, or non-standard date strings.
 function appointmentIsOnDay(apt: Appointment, day: Date): boolean {
   const start = safeDate(apt.startTime)
   if (!start) return false
@@ -53,6 +45,13 @@ function appointmentIsOnDay(apt: Appointment, day: Date): boolean {
   )
 }
 
+function countInMonth(appointments: Appointment[], month: Date): number {
+  return appointments.filter((apt) => {
+    const d = safeDate(apt.startTime)
+    return d !== null && isSameMonth(d, month)
+  }).length
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function AppointmentCalendar({
@@ -60,40 +59,49 @@ export function AppointmentCalendar({
   onCreateAppointment,
   onSelectAppointment,
 }: AppointmentCalendarProps) {
-  const [currentMonth, setCurrentMonth] = React.useState(new Date())
-  // Tracks whether we've already auto-navigated so we don't jump away when the
-  // user manually browses to a different month and appointments later refresh.
+  const todayDate = React.useRef(new Date()).current          // stable reference
+  const [currentMonth, setCurrentMonth] = React.useState(startOfMonth(todayDate))
   const hasAutoNavigated = React.useRef(false)
 
-  // ── Auto-navigate to the first month that contains upcoming events ──────────
+  // ── Smart auto-navigation ───────────────────────────────────────────────────
+  //
+  // Priority order:
+  //   1. Current month — if it has ANY events, stay here (don't jump away)
+  //   2. Nearest upcoming event month — jump there if current month is empty
+  //   3. Most recent past event month — last resort if no future events exist
+  //
   React.useEffect(() => {
     if (hasAutoNavigated.current || appointments.length === 0) return
+    hasAutoNavigated.current = true
 
-    const now   = new Date()
-    const today = startOfMonth(now)
+    const thisMonth = startOfMonth(todayDate)
 
-    // Find the earliest upcoming appointment
-    const firstUpcoming = appointments
-      .filter((apt) => {
-        const d = safeDate(apt.startTime)
-        return d !== null && d >= now && apt.status !== "cancelled"
-      })
-      .sort((a, b) => {
-        const da = safeDate(a.startTime)!
-        const db = safeDate(b.startTime)!
-        return da.getTime() - db.getTime()
-      })[0]
+    // If the current month already has events, don't navigate anywhere
+    if (countInMonth(appointments, thisMonth) > 0) return
 
-    if (firstUpcoming) {
-      const targetMonth = startOfMonth(safeDate(firstUpcoming.startTime)!)
-      // Only jump if the first upcoming event is NOT already in the current view
-      if (!isSameMonth(targetMonth, today)) {
-        setCurrentMonth(targetMonth)
-      }
+    // Find the nearest upcoming non-cancelled event
+    const validDates = appointments
+      .map((apt) => safeDate(apt.startTime))
+      .filter((d): d is Date => d !== null)
+
+    const futureDates = validDates
+      .filter((d) => d >= todayDate)
+      .sort((a, b) => a.getTime() - b.getTime())
+
+    if (futureDates.length > 0) {
+      setCurrentMonth(startOfMonth(futureDates[0]))
+      return
     }
 
-    hasAutoNavigated.current = true
-  }, [appointments])
+    // No future events — jump to the most recent past event
+    const pastDates = validDates
+      .filter((d) => d < todayDate)
+      .sort((a, b) => b.getTime() - a.getTime())
+
+    if (pastDates.length > 0) {
+      setCurrentMonth(startOfMonth(pastDates[0]))
+    }
+  }, [appointments, todayDate])
 
   // ── Calendar grid ───────────────────────────────────────────────────────────
   const monthStart    = startOfMonth(currentMonth)
@@ -102,32 +110,9 @@ export function AppointmentCalendar({
   const calendarEnd   = endOfWeek(monthEnd)
   const days          = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
-  // Count for the CURRENTLY displayed month (shown in header)
-  const monthlyCount = React.useMemo(
-    () =>
-      appointments.filter((apt) => {
-        const d = safeDate(apt.startTime)
-        return d !== null && isSameMonth(d, currentMonth)
-      }).length,
-    [appointments, currentMonth]
-  )
-
-  // Count upcoming events in the next month (used for navigation hint)
-  const nextMonthCount = React.useMemo(() => {
-    const next = addMonths(currentMonth, 1)
-    return appointments.filter((apt) => {
-      const d = safeDate(apt.startTime)
-      return d !== null && isSameMonth(d, next)
-    }).length
-  }, [appointments, currentMonth])
-
-  const prevMonthCount = React.useMemo(() => {
-    const prev = subMonths(currentMonth, 1)
-    return appointments.filter((apt) => {
-      const d = safeDate(apt.startTime)
-      return d !== null && isSameMonth(d, prev)
-    }).length
-  }, [appointments, currentMonth])
+  const monthlyCount  = React.useMemo(() => countInMonth(appointments, currentMonth), [appointments, currentMonth])
+  const prevCount     = React.useMemo(() => countInMonth(appointments, subMonths(currentMonth, 1)), [appointments, currentMonth])
+  const nextCount     = React.useMemo(() => countInMonth(appointments, addMonths(currentMonth, 1)), [appointments, currentMonth])
 
   const getAppointmentsForDay = (day: Date): Appointment[] =>
     appointments.filter((apt) => appointmentIsOnDay(apt, day))
@@ -147,7 +132,8 @@ export function AppointmentCalendar({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-2">
-          {/* Month title + event count badge */}
+
+          {/* Month title + event count */}
           <div className="flex items-center gap-2">
             <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
             {monthlyCount > 0 ? (
@@ -162,23 +148,22 @@ export function AppointmentCalendar({
           </div>
 
           {/* Navigation */}
-          <div className="flex gap-2 items-center">
-            {/* Prev month button — shows count hint if events exist there */}
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
+              className="relative"
               onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
               title={
-                prevMonthCount > 0
-                  ? `${format(subMonths(currentMonth, 1), "MMMM")} has ${prevMonthCount} event${prevMonthCount !== 1 ? "s" : ""}`
-                  : `Go to ${format(subMonths(currentMonth, 1), "MMMM")}`
+                prevCount > 0
+                  ? `${format(subMonths(currentMonth, 1), "MMMM yyyy")} has ${prevCount} event${prevCount !== 1 ? "s" : ""}`
+                  : undefined
               }
-              className="relative"
             >
               <ChevronLeft className="size-4" />
-              {prevMonthCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] text-white font-bold">
-                  {prevMonthCount > 9 ? "9+" : prevMonthCount}
+              {prevCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white">
+                  {prevCount > 9 ? "9+" : prevCount}
                 </span>
               )}
             </Button>
@@ -186,27 +171,26 @@ export function AppointmentCalendar({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentMonth(new Date())}
+              onClick={() => setCurrentMonth(startOfMonth(todayDate))}
             >
               Today
             </Button>
 
-            {/* Next month button — shows count hint if events exist there */}
             <Button
               variant="outline"
               size="sm"
+              className="relative"
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
               title={
-                nextMonthCount > 0
-                  ? `${format(addMonths(currentMonth, 1), "MMMM")} has ${nextMonthCount} event${nextMonthCount !== 1 ? "s" : ""}`
-                  : `Go to ${format(addMonths(currentMonth, 1), "MMMM")}`
+                nextCount > 0
+                  ? `${format(addMonths(currentMonth, 1), "MMMM yyyy")} has ${nextCount} event${nextCount !== 1 ? "s" : ""}`
+                  : undefined
               }
-              className="relative"
             >
               <ChevronRight className="size-4" />
-              {nextMonthCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] text-white font-bold">
-                  {nextMonthCount > 9 ? "9+" : nextMonthCount}
+              {nextCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white">
+                  {nextCount > 9 ? "9+" : nextCount}
                 </span>
               )}
             </Button>
@@ -217,38 +201,35 @@ export function AppointmentCalendar({
       <CardContent>
         {/* Day-of-week headers */}
         <div className="grid grid-cols-7 gap-2">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div
-              key={day}
-              className="text-center text-sm font-medium text-muted-foreground p-2"
-            >
-              {day}
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            <div key={d} className="p-2 text-center text-sm font-medium text-muted-foreground">
+              {d}
             </div>
           ))}
 
           {/* Day cells */}
           {days.map((day) => {
-            const dayAppointments = getAppointmentsForDay(day)
-            const todayFlag       = isToday(day)
-            const currentMonthDay = isSameMonth(day, currentMonth)
+            const dayAppointments  = getAppointmentsForDay(day)
+            const todayFlag        = isToday(day)
+            const currentMonthDay  = isSameMonth(day, currentMonth)
 
             return (
               <div
                 key={day.toISOString()}
-                className={`min-h-28 border rounded-lg p-2 text-left transition-colors ${
+                className={`min-h-28 rounded-lg border p-2 text-left transition-colors ${
                   !currentMonthDay
                     ? "bg-muted/50 opacity-50"
                     : "bg-card hover:bg-accent/50"
                 } ${todayFlag ? "ring-2 ring-green-500" : ""}`}
               >
                 {/* Date number + add button */}
-                <div className="flex items-center justify-between mb-1">
+                <div className="mb-1 flex items-center justify-between">
                   <div
-                    className={`text-sm font-medium ${
+                    className={
                       todayFlag
-                        ? "h-6 w-6 flex items-center justify-center rounded-full bg-green-500 text-white text-xs"
-                        : ""
-                    }`}
+                        ? "flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-xs font-medium text-white"
+                        : "text-sm font-medium"
+                    }
                   >
                     {format(day, "d")}
                   </div>
@@ -257,11 +238,8 @@ export function AppointmentCalendar({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onCreateAppointment(day)
-                      }}
+                      className="h-6 w-6 p-0 text-muted-foreground hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950"
+                      onClick={(e) => { e.stopPropagation(); onCreateAppointment(day) }}
                       title="Add new appointment"
                     >
                       <Plus className="size-4" />
@@ -276,20 +254,11 @@ export function AppointmentCalendar({
                     return (
                       <button
                         key={apt._id}
-                        className={`w-full text-xs p-1.5 rounded hover:opacity-80 transition-all truncate cursor-pointer text-left ${getEntryTypeColor(
-                          apt.entryType
-                        )} hover:shadow-sm`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelectAppointment(apt)
-                        }}
-                        title={`${apt.title} — Click to view details`}
+                        className={`w-full truncate rounded p-1.5 text-left text-xs transition-all hover:opacity-80 hover:shadow-sm ${getEntryTypeColor(apt.entryType)}`}
+                        onClick={(e) => { e.stopPropagation(); onSelectAppointment(apt) }}
+                        title={apt.title}
                       >
-                        {start && (
-                          <div className="font-medium">
-                            {format(start, "h:mm a")}
-                          </div>
-                        )}
+                        {start && <div className="font-medium">{format(start, "h:mm a")}</div>}
                         <div className="truncate">{apt.title}</div>
                       </button>
                     )
@@ -297,7 +266,7 @@ export function AppointmentCalendar({
 
                   {dayAppointments.length > 3 && (
                     <button
-                      className="w-full text-xs text-muted-foreground pl-1 hover:text-foreground transition-colors"
+                      className="w-full pl-1 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
                       onClick={(e) => {
                         e.stopPropagation()
                         if (dayAppointments[3]) onSelectAppointment(dayAppointments[3])
@@ -312,24 +281,19 @@ export function AppointmentCalendar({
           })}
         </div>
 
-        {/* Empty-month hint — only shown when the month has no events but there
-            ARE appointments in the overall dataset */}
+        {/* Empty-month hint shown only when data exists but not in this month */}
         {monthlyCount === 0 && appointments.length > 0 && (
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-muted-foreground/30 py-8 text-center text-muted-foreground">
+          <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-dashed border-muted-foreground/30 py-8 text-center text-muted-foreground">
             <CalendarDays className="h-10 w-10 opacity-30" />
             <div>
               <p className="font-medium">No events in {format(currentMonth, "MMMM yyyy")}</p>
-              <p className="text-sm mt-1 opacity-70">
-                You have {appointments.length} appointment
-                {appointments.length !== 1 ? "s" : ""} in other months.
-                Use the arrows above to navigate — blue dots indicate months with events.
+              <p className="mt-1 text-sm opacity-70">
+                You have {appointments.length.toLocaleString()} appointment
+                {appointments.length !== 1 ? "s" : ""} across other months.
+                Blue dots on the arrows indicate months with events.
               </p>
             </div>
-            {/* Quick-jump to nearest upcoming event */}
-            <NearestEventButton
-              appointments={appointments}
-              onNavigate={setCurrentMonth}
-            />
+            <JumpToNearestButton appointments={appointments} onNavigate={setCurrentMonth} />
           </div>
         )}
       </CardContent>
@@ -337,56 +301,46 @@ export function AppointmentCalendar({
   )
 }
 
-// ─── Helper sub-component ─────────────────────────────────────────────────────
+// ─── Jump-to-nearest helper ───────────────────────────────────────────────────
 
-/**
- * Renders a "Jump to next event" button that navigates to the month
- * containing the nearest upcoming (or most recent past) appointment.
- */
-function NearestEventButton({
+function JumpToNearestButton({
   appointments,
   onNavigate,
 }: {
   appointments: Appointment[]
   onNavigate: (month: Date) => void
 }) {
+  const todayDate = new Date()
+
   const nearest = React.useMemo(() => {
-    const now = new Date()
+    const validWithDates = appointments
+      .map((apt) => ({ apt, d: safeDate(apt.startTime) }))
+      .filter((x): x is { apt: Appointment; d: Date } => x.d !== null)
 
-    // Prefer the nearest future event
-    const future = appointments
-      .filter((apt) => {
-        const d = safeDate(apt.startTime)
-        return d !== null && d >= now && apt.status !== "cancelled"
-      })
-      .sort((a, b) => safeDate(a.startTime)!.getTime() - safeDate(b.startTime)!.getTime())[0]
+    const future = validWithDates
+      .filter(({ d, apt }) => d >= todayDate && apt.status !== "cancelled")
+      .sort((a, b) => a.d.getTime() - b.d.getTime())[0]
 
-    if (future) return { apt: future, label: "Jump to next upcoming event" }
+    if (future) return { date: future.d, label: "Jump to next upcoming event" }
 
-    // Fall back to the most recent past event
-    const past = appointments
-      .filter((apt) => {
-        const d = safeDate(apt.startTime)
-        return d !== null && d < now
-      })
-      .sort((a, b) => safeDate(b.startTime)!.getTime() - safeDate(a.startTime)!.getTime())[0]
+    const past = validWithDates
+      .sort((a, b) => b.d.getTime() - a.d.getTime())[0]
 
-    if (past) return { apt: past, label: "Jump to most recent event" }
+    if (past) return { date: past.d, label: "Jump to most recent event" }
 
     return null
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments])
 
   if (!nearest) return null
-
-  const targetDate = safeDate(nearest.apt.startTime)!
 
   return (
     <Button
       variant="outline"
       size="sm"
-      onClick={() => onNavigate(startOfMonth(targetDate))}
+      onClick={() => onNavigate(startOfMonth(nearest.date))}
     >
-      {nearest.label} ({format(targetDate, "MMM yyyy")})
+      {nearest.label} ({format(nearest.date, "MMM yyyy")})
     </Button>
   )
 }
