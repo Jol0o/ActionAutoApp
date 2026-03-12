@@ -26,8 +26,10 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
 
       console.log('[GoogleCalendarSyncButton] Starting sync...')
 
+      // FIX: Corrected endpoint from '/api/appointments/sync/google-calendar'
+      // to '/api/google-calendar/sync-events' which actually exists in the router
       const response = await apiClient.post(
-        '/api/appointments/sync/google-calendar',
+        '/api/google-calendar/sync-events',
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -43,10 +45,9 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
       setSyncResult('success')
       setMessage(`Synced ${syncedCount} event${syncedCount !== 1 ? 's' : ''} from Google Calendar.`)
 
-      // CRITICAL: Call onSyncComplete BEFORE finishing
       if (onSyncComplete) {
         console.log('[GoogleCalendarSyncButton] Calling onSyncComplete...')
-        await onSyncComplete() // Make it await to ensure it completes
+        await onSyncComplete()
         console.log('[GoogleCalendarSyncButton] onSyncComplete finished')
       }
     } catch (error: any) {
@@ -56,17 +57,31 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         setMessage('Sync timed out. Please try again.')
       } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-        setMessage('Cannot reach server. Check that backend is running.')
+        setMessage('Cannot reach server. Check that the backend is running.')
       } else if (error.response?.status === 401) {
-        setMessage('Not authorized. Please connect Google Calendar first.')
+        const errMsg = error.response?.data?.message || ''
+        // FIX: Distinguish between "not connected" and "needs reconnection"
+        if (errMsg.toLowerCase().includes('reconnect')) {
+          setMessage('Google Calendar needs to be reconnected. Please disconnect and reconnect your calendar.')
+        } else {
+          setMessage('Not authorized. Please connect Google Calendar first.')
+        }
       } else if (error.response?.status === 500) {
-        const errorMsg = error.response?.data?.message || 'Server error during sync'
-        setMessage(errorMsg)
+        const errMsg = error.response?.data?.message || 'Server error during sync'
+        // FIX: Detect missing refresh token error and give actionable message
+        if (
+          errMsg.toLowerCase().includes('refresh token') ||
+          errMsg.toLowerCase().includes('no refresh token')
+        ) {
+          setMessage('Google Calendar needs to be reconnected. Please disconnect and reconnect your calendar.')
+        } else {
+          setMessage(errMsg)
+        }
       } else {
         setMessage(error.response?.data?.message || 'Failed to sync.')
       }
-      
-      // Even on error, try to refresh data in case partial sync occurred
+
+      // Even on error, refresh data in case a partial sync occurred
       if (onSyncComplete) {
         console.log('[GoogleCalendarSyncButton] Error occurred, but refreshing data anyway...')
         await onSyncComplete()
@@ -100,6 +115,7 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
         )}
         {syncing ? 'Syncing...' : 'Sync Calendar'}
       </Button>
+
       {message && (
         <div
           className={`absolute top-full right-0 mt-2 px-3 py-2 rounded-md text-sm whitespace-nowrap z-50 shadow-md max-w-xs ${

@@ -427,23 +427,52 @@ export function LeadsTab() {
     })()
   }, [getToken])
 
-  // ── 30s auto-sync ──
+  // ── 30s auto-sync + UI refresh ──
+  // Runs every 30s regardless of connection state so the list always stays fresh.
+  // Step 1 — try to pull new emails from Gmail into the DB.
+  // Step 2 — always refetch the leads list so any new leads appear in the UI.
+  const syncAndRefresh = React.useCallback(async () => {
+    try {
+      const token = await getToken()
+      if (!token) return
+
+      // Always refresh the UI list first so stale data is never shown
+      await refetch()
+
+      // Attempt Gmail sync only if centralized account is connected
+      if (centralConnected) {
+        const r = await apiClient.syncPost(
+          '/api/leads/sync-central',
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        const n = r.data?.data?.syncedCount ?? 0
+        if (n > 0) {
+          // New leads found — refresh the list again to show them immediately
+          await refetch()
+          addToast('success', `${n} new lead${n > 1 ? 's' : ''} added`)
+        }
+        setLastSyncTime(new Date())
+      }
+    } catch {
+      // Network error: still try to refresh UI from DB
+      try { await refetch() } catch {}
+    } finally {
+      setSyncCountdown(AUTO_SYNC_INTERVAL_MS / 1000)
+    }
+  }, [getToken, centralConnected, refetch])
+
   React.useEffect(() => {
-    if (!centralConnected) return
+    // Run immediately on mount so the list is populated right away
+    syncAndRefresh()
+
+    // Then fire every 30 seconds
     setSyncCountdown(AUTO_SYNC_INTERVAL_MS / 1000)
-    const sI = setInterval(async () => {
-      try {
-        const token = await getToken()
-        const r = await apiClient.syncPost('/api/leads/sync-central', {}, { headers: { Authorization: `Bearer ${token}` } })
-        const n = r.data?.data?.syncedCount || 0
-        if (n > 0) addToast('success', `${n} new lead${n > 1 ? 's' : ''} synced`)
-        setLastSyncTime(new Date()); setSyncCountdown(AUTO_SYNC_INTERVAL_MS / 1000)
-        await refetch()
-      } catch {}
-    }, AUTO_SYNC_INTERVAL_MS)
-    const cI = setInterval(() => setSyncCountdown(p => p > 0 ? p-1 : 0), 1000)
+    const sI = setInterval(syncAndRefresh, AUTO_SYNC_INTERVAL_MS)
+    // Countdown tick
+    const cI = setInterval(() => setSyncCountdown(p => p > 0 ? p - 1 : 0), 1000)
     return () => { clearInterval(sI); clearInterval(cI) }
-  }, [centralConnected, getToken])
+  }, [syncAndRefresh])
 
   // ── fetch thread on lead select ──
   React.useEffect(() => {
@@ -503,16 +532,9 @@ export function LeadsTab() {
   }
 
   const handleSync = async () => {
-    try {
-      setIsSyncing(true); addToast('info', 'Syncing…')
-      const token = await getToken()
-      const r = await apiClient.syncPost('/api/leads/sync-central', {}, { headers: { Authorization: `Bearer ${token}` } })
-      const n = r.data?.data?.syncedCount || 0
-      setLastSyncTime(new Date()); setSyncCountdown(AUTO_SYNC_INTERVAL_MS / 1000)
-      addToast(n > 0 ? 'success' : 'info', n > 0 ? `${n} lead${n>1?'s':''} imported` : 'Already up to date')
-      await refetch()
-    } catch (e: any) { addToast('error', e?.response?.data?.message || 'Sync failed') }
-    finally { setIsSyncing(false) }
+    setIsSyncing(true)
+    await syncAndRefresh()
+    setIsSyncing(false)
   }
 
   const handleAppt = async () => {
@@ -860,28 +882,42 @@ export function LeadsTab() {
                   )}
 
                   {/* Replies */}
-                  {activeThreads.map((msg: any) => (
-                    <div key={msg.id} className={`flex items-start gap-4 ${msg.isOwn ? 'flex-row-reverse' : ''}`}>
-                      {msg.isOwn ? (
-                        <div className="h-8 w-8 rounded-full bg-emerald-700 border border-emerald-600/50 flex items-center justify-center text-emerald-200 text-[9px] font-bold shrink-0">YOU</div>
-                      ) : (
-                        <Avatar first={msg.sender?.split(' ')[0]} size="sm" />
-                      )}
-                      <div className={`max-w-2xl ${msg.isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
-                        <div className={`flex items-baseline gap-2 mb-1.5 ${msg.isOwn ? 'flex-row-reverse' : ''}`}>
-                          <span className="text-xs font-semibold text-slate-300">{msg.isOwn ? 'You' : msg.sender}</span>
-                          <span className="text-[10px] text-slate-600">{fmtFull(new Date(msg.timestamp))}</span>
-                        </div>
-                        <div className={`px-6 py-5 text-[15px] leading-relaxed shadow-xl shadow-black/60 ${
-                          msg.isOwn
-                            ? 'rounded-2xl rounded-tr-sm bg-emerald-700 text-emerald-50 border border-emerald-600/40'
-                            : 'rounded-2xl rounded-tl-sm bg-black text-slate-100 border border-emerald-900/25 ring-1 ring-inset ring-white/[0.02]'
-                        }`}>
-                          {msg.message}
+                  {activeThreads.map((msg: any) => {
+                    const msgBody  = msg.message || msg.body || ''
+                    const msgIsAdf = !msg.isOwn && isAdfBody(msgBody)
+                    return (
+                      <div key={msg.id} className={`flex items-start gap-4 ${msg.isOwn ? 'flex-row-reverse' : ''}`}>
+                        {msg.isOwn ? (
+                          <div className="h-8 w-8 rounded-full bg-emerald-700 border border-emerald-600/50 flex items-center justify-center text-emerald-200 text-[9px] font-bold shrink-0">YOU</div>
+                        ) : (
+                          <Avatar first={msg.sender?.split(' ')[0]} size="sm" />
+                        )}
+                        {/* Width: ADF cards take full available width; plain bubbles are capped */}
+                        <div className={`flex flex-col ${msg.isOwn ? 'items-end max-w-2xl' : msgIsAdf ? 'flex-1 min-w-0' : 'items-start max-w-2xl'}`}>
+                          <div className={`flex items-baseline gap-2 mb-2.5 ${msg.isOwn ? 'flex-row-reverse' : ''}`}>
+                            <span className="text-[13px] font-semibold text-slate-200">{msg.isOwn ? 'You' : msg.sender}</span>
+                            <span className="text-[11px] text-slate-600">{fmtFull(new Date(msg.timestamp))}</span>
+                          </div>
+                          {msg.isOwn ? (
+                            /* ── Your outgoing reply — plain green bubble ── */
+                            <div className="px-6 py-5 text-[15px] leading-relaxed shadow-xl shadow-black/60 rounded-2xl rounded-tr-sm bg-emerald-700 text-emerald-50 border border-emerald-600/40">
+                              {msgBody}
+                            </div>
+                          ) : msgIsAdf ? (
+                            /* ── Incoming ADF lead — structured card ── */
+                            <div className="w-full rounded-2xl rounded-tl-sm border border-emerald-900/30 bg-black px-7 py-6 shadow-2xl shadow-black/80 ring-1 ring-inset ring-white/[0.03]">
+                              <ParsedContent rawBody={msgBody} />
+                            </div>
+                          ) : (
+                            /* ── Incoming plain reply ── */
+                            <div className="px-6 py-5 text-[15px] leading-relaxed shadow-xl shadow-black/60 rounded-2xl rounded-tl-sm bg-black text-slate-100 border border-emerald-900/25 ring-1 ring-inset ring-white/[0.02]">
+                              {msgBody}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                   <div className="h-1" />
                 </div>
 
