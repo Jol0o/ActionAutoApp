@@ -110,12 +110,12 @@ export function QuoteResultModal({
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Origin</p>
                   <p className="font-semibold text-foreground">{quote.fromAddress}</p>
-                  <p className="text-sm text-gray-600">{quote.fromZip}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{quote.fromZip}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Destination</p>
                   <p className="font-semibold text-foreground">{quote.toAddress}</p>
-                  <p className="text-sm text-gray-600">{quote.toZip}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{quote.toZip}</p>
                 </div>
               </div>
               <div className="text-right">

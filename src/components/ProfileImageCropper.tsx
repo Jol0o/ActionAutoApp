@@ -69,16 +69,16 @@ const getCroppedImg = async (
   const maxDimension = 512;
   const finalCanvas = document.createElement('canvas');
   const finalCtx = finalCanvas.getContext('2d');
-  
+
   if (!finalCtx) {
     throw new Error('No 2d context for final canvas');
   }
-  
+
   finalCanvas.width = maxDimension;
   finalCanvas.height = maxDimension;
-  
+
   finalCtx.drawImage(canvas, 0, 0, maxDimension, maxDimension);
-  
+
   // Return as Blob (JPEG at 70% quality) instead of base64
   return new Promise<Blob>((resolve, reject) => {
     finalCanvas.toBlob(
@@ -131,12 +131,12 @@ export default function ProfileImageCropper({
 
   const handlePreview = useCallback(async () => {
     if (!imageSrc || !croppedAreaPixels) return;
-    
+
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
       const previewDataUrl = URL.createObjectURL(croppedBlob);
       setPreviewUrl(previewDataUrl);
-      
+
       // Calculate file size from the blob
       const sizeInBytes = croppedBlob.size;
       let sizeDisplay = '';
@@ -159,16 +159,16 @@ export default function ProfileImageCropper({
     setIsSaving(true);
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
-      
+
       // Check file size
       const sizeInMB = croppedBlob.size / (1024 * 1024);
-      
+
       console.log(`Image size: ${sizeInMB > 1 ? sizeInMB.toFixed(2) + 'MB' : (croppedBlob.size / 1024).toFixed(2) + 'KB'}`);
-      
+
       if (sizeInMB > 5) {
         throw new Error(`Image too large: ${sizeInMB.toFixed(2)}MB (max 5MB)`);
       }
-      
+
       await onSave(croppedBlob);
       handleClose();
     } catch (e) {
@@ -306,10 +306,10 @@ export default function ProfileImageCropper({
                       <ZoomIn className="size-4 text-emerald-600" />
                       Zoom
                     </Label>
-                    <span className="text-sm text-gray-500">{Math.round(zoom * 100)}%</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{Math.round(zoom * 100)}%</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <ZoomOut className="size-4 text-gray-400" />
+                    <ZoomOut className="size-4 text-gray-400 dark:text-gray-500" />
                     <Slider
                       value={[zoom]}
                       min={1}
@@ -318,7 +318,7 @@ export default function ProfileImageCropper({
                       onValueChange={(val: number[]) => setZoom(val[0])}
                       className="flex-1"
                     />
-                    <ZoomIn className="size-4 text-gray-400" />
+                    <ZoomIn className="size-4 text-gray-400 dark:text-gray-500" />
                   </div>
                 </div>
 
@@ -329,10 +329,10 @@ export default function ProfileImageCropper({
                       <RotateCw className="size-4 text-emerald-600" />
                       Rotation
                     </Label>
-                    <span className="text-sm text-gray-500">{rotation}°</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{rotation}°</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400">-180°</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">-180°</span>
                     <Slider
                       value={[rotation]}
                       min={-180}
@@ -341,7 +341,7 @@ export default function ProfileImageCropper({
                       onValueChange={(val: number[]) => setRotation(val[0])}
                       className="flex-1"
                     />
-                    <span className="text-xs text-gray-400">180°</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">180°</span>
                   </div>
                 </div>
 

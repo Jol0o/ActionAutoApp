@@ -30,6 +30,7 @@ import { SecurityTab } from './SecurityTab';
 import { NotificationsTab } from './NotificationsTab';
 import { ActivityTab } from './ActivityTab';
 import { SupportTab } from './SupportTab';
+import { SettingsTab } from './SettingsTab';
 import { ProfileDialogs } from './ProfileDialogs';
 import { allNotificationCategories, containsCurseWord } from './profile-constants';
 
@@ -332,6 +333,7 @@ export const ProfileView: React.FC = () => {
                             { value: 'security', label: 'Security', icon: Shield },
                             { value: 'notifications', label: 'Alerts', icon: Bell },
                             { value: 'activity', label: 'Feed', icon: Activity },
+                            { value: 'settings', label: 'Settings', icon: Settings },
                             { value: 'support', label: 'Support', icon: HelpCircle },
                         ].map((tab) => (
                             <TabsTrigger
@@ -401,6 +403,10 @@ export const ProfileView: React.FC = () => {
                         fetchProfile={fetchProfile}
                         addToast={toast.addToast}
                     />
+                </TabsContent>
+
+                <TabsContent value="settings">
+                    <SettingsTab />
                 </TabsContent>
 
                 <TabsContent value="support">

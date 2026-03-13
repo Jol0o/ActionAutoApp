@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ProfileProvider } from "@/context/ProfileContext";
 import { ProfileToastProvider } from "@/components/ProfileToast";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { driverNav } from "@/components/layout/mobile-nav-config";
 
 function DriverLayoutContent({
   children,
@@ -139,7 +141,8 @@ function DriverLayoutContent({
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto bg-[#020202] p-6 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-[#020202] p-6 lg:p-8 pb-24 md:pb-8">{children}</main>
+        <MobileBottomNav items={driverNav} />
       </SidebarInset>
     </SidebarProvider>
   );

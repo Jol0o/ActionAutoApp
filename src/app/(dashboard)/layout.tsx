@@ -27,6 +27,8 @@ import {
 
 import { useOrg } from "@/hooks/useOrg"
 import { adminStore } from "@/store/admin-store"
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav"
+import { dealershipNav } from "@/components/layout/mobile-nav-config"
 
 function DashboardLayoutContent({
     children,
@@ -169,9 +171,10 @@ function DashboardLayoutContent({
                         </div>
                     </div>
                 </header>
-                <main className="flex-1 overflow-hidden bg-background">
+                <main className="flex-1 overflow-hidden bg-background pb-24 md:pb-0">
                     {children}
                 </main>
+                <MobileBottomNav items={dealershipNav} />
             </SidebarInset>
         </SidebarProvider>
     );
