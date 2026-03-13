@@ -178,7 +178,7 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
                                         className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-500"
                                     />
                                     {/* Gradient overlay */}
-                                    <div className="absolute inset-08 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
                                     {/* Top badges */}
                                     <div className="absolute top-2 left-2 right-2 flex items-start justify-between flex-wrap gap-1.5">

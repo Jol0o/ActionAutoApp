@@ -88,8 +88,6 @@ export function useTransportationData() {
     setError(null);
 
     try {
-      console.log(`[TransportationData] ${silent ? "Silent poll" : "Fetching"} all data...`);
-
       const token = await getToken();
       const config = {
         headers: {
@@ -117,12 +115,6 @@ export function useTransportationData() {
       const vehiclesResponse = extractData(vehiclesRes);
       const vehicleData = vehiclesResponse?.vehicles || vehiclesResponse || [];
       const statsData = extractData(statsRes);
-
-      console.log("[TransportationData] Fetched:", {
-        shipments: shipmentsData.length,
-        quotes: quotesData.length,
-        vehicles: vehicleData.length,
-      });
 
       setShipments(shipmentsData);
       setQuotes(quotesData);
@@ -189,8 +181,7 @@ export function useTransportationData() {
   const handleCalculateQuote = React.useCallback(
     async (formData: ShippingQuoteFormData) => {
       try {
-        console.log("[TransportationData] Creating quote...");
-
+        
         const isValidMongoId =
           formData.vehicleId && /^[0-9a-fA-F]{24}$/.test(formData.vehicleId);
 
@@ -231,7 +222,7 @@ export function useTransportationData() {
         });
         const data = response.data?.data || response.data;
 
-        console.log("[TransportationData] Quote created successfully");
+
         await fetchData();
 
         return data;
@@ -251,11 +242,6 @@ export function useTransportationData() {
   const handleCreateShipment = React.useCallback(
     async (quoteId: string) => {
       try {
-        console.log(
-          "[TransportationData] Creating shipment for quote:",
-          quoteId,
-        );
-
         const token = await getToken();
         await apiClient.post(
           "/api/shipments",
@@ -273,7 +259,7 @@ export function useTransportationData() {
 
         setQuotes((prev) => prev.filter((q) => q._id !== quoteId));
 
-        console.log("[TransportationData] Shipment created successfully");
+
         await fetchData();
 
         return true;
@@ -293,8 +279,6 @@ export function useTransportationData() {
   const handleDeleteQuote = React.useCallback(
     async (quoteId: string) => {
       try {
-        console.log("[TransportationData] Deleting quote:", quoteId);
-
         const token = await getToken();
         await apiClient.delete(`/api/quotes/${quoteId}`, {
           headers: {
@@ -303,7 +287,7 @@ export function useTransportationData() {
         });
         setQuotes((prev) => prev.filter((q) => q._id !== quoteId));
 
-        console.log("[TransportationData] Quote deleted successfully");
+
       } catch (error) {
         console.error("[TransportationData] Error deleting quote:", error);
         const axiosError = error as AxiosError;
@@ -320,8 +304,6 @@ export function useTransportationData() {
   const handleDeleteShipment = React.useCallback(
     async (shipmentId: string) => {
       try {
-        console.log("[TransportationData] Deleting shipment:", shipmentId);
-
         const token = await getToken();
         await apiClient.delete(`/api/shipments/${shipmentId}`, {
           headers: {
@@ -335,7 +317,7 @@ export function useTransportationData() {
           all: Math.max(0, prev.all - 1),
         }));
 
-        console.log("[TransportationData] Shipment deleted successfully");
+
         return true;
       } catch (error) {
         console.error("[TransportationData] Error deleting shipment:", error);
@@ -353,8 +335,6 @@ export function useTransportationData() {
   const handleUpdateQuote = React.useCallback(
     async (quoteId: string, updatedQuote: Partial<Quote>) => {
       try {
-        console.log("[TransportationData] Updating quote:", quoteId);
-
         const token = await getToken();
         const response = await apiClient.put(
           `/api/quotes/${quoteId}`,
@@ -373,7 +353,7 @@ export function useTransportationData() {
           ),
         );
 
-        console.log("[TransportationData] Quote updated successfully");
+
         await fetchData();
 
         return data;
@@ -393,8 +373,6 @@ export function useTransportationData() {
   const handleUpdateShipment = React.useCallback(
     async (shipmentId: string, updatedShipment: Partial<Shipment>) => {
       try {
-        console.log("[TransportationData] Updating shipment:", shipmentId);
-
         const token = await getToken();
         const response = await apiClient.put(
           `/api/shipments/${shipmentId}`,
@@ -413,7 +391,7 @@ export function useTransportationData() {
           ),
         );
 
-        console.log("[TransportationData] Shipment updated successfully");
+
         await fetchData();
 
         return data;
