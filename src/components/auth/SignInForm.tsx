@@ -53,7 +53,12 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
 
     const handleGoogleLogin = () => {
         const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://xj3pd14h-5000.asse.devtunnels.ms';
-        window.location.href = `${backendUrl}/api/auth/google`;
+        const redirectUrl = searchParams.get('redirect_url');
+        let url = `${backendUrl}/api/auth/google`;
+        if (redirectUrl) {
+            url += `?redirect_url=${encodeURIComponent(redirectUrl)}`;
+        }
+        window.location.href = url;
     };
 
     return (

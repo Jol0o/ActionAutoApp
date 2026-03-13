@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { OrganizationMembersSettings } from "@/components/settings/org-members-settings"
 import { DriverRequestsSettings } from "@/components/settings/driver-requests-settings"
+import { BulkInviteDialog } from "@/components/admin/BulkInviteDialog"
 import { Truck } from "lucide-react"
 
 export default function UtilitiesPage() {
@@ -169,6 +170,9 @@ export default function UtilitiesPage() {
                             <CardDescription>Manage your dealership profile, invites, and team roles.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-4 sm:p-6 min-h-[400px]">
+                            <div className="flex justify-end mb-4">
+                                <BulkInviteDialog />
+                            </div>
                             <OrganizationMembersSettings />
                         </CardContent>
                     </Card>

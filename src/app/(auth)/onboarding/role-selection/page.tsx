@@ -30,23 +30,10 @@ export default function OnboardingPage() {
         try {
             const response = await apiClient.completeOnboarding(role);
             if (response.status === 200) {
-                console.log('role', role);
                 toast.success('Account setup complete!');
                 await refreshUser();
-                switch (role) {
-                    case 'customer':
-                        router.push('/customer');
-                        break;
-                    case 'driver':
-                        router.push('/driver');
-                        break;
-                    case 'dealership':
-                        router.push('/');
-                        break;
-                    default:
-                        router.push('/admin/dashboard');
-                        break;
-                }
+                // We no longer manually push. 
+                // AuthProvider handles the dashboard redirects based on the new role.
             }
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to complete onboarding');

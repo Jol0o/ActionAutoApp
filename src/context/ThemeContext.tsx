@@ -1,6 +1,7 @@
-'use client';
+"use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useUser } from "@/providers/AuthProvider";
 
 type Theme = 'light' | 'dark';
 
@@ -15,30 +16,41 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
+  const { user } = useUser();
 
   useEffect(() => {
     setMounted(true);
-    // Get theme from localStorage or system preference
+    // 1. Priority: User Profile Theme
+    if (user?.theme) {
+      setThemeState(user.theme as Theme);
+      return;
+    }
+
+    // 2. Fallback: localStorage
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) {
       setThemeState(savedTheme);
-      applyTheme(savedTheme);
     } else {
+      // 3. Last Resort: System Preference
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light';
       setThemeState(systemTheme);
-      applyTheme(systemTheme);
     }
-  }, []);
+  }, [user?.theme]);
+
+  // Sync theme to document element
+  useEffect(() => {
+    if (!mounted) return;
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+  }, [theme, mounted]);
 
   const applyTheme = (newTheme: Theme) => {
     const root = document.documentElement;
-    if (newTheme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    root.classList.remove('light', 'dark');
+    root.classList.add(newTheme);
   };
 
   const setTheme = async (newTheme: Theme) => {

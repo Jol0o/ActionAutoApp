@@ -47,32 +47,36 @@ import { ReferralCatcher } from '@/components/referral/ReferralCatcher';
 import { SplashScreen } from '@/components/layout/SplashScreen';
 import { Suspense } from 'react';
 
+import { ThemeProvider } from "@/context/ThemeContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <AuthProvider>
-      <html lang="en" className="dark scrollbar-thin">
-        <body
-          suppressHydrationWarning
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          <SplashScreen />
-          <main className="flex-1 overflow-hidden bg-background">
-            <QueryProvider>
-              <Suspense fallback={null}>
-                <ReferralCatcher />
-              </Suspense>
-              {children}
-            </QueryProvider>
-          </main>
-          <Toaster />
-          <ImpersonationBanner />
-          <InstallPrompt />
-        </body>
-      </html>
-    </AuthProvider>
+    <html lang="en" className="scrollbar-thin">
+      <body
+        suppressHydrationWarning
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <AuthProvider>
+          <ThemeProvider>
+            <SplashScreen />
+            <main className="flex-1 overflow-hidden bg-background">
+              <QueryProvider>
+                <Suspense fallback={null}>
+                  <ReferralCatcher />
+                </Suspense>
+                {children}
+              </QueryProvider>
+            </main>
+            <Toaster />
+            <ImpersonationBanner />
+            <InstallPrompt />
+          </ThemeProvider>
+        </AuthProvider>
+      </body>
+    </html>
   );
 }

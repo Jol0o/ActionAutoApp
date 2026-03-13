@@ -10,6 +10,7 @@ export interface AuthUser {
     _id: string;
     email: string;
     name: string;
+    emailVerified: boolean;
     firstName?: string;
     lastName?: string;
     avatar?: string;
@@ -20,6 +21,7 @@ export interface AuthUser {
     isActive: boolean;
     isApproved: boolean;
     onboardingCompleted: boolean;
+    theme?: 'light' | 'dark';
 }
 
 interface AuthContextType {
@@ -42,6 +44,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Module-level variable to track ongoing refresh requests across all hooks/components
 let globalRefreshPromise: Promise<string | null> | null = null;
+
+const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback', '/verify-email', '/accept-invite'];
+
+const isPublicRoute = (path: string) => {
+    return PUBLIC_ROUTES.some(r => path.startsWith(r));
+};
 
 // --- PROVIDER COMPONENT ---
 
@@ -79,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             const token = tokenRes.data?.data?.accessToken || tokenRes.data?.accessToken;
                             return token || null;
                         } catch (err) {
-                            console.error('[AuthProvider] Global refresh failed:', err);
+                            console.error('[AuthProvider] Global refresh failed (Silent Refresh)');
                             return null;
                         } finally {
                             globalRefreshPromise = null;
@@ -91,7 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (currentToken) {
                     setAccessToken(currentToken);
                 } else {
-                    throw new Error("No session found");
+                    setUser(null);
+                    setAccessToken(null);
+                    setIsLoaded(true);
+                    return;
                 }
             }
 
@@ -104,92 +115,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (token) {
                     setAccessToken(token);
                 }
-
-                // --- UNIVERSAL AUTH GUARD & REDIRECTS ---
-                if (typeof window !== 'undefined') {
-                    const path = window.location.pathname;
-                    const publicRoutes = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback', '/verify-email'];
-                    const isPublic = publicRoutes.some(r => path.startsWith(r));
-
-                    // 1. Force Email Verification
-                    if (!userData.emailVerified && !isPublic) {
-                        router.push(`/verify-email?email=${encodeURIComponent(userData.email)}`);
-                        return;
-                    }
-
-                    // 1.5. Force Onboarding
-                    if (!userData.onboardingCompleted && path !== '/onboarding/role-selection') {
-                        router.push('/onboarding/role-selection');
-                        return;
-                    }
-
-                    // 2. Prevent Verified/Logged-in users from hitting Auth pages (Sign-in/Sign-up)
-                    if (isPublic && (path === '/sign-in' || path === '/sign-up')) {
-                        if (userData.role === 'customer') router.push('/customer');
-                        else if (userData.role === 'driver') router.push('/driver');
-                        else if (userData.role === 'super_admin') router.push('/admin/dashboard');
-                        else if (userData.role === 'admin' && !userData.organizationId) router.push('/org-selection');
-                        else router.push('/');
-                        return;
-                    }
-
-                    // 3. Forced Onboarding for Admin
-                    if (!isPublic && userData.role === 'admin' && !userData.organizationId && path !== '/org-selection') {
-                        router.push('/org-selection');
-                        return;
-                    }
-
-                    // 4. Root Path Redirect
-                    if (path === '/') {
-                        if (userData.role === 'customer') router.push('/customer');
-                        else if (userData.role === 'driver') router.push('/driver');
-                        else if (userData.role === 'super_admin') router.push('/admin/dashboard');
-                        else if (userData.role === 'admin' && !userData.organizationId) router.push('/org-selection');
-                    }
-                }
             } else {
                 setUser(null);
                 setAccessToken(null);
-
-                // Force unauthenticated users out of private routes immediately
-                if (typeof window !== 'undefined') {
-                    const path = window.location.pathname;
-                    const publicRoutes = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback', '/verify-email'];
-                    if (!publicRoutes.some(r => path.startsWith(r)) && path !== '/') {
-                        router.push('/sign-in');
-                    } else if (path === '/') {
-                        // We also boot from root because '/' is the dealership dashboard
-                        router.push('/sign-in');
-                    }
-                }
             }
         } catch (error) {
+            console.error('[AuthProvider] Refresh error:', error);
             setUser(null);
             setAccessToken(null);
-
-            // Force unauthenticated users out of private routes immediately
-            if (typeof window !== 'undefined') {
-                const path = window.location.pathname;
-                const publicRoutes = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback'];
-                if (!publicRoutes.some(r => path.startsWith(r)) && path !== '/') {
-                    router.push('/sign-in');
-                } else if (path === '/') {
-                    // We also boot from root because '/' is the dealership dashboard
-                    router.push('/sign-in');
-                }
-            }
         } finally {
             setIsLoaded(true);
         }
-    }, [router]);
+    }, [setAccessToken]);
 
-    // Role-based onboarding guard
+    // Centralized Redirection Engine
     useEffect(() => {
-        if (isLoaded && user && user.onboardingCompleted === false) {
-            const path = window.location.pathname;
-            if (path !== '/onboarding/role-selection') {
-                router.push('/onboarding/role-selection');
+        if (!isLoaded) return;
+
+        const path = window.location.pathname;
+        const search = window.location.search;
+        const isPublic = isPublicRoute(path);
+        const hasInviteToken = search.includes('token=');
+
+        // CASE 1: NOT SIGNED IN
+        if (!user) {
+            if (!isPublic && path !== '/') {
+                router.push('/sign-in' + search);
             }
+            return;
+        }
+
+        // CASE 2: SIGNED IN - GLOBAL GUARDS
+
+        // 1. Force Email Verification
+        if (!user.emailVerified && !isPublic) {
+            router.push(`/verify-email?email=${encodeURIComponent(user.email)}`);
+            return;
+        }
+
+        // 2. Force Onboarding (Role Selection)
+        if (!user.onboardingCompleted) {
+            if (!isPublic && !hasInviteToken && path !== '/onboarding/role-selection') {
+                router.push('/onboarding/role-selection');
+                return;
+            }
+            // If they are on a public page (like /auth/callback), don't force them yet
+            // This prevents loops during the initial callback dance.
+            if (isPublic) return;
+        }
+
+        // 3. Prevent Logged-in users from hitting Auth pages (Sign-in/Sign-up)
+        if (isPublic && (path === '/sign-in' || path === '/sign-up')) {
+            const params = new URLSearchParams(search);
+            const redirectUrl = params.get('redirect_url');
+
+            if (redirectUrl) {
+                router.push(redirectUrl);
+                return;
+            }
+
+            // Default redirects based on role
+            if (user.role === 'customer') router.push('/customer');
+            else if (user.role === 'driver') router.push('/driver');
+            else if (user.role === 'super_admin') router.push('/admin/dashboard');
+            else if (user.role === 'admin' && !user.organizationId) router.push('/org-selection');
+            else router.push('/');
+            return;
+        }
+
+        // 4. Forced Org Selection for Admins
+        if (!isPublic && !hasInviteToken && user.role === 'admin' && !user.organizationId && path !== '/org-selection') {
+            router.push('/org-selection');
+            return;
+        }
+
+        // 5. Dashboard / Root Redirects
+        if (path === '/') {
+            if (user.role === 'customer') router.push('/customer');
+            else if (user.role === 'driver') router.push('/driver');
+            else if (user.role === 'super_admin') router.push('/admin/dashboard');
+            else if (user.role === 'admin' && !user.organizationId) router.push('/org-selection');
         }
     }, [isLoaded, user, router]);
 
@@ -304,6 +309,7 @@ export function useUser() {
         imageUrl: context.user.avatar || context.user.avatarUrl || '/placeholder-avatar.png',
         role: context.user.role,
         onboardingCompleted: context.user.onboardingCompleted,
+        theme: context.user.theme,
         publicMetadata: {},
         unsafeMetadata: {},
         update: async (data: any) => {
