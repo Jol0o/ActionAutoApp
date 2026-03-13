@@ -49,7 +49,7 @@ export default function DriverSettingsPage() {
       const res = await apiClient.post(
         "/api/driver-payouts/connect/onboard",
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorizaintion: `Bearer ${token}` } }
       );
       const url = res.data.data?.url;
       if (url) window.location.href = url;
