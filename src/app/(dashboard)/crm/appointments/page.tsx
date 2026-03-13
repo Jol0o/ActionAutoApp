@@ -29,7 +29,7 @@ import {
 } from "@/components/MultiPaneLayout"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
-// ─── Available tabs ──────────────────────────────────────────────────────────
+// ─── Available tabs ───────────────────────────────────────────────────────────
 
 const TAB_OPTIONS: TabOption[] = [
   { id: "leads",    label: "Leads",         icon: <Mail     className="h-3.5 w-3.5" /> },
@@ -38,7 +38,7 @@ const TAB_OPTIONS: TabOption[] = [
   { id: "booked",   label: "Booked",        icon: <Users    className="h-3.5 w-3.5" /> },
 ]
 
-// ─── Inner Page ──────────────────────────────────────────────────────────────
+// ─── Inner Page ───────────────────────────────────────────────────────────────
 
 function AppointmentsPageInner() {
   const router = useRouter()
@@ -96,15 +96,18 @@ function AppointmentsPageInner() {
     refetchOnWindowFocus: false,
   })
 
-  const { data: customerBookingsCount = 0, refetch: refetchCustomerBookings } = useQuery({
+  const { data: customerBookingsCount = 0 } = useQuery({
     queryKey: ['customer-bookings-count'],
     queryFn: async () => {
       try {
         const headers = await getAuthHeaders()
-        const response = await apiClient.get('/api/appointments/customer-bookings/list', headers)
+        const response = await apiClient.get(
+          '/api/appointments/customer-bookings/list',
+          headers
+        )
         const data = response.data?.data || response.data
         return data.appointments?.length || 0
-      } catch (error) {
+      } catch {
         return 0
       }
     },
@@ -172,15 +175,14 @@ function AppointmentsPageInner() {
     ])
   }
 
-  const handleSyncComplete = async () => {
+  // FIX: Removed redundant manual refetch — invalidateQueries already triggers
+  // React Query to refetch active queries automatically.
+  const handleSyncComplete = React.useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'active' }),
-      queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'], refetchType: 'active' }),
+      queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+      queryClient.invalidateQueries({ queryKey: ['customer-bookings-count'] }),
     ])
-    setTimeout(async () => {
-      await Promise.all([refetchAppointments(), refetchCustomerBookings()])
-    }, 500)
-  }
+  }, [queryClient])
 
   const handleCreateAppointmentSubmit = async (data: any) => {
     const headers = await getAuthHeaders()
@@ -191,147 +193,188 @@ function AppointmentsPageInner() {
     ])
   }
 
-  // ── Render any tab by id (used by MultiPaneContainer in fullscreen) ──────
+  // ── Render any tab by id ──────────────────────────────────────────────────
 
-  const renderTabContent = React.useCallback((tabId: string) => {
-    switch (tabId) {
-      case "leads":
-        return (
-          <div className="p-4">
-            <LeadsTab />
-          </div>
-        )
-      case "calendar":
-        return (
-          <div className="p-4">
-            {!isLoading ? (
-              <AppointmentCalendar
-                appointments={appointments}
-                onCreateAppointment={handleDateClick}
-                onSelectAppointment={handleAppointmentClick}
-              />
-            ) : (
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
-          </div>
-        )
-      case "upcoming":
-        return (
-          <div className="p-4">
-            <Card className="border-0 shadow-none">
-              <CardHeader>
-                <CardTitle>Upcoming Appointments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : stats.upcoming === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                    <p>No upcoming appointments</p>
-                    <Button type="button" variant="outline" className="mt-4" onClick={handleCreateAppointment}>
-                      Create Appointment
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {appointments
-                      .filter((apt: any) => {
-                        const start = new Date(apt.startTime)
-                        const today = new Date()
-                        today.setHours(0, 0, 0, 0)
-                        return start >= today && apt.status !== 'cancelled'
-                      })
-                      .sort((a: any, b: any) =>
-                        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-                      )
-                      .slice(0, 10)
-                      .map((appointment: any) => (
-                        <Card
-                          key={appointment._id}
-                          className="hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => handleAppointmentClick(appointment)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-1 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold">{appointment.title}</h4>
-                                  <Badge
-                                    variant={
-                                      appointment.status === 'confirmed' ? 'default'
-                                        : appointment.status === 'cancelled' ? 'destructive'
-                                        : 'secondary'
-                                    }
-                                    className={appointment.status === 'confirmed' ? 'bg-green-500' : ''}
-                                  >
-                                    {appointment.status}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {new Date(appointment.startTime).toLocaleDateString('en-US', {
-                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                                  })}
-                                  {' at '}
-                                  {new Date(appointment.startTime).toLocaleTimeString('en-US', {
-                                    hour: 'numeric', minute: '2-digit',
-                                  })}
-                                </p>
-                                {appointment.location && (
+  const renderTabContent = React.useCallback(
+    (tabId: string) => {
+      switch (tabId) {
+        case "leads":
+          return (
+            <div className="p-4">
+              <LeadsTab />
+            </div>
+          )
+        case "calendar":
+          return (
+            <div className="p-4">
+              {!isLoading ? (
+                <AppointmentCalendar
+                  appointments={appointments}
+                  onCreateAppointment={handleDateClick}
+                  onSelectAppointment={handleAppointmentClick}
+                />
+              ) : (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          )
+        case "upcoming":
+          return (
+            <div className="p-4">
+              <Card className="border-0 shadow-none">
+                <CardHeader>
+                  <CardTitle>Upcoming Appointments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : stats.upcoming === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                      <p>No upcoming appointments</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-4"
+                        onClick={handleCreateAppointment}
+                      >
+                        Create Appointment
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {appointments
+                        .filter((apt: any) => {
+                          const start = new Date(apt.startTime)
+                          const today = new Date()
+                          today.setHours(0, 0, 0, 0)
+                          return start >= today && apt.status !== 'cancelled'
+                        })
+                        .sort(
+                          (a: any, b: any) =>
+                            new Date(a.startTime).getTime() -
+                            new Date(b.startTime).getTime()
+                        )
+                        .slice(0, 10)
+                        .map((appointment: any) => (
+                          <Card
+                            key={appointment._id}
+                            className="hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => handleAppointmentClick(appointment)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-semibold">{appointment.title}</h4>
+                                    <Badge
+                                      variant={
+                                        appointment.status === 'confirmed'
+                                          ? 'default'
+                                          : appointment.status === 'cancelled'
+                                          ? 'destructive'
+                                          : 'secondary'
+                                      }
+                                      className={
+                                        appointment.status === 'confirmed'
+                                          ? 'bg-green-500'
+                                          : ''
+                                      }
+                                    >
+                                      {appointment.status}
+                                    </Badge>
+                                  </div>
                                   <p className="text-sm text-muted-foreground">
-                                    Location: {appointment.location}
+                                    {new Date(appointment.startTime).toLocaleDateString(
+                                      'en-US',
+                                      {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                      }
+                                    )}
+                                    {' at '}
+                                    {new Date(appointment.startTime).toLocaleTimeString(
+                                      'en-US',
+                                      { hour: 'numeric', minute: '2-digit' }
+                                    )}
                                   </p>
-                                )}
+                                  {appointment.location && (
+                                    <p className="text-sm text-muted-foreground">
+                                      Location: {appointment.location}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )
-      case "booked":
-        return (
-          <div className="p-4">
-            <BookedTab />
-          </div>
-        )
-      default:
-        return (
-          <div className="flex items-center justify-center h-full text-xs text-muted-foreground/30 py-16">
-            Unknown tab: {tabId}
-          </div>
-        )
-    }
-  }, [appointments, isLoading, stats.upcoming, handleCreateAppointment, handleDateClick, handleAppointmentClick])
+                            </CardContent>
+                          </Card>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )
+        case "booked":
+          return (
+            <div className="p-4">
+              <BookedTab />
+            </div>
+          )
+        default:
+          return (
+            <div className="flex items-center justify-center h-full text-xs text-muted-foreground/30 py-16">
+              Unknown tab: {tabId}
+            </div>
+          )
+      }
+    },
+    [
+      appointments,
+      isLoading,
+      stats.upcoming,
+      handleCreateAppointment,
+      handleDateClick,
+      handleAppointmentClick,
+    ]
+  )
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
       <FullscreenWrapper>
-        <div className={`${isFullscreen ? "flex flex-col h-full overflow-hidden" : "container mx-auto py-6 space-y-6"}`}>
-
+        <div
+          className={`${
+            isFullscreen
+              ? 'flex flex-col h-full overflow-hidden'
+              : 'container mx-auto py-6 space-y-6'
+          }`}
+        >
           {/* Header */}
-          <div className={`flex items-center justify-between ${isFullscreen ? "px-5 py-3 border-b border-border/50 bg-card shrink-0" : ""}`}>
+          <div
+            className={`flex items-center justify-between ${
+              isFullscreen ? 'px-5 py-3 border-b border-border/50 bg-card shrink-0' : ''
+            }`}
+          >
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push("/crm/dashboard")}
+                onClick={() => router.push('/crm/dashboard')}
                 className="h-8 w-8 rounded-lg border border-border/50 hover:border-emerald-500/50 hover:bg-emerald-500/5 p-0 transition-all"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className={`font-bold ${isFullscreen ? "text-xl" : "text-3xl"}`}>Appointments</h1>
+                <h1 className={`font-bold ${isFullscreen ? 'text-xl' : 'text-3xl'}`}>
+                  Appointments
+                </h1>
                 {!isFullscreen && (
                   <p className="text-muted-foreground">
                     Manage your leads, appointments, and events
@@ -342,7 +385,11 @@ function AppointmentsPageInner() {
             <div className="flex items-center gap-2">
               <PaneToolbar tabOptions={TAB_OPTIONS} />
               <GoogleCalendarSyncButton onSyncComplete={handleSyncComplete} />
-              <Button type="button" onClick={handleCreateAppointment} size={isFullscreen ? "sm" : "default"}>
+              <Button
+                type="button"
+                onClick={handleCreateAppointment}
+                size={isFullscreen ? 'sm' : 'default'}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 New Appointment
               </Button>
@@ -360,19 +407,22 @@ function AppointmentsPageInner() {
           ) : (
             /* ═══ NORMAL MODE ═══ */
             <div className="space-y-6">
-
               <GoogleCalendarConnect />
 
               {/* Statistics */}
               <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Total Appointments
+                    </CardTitle>
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{stats.total}</div>
-                    {isFetching && <p className="text-xs text-muted-foreground mt-1">Updating...</p>}
+                    {isFetching && (
+                      <p className="text-xs text-muted-foreground mt-1">Updating...</p>
+                    )}
                   </CardContent>
                 </Card>
                 <Card>
@@ -395,7 +445,9 @@ function AppointmentsPageInner() {
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Customer Bookings</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Customer Bookings
+                    </CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -407,8 +459,15 @@ function AppointmentsPageInner() {
               {appointmentsError && (
                 <Card className="border-red-200 bg-red-50">
                   <CardContent className="pt-6">
-                    <p className="text-sm text-red-600">Failed to load appointments. Please try refreshing.</p>
-                    <Button variant="outline" size="sm" className="mt-2" onClick={() => refetchAppointments()}>
+                    <p className="text-sm text-red-600">
+                      Failed to load appointments. Please try refreshing.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => refetchAppointments()}
+                    >
                       <RefreshCw className="mr-2 h-4 w-4" /> Retry
                     </Button>
                   </CardContent>
@@ -420,7 +479,9 @@ function AppointmentsPageInner() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-center py-8">
                       <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-                      <span className="ml-2 text-muted-foreground">Loading appointments...</span>
+                      <span className="ml-2 text-muted-foreground">
+                        Loading appointments...
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -437,17 +498,26 @@ function AppointmentsPageInner() {
                   </TabsTrigger>
                   <TabsTrigger value="upcoming">
                     <Clock className="mr-2 h-4 w-4" /> Upcoming
-                    {stats.upcoming > 0 && <Badge className="ml-2" variant="secondary">{stats.upcoming}</Badge>}
+                    {stats.upcoming > 0 && (
+                      <Badge className="ml-2" variant="secondary">
+                        {stats.upcoming}
+                      </Badge>
+                    )}
                   </TabsTrigger>
                   <TabsTrigger value="booked">
                     <Users className="mr-2 h-4 w-4" /> Booked
-                    {customerBookingsCount > 0 && <Badge className="ml-2" variant="secondary">{customerBookingsCount}</Badge>}
+                    {customerBookingsCount > 0 && (
+                      <Badge className="ml-2" variant="secondary">
+                        {customerBookingsCount}
+                      </Badge>
+                    )}
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="leads" className="space-y-4">
                   <LeadsTab />
                 </TabsContent>
+
                 <TabsContent value="calendar" className="space-y-4">
                   {!isLoading && (
                     <AppointmentCalendar
@@ -457,9 +527,12 @@ function AppointmentsPageInner() {
                     />
                   )}
                 </TabsContent>
+
                 <TabsContent value="upcoming" className="space-y-4">
                   <Card>
-                    <CardHeader><CardTitle>Upcoming Appointments</CardTitle></CardHeader>
+                    <CardHeader>
+                      <CardTitle>Upcoming Appointments</CardTitle>
+                    </CardHeader>
                     <CardContent>
                       {isLoading ? (
                         <div className="flex items-center justify-center py-8">
@@ -469,7 +542,12 @@ function AppointmentsPageInner() {
                         <div className="text-center py-8 text-muted-foreground">
                           <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
                           <p>No upcoming appointments</p>
-                          <Button type="button" variant="outline" className="mt-4" onClick={handleCreateAppointment}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-4"
+                            onClick={handleCreateAppointment}
+                          >
                             Create Appointment
                           </Button>
                         </div>
@@ -478,28 +556,68 @@ function AppointmentsPageInner() {
                           {appointments
                             .filter((apt: any) => {
                               const start = new Date(apt.startTime)
-                              const today = new Date(); today.setHours(0,0,0,0)
+                              const today = new Date()
+                              today.setHours(0, 0, 0, 0)
                               return start >= today && apt.status !== 'cancelled'
                             })
-                            .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                            .sort(
+                              (a: any, b: any) =>
+                                new Date(a.startTime).getTime() -
+                                new Date(b.startTime).getTime()
+                            )
                             .slice(0, 10)
                             .map((appointment: any) => (
-                              <Card key={appointment._id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
+                              <Card
+                                key={appointment._id}
+                                className="hover:shadow-md transition-shadow cursor-pointer"
+                                onClick={() => handleAppointmentClick(appointment)}
+                              >
                                 <CardContent className="p-4">
                                   <div className="flex items-start justify-between">
                                     <div className="space-y-1 flex-1">
                                       <div className="flex items-center gap-2">
-                                        <h4 className="font-semibold">{appointment.title}</h4>
-                                        <Badge variant={appointment.status === 'confirmed' ? 'default' : appointment.status === 'cancelled' ? 'destructive' : 'secondary'} className={appointment.status === 'confirmed' ? 'bg-green-500' : ''}>
+                                        <h4 className="font-semibold">
+                                          {appointment.title}
+                                        </h4>
+                                        <Badge
+                                          variant={
+                                            appointment.status === 'confirmed'
+                                              ? 'default'
+                                              : appointment.status === 'cancelled'
+                                              ? 'destructive'
+                                              : 'secondary'
+                                          }
+                                          className={
+                                            appointment.status === 'confirmed'
+                                              ? 'bg-green-500'
+                                              : ''
+                                          }
+                                        >
                                           {appointment.status}
                                         </Badge>
                                       </div>
                                       <p className="text-sm text-muted-foreground">
-                                        {new Date(appointment.startTime).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                        {new Date(
+                                          appointment.startTime
+                                        ).toLocaleDateString('en-US', {
+                                          weekday: 'long',
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric',
+                                        })}
                                         {' at '}
-                                        {new Date(appointment.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                        {new Date(
+                                          appointment.startTime
+                                        ).toLocaleTimeString('en-US', {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                        })}
                                       </p>
-                                      {appointment.location && <p className="text-sm text-muted-foreground">Location: {appointment.location}</p>}
+                                      {appointment.location && (
+                                        <p className="text-sm text-muted-foreground">
+                                          Location: {appointment.location}
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
                                 </CardContent>
@@ -510,6 +628,7 @@ function AppointmentsPageInner() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+
                 <TabsContent value="booked" className="space-y-4">
                   <BookedTab />
                 </TabsContent>
@@ -547,7 +666,7 @@ function AppointmentsPageInner() {
   )
 }
 
-// ─── Exported Page ───────────────────────────────────────────────────────────
+// ─── Exported Page ────────────────────────────────────────────────────────────
 
 export default function AppointmentsPage() {
   return (

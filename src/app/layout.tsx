@@ -17,13 +17,13 @@ const geistMono = Geist_Mono({
 import type { Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "AAU | Supra AI",
+  title: "Supra AI",
   description: "Advanced Car Dealership Management",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Action Auto",
+    title: "Action Auto Utah Powered By Supra AI",
   },
   formatDetection: {
     telephone: false,

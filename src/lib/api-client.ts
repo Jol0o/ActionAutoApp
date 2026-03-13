@@ -48,12 +48,25 @@ class ApiClient {
             }
         );
 
-        // ── Response interceptor (single — no duplicate) ─────────────────────
+        // ── Response interceptor ─────────────────────────────────────────────
         this.client.interceptors.response.use(
             (response) => {
                 return response;
             },
             (error) => {
+                // ── Silently ignore intentional request cancellations ─────────
+                // When React Query cancels a stale fetch via AbortSignal, axios
+                // throws a "canceled" / ERR_CANCELED error. This is expected
+                // behaviour — not a real failure — so we suppress logging and
+                // just forward the rejection so React Query can handle it cleanly.
+                if (
+                    axios.isCancel(error) ||
+                    error?.code === 'ERR_CANCELED' ||
+                    error?.message === 'canceled'
+                ) {
+                    return Promise.reject(error);
+                }
+
                 // Handle org suspension redirect
                 if (error.response?.status === 403) {
                     const msg = error.response.data?.message || '';

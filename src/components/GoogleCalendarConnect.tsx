@@ -22,7 +22,7 @@ export function GoogleCalendarConnect({
   showFeatures = true,
   features = [
     'Bidirectional sync (App and Google Calendar)',
-    'Auto-sync to participants\' calendars',
+    "Auto-sync to participants' calendars",
     'Real-time webhook notifications',
     'Customer bookings sync'
   ]
@@ -44,7 +44,6 @@ export function GoogleCalendarConnect({
       const response = await apiClient.get('/api/google-calendar/status', {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
       const data = response.data?.data || response.data
       setIsConnected(data.connected || false)
     } catch (error) {
@@ -59,81 +58,87 @@ export function GoogleCalendarConnect({
     try {
       setIsConnecting(true)
       setError(null)
-      
+
       const token = await getToken()
       const response = await apiClient.get('/api/google-calendar/auth', {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
+
       const data = response.data?.data || response.data
-      
-      if (data.authUrl) {
-        // Open in popup window instead of full redirect
-        const width = 500
-        const height = 600
-        const left = window.screenX + (window.outerWidth - width) / 2
-        const top = window.screenY + (window.outerHeight - height) / 2
-        
-        const popup = window.open(
-          data.authUrl,
-          'Google Auth',
-          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-        )
-        
-        if (!popup) {
-          setError('Popup blocked. Please allow popups and try again.')
-          setIsConnecting(false)
-          return
-        }
 
-        // Check popup status every 500ms
-        const checkPopupTimer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkPopupTimer)
-            // Popup closed, check if we're connected
-            checkConnection().then(() => {
-              setIsConnecting(false)
-            })
-            return
-          }
-        }, 500)
-
-        // Fallback: force check connection every 1 second for up to 5 minutes
-        const connectionCheckTimer = setInterval(async () => {
-          try {
-            const token = await getToken()
-            const response = await apiClient.get('/api/google-calendar/status', {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-            const data = response.data?.data || response.data
-            if (data.connected) {
-              // Successfully connected, close popup
-              popup.close()
-              clearInterval(checkPopupTimer)
-              clearInterval(connectionCheckTimer)
-              setIsConnected(true)
-              setIsConnecting(false)
-            }
-          } catch (err) {
-            // Keep checking
-          }
-        }, 1000)
-
-        // Cleanup timers after 5 minutes
-        // Cleanup after 5 minutes
-        setTimeout(() => {
-          clearInterval(checkPopupTimer)
-          clearInterval(connectionCheckTimer)
-          if (!popup.closed) popup.close()
-          setIsConnecting(false)
-        }, 300000)
-      } else {
+      if (!data.authUrl) {
         setError('Failed to get authorization URL')
         setIsConnecting(false)
+        return
       }
+
+      // Open OAuth flow in a popup
+      const width = 500
+      const height = 600
+      const left = window.screenX + (window.outerWidth - width) / 2
+      const top = window.screenY + (window.outerHeight - height) / 2
+
+      const popup = window.open(
+        data.authUrl,
+        'Google Auth',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      )
+
+      if (!popup) {
+        setError('Popup blocked. Please allow popups and try again.')
+        setIsConnecting(false)
+        return
+      }
+
+      // Poll for successful connection every 1 second
+      const connectionCheckTimer = setInterval(async () => {
+        try {
+          const token = await getToken()
+          const response = await apiClient.get('/api/google-calendar/status', {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          const data = response.data?.data || response.data
+          if (data.connected) {
+            // Connected — clean up everything
+            clearInterval(connectionCheckTimer)
+            clearInterval(popupClosedTimer)
+            if (!popup.closed) popup.close()
+            setIsConnected(true)
+            setIsConnecting(false)
+          }
+        } catch {
+          // Keep checking silently
+        }
+      }, 1000)
+
+      // FIX: Also watch for popup being manually closed by user
+      // Previously only checkPopupTimer ran but connectionCheckTimer was never cleared,
+      // causing it to keep polling after the popup was closed.
+      const popupClosedTimer = setInterval(() => {
+        if (popup.closed) {
+          // FIX: Clear BOTH timers when popup closes
+          clearInterval(popupClosedTimer)
+          clearInterval(connectionCheckTimer)
+          // Re-check one final time in case the auth just completed
+          checkConnection().then(() => {
+            setIsConnecting(false)
+          })
+        }
+      }, 500)
+
+      // Safety cleanup after 5 minutes
+      setTimeout(() => {
+        clearInterval(connectionCheckTimer)
+        clearInterval(popupClosedTimer)
+        if (!popup.closed) popup.close()
+        setIsConnecting(false)
+      }, 300000)
     } catch (error: any) {
       console.error('Failed to connect Google Calendar:', error)
-      setError(error.response?.data?.message || 'Failed to connect to Google Calendar. Please check your internet connection.')
+      setError(
+        error.response?.data?.message ||
+        'Failed to connect to Google Calendar. Please check your internet connection.'
+      )
       setIsConnecting(false)
     }
   }
@@ -142,16 +147,18 @@ export function GoogleCalendarConnect({
     try {
       setIsConnecting(true)
       setError(null)
-      
+
       const token = await getToken()
       await apiClient.post('/api/google-calendar/disconnect', {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
+
       setIsConnected(false)
     } catch (error: any) {
       console.error('Failed to disconnect Google Calendar:', error)
-      setError(error.response?.data?.message || 'Failed to disconnect from Google Calendar')
+      setError(
+        error.response?.data?.message || 'Failed to disconnect from Google Calendar'
+      )
     } finally {
       setIsConnecting(false)
     }
@@ -163,7 +170,9 @@ export function GoogleCalendarConnect({
         <CardContent className="p-6">
           <div className="flex items-center gap-3">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Checking Google Calendar connection...</span>
+            <span className="text-sm text-muted-foreground">
+              Checking Google Calendar connection...
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -181,14 +190,17 @@ export function GoogleCalendarConnect({
             <div>
               <CardTitle className="text-lg">{title}</CardTitle>
               <CardDescription>
-                {description || (isConnected 
-                  ? 'Your account is synced and up to date'
-                  : `Connect to sync with ${title}`
-                )}
+                {description ||
+                  (isConnected
+                    ? 'Your account is synced and up to date'
+                    : `Connect to sync with ${title}`)}
               </CardDescription>
             </div>
           </div>
-          <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-green-500" : ""}>
+          <Badge
+            variant={isConnected ? 'default' : 'secondary'}
+            className={isConnected ? 'bg-green-500' : ''}
+          >
             {isConnected ? (
               <>
                 <Check className="size-3 mr-1" />
@@ -203,6 +215,7 @@ export function GoogleCalendarConnect({
           </Badge>
         </div>
       </CardHeader>
+
       <CardContent>
         {error && (
           <Alert variant="destructive" className="mb-4">
@@ -215,14 +228,17 @@ export function GoogleCalendarConnect({
           {isConnected ? (
             <>
               <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg p-4">
-                <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">Active Features:</h4>
+                <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">
+                  Active Features:
+                </h4>
                 <ul className="space-y-1 text-sm text-green-800 dark:text-green-200">
-                  {showFeatures && features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-2">
-                      <Check className="size-4" />
-                      {feature}
-                    </li>
-                  ))}
+                  {showFeatures &&
+                    features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <Check className="size-4" />
+                        {feature}
+                      </li>
+                    ))}
                 </ul>
               </div>
 
@@ -246,7 +262,9 @@ export function GoogleCalendarConnect({
           ) : (
             <>
               <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Benefits:</h4>
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                  Benefits:
+                </h4>
                 <ul className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
                   <li>Sync all inquiries with {title}</li>
                   <li>Automatic updates when you make changes</li>
