@@ -10,6 +10,7 @@ export interface AuthUser {
     _id: string;
     email: string;
     name: string;
+    emailVerified: boolean;
     firstName?: string;
     lastName?: string;
     avatar?: string;
