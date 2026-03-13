@@ -134,11 +134,16 @@ export default function TransportationPage() {
             const query = searchQuery.toLowerCase()
             filtered = filtered.filter(s => {
                 const quote = s.quoteId
+                const preserved = s.preservedQuoteData
                 return (
                     quote?.firstName?.toLowerCase().includes(query) ||
                     quote?.lastName?.toLowerCase().includes(query) ||
                     quote?.vin?.toLowerCase().includes(query) ||
                     quote?.stockNumber?.toLowerCase().includes(query) ||
+                    preserved?.firstName?.toLowerCase().includes(query) ||
+                    preserved?.lastName?.toLowerCase().includes(query) ||
+                    preserved?.vin?.toLowerCase().includes(query) ||
+                    preserved?.stockNumber?.toLowerCase().includes(query) ||
                     s.trackingNumber?.toLowerCase().includes(query)
                 )
             })
