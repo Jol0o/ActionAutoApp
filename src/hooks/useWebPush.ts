@@ -11,6 +11,29 @@ export function useWebPush() {
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    const getServiceWorkerRegistration = useCallback(async () => {
+        const hasSupport =
+            typeof window !== "undefined" &&
+            "serviceWorker" in navigator &&
+            "PushManager" in window &&
+            "Notification" in window;
+
+        if (!hasSupport) {
+            throw new Error("Web Push is not supported in this browser.");
+        }
+
+        const existing = await navigator.serviceWorker.getRegistration();
+        if (!existing) {
+            await navigator.serviceWorker.register("/sw.js");
+        }
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Service Worker timeout")), 5000)
+        );
+
+        return Promise.race([navigator.serviceWorker.ready, timeoutPromise]) as Promise<ServiceWorkerRegistration>;
+    }, []);
+
     // Helper to convert VAPID key
     const urlBase64ToUint8Array = (base64String: string) => {
         const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -24,7 +47,12 @@ export function useWebPush() {
     };
 
     const getSubscription = useCallback(async () => {
-        if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        if (
+            typeof window === "undefined" ||
+            !("serviceWorker" in navigator) ||
+            !("PushManager" in window) ||
+            !("Notification" in window)
+        ) {
             setIsSupported(false);
             setIsLoading(false);
             return null;
@@ -32,26 +60,18 @@ export function useWebPush() {
 
         try {
             setIsSupported(true);
-
-            // Timeout after 5 seconds if SW doesn't respond
-            const swReadyPromise = navigator.serviceWorker.ready;
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Service Worker timeout")), 5000)
-            );
-
-            const registration = await Promise.race([swReadyPromise, timeoutPromise]) as ServiceWorkerRegistration;
+            const registration = await getServiceWorkerRegistration();
             const subscription = await registration.pushManager.getSubscription();
 
             setIsSubscribed(!!subscription);
             return subscription;
         } catch (error) {
             console.warn("[WebPush] Initialization error or timeout:", error);
-            // Don't disable support entirely on timeout, just stop loading
         } finally {
             setIsLoading(false);
         }
         return null;
-    }, []);
+    }, [getServiceWorkerRegistration]);
 
     useEffect(() => {
         getSubscription();
@@ -60,12 +80,27 @@ export function useWebPush() {
     const subscribe = async () => {
         if (!VAPID_PUBLIC_KEY) {
             console.error("VAPID Public Key missing from environment variables.");
+            toast.error("Push key is missing. Please contact support.");
             return;
         }
 
         try {
             setIsLoading(true);
-            const registration = await navigator.serviceWorker.ready;
+
+            if (Notification.permission === "denied") {
+                toast.error("Notifications are blocked in this browser. Please allow them in site settings.");
+                return;
+            }
+
+            if (Notification.permission === "default") {
+                const permission = await Notification.requestPermission();
+                if (permission !== "granted") {
+                    toast.error("Notification permission was not granted.");
+                    return;
+                }
+            }
+
+            const registration = await getServiceWorkerRegistration();
 
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,

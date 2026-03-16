@@ -42,6 +42,7 @@ import { AuthProvider } from '@/providers/AuthProvider'
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { PushPrompt } from "@/components/pwa/PushPrompt";
 import { IOSInstallHint } from "@/components/pwa/IOSInstallHint";
+import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 
 import { Toaster } from "@/components/ui/sonner"
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
@@ -75,6 +76,7 @@ export default function RootLayout({
             </main>
             <Toaster />
             <ImpersonationBanner />
+            <ServiceWorkerRegistration />
             <InstallPrompt />
             <PushPrompt />
             <IOSInstallHint />

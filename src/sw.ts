@@ -31,6 +31,8 @@ const serwist = new Serwist({
 serwist.addEventListeners();
 
 // --- CUSTOM WEB PUSH LISTENERS ---
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || self.location.origin).replace(/\/$/, "");
+const DEFAULT_NOTIFICATION_ICON = "/icon-192x192.png";
 
 self.addEventListener("push", (event: any) => {
     if (event.data) {
@@ -38,17 +40,18 @@ self.addEventListener("push", (event: any) => {
             const data = event.data.json();
             const options = {
                 body: data.body,
-                icon: data.icon || "/icon-192x192.png",
+                icon: data.icon || DEFAULT_NOTIFICATION_ICON,
                 image: data.image || undefined, // Rich hero image for marketing
-                badge: "/icon-192x192.png",
+                badge: DEFAULT_NOTIFICATION_ICON,
                 data: {
                     url: data.data?.url || "/",
+                    driverRequestId: data.data?.driverRequestId,
                 },
                 actions: data.actions || [],
                 vibrate: [100, 50, 100],
             };
 
-            event.waitUntil(self.registration.showNotification(data.title, options));
+            event.waitUntil((self as any).registration.showNotification(data.title, options));
         } catch (err) {
             console.error("[SW] Push event error:", err);
         }
@@ -57,25 +60,26 @@ self.addEventListener("push", (event: any) => {
 
 self.addEventListener("notificationclick", (event: any) => {
     event.notification.close();
+    const notificationData = event.notification?.data || {};
 
     // Check if an action was clicked (e.g., Approve/Reject)
     if (event.action) {
-        const actionInProgress = handleBackgroundAction(event.action, event.notification.data);
+        const actionInProgress = handleBackgroundAction(event.action, notificationData);
         event.waitUntil(actionInProgress);
         return;
     }
 
-    const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
+    const urlToOpen = new URL(notificationData.url || "/", self.location.origin).href;
 
     event.waitUntil(
-        self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList: any) => {
+        (self as any).clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList: any) => {
             for (const client of clientList) {
                 if (client.url === urlToOpen && "focus" in client) {
                     return client.focus();
                 }
             }
-            if (self.clients.openWindow) {
-                return self.clients.openWindow(urlToOpen);
+            if ((self as any).clients.openWindow) {
+                return (self as any).clients.openWindow(urlToOpen);
             }
         })
     );
@@ -86,14 +90,14 @@ self.addEventListener("notificationclick", (event: any) => {
  */
 async function handleBackgroundAction(action: string, data: any) {
     console.log(`[SW] Handling action: ${action}`, data);
-    const requestId = data.driverRequestId;
+    const requestId = data?.driverRequestId;
 
     if (!requestId) return;
 
     // Follow-up notification for user feedback
-    await self.registration.showNotification("Processing Request", {
+    await (self as any).registration.showNotification("Processing Request", {
         body: `Your request to ${action} this driver is being processed...`,
-        icon: "/icon-192x192.png",
+        icon: DEFAULT_NOTIFICATION_ICON,
     });
 
     try {
@@ -114,10 +118,9 @@ async function handleBackgroundAction(action: string, data: any) {
 
         if (!token) throw new Error("No auth token found in SW");
 
-        const baseUrl = "http://localhost:5000"; // Should ideally be synced from env, but using default for spec compliance
         const endpoint = action === 'approve'
-            ? `${baseUrl}/api/users/driver-requests/${requestId}/approve`
-            : `${baseUrl}/api/users/driver-requests/${requestId}/reject`;
+            ? `${API_BASE_URL}/api/driver-requests/${requestId}/approve`
+            : `${API_BASE_URL}/api/driver-requests/${requestId}/reject`;
 
         const response = await fetch(endpoint, {
             method: 'PATCH', // backend uses PATCH for these
@@ -129,15 +132,15 @@ async function handleBackgroundAction(action: string, data: any) {
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        await self.registration.showNotification("Success", {
+        await (self as any).registration.showNotification("Success", {
             body: `Driver request has been successfully ${action}ed.`,
-            icon: "/icon-192x192.png",
+            icon: DEFAULT_NOTIFICATION_ICON,
         });
     } catch (err) {
         console.error("[SW] Background action failed:", err);
-        await self.registration.showNotification("Action Failed", {
+        await (self as any).registration.showNotification("Action Failed", {
             body: "Could not process request in the background. Please open the app.",
-            icon: "/error-icon.png",
+            icon: DEFAULT_NOTIFICATION_ICON,
         });
     }
 }

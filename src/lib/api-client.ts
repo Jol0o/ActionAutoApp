@@ -203,7 +203,7 @@ class ApiClient {
         return this.post('/api/auth/complete-onboarding', { role }, config);
     }
 
-    async broadcastPush(data: { roleTarget?: string, userIds?: string[], title: string, body: string, url?: string }, config?: AxiosRequestConfig) {
+    async broadcastPush(data: { roleTarget?: string, userIds?: string[], title: string, body: string, url?: string, image?: string, icon?: string }, config?: AxiosRequestConfig) {
         return this.post('/api/push/broadcast', data, config);
     }
 }
