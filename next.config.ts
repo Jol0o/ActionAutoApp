@@ -17,9 +17,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default process.env.NODE_ENV === "production"
-  ? withSerwistInit({
-      swSrc: "src/sw.ts",
-      swDest: "public/sw.js",
-    })(nextConfig)
-  : nextConfig;
+export default withSerwistInit({
+  swSrc: "src/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development",
+})(nextConfig);

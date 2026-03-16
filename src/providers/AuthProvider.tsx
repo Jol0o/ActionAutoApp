@@ -63,6 +63,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const setAccessToken = useCallback((token: string | null) => {
         if (typeof window !== 'undefined') {
             (window as any).__AUTH_TOKEN__ = token;
+
+            // Sync to IndexedDB for Service Worker access
+            try {
+                const request = indexedDB.open('action-auto-auth', 1);
+                request.onupgradeneeded = () => {
+                    const db = request.result;
+                    if (!db.objectStoreNames.contains('tokens')) {
+                        db.createObjectStore('tokens');
+                    }
+                };
+                request.onsuccess = () => {
+                    const db = request.result;
+                    const tx = db.transaction('tokens', 'readwrite');
+                    const store = tx.objectStore('tokens');
+                    if (token) {
+                        store.put(token, 'accessToken');
+                    } else {
+                        store.delete('accessToken');
+                    }
+                };
+            } catch (e) {
+                console.warn('[Auth] IndexedDB sync failed', e);
+            }
         }
         setAccessTokenState(token);
     }, []);

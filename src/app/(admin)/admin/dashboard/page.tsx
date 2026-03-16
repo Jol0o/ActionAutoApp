@@ -10,6 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ActivityGraph } from '@/components/admin/dashboard/ActivityGraph';
 import { RecentActivity } from '@/components/admin/dashboard/RecentActivity';
+import { BroadcastPushCard } from '@/components/admin/dashboard/BroadcastPushCard';
 
 interface SystemStats {
     organizations: number;
@@ -198,17 +199,22 @@ export default function AdminDashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="col-span-4 md:col-span-3 shadow-sm">
+                <Card className="col-span-4 md:col-span-4 shadow-sm flex flex-col">
                     <CardHeader>
                         <CardTitle>Recent Activity</CardTitle>
                         <CardDescription>Latest system events and signups.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1">
                         <div className="space-y-8">
                             <RecentActivity />
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Broadcast Push Section */}
+                <div className="col-span-4 md:col-span-3">
+                    <BroadcastPushCard />
+                </div>
             </div>
 
             {/* System Activity Section */}

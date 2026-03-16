@@ -202,6 +202,10 @@ class ApiClient {
     async completeOnboarding(role: string, config?: AxiosRequestConfig) {
         return this.post('/api/auth/complete-onboarding', { role }, config);
     }
+
+    async broadcastPush(data: { roleTarget?: string, userIds?: string[], title: string, body: string, url?: string }, config?: AxiosRequestConfig) {
+        return this.post('/api/push/broadcast', data, config);
+    }
 }
 
 export const apiClient = new ApiClient();

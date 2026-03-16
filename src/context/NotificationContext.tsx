@@ -230,6 +230,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         };
     }, [fetchNotifications, isLoaded, isSignedIn]);
 
+    // Support for App Badge API (PWA)
+    useEffect(() => {
+        if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
+            try {
+                if (unreadCount > 0) {
+                    (navigator as any).setAppBadge(unreadCount).catch((err: any) =>
+                        console.error('[BadgeAPI] Error setting badge:', err)
+                    );
+                } else {
+                    (navigator as any).clearAppBadge().catch((err: any) =>
+                        console.error('[BadgeAPI] Error clearing badge:', err)
+                    );
+                }
+            } catch (error) {
+                console.error('[BadgeAPI] Fatal error:', error);
+            }
+        }
+    }, [unreadCount]);
+
     return (
         <NotificationContext.Provider
             value={{
