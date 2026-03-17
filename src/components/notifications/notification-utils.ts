@@ -112,7 +112,6 @@ const ROUTE_MAP: Record<string, string> = {
   crm_message: '/crm/supra-space', crm_task_assigned: '/crm', crm_task_due: '/crm',
   crm_biometric: '/crm/biometrics', crm_timeproof: '/crm/biometrics',
   message_received: '/crm/supra-space',
-  driver_request: '/settings',
   driver_location_update: '/driver-tracker',
   payment_received: '/billing', payment_pending: '/billing', payment_failed: '/billing',
   payout_processed: '/billing',

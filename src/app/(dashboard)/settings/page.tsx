@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import {
     FileText,
     Settings as SettingsIcon,
@@ -28,9 +29,20 @@ import { Switch } from "@/components/ui/switch"
 import { OrganizationMembersSettings } from "@/components/settings/org-members-settings"
 import { DriverRequestsSettings } from "@/components/settings/driver-requests-settings"
 import { BulkInviteDialog } from "@/components/admin/BulkInviteDialog"
-import { Truck } from "lucide-react"
+import { Truck, Loader2 } from "lucide-react"
 
-export default function UtilitiesPage() {
+function SettingsContent() {
+    const searchParams = useSearchParams()
+    const queryTab = searchParams.get('tab')
+    const [activeTab, setActiveTab] = React.useState(queryTab || "reports")
+
+    // Update active tab if query parameter changes
+    React.useEffect(() => {
+        if (queryTab) {
+            setActiveTab(queryTab)
+        }
+    }, [queryTab])
+
     return (
         <div className="p-4 md:p-6 space-y-6 bg-background min-h-screen">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -48,7 +60,7 @@ export default function UtilitiesPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="reports" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="bg-card border p-1 rounded-lg h-11 w-fit mb-6">
                     <TabsTrigger value="reports" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-2 md:px-6 data-[state=active]:bg-secondary shadow-none">
                         <FileText className="size-4 hidden md:block" /> Reports
@@ -191,6 +203,18 @@ export default function UtilitiesPage() {
                 </TabsContent>
             </Tabs>
         </div>
+    )
+}
+
+export default function UtilitiesPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="p-4 md:p-6 flex items-center justify-center min-h-screen">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <SettingsContent />
+        </React.Suspense>
     )
 }
 

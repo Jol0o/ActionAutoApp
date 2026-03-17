@@ -22,14 +22,14 @@ export function NotificationItem({ notification, onMarkAsRead, onDelete, onClick
   const meta = getNotificationMeta(notification.type);
   const Icon = meta.icon;
   const route = getNotificationRoute(notification, pathname);
-  const isClickable = !!route;
+  const isClickable = !!route || !!onClick;
   const category = getNotificationCategory(notification.type);
 
   const handleClick = () => {
     if (!isClickable) return;
     onClick?.(notification);
     if (!notification.isRead) onMarkAsRead(notification._id);
-    router.push(route!);
+    if (route) router.push(route);
   };
 
   return (

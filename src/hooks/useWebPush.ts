@@ -28,7 +28,7 @@ export function useWebPush() {
         }
 
         const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Service Worker timeout")), 5000)
+            setTimeout(() => reject(new Error("Service Worker timeout")), 12000)
         );
 
         return Promise.race([navigator.serviceWorker.ready, timeoutPromise]) as Promise<ServiceWorkerRegistration>;
@@ -64,6 +64,26 @@ export function useWebPush() {
             const subscription = await registration.pushManager.getSubscription();
 
             setIsSubscribed(!!subscription);
+
+            // AUTO-SYNC LOGIC: If we have a subscription locally, ensure it's synced to the backend for this session
+            if (subscription) {
+                const userId = (typeof window !== "undefined") ? localStorage.getItem('userId') : null; // Quick check from local storage if available
+                const syncKey = userId ? `push_sync_${userId}_${subscription.endpoint}` : `push_sync_anon_${subscription.endpoint}`;
+
+                const lastSync = sessionStorage.getItem(syncKey);
+                if (!lastSync) {
+                    apiClient.post("/api/push/subscribe", {
+                        subscription,
+                        deviceHint: navigator.userAgent.includes("Mobile") ? "mobile" : "desktop",
+                    }).then(() => {
+                        sessionStorage.setItem(syncKey, Date.now().toString());
+                        console.log("[WebPush] Auto-synced existing subscription to backend for user:", userId);
+                    }).catch(err => {
+                        console.warn("[WebPush] Auto-sync failed (user might not be logged in yet):", err);
+                    });
+                }
+            }
+
             return subscription;
         } catch (error) {
             console.warn("[WebPush] Initialization error or timeout:", error);
