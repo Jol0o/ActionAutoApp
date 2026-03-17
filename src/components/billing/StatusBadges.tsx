@@ -1,60 +1,185 @@
 import * as React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Clock, CheckCircle2, XCircle, Loader2, RefreshCw, Ban } from "lucide-react";
+import { Loader2, Clock, CheckCircle2, XCircle, RefreshCw, Ban } from "lucide-react";
 import { Payment } from "@/types/billing";
 import { DriverPayout } from "@/types/driver-payout";
 
-export function StatusBadge({ status }: { status: Payment["status"] }) {
-  const config: Record<string, { color: string; icon: React.ReactNode }> = {
-    pending:    { color: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",   icon: <Clock className="size-3" /> },
-    processing: { color: "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",       icon: <Loader2 className="size-3 animate-spin" /> },
-    succeeded:  { color: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: <CheckCircle2 className="size-3" /> },
-    failed:     { color: "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",             icon: <XCircle className="size-3" /> },
-    refunded:   { color: "bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800", icon: <RefreshCw className="size-3" /> },
-    cancelled:  { color: "bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700",       icon: <Ban className="size-3" /> },
-  };
-  const c = config[status] ?? config.pending;
+const DISPLAY = "'Rajdhani', var(--font-sans), sans-serif";
+
+// ─── Supra dark-bg badge colours ──────────────────────────────────────────────
+// Background: very low-opacity tint so it sits on #0a0a0c without clashing.
+// Text: mid-ramp (300) — readable on near-black.
+// Dot: solid ramp-400 for the status indicator.
+const PAYMENT_STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; dot: string; label: string; icon: React.ReactNode }
+> = {
+  pending: {
+    bg: "rgba(251,191,36,0.10)", color: "#FCD34D", dot: "#F59E0B",
+    label: "Pending",
+    icon: <Clock style={{ width: 10, height: 10 }} />,
+  },
+  processing: {
+    bg: "rgba(96,165,250,0.10)", color: "#93C5FD", dot: "#3B82F6",
+    label: "Processing",
+    icon: <Loader2 style={{ width: 10, height: 10, animation: "supraSpin 1s linear infinite" }} />,
+  },
+  succeeded: {
+    bg: "rgba(52,211,153,0.10)", color: "#6EE7B7", dot: "#10B981",
+    label: "Succeeded",
+    icon: <CheckCircle2 style={{ width: 10, height: 10 }} />,
+  },
+  paid: {
+    bg: "rgba(52,211,153,0.10)", color: "#6EE7B7", dot: "#10B981",
+    label: "Paid",
+    icon: <CheckCircle2 style={{ width: 10, height: 10 }} />,
+  },
+  failed: {
+    bg: "rgba(248,113,113,0.10)", color: "#FCA5A5", dot: "#EF4444",
+    label: "Failed",
+    icon: <XCircle style={{ width: 10, height: 10 }} />,
+  },
+  refunded: {
+    bg: "rgba(196,181,253,0.10)", color: "#C4B5FD", dot: "#8B5CF6",
+    label: "Refunded",
+    icon: <RefreshCw style={{ width: 10, height: 10 }} />,
+  },
+  cancelled: {
+    bg: "rgba(156,163,175,0.10)", color: "rgba(156,163,175,0.75)", dot: "#6B7280",
+    label: "Cancelled",
+    icon: <Ban style={{ width: 10, height: 10 }} />,
+  },
+  completed: {
+    bg: "rgba(52,211,153,0.10)", color: "#6EE7B7", dot: "#10B981",
+    label: "Completed",
+    icon: <CheckCircle2 style={{ width: 10, height: 10 }} />,
+  },
+};
+
+const PAYOUT_STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; dot: string; label: string; icon: React.ReactNode }
+> = {
+  paid: {
+    bg: "rgba(52,211,153,0.10)", color: "#6EE7B7", dot: "#10B981",
+    label: "Paid",
+    icon: <CheckCircle2 style={{ width: 10, height: 10 }} />,
+  },
+  processing: {
+    bg: "rgba(96,165,250,0.10)", color: "#93C5FD", dot: "#3B82F6",
+    label: "Processing",
+    icon: <Loader2 style={{ width: 10, height: 10, animation: "supraSpin 1s linear infinite" }} />,
+  },
+  pending: {
+    bg: "rgba(251,191,36,0.10)", color: "#FCD34D", dot: "#F59E0B",
+    label: "Pending",
+    icon: <Clock style={{ width: 10, height: 10 }} />,
+  },
+  failed: {
+    bg: "rgba(248,113,113,0.10)", color: "#FCA5A5", dot: "#EF4444",
+    label: "Failed",
+    icon: <XCircle style={{ width: 10, height: 10 }} />,
+  },
+};
+
+// ─── StatusBadge ──────────────────────────────────────────────────────────────
+export function StatusBadge({ status }: { status: Payment["status"] | string }) {
+  const cfg = PAYMENT_STATUS_CONFIG[status] ?? PAYMENT_STATUS_CONFIG.pending;
   return (
-    <Badge variant="outline" className={`gap-1 capitalize ${c.color}`}>
-      {c.icon}
-      {status}
-    </Badge>
+    <>
+      <style>{`@keyframes supraSpin { to { transform: rotate(360deg); } }`}</style>
+      <span style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        background: cfg.bg,
+        color: cfg.color,
+        fontFamily: DISPLAY, fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
+        padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap" as const,
+      }}>
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: cfg.dot, display: "inline-block", flexShrink: 0 }} />
+        {cfg.label}
+      </span>
+    </>
   );
 }
 
-export function PayoutStatusBadge({ status }: { status: DriverPayout["status"] }) {
-  const map: Record<string, { color: string; icon: React.ReactNode }> = {
-    paid:       { color: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: <CheckCircle2 className="size-3" /> },
-    processing: { color: "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",       icon: <Loader2 className="size-3 animate-spin" /> },
-    pending:    { color: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",   icon: <Clock className="size-3" /> },
-    failed:     { color: "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",             icon: <XCircle className="size-3" /> },
-  };
-  const c = map[status] ?? map.pending;
+// ─── PayoutStatusBadge ────────────────────────────────────────────────────────
+export function PayoutStatusBadge({ status }: { status: DriverPayout["status"] | string }) {
+  const cfg = PAYOUT_STATUS_CONFIG[status] ?? PAYOUT_STATUS_CONFIG.pending;
   return (
-    <Badge variant="outline" className={`gap-1 capitalize ${c.color}`}>
-      {c.icon}
-      {status}
-    </Badge>
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      background: cfg.bg, color: cfg.color,
+      fontFamily: DISPLAY, fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
+      padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap" as const,
+    }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: cfg.dot, display: "inline-block", flexShrink: 0 }} />
+      {cfg.label}
+    </span>
   );
 }
 
-export function StatCard({ label, value, icon, loading }: {
+// ─── StatCard — Supra dark treatment ─────────────────────────────────────────
+export function StatCard({
+  label,
+  value,
+  icon,
+  loading,
+}: {
   label: string;
   value: string;
   icon: React.ReactNode;
   loading: boolean;
+  /** @deprecated — no longer used; Supra theme handles all accent colours */
+  accent?: string;
 }) {
   return (
-    <Card className="border-border shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="p-2 bg-muted rounded-lg">{icon}</div>
-          {loading && <Loader2 className="size-3 text-muted-foreground animate-spin" />}
+    <div style={{
+      position: "relative", overflow: "hidden",
+      background: "#111116",
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 10, padding: "14px 15px",
+    }}>
+      {/* Carbon crosshatch */}
+      <div aria-hidden style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        backgroundImage: `
+          repeating-linear-gradient(45deg, rgba(255,255,255,0.014) 0px, rgba(255,255,255,0.014) 1px, transparent 1px, transparent 8px),
+          repeating-linear-gradient(-45deg, rgba(255,255,255,0.010) 0px, rgba(255,255,255,0.010) 1px, transparent 1px, transparent 8px)
+        `,
+      }} />
+      {/* Orange bottom stripe */}
+      <div aria-hidden style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "rgba(229,90,0,0.28)" }} />
+
+      {/* Icon + spinner row */}
+      <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 11 }}>
+        <div style={{ padding: 7, borderRadius: 8, background: "rgba(255,255,255,0.06)" }}>
+          {icon}
         </div>
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="text-xl font-bold text-foreground">{value}</p>
-      </CardContent>
-    </Card>
+        {loading && (
+          <Loader2 style={{
+            width: 12, height: 12, color: "rgba(255,255,255,0.26)",
+            animation: "supraSpin 1s linear infinite", marginTop: 2,
+          }} />
+        )}
+      </div>
+
+      <p style={{
+        position: "relative", fontSize: 10, fontWeight: 700,
+        letterSpacing: "0.10em", textTransform: "uppercase" as const,
+        color: "rgba(255,255,255,0.28)", marginBottom: 5, fontFamily: DISPLAY,
+      }}>
+        {label}
+      </p>
+
+      {loading ? (
+        <div style={{ height: 24, width: 80, background: "rgba(255,255,255,0.08)", borderRadius: 4 }} />
+      ) : (
+        <p style={{
+          position: "relative", fontFamily: DISPLAY, fontSize: 22, fontWeight: 700,
+          color: "#fff", letterSpacing: "-0.01em",
+        }}>
+          {value}
+        </p>
+      )}
+    </div>
   );
 }
