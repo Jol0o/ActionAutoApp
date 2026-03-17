@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { UserPlus, Eye, EyeOff } from "lucide-react"
+import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,50 +20,145 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { apiClient } from "@/lib/api-client"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CreateUserForm {
   fullName: string
-  username: string
   email: string
   password: string
   role: string
 }
 
+interface FormErrors {
+  fullName?: string
+  email?: string
+  password?: string
+  role?: string
+}
+
 interface CreateUserModalProps {
   open: boolean
   onClose: () => void
+  token: string
+  onCreated?: () => void
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function validate(form: CreateUserForm): FormErrors {
+  const errors: FormErrors = {}
+
+  if (!form.fullName.trim()) {
+    errors.fullName = "Full name is required."
+  }
+  if (!form.email.trim()) {
+    errors.email = "Email is required."
+  } else if (!EMAIL_RE.test(form.email.trim())) {
+    errors.email = "Enter a valid email address."
+  }
+  if (!form.password) {
+    errors.password = "Password is required."
+  } else if (form.password.length < 8) {
+    errors.password = "Password must be at least 8 characters."
+  }
+  if (!form.role) {
+    errors.role = "Please select a role."
+  }
+
+  return errors
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
+export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserModalProps) {
   const [showPassword, setShowPassword] = React.useState(false)
+  const [employeeId, setEmployeeId] = React.useState("")
+  const [loadingId, setLoadingId] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
+  const [errors, setErrors] = React.useState<FormErrors>({})
   const [form, setForm] = React.useState<CreateUserForm>({
     fullName: "",
-    username: "",
     email: "",
     password: "",
     role: "",
   })
 
+  // Fetch next employee ID whenever modal opens
+  React.useEffect(() => {
+    if (!open || !token) return
+
+    setLoadingId(true)
+    setEmployeeId("")
+
+    apiClient
+      .get("/api/crm/next-employee-id", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const data = res.data?.data || res.data
+        setEmployeeId(data.employeeId ?? "")
+      })
+      .catch(() => setEmployeeId(""))
+      .finally(() => setLoadingId(false))
+  }, [open, token])
+
   const handleClose = () => {
-    setForm({ fullName: "", username: "", email: "", password: "", role: "" })
+    if (submitting) return
+    setForm({ fullName: "", email: "", password: "", role: "" })
+    setErrors({})
     setShowPassword(false)
+    setEmployeeId("")
     onClose()
   }
 
-  const set = (k: keyof CreateUserForm) =>
-    (e: React.ChangeEvent<HTMLInputElement>) =>
+  const setField = (k: keyof CreateUserForm) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       setForm((p) => ({ ...p, [k]: e.target.value }))
+      if (errors[k]) setErrors((p) => ({ ...p, [k]: undefined }))
+    }
 
-  const isValid =
-    form.fullName.trim() &&
-    form.username.trim() &&
-    form.email.trim() &&
-    form.password.trim() &&
-    form.role
+  const setRole = (v: string) => {
+    setForm((p) => ({ ...p, role: v }))
+    if (errors.role) setErrors((p) => ({ ...p, role: undefined }))
+  }
+
+  const handleSubmit = async () => {
+    if (submitting) return
+
+    const fieldErrors = validate(form)
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors)
+      return
+    }
+    if (!employeeId) return
+
+    setSubmitting(true)
+    try {
+      await apiClient.post(
+        "/api/crm/users",
+        {
+          fullName: form.fullName.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          role: form.role,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      toast.success(`Account created — Employee ID: ${employeeId}`)
+      onCreated?.()
+      handleClose()
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Failed to create user. Try again."
+      toast.error(msg)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -94,24 +190,39 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
             <Input
               placeholder="e.g. Juan dela Cruz"
               value={form.fullName}
-              onChange={set("fullName")}
-              className="h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30"
+              onChange={setField("fullName")}
+              className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 ${errors.fullName ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
             />
+            {errors.fullName && (
+              <p className="text-[11px] text-red-500">{errors.fullName}</p>
+            )}
           </div>
 
           {/* Employee ID + Email row */}
           <div className="grid grid-cols-2 gap-3">
+
+            {/* Employee ID — auto generated, read-only */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
+              <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider flex items-center gap-1.5">
                 Employee ID
+                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-full normal-case tracking-normal">
+                  Auto
+                </span>
               </Label>
-              <Input
-                placeholder="e.g. 2026-00001"
-                value={form.username}
-                onChange={set("username")}
-                className="h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 font-mono"
-              />
+              <div className="relative">
+                <Input
+                  readOnly
+                  value={loadingId ? "" : employeeId}
+                  placeholder="Generating…"
+                  className="h-10 rounded-xl text-sm border-border/50 font-mono bg-muted/30 text-muted-foreground cursor-default select-none"
+                />
+                {loadingId && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground/40" />
+                )}
+              </div>
             </div>
+
+            {/* Email */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
                 Email
@@ -120,9 +231,12 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
                 type="email"
                 placeholder="juan@actionauto.com"
                 value={form.email}
-                onChange={set("email")}
-                className="h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30"
+                onChange={setField("email")}
+                className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 ${errors.email ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
               />
+              {errors.email && (
+                <p className="text-[11px] text-red-500">{errors.email}</p>
+              )}
             </div>
           </div>
 
@@ -134,21 +248,22 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="Set a strong password"
+                placeholder="Min. 8 characters"
                 value={form.password}
-                onChange={set("password")}
-                className="h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 pr-10"
+                onChange={setField("password")}
+                className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 pr-10 ${errors.password ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((p) => !p)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
               >
-                {showPassword
-                  ? <EyeOff className="h-4 w-4" />
-                  : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {errors.password && (
+              <p className="text-[11px] text-red-500">{errors.password}</p>
+            )}
           </div>
 
           {/* Role */}
@@ -156,11 +271,8 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
             <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
               Role
             </Label>
-            <Select
-              value={form.role}
-              onValueChange={(v) => setForm((p) => ({ ...p, role: v }))}
-            >
-              <SelectTrigger className="h-10 rounded-xl text-sm border-border/50 focus:ring-emerald-500/30">
+            <Select value={form.role} onValueChange={setRole}>
+              <SelectTrigger className={`h-10 rounded-xl text-sm border-border/50 focus:ring-emerald-500/30 ${errors.role ? "border-red-400 focus:ring-red-400/30" : ""}`}>
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -184,6 +296,9 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
                 </SelectItem>
               </SelectContent>
             </Select>
+            {errors.role && (
+              <p className="text-[11px] text-red-500">{errors.role}</p>
+            )}
           </div>
 
           {/* Role hint */}
@@ -213,16 +328,21 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
           <Button
             variant="outline"
             onClick={handleClose}
+            disabled={submitting}
             className="flex-1 h-10 rounded-xl text-sm font-semibold border-border/50"
           >
             Cancel
           </Button>
           <Button
-            disabled={!isValid}
+            onClick={handleSubmit}
+            disabled={submitting || loadingId}
             className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md shadow-emerald-600/15 gap-2 disabled:opacity-40"
           >
-            <UserPlus className="h-4 w-4" />
-            Create User
+            {submitting ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
+            ) : (
+              <><UserPlus className="h-4 w-4" /> Create User</>
+            )}
           </Button>
         </div>
 
