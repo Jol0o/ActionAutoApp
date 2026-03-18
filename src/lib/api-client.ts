@@ -2,6 +2,22 @@ import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+// ── Token refresh queue ───────────────────────────────────────────────────────
+// Prevents multiple simultaneous refresh calls during a burst of 401 errors.
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (error: any) => void }> = [];
+
+function processQueue(error: any, token: string | null = null) {
+    failedQueue.forEach(({ resolve, reject }) => {
+        if (error) {
+            reject(error);
+        } else {
+            resolve(token!);
+        }
+    });
+    failedQueue = [];
+}
+
 class ApiClient {
     private client: AxiosInstance;
 
@@ -18,8 +34,6 @@ class ApiClient {
         // ── Request interceptor ──────────────────────────────────────────────
         this.client.interceptors.request.use(
             async (config) => {
-                const fullUrl = `${config.baseURL}${config.url}`;
-
                 // Auto-inject native auth token if not already set
                 if (typeof window !== 'undefined' && !config.headers.Authorization) {
                     try {
@@ -53,18 +67,82 @@ class ApiClient {
             (response) => {
                 return response;
             },
-            (error) => {
+            async (error) => {
                 // ── Silently ignore intentional request cancellations ─────────
-                // When React Query cancels a stale fetch via AbortSignal, axios
-                // throws a "canceled" / ERR_CANCELED error. This is expected
-                // behaviour — not a real failure — so we suppress logging and
-                // just forward the rejection so React Query can handle it cleanly.
                 if (
                     axios.isCancel(error) ||
                     error?.code === 'ERR_CANCELED' ||
                     error?.message === 'canceled'
                 ) {
                     return Promise.reject(error);
+                }
+
+                // ── 401 Handler: Silent Token Refresh & Retry ─────────────────
+                // When the access token expires mid-session, we silently refresh
+                // it using the HttpOnly refreshToken cookie, then retry the
+                // original request. The user never sees the error.
+                const originalRequest = error.config;
+
+                if (
+                    error.response?.status === 401 &&
+                    !originalRequest._retry &&
+                    typeof window !== 'undefined'
+                ) {
+                    // Prevent retrying the refresh-tokens endpoint itself
+                    if (originalRequest.url?.includes('/api/auth/refresh-tokens')) {
+                        // Refresh failed — clear the token and let the auth provider handle redirect
+                        (window as any).__AUTH_TOKEN__ = null;
+                        return Promise.reject(error);
+                    }
+
+                    originalRequest._retry = true;
+
+                    if (isRefreshing) {
+                        // Another request is already refreshing — queue this one
+                        return new Promise((resolve, reject) => {
+                            failedQueue.push({ resolve, reject });
+                        }).then((token) => {
+                            originalRequest.headers.Authorization = `Bearer ${token}`;
+                            return this.client(originalRequest);
+                        }).catch((err) => {
+                            return Promise.reject(err);
+                        });
+                    }
+
+                    isRefreshing = true;
+
+                    try {
+                        const refreshResponse = await axios.post(
+                            `${API_URL}/api/auth/refresh-tokens`,
+                            {},
+                            { withCredentials: true }
+                        );
+
+                        const newToken =
+                            refreshResponse.data?.data?.accessToken ||
+                            refreshResponse.data?.accessToken;
+
+                        if (!newToken) throw new Error('No token in refresh response');
+
+                        // Update the global token store
+                        (window as any).__AUTH_TOKEN__ = newToken;
+
+                        // Notify queued requests
+                        processQueue(null, newToken);
+
+                        // Retry the original request
+                        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                        return this.client(originalRequest);
+
+                    } catch (refreshError) {
+                        // Refresh failed — clear token and reject all queued requests
+                        processQueue(refreshError, null);
+                        (window as any).__AUTH_TOKEN__ = null;
+                        console.error('[apiClient] Token refresh failed. User may need to re-login.');
+                        return Promise.reject(refreshError);
+                    } finally {
+                        isRefreshing = false;
+                    }
                 }
 
                 // Handle org suspension redirect

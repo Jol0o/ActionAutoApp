@@ -36,6 +36,7 @@ import {
 import { DriverPayout, DeliverableShipment, DriverPayoutStats } from "@/types/driver-payout";
 import { formatCurrency } from "@/utils/format";
 import { StatCard, PayoutStatusBadge } from "@/components/billing/StatusBadges";
+import { resolveImageUrl } from "@/lib/utils";
 
 /* ================================================================
    CREATE PAYOUT MODAL
@@ -272,9 +273,7 @@ export function DriverPayoutsTab({
                     ))
                   ) : (
                     pendingConfirmation.map((s) => {
-                      const imgSrc = s.proofOfDelivery?.imageUrl
-                        ? `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}${s.proofOfDelivery.imageUrl}`
-                        : null;
+                      const imgSrc = resolveImageUrl(s.proofOfDelivery?.imageUrl);
                       return (
                         <TableRow key={s._id} className="border-border hover:bg-muted/50">
                           <TableCell className="font-mono text-xs">{s.trackingNumber || "—"}</TableCell>

@@ -4,3 +4,19 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+export function resolveImageUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+
+  // If it's already an absolute URL (Cloudflare R2, Google, or Data URI), return as is
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+
+  // If it's a relative path (Legacy local uploads), prepend the Backend API URL
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+  // Ensure we don't double slash
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${API_BASE_URL}${cleanPath}`;
+}

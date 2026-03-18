@@ -35,11 +35,16 @@ function AcceptInviteContent() {
             }
 
             try {
-                // Determine if we need auth headers for validation (invitations might be public read-only for validation)
-                // But usually validation just checks token validity. 
-                // However, accepting usually requires being logged in.
                 const response = await apiClient.validateInvite(token)
-                setInvitation(response.data?.data || response.data)
+                const data = response.data?.data || response.data
+                setInvitation(data)
+
+                // If already accepted and user is signed in, we might want to redirect
+                if (data.isAlreadyAccepted && isSignedIn) {
+                    // Check if they are already in an organization (likely the one they just joined via OAuth)
+                    // We'll give it a moment or just redirect to home where the dashboard logic handles it
+                    router.push("/")
+                }
             } catch (err: any) {
                 setError(err.response?.data?.message || "Invalid or expired invitation")
             } finally {
@@ -54,9 +59,8 @@ function AcceptInviteContent() {
 
     const handleAccept = async () => {
         if (!isSignedIn) {
-            // Redirect to sign in, preserving the return URL
-            // Middleware handles core auth, but explicit redirect is good for UX
-            router.push(`/sign-in?redirect_url=${encodeURIComponent(`/accept-invite?token=${token}`)}`)
+            // Redirect to sign in, preserving the return URL and adding the token for signup awareness
+            router.push(`/sign-in?token=${token}&redirect_url=${encodeURIComponent(`/accept-invite?token=${token}`)}`)
             return
         }
 

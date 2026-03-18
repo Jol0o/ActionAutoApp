@@ -15,7 +15,7 @@ import {
     Globe
 } from 'lucide-react';
 import { UserProfile, OnlineStatus } from '@/types/user';
-import { cn } from '@/lib/utils';
+import { cn, resolveImageUrl } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
 import ProfileImageCropper from '@/components/ProfileImageCropper';
 import { onlineStatusOptions } from './profile-constants';
@@ -88,7 +88,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 <div className="relative group/avatar">
                     <div className="relative w-40 h-40 rounded-3xl overflow-hidden ring-4 ring-white/50 shadow-2xl transition-all duration-500 group-hover/avatar:ring-white group-hover/avatar:scale-105 group-hover/avatar:rotate-2 cursor-pointer" onClick={() => setIsCropperOpen(true)}>
                         <img
-                            src={profile?.avatarUrl || profile?.avatar || authUser?.imageUrl || ''}
+                            src={resolveImageUrl(profile?.avatarUrl || profile?.avatar || authUser?.imageUrl)}
                             alt="Profile"
                             className="w-full h-full object-cover"
                         />
@@ -101,7 +101,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                         isOpen={isCropperOpen}
                         onClose={() => setIsCropperOpen(false)}
                         onSave={handleSaveAvatar}
-                        currentImage={profile?.avatarUrl || profile?.avatar || authUser?.imageUrl || ''}
+                        currentImage={resolveImageUrl(profile?.avatarUrl || profile?.avatar || authUser?.imageUrl)}
                     />
 
                     {/* Enhanced Online Status Badge */}
