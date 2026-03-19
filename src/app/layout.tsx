@@ -79,7 +79,7 @@ export default function RootLayout({
             </main>
             <Toaster />
             <ImpersonationBanner />
-            <DevRoleSwitcher />
+            <DevRoleSwitcher /> {/* Disable in production */}
             <InstallPrompt />
           </ThemeProvider>
         </AuthProvider>
