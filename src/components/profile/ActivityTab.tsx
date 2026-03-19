@@ -27,11 +27,11 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({
 }) => {
     return (
         <Card className="p-0 shadow-xl border border-purple-100 dark:border-purple-900 overflow-hidden hover-lift">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 animate-gradient"></div>
-            <CardHeader className="py-4 bg-gradient-to-br from-purple-50 to-violet-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-purple-100 dark:border-purple-900">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-purple-500 via-violet-500 to-indigo-500 animate-gradient"></div>
+            <CardHeader className="py-4 bg-linear-to-br from-purple-50 to-violet-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-purple-100 dark:border-purple-900">
                 <div className="flex items-center justify-between animate-fade-in-left">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg animate-bounce-in hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg animate-bounce-in hover:scale-110 transition-transform">
                             <History className="size-6 text-white" />
                         </div>
                         <div>
@@ -56,9 +56,9 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({
             </CardHeader>
             <CardContent className="p-6">
                 {activities.length > 0 ? (
-                    <ScrollArea className="h-[500px] pr-4">
+                    <ScrollArea className="h-125 pr-4">
                         <div className="relative">
-                            <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500 via-violet-500 to-transparent" />
+                            <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-linear-to-b from-purple-500 via-violet-500 to-transparent" />
 
                             <div className="space-y-4">
                                 {activities.map((activity, index) => (
@@ -70,14 +70,14 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({
                                         <div className="absolute -left-4 top-6 w-3 h-3 rounded-full bg-purple-500 border-2 border-white dark:border-gray-900 shadow-md animate-pulse" />
 
                                         <div className={cn(
-                                            "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-110 shadow-md",
-                                            activity.type === 'login' && "bg-gradient-to-br from-green-500 to-emerald-600 text-white",
-                                            activity.type === 'profile_update' && "bg-gradient-to-br from-blue-500 to-indigo-600 text-white",
-                                            activity.type === 'password_change' && "bg-gradient-to-br from-amber-500 to-orange-600 text-white",
-                                            activity.type === 'avatar_updated' && "bg-gradient-to-br from-purple-500 to-violet-600 text-white",
-                                            activity.type === 'quote_created' && "bg-gradient-to-br from-cyan-500 to-blue-600 text-white",
-                                            activity.type === 'shipment_created' && "bg-gradient-to-br from-emerald-500 to-teal-600 text-white",
-                                            activity.type === 'google_calendar_connected' && "bg-gradient-to-br from-red-500 to-rose-600 text-white",
+                                            "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all hover:scale-110 shadow-md",
+                                            activity.type === 'login' && "bg-linear-to-br from-green-500 to-emerald-600 text-white",
+                                            activity.type === 'profile_update' && "bg-linear-to-br from-blue-500 to-indigo-600 text-white",
+                                            activity.type === 'password_change' && "bg-linear-to-br from-amber-500 to-orange-600 text-white",
+                                            activity.type === 'avatar_updated' && "bg-linear-to-br from-purple-500 to-violet-600 text-white",
+                                            activity.type === 'quote_created' && "bg-linear-to-br from-cyan-500 to-blue-600 text-white",
+                                            activity.type === 'shipment_created' && "bg-linear-to-br from-emerald-500 to-teal-600 text-white",
+                                            activity.type === 'google_calendar_connected' && "bg-linear-to-br from-red-500 to-rose-600 text-white",
                                             !['login', 'profile_update', 'password_change', 'avatar_updated', 'quote_created', 'shipment_created', 'google_calendar_connected'].includes(activity.type) && "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
                                         )}>
                                             {activityIcons[activity.type] || <Activity className="size-5" />}
@@ -88,7 +88,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({
                                                     <p className="font-semibold text-gray-900 dark:text-gray-100">{activity.title}</p>
                                                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{activity.description}</p>
                                                 </div>
-                                                <Badge variant="outline" className="text-[10px] flex-shrink-0 hidden sm:flex border-gray-300 dark:border-gray-600 font-medium">
+                                                <Badge variant="outline" className="text-[10px] shrink-0 hidden sm:flex border-gray-300 dark:border-gray-600 font-medium">
                                                     {activity.type.replace(/_/g, ' ')}
                                                 </Badge>
                                             </div>
@@ -107,13 +107,13 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({
                 ) : (
                     <div className="text-center py-16 animate-fade-in-up">
                         <div className="relative w-20 h-20 mx-auto mb-6">
-                            <div className="absolute inset-0 bg-gradient-to-br from-purple-100 to-violet-100 dark:from-purple-950 dark:to-violet-950 rounded-full animate-pulse-glow" />
+                            <div className="absolute inset-0 bg-linear-to-br from-purple-100 to-violet-100 dark:from-purple-950 dark:to-violet-950 rounded-full animate-pulse-glow" />
                             <div className="relative w-full h-full flex items-center justify-center">
                                 <History className="size-10 text-purple-400 dark:text-purple-500" />
                             </div>
                         </div>
                         <p className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">No recent activity</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-500 max-w-[250px] mx-auto leading-relaxed">
+                        <p className="text-sm text-gray-500 dark:text-gray-500 max-w-62.5 mx-auto leading-relaxed">
                             Your actions like profile updates, logins, and changes will appear here
                         </p>
                     </div>

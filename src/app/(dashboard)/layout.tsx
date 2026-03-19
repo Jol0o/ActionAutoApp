@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useUser, useAuthActions } from "@/providers/AuthProvider"
 import { NotificationBell } from "@/components/notifications"
 import { NotificationProvider } from "@/context/NotificationContext"
-import { ThemeProvider } from "@/context/ThemeContext"
+
 import { ProfileProvider, useProfileContext } from "@/context/ProfileContext"
 import { ProfileToastProvider } from "@/components/ProfileToast"
 import { useRouter } from "next/navigation"
@@ -186,16 +186,14 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <ThemeProvider>
-            <ProfileProvider>
-                <ProfileToastProvider>
-                    <NotificationProvider>
-                        <DashboardLayoutContent>
-                            {children}
-                        </DashboardLayoutContent>
-                    </NotificationProvider>
-                </ProfileToastProvider>
-            </ProfileProvider>
-        </ThemeProvider>
+        <ProfileProvider>
+            <ProfileToastProvider>
+                <NotificationProvider>
+                    <DashboardLayoutContent>
+                        {children}
+                    </DashboardLayoutContent>
+                </NotificationProvider>
+            </ProfileToastProvider>
+        </ProfileProvider>
     );
 }

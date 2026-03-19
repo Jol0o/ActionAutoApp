@@ -43,10 +43,10 @@ export function ProfileHeroSection({
   onStatusClick,
 }: ProfileHeroSectionProps) {
   return (
-    <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-green-600 via-emerald-500 to-teal-600 dark:from-green-700 dark:via-emerald-600 dark:to-teal-700 shadow-xl sm:shadow-2xl animate-gradient">
+    <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-linear-to-br from-green-600 via-emerald-500 to-teal-600 dark:from-green-700 dark:via-emerald-600 dark:to-teal-700 shadow-xl sm:shadow-2xl animate-gradient">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
         <div className="absolute top-10 left-[10%] w-3 h-3 bg-white/20 rounded-full animate-float" style={{ animationDelay: '0s' }} />
         <div className="absolute top-20 left-[25%] w-2 h-2 bg-white/15 rounded-full animate-float" style={{ animationDelay: '1s' }} />
         <div className="absolute top-8 right-[20%] w-4 h-4 bg-white/10 rounded-full animate-float" style={{ animationDelay: '2s' }} />
@@ -70,9 +70,9 @@ export function ProfileHeroSection({
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 md:gap-8">
           {/* Profile Picture */}
           <div className="relative group animate-slide-in-left">
-            <div className="absolute -inset-1 bg-gradient-to-r from-white/40 via-emerald-300 to-white/40 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
+            <div className="absolute -inset-1 bg-linear-to-r from-white/40 via-emerald-300 to-white/40 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
             <div
-              className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-[5px] border-white/60 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer transition-all hover:scale-110 profile-picture-glow"
+              className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-linear-to-br from-white/20 to-white/5 backdrop-blur-2xl border-[5px] border-white/60 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer transition-all hover:scale-110 profile-picture-glow"
               onClick={onChangePhoto}
             >
               {(getAvatarUrl(profile?.avatar) || authUser?.imageUrl) ? (

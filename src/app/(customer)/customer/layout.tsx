@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { CustomerSidebar } from "@/components/customer/CustomerSidebar"
 import { NotificationBell } from "@/components/notifications"
 import { NotificationProvider } from "@/context/NotificationContext"
-import { ThemeProvider } from "@/context/ThemeContext"
+
 import { ProfileProvider } from "@/context/ProfileContext"
 import { ProfileToastProvider } from "@/components/ProfileToast"
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav"
@@ -108,14 +108,12 @@ export default function CustomerLayout({
     children: React.ReactNode
 }) {
     return (
-        <ThemeProvider>
-            <ProfileProvider>
-                <ProfileToastProvider>
-                    <NotificationProvider>
-                        <CustomerLayoutContent>{children}</CustomerLayoutContent>
-                    </NotificationProvider>
-                </ProfileToastProvider>
-            </ProfileProvider>
-        </ThemeProvider>
+        <ProfileProvider>
+            <ProfileToastProvider>
+                <NotificationProvider>
+                    <CustomerLayoutContent>{children}</CustomerLayoutContent>
+                </NotificationProvider>
+            </ProfileToastProvider>
+        </ProfileProvider>
     )
 }

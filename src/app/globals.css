@@ -254,6 +254,15 @@ body.app-fullscreen .main-content {
   @apply bg-zinc-400 dark:bg-zinc-700 border-2 border-transparent bg-clip-padding;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Smooth transitions for theme changes */
 @layer components {
   .theme-transition {
