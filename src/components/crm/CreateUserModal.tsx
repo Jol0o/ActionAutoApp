@@ -80,6 +80,8 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
   const [loadingId, setLoadingId] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [errors, setErrors] = React.useState<FormErrors>({})
+  const [emailTouched, setEmailTouched] = React.useState(false)
+  const [passwordTouched, setPasswordTouched] = React.useState(false)
   const [form, setForm] = React.useState<CreateUserForm>({
     fullName: "",
     email: "",
@@ -112,18 +114,44 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
     setErrors({})
     setShowPassword(false)
     setEmployeeId("")
+    setEmailTouched(false)
+    setPasswordTouched(false)
     onClose()
   }
 
-  const setField = (k: keyof CreateUserForm) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setForm((p) => ({ ...p, [k]: e.target.value }))
-      if (errors[k]) setErrors((p) => ({ ...p, [k]: undefined }))
-    }
+  const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fullName = e.target.value
+    const firstName = fullName.trim().split(/\s+/)[0].toLowerCase()
+    setForm((p) => ({
+      ...p,
+      fullName,
+      email: emailTouched ? p.email : (firstName ? `${firstName}@actionauto.com` : ""),
+    }))
+    if (errors.fullName) setErrors((p) => ({ ...p, fullName: undefined }))
+    if (errors.email && !emailTouched) setErrors((p) => ({ ...p, email: undefined }))
+  }
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmailTouched(true)
+    setForm((p) => ({ ...p, email: e.target.value }))
+    if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
+  }
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPasswordTouched(true)
+    setForm((p) => ({ ...p, password: e.target.value }))
+    if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
+  }
 
   const setRole = (v: string) => {
-    setForm((p) => ({ ...p, role: v }))
+    const autoPassword = v === "admin" ? "admin@123!" : "employee@123!"
+    setForm((p) => ({
+      ...p,
+      role: v,
+      password: passwordTouched ? p.password : autoPassword,
+    }))
     if (errors.role) setErrors((p) => ({ ...p, role: undefined }))
+    if (errors.password && !passwordTouched) setErrors((p) => ({ ...p, password: undefined }))
   }
 
   const handleSubmit = async () => {
@@ -190,7 +218,7 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
             <Input
               placeholder="e.g. Juan dela Cruz"
               value={form.fullName}
-              onChange={setField("fullName")}
+              onChange={handleFullNameChange}
               className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 ${errors.fullName ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
             />
             {errors.fullName && (
@@ -224,14 +252,17 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
 
             {/* Email */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
+              <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider flex items-center gap-1.5">
                 Email
+                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-full normal-case tracking-normal">
+                  Auto
+                </span>
               </Label>
               <Input
                 type="email"
                 placeholder="juan@actionauto.com"
                 value={form.email}
-                onChange={setField("email")}
+                onChange={handleEmailChange}
                 className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 ${errors.email ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
               />
               {errors.email && (
@@ -242,15 +273,18 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
 
           {/* Password */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
+            <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider flex items-center gap-1.5">
               Password
+              <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-full normal-case tracking-normal">
+                Auto
+              </span>
             </Label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
                 placeholder="Min. 8 characters"
                 value={form.password}
-                onChange={setField("password")}
+                onChange={handlePasswordChange}
                 className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 pr-10 ${errors.password ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
               />
               <button
@@ -282,13 +316,7 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
                     Employee
                   </div>
                 </SelectItem>
-                <SelectItem value="manager" className="rounded-lg text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                    Manager
-                  </div>
-                </SelectItem>
-                <SelectItem value="admin" className="rounded-lg text-sm">
+<SelectItem value="admin" className="rounded-lg text-sm">
                   <div className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
                     Admin
@@ -306,15 +334,10 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
             <div className={`rounded-xl p-3 text-xs border ${
               form.role === "admin"
                 ? "bg-violet-500/5 border-violet-500/15 text-violet-600"
-                : form.role === "manager"
-                ? "bg-blue-500/5 border-blue-500/15 text-blue-600"
                 : "bg-emerald-500/5 border-emerald-500/15 text-emerald-600"
             }`}>
               {form.role === "admin" && (
                 <><p className="font-bold">Admin Access</p><p className="opacity-70 mt-0.5">Full access to settings, user management, and all CRM features.</p></>
-              )}
-              {form.role === "manager" && (
-                <><p className="font-bold">Manager Access</p><p className="opacity-70 mt-0.5">Can manage appointments, leads, and view team performance.</p></>
               )}
               {form.role === "employee" && (
                 <><p className="font-bold">Employee Access</p><p className="opacity-70 mt-0.5">Standard access to appointments, time clock, and personal profile.</p></>
