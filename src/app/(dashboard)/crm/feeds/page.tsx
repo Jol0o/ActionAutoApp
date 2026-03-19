@@ -1,0 +1,1036 @@
+"use client"
+
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import {
+  Car,
+  ArrowLeft,
+  Send,
+  Smile,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Loader2,
+  X,
+  Check,
+  ChevronDown,
+  RefreshCw,
+  Sparkles,
+  MessageCircle,
+  ChevronUp,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { apiClient } from "@/lib/api-client"
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Comment {
+  _id: string
+  postId: string
+  userId: string
+  authorName: string
+  authorAvatar?: string
+  authorRole: string
+  content: string
+  createdAt: string
+}
+
+interface Post {
+  _id: string
+  userId: string
+  authorName: string
+  authorAvatar?: string
+  authorRole: string
+  content: string
+  isEdited: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface CrmUser {
+  _id: string
+  fullName: string
+  username: string
+  email: string
+  avatar?: string
+  role: string
+  organizationId?: string
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function ini(n: string) {
+  return n.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const s = Math.floor(diff / 1000)
+  if (s < 60)  return "just now"
+  const m = Math.floor(s / 60)
+  if (m < 60)  return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24)  return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 7)   return `${d}d ago`
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
+function fullDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+    year: "numeric", hour: "2-digit", minute: "2-digit",
+  })
+}
+
+const ROLE_COLORS: Record<string, string> = {
+  admin:    "text-violet-500 bg-violet-500/10 border-violet-500/20",
+  manager:  "text-sky-500 bg-sky-500/10 border-sky-500/20",
+  employee: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+}
+
+// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
+
+function DeleteModal({
+  label = "post",
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  label?: string
+  onConfirm: () => void
+  onCancel: () => void
+  loading: boolean
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border/50 bg-card shadow-2xl p-6 space-y-5">
+        <div className="space-y-1.5">
+          <h3 className="text-base font-bold tracking-tight">Delete {label}?</h3>
+          <p className="text-sm text-muted-foreground/60">
+            This action cannot be undone. The {label} will be permanently removed.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1 rounded-xl h-10 text-sm" onClick={onCancel} disabled={loading}>
+            Cancel
+          </Button>
+          <Button variant="destructive" className="flex-1 rounded-xl h-10 text-sm font-semibold gap-2" onClick={onConfirm} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Comment Item ─────────────────────────────────────────────────────────────
+// Renders a single comment row with author info, content, and a delete button
+// (visible only to the comment owner or an admin).
+
+function CommentItem({
+  comment,
+  currentUser,
+  token,
+  postId,
+  onDeleted,
+}: {
+  comment: Comment
+  currentUser: CrmUser
+  token: string
+  postId: string
+  onDeleted: (commentId: string) => void
+}) {
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false)
+  const [deleteLoading, setDeleteLoading]     = React.useState(false)
+
+  const isOwner   = comment.userId === currentUser._id
+  const isAdmin   = currentUser.role === "admin"
+  const canDelete = isOwner || isAdmin
+
+  const handleDelete = async () => {
+    setDeleteLoading(true)
+    try {
+      await apiClient.delete(`/api/crm/feeds/${postId}/comments/${comment._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      onDeleted(comment._id)
+    } catch {
+      setDeleteLoading(false)
+      setShowDeleteModal(false)
+    }
+  }
+
+  return (
+    <>
+      {showDeleteModal && (
+        <DeleteModal
+          label="comment"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+          loading={deleteLoading}
+        />
+      )}
+
+      <div className="group flex items-start gap-2.5">
+        {/* Author avatar — smaller than post avatars */}
+        <Avatar className="h-7 w-7 shrink-0 mt-0.5 ring-1 ring-border/30">
+          <AvatarImage src={comment.authorAvatar} />
+          <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">
+            {ini(comment.authorName)}
+          </AvatarFallback>
+        </Avatar>
+
+        {/* Comment bubble */}
+        <div className="flex-1 min-w-0">
+          <div className="inline-block rounded-2xl rounded-tl-sm bg-muted/40 px-3.5 py-2.5 max-w-full">
+            {/* Author name + role */}
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+              <span className="text-[11px] font-bold leading-none">{comment.authorName}</span>
+              <Badge
+                variant="outline"
+                className={`text-[8px] h-3.5 px-1 rounded-full capitalize font-semibold leading-none border ${ROLE_COLORS[comment.authorRole] ?? ROLE_COLORS.employee}`}
+              >
+                {comment.authorRole}
+              </Badge>
+            </div>
+            {/* Comment text */}
+            <p className="text-xs leading-relaxed whitespace-pre-wrap break-words text-foreground/80">
+              {comment.content}
+            </p>
+          </div>
+
+          {/* Timestamp + delete button below the bubble */}
+          <div className="flex items-center gap-2 mt-1 pl-1">
+            <span
+              className="text-[10px] text-muted-foreground/35 cursor-default"
+              title={fullDate(comment.createdAt)}
+            >
+              {timeAgo(comment.createdAt)}
+            </span>
+            {canDelete && (
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="text-[10px] text-muted-foreground/25 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ─── Comment Section ──────────────────────────────────────────────────────────
+// Collapsible panel that lives at the bottom of each PostCard.
+// On first open it fetches the comments from the API.
+// Subsequent opens use the cached list (no refetch unless a real-time event
+// forces an update).
+
+function CommentSection({
+  post,
+  currentUser,
+  token,
+  // External comment list state — lifted to PostCard so Socket.IO events
+  // can update the list without reopening the section
+  comments,
+  setComments,
+}: {
+  post: Post
+  currentUser: CrmUser
+  token: string
+  comments: Comment[]
+  setComments: React.Dispatch<React.SetStateAction<Comment[]>>
+}) {
+  const [isOpen, setIsOpen]         = React.useState(false)
+  const [loading, setLoading]       = React.useState(false)
+  const [hasFetched, setHasFetched] = React.useState(false) // Prevents duplicate fetches
+
+  // Compose-comment state
+  const [newComment, setNewComment]     = React.useState("")
+  const [submitting, setSubmitting]     = React.useState(false)
+  const [submitError, setSubmitError]   = React.useState("")
+  const [showEmoji, setShowEmoji]       = React.useState(false)
+  const inputRef   = React.useRef<HTMLTextAreaElement>(null)
+  const emojiRef   = React.useRef<HTMLDivElement>(null)
+
+  // Close emoji picker on outside click
+  React.useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
+        setShowEmoji(false)
+      }
+    }
+    if (showEmoji) document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [showEmoji])
+
+  // Fetch comments the first time the section is opened
+  const handleToggle = async () => {
+    const opening = !isOpen
+    setIsOpen(opening)
+
+    if (opening && !hasFetched) {
+      setLoading(true)
+      try {
+        const res = await apiClient.get(`/api/crm/feeds/${post._id}/comments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setComments(res.data?.data?.comments || [])
+        setHasFetched(true)
+      } catch {
+        // Leave the list empty — the user can retry by toggling again
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Auto-focus the comment input when opening
+    if (opening) {
+      setTimeout(() => inputRef.current?.focus(), 150)
+    }
+  }
+
+  /** Submits a new comment to POST /api/crm/feeds/:postId/comments */
+  const handleSubmit = async () => {
+    if (!newComment.trim()) return
+    setSubmitting(true)
+    setSubmitError("")
+    try {
+      const res = await apiClient.post(
+        `/api/crm/feeds/${post._id}/comments`,
+        { content: newComment.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const comment: Comment = res.data?.data?.comment
+      // Append optimistically — the Socket.IO event may also arrive but
+      // the duplicate guard in the parent will discard it
+      setComments((prev) =>
+        prev.some((c) => c._id === comment._id) ? prev : [...prev, comment]
+      )
+      setNewComment("")
+      setShowEmoji(false)
+    } catch (err: any) {
+      setSubmitError(err?.response?.data?.message || "Failed to post comment")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteComment = (commentId: string) => {
+    setComments((prev) => prev.filter((c) => c._id !== commentId))
+  }
+
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }
+
+  return (
+    <div className="border-t border-border/20 mt-1">
+
+      {/* ── Toggle button ── */}
+      <button
+        onClick={handleToggle}
+        className="flex items-center gap-2 w-full px-1 py-2.5 text-[11px] font-semibold text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+      >
+        <MessageCircle className="h-3.5 w-3.5" />
+        {comments.length > 0
+          ? `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`
+          : "Comment"}
+        {isOpen
+          ? <ChevronUp className="h-3 w-3 ml-auto" />
+          : <ChevronDown className="h-3 w-3 ml-auto" />}
+      </button>
+
+      {/* ── Expanded comment thread ── */}
+      {isOpen && (
+        <div className="space-y-3 pb-3">
+
+          {/* Loading state */}
+          {loading && (
+            <div className="flex justify-center py-3">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
+            </div>
+          )}
+
+          {/* Comment list — oldest first (natural thread order) */}
+          {!loading && comments.length === 0 && (
+            <p className="text-xs text-muted-foreground/30 text-center py-2">
+              No comments yet. Be the first!
+            </p>
+          )}
+
+          {!loading && comments.map((comment) => (
+            <CommentItem
+              key={comment._id}
+              comment={comment}
+              currentUser={currentUser}
+              token={token}
+              postId={post._id}
+              onDeleted={handleDeleteComment}
+            />
+          ))}
+
+          {/* ── New comment input ── */}
+          <div className="flex items-start gap-2.5 pt-1">
+            {/* Current user's avatar */}
+            <Avatar className="h-7 w-7 shrink-0 mt-0.5 ring-1 ring-border/30">
+              <AvatarImage src={currentUser.avatar} />
+              <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">
+                {ini(currentUser.fullName)}
+              </AvatarFallback>
+            </Avatar>
+
+            {/* Input area */}
+            <div className="flex-1 relative">
+              <div className="rounded-2xl rounded-tl-sm border border-border/40 bg-muted/20 focus-within:border-emerald-500/30 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all">
+                <textarea
+                  ref={inputRef}
+                  value={newComment}
+                  onChange={(e) => { setNewComment(e.target.value); setSubmitError("") }}
+                  onKeyDown={handleKey}
+                  placeholder="Write a comment…"
+                  rows={1}
+                  maxLength={1000}
+                  className="w-full bg-transparent text-xs leading-relaxed p-2.5 pr-16 resize-none focus:outline-none placeholder:text-muted-foreground/25"
+                  style={{ minHeight: "36px" }}
+                />
+
+                {/* Action row inside the input bubble */}
+                <div className="flex items-center justify-between px-2.5 pb-2">
+                  {/* Emoji picker for comment input */}
+                  <div className="relative" ref={emojiRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowEmoji((p) => !p)}
+                      className="text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors"
+                    >
+                      <Smile className="h-3.5 w-3.5" />
+                    </button>
+                    {showEmoji && (
+                      <div className="absolute bottom-full left-0 mb-2 z-30 shadow-2xl">
+                        <EmojiPicker
+                          theme={"auto" as Theme}
+                          onEmojiClick={(e: EmojiClickData) => {
+                            setNewComment((p) => p + e.emoji)
+                            setShowEmoji(false)
+                            inputRef.current?.focus()
+                          }}
+                          height={320}
+                          width={280}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Submit button — disabled when empty or submitting */}
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={submitting || !newComment.trim()}
+                    className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submitting
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <Send className="h-3 w-3" />}
+                    Post
+                  </button>
+                </div>
+              </div>
+
+              {/* Inline error + keyboard hint */}
+              {submitError && (
+                <p className="text-[10px] text-red-500 mt-1 pl-1">{submitError}</p>
+              )}
+              {newComment && !submitError && (
+                <p className="text-[9px] text-muted-foreground/20 mt-1 pl-1">Ctrl+Enter to post</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Post Card ────────────────────────────────────────────────────────────────
+// Renders a full post including its comment section.
+// Comment state is owned here so Socket.IO events (from the feed page)
+// can push updates without having to re-open the section.
+
+function PostCard({
+  post,
+  currentUser,
+  token,
+  onUpdated,
+  onDeleted,
+}: {
+  post: Post
+  currentUser: CrmUser
+  token: string
+  onUpdated: (updated: Post) => void
+  onDeleted: (id: string) => void
+}) {
+  // Edit state
+  const [isEditing, setIsEditing]         = React.useState(false)
+  const [editContent, setEditContent]     = React.useState(post.content)
+  const [editLoading, setEditLoading]     = React.useState(false)
+  const [editError, setEditError]         = React.useState("")
+  const [showEmojiEdit, setShowEmojiEdit] = React.useState(false)
+
+  // Delete state
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false)
+  const [deleteLoading, setDeleteLoading]     = React.useState(false)
+
+  // Comment list — lifted here so Socket.IO can push to it from the feed page
+  const [comments, setComments] = React.useState<Comment[]>([])
+
+  const editRef = React.useRef<HTMLTextAreaElement>(null)
+
+  const isOwner = post.userId === currentUser._id
+  const isAdmin = currentUser.role === "admin"
+  const canEdit   = isOwner
+  const canDelete = isOwner || isAdmin
+
+  React.useEffect(() => {
+    if (isEditing) {
+      editRef.current?.focus()
+      const len = editRef.current?.value.length ?? 0
+      editRef.current?.setSelectionRange(len, len)
+    }
+  }, [isEditing])
+
+  const handleSave = async () => {
+    if (!editContent.trim()) { setEditError("Content cannot be empty"); return }
+    setEditLoading(true)
+    setEditError("")
+    try {
+      const res = await apiClient.put(
+        `/api/crm/feeds/${post._id}`,
+        { content: editContent.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      onUpdated(res.data?.data?.post || res.data?.post)
+      setIsEditing(false)
+    } catch (err: any) {
+      setEditError(err?.response?.data?.message || "Failed to update post")
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleteLoading(true)
+    try {
+      await apiClient.delete(`/api/crm/feeds/${post._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      onDeleted(post._id)
+    } catch {
+      setDeleteLoading(false)
+      setShowDeleteModal(false)
+    }
+  }
+
+  return (
+    <>
+      {showDeleteModal && (
+        <DeleteModal
+          label="post"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+          loading={deleteLoading}
+        />
+      )}
+
+      <article className="group rounded-2xl border border-border/40 bg-card p-5 space-y-3 transition-colors hover:border-border/60">
+
+        {/* ── Post header ── */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar className="h-9 w-9 shrink-0 ring-2 ring-border/30">
+              <AvatarImage src={post.authorAvatar} />
+              <AvatarFallback className="bg-emerald-600 text-white text-xs font-bold">
+                {ini(post.authorName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-bold truncate leading-none">{post.authorName}</p>
+                <Badge
+                  variant="outline"
+                  className={`text-[9px] h-4 px-1.5 rounded-full capitalize font-semibold leading-none border ${ROLE_COLORS[post.authorRole] ?? ROLE_COLORS.employee}`}
+                >
+                  {post.authorRole}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <p className="text-[11px] text-muted-foreground/40 cursor-default" title={fullDate(post.createdAt)}>
+                  {timeAgo(post.createdAt)}
+                </p>
+                {post.isEdited && (
+                  <span className="text-[10px] text-muted-foreground/30 italic">(edited)</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Post context menu */}
+          {(canEdit || canDelete) && !isEditing && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 rounded-xl border-border/40 shadow-xl p-1">
+                {canEdit && (
+                  <DropdownMenuItem
+                    className="rounded-lg text-xs h-8 gap-2.5 cursor-pointer"
+                    onClick={() => { setIsEditing(true); setEditContent(post.content) }}
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit post
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
+                  <DropdownMenuItem
+                    className="rounded-lg text-xs h-8 gap-2.5 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/5"
+                    onClick={() => setShowDeleteModal(true)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete post
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        {/* ── Post content / inline edit form ── */}
+        {isEditing ? (
+          <div className="space-y-3">
+            <div className="relative">
+              <textarea
+                ref={editRef}
+                value={editContent}
+                onChange={(e) => { setEditContent(e.target.value); setEditError("") }}
+                rows={4}
+                maxLength={5000}
+                className="w-full rounded-xl border border-border/50 bg-muted/20 text-sm p-3 pr-10 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/30 leading-relaxed"
+              />
+              <button
+                type="button"
+                onClick={() => setShowEmojiEdit((p) => !p)}
+                className="absolute bottom-2.5 right-2.5 text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors"
+              >
+                <Smile className="h-4 w-4" />
+              </button>
+              {showEmojiEdit && (
+                <div className="absolute bottom-full right-0 mb-2 z-30">
+                  <EmojiPicker
+                    theme={"auto" as Theme}
+                    onEmojiClick={(e: EmojiClickData) => {
+                      setEditContent((p) => p + e.emoji)
+                      setShowEmojiEdit(false)
+                    }}
+                    height={380}
+                    width={320}
+                  />
+                </div>
+              )}
+            </div>
+            {editError && <p className="text-xs text-red-500">{editError}</p>}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground/30 tabular-nums">{editContent.length}/5000</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" className="h-8 rounded-xl text-xs gap-1.5" onClick={() => { setIsEditing(false); setEditError("") }} disabled={editLoading}>
+                  <X className="h-3.5 w-3.5" /> Cancel
+                </Button>
+                <Button size="sm" className="h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5" onClick={handleSave} disabled={editLoading || !editContent.trim()}>
+                  {editLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground/85">
+            {post.content}
+          </p>
+        )}
+
+        {/* ── Comments section — always visible, expands on toggle ── */}
+        <CommentSection
+          post={post}
+          currentUser={currentUser}
+          token={token}
+          comments={comments}
+          setComments={setComments}
+        />
+      </article>
+    </>
+  )
+}
+
+// ─── Post Composer ────────────────────────────────────────────────────────────
+
+function Composer({
+  currentUser,
+  token,
+  onPosted,
+}: {
+  currentUser: CrmUser
+  token: string
+  onPosted: (post: Post) => void
+}) {
+  const [content, setContent]     = React.useState("")
+  const [loading, setLoading]     = React.useState(false)
+  const [error, setError]         = React.useState("")
+  const [showEmoji, setShowEmoji] = React.useState(false)
+  const [isFocused, setIsFocused] = React.useState(false)
+  const emojiRef    = React.useRef<HTMLDivElement>(null)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+
+  React.useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) setShowEmoji(false)
+    }
+    if (showEmoji) document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [showEmoji])
+
+  const handleSubmit = async () => {
+    if (!content.trim()) { setError("Write something first!"); return }
+    setLoading(true)
+    setError("")
+    try {
+      const res = await apiClient.post(
+        "/api/crm/feeds",
+        { content: content.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      onPosted(res.data?.data?.post || res.data?.post)
+      setContent("")
+      textareaRef.current?.blur()
+      setIsFocused(false)
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to post")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); handleSubmit() }
+  }
+
+  return (
+    <div className={`rounded-2xl border bg-card p-5 space-y-3 transition-all duration-200 ${isFocused ? "border-emerald-500/30 shadow-sm shadow-emerald-500/5" : "border-border/40"}`}>
+      <div className="flex items-start gap-3">
+        <Avatar className="h-9 w-9 shrink-0 mt-1 ring-2 ring-border/30">
+          <AvatarImage src={currentUser.avatar} />
+          <AvatarFallback className="bg-emerald-600 text-white text-xs font-bold">{ini(currentUser.fullName)}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 relative">
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => { setContent(e.target.value); setError("") }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onKeyDown={handleKey}
+            placeholder={`What's on your mind, ${currentUser.fullName.split(" ")[0]}?`}
+            rows={isFocused || content ? 4 : 2}
+            maxLength={5000}
+            className="w-full bg-transparent text-sm leading-relaxed resize-none focus:outline-none placeholder:text-muted-foreground/30 transition-all duration-200"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pl-12 border-t border-border/20 pt-3">
+        <div className="relative" ref={emojiRef}>
+          <button
+            type="button"
+            onClick={() => setShowEmoji((p) => !p)}
+            className={`flex items-center gap-1.5 text-xs font-medium rounded-lg px-2.5 py-1.5 transition-colors ${showEmoji ? "bg-emerald-500/10 text-emerald-600" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/40"}`}
+          >
+            <Smile className="h-4 w-4" /> Emoji
+          </button>
+          {showEmoji && (
+            <div className="absolute bottom-full left-0 mb-2 z-30 shadow-2xl">
+              <EmojiPicker
+                theme={"auto" as Theme}
+                onEmojiClick={(e: EmojiClickData) => {
+                  setContent((p) => p + e.emoji)
+                  setShowEmoji(false)
+                  textareaRef.current?.focus()
+                }}
+                height={380}
+                width={320}
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {content.length > 0 && (
+            <span className={`text-[10px] tabular-nums font-medium transition-colors ${content.length > 4500 ? "text-red-500" : "text-muted-foreground/30"}`}>
+              {content.length}/5000
+            </span>
+          )}
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || !content.trim()}
+            size="sm"
+            className="h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 px-4 disabled:opacity-40"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            Post
+          </Button>
+        </div>
+      </div>
+      {error && <p className="text-xs text-red-500 pl-12">{error}</p>}
+      {content && !error && <p className="text-[10px] text-muted-foreground/25 pl-12">Tip: Press Ctrl+Enter to post</p>}
+    </div>
+  )
+}
+
+// ─── Feed Page ────────────────────────────────────────────────────────────────
+
+const PAGE_LIMIT = 20
+
+export default function FeedsPage() {
+  const router = useRouter()
+  const [currentUser, setCurrentUser]   = React.useState<CrmUser | null>(null)
+  const [token, setToken]               = React.useState("")
+  const [posts, setPosts]               = React.useState<Post[]>([])
+  const [page, setPage]                 = React.useState(1)
+  const [hasMore, setHasMore]           = React.useState(false)
+  const [loadingInit, setLoadingInit]   = React.useState(true)
+  const [loadingMore, setLoadingMore]   = React.useState(false)
+  const [refreshing, setRefreshing]     = React.useState(false)
+  const [newPostCount, setNewPostCount] = React.useState(0)
+  const observerRef = React.useRef<HTMLDivElement>(null)
+  const socketRef   = React.useRef<any>(null)
+
+  // Auth check
+  React.useEffect(() => {
+    const t = localStorage.getItem("crm_token")
+    if (!t) { router.replace("/crm"); return }
+    apiClient.get("/api/crm/me", { headers: { Authorization: `Bearer ${t}` } })
+      .then((res) => { setCurrentUser(res.data?.data || res.data); setToken(t) })
+      .catch(() => { localStorage.removeItem("crm_token"); router.replace("/crm") })
+  }, [router])
+
+  // Initial fetch
+  React.useEffect(() => {
+    if (!token) return
+    apiClient.get(`/api/crm/feeds?page=1&limit=${PAGE_LIMIT}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        const d = res.data?.data
+        setPosts(d.posts || [])
+        setHasMore(d.hasMore ?? false)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingInit(false))
+  }, [token])
+
+  // Socket.IO real-time
+  React.useEffect(() => {
+    if (!token || typeof window === "undefined") return
+    import("socket.io-client").then(({ io }) => {
+      const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "", {
+        auth: { token }, path: "/socket.io", transports: ["websocket"],
+      })
+      socket.on("feed:new", ({ post }: { post: Post }) => {
+        setPosts((prev) => {
+          if (prev.some((p) => p._id === post._id)) return prev
+          setNewPostCount((c) => c + 1)
+          return prev
+        })
+      })
+      socket.on("feed:updated", ({ post }: { post: Post }) => {
+        setPosts((prev) => prev.map((p) => (p._id === post._id ? post : p)))
+      })
+      socket.on("feed:deleted", ({ postId }: { postId: string }) => {
+        setPosts((prev) => prev.filter((p) => p._id !== postId))
+      })
+      // Real-time comment events bubble up here but are handled inside PostCard
+      // via the shared setComments ref — no extra wiring needed at page level
+      socketRef.current = socket
+    }).catch(() => {})
+    return () => { socketRef.current?.disconnect() }
+  }, [token])
+
+  // 30-second polling fallback
+  React.useEffect(() => {
+    if (!token) return
+    const id = setInterval(async () => {
+      try {
+        const res = await apiClient.get(`/api/crm/feeds?page=1&limit=${PAGE_LIMIT}`, { headers: { Authorization: `Bearer ${token}` } })
+        const fresh: Post[] = res.data?.data?.posts || []
+        setPosts((prev) => {
+          const prevIds = new Set(prev.map((p) => p._id))
+          const newOnes = fresh.filter((p) => !prevIds.has(p._id))
+          if (newOnes.length) setNewPostCount((c) => c + newOnes.length)
+          return prev.map((p) => fresh.find((f) => f._id === p._id) ?? p)
+        })
+      } catch {}
+    }, 30_000)
+    return () => clearInterval(id)
+  }, [token])
+
+  // Infinite scroll
+  React.useEffect(() => {
+    if (!observerRef.current) return
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting && hasMore && !loadingMore) loadMore() },
+      { threshold: 0.5 }
+    )
+    obs.observe(observerRef.current)
+    return () => obs.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, loadingMore, posts])
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    const next = page + 1
+    try {
+      const res = await apiClient.get(`/api/crm/feeds?page=${next}&limit=${PAGE_LIMIT}`, { headers: { Authorization: `Bearer ${token}` } })
+      const d = res.data?.data
+      setPosts((prev) => {
+        const ids = new Set(prev.map((p) => p._id))
+        return [...prev, ...(d.posts || []).filter((p: Post) => !ids.has(p._id))]
+      })
+      setHasMore(d.hasMore ?? false)
+      setPage(next)
+    } catch {}
+    finally { setLoadingMore(false) }
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true); setNewPostCount(0)
+    try {
+      const res = await apiClient.get(`/api/crm/feeds?page=1&limit=${PAGE_LIMIT}`, { headers: { Authorization: `Bearer ${token}` } })
+      const d = res.data?.data
+      setPosts(d.posts || []); setHasMore(d.hasMore ?? false); setPage(1)
+    } catch {}
+    finally { setRefreshing(false) }
+  }
+
+  if (loadingInit || !currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+          </div>
+          <p className="text-xs text-muted-foreground/40 tracking-widest uppercase">Loading feed…</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen w-full bg-background">
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/90 backdrop-blur-xl">
+        <div className="flex items-center gap-4 h-14 px-6 max-w-2xl mx-auto">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl shrink-0" onClick={() => router.push("/crm/dashboard")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-3 flex-1">
+            <div className="h-7 w-7 rounded-lg bg-emerald-600 flex items-center justify-center shadow-sm">
+              <Car className="h-3.5 w-3.5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold leading-none">Team Feeds</p>
+              <p className="text-[9px] uppercase tracking-[0.25em] text-emerald-600 mt-0.5 font-bold">Action Auto CRM</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl shrink-0" onClick={handleRefresh} disabled={refreshing} title="Refresh">
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4 pb-20">
+        {newPostCount > 0 && (
+          <button onClick={handleRefresh} className="w-full flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 hover:bg-emerald-500/10 py-3 text-xs font-semibold text-emerald-600 transition-colors">
+            <Sparkles className="h-3.5 w-3.5" />
+            {newPostCount} new {newPostCount === 1 ? "post" : "posts"} — tap to refresh
+          </button>
+        )}
+
+        <Composer currentUser={currentUser} token={token} onPosted={(p) => setPosts((prev) => [p, ...prev])} />
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-border/30" />
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/25">Latest</p>
+          <div className="flex-1 h-px bg-border/30" />
+        </div>
+
+        {posts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-20">
+            <div className="h-16 w-16 rounded-2xl border-2 border-dashed border-border/25 flex items-center justify-center">
+              <Sparkles className="h-7 w-7 text-muted-foreground/15" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-semibold text-muted-foreground/40">No posts yet</p>
+              <p className="text-xs text-muted-foreground/25">Be the first to post something!</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {posts.map((post) => (
+              <PostCard
+                key={post._id}
+                post={post}
+                currentUser={currentUser}
+                token={token}
+                onUpdated={(u) => setPosts((prev) => prev.map((p) => (p._id === u._id ? u : p)))}
+                onDeleted={(id) => setPosts((prev) => prev.filter((p) => p._id !== id))}
+              />
+            ))}
+          </div>
+        )}
+
+        <div ref={observerRef} className="h-1" />
+
+        {loadingMore && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/30" />
+          </div>
+        )}
+
+        {!hasMore && posts.length > 0 && (
+          <div className="flex items-center gap-3 py-4">
+            <div className="flex-1 h-px bg-border/20" />
+            <p className="text-[10px] text-muted-foreground/25 font-medium uppercase tracking-widest">You&apos;re all caught up</p>
+            <div className="flex-1 h-px bg-border/20" />
+          </div>
+        )}
+
+        {hasMore && !loadingMore && (
+          <Button variant="outline" className="w-full rounded-xl h-10 text-xs gap-2 border-border/30 hover:border-emerald-500/30" onClick={loadMore}>
+            <ChevronDown className="h-4 w-4" /> Load more posts
+          </Button>
+        )}
+      </main>
+    </div>
+  )
+}

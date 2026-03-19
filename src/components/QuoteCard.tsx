@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Quote } from "@/types/transportation"
 import { useState } from "react"
-import { useAlert } from "@/components/AlertDialog"
+import { useAlert, AlertDialog } from "@/components/AlertDialog"
 import { EditQuoteModal } from "./EditQuoteModal"
 
 interface QuoteCardProps {
@@ -18,7 +18,7 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
     const [isDeleting, setIsDeleting] = useState(false)
     const [isCreatingShipment, setIsCreatingShipment] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-    const { showAlert, hideAlert, AlertComponent } = useAlert()
+    const { showAlert, alert, hideAlert } = useAlert()
 
     const vehicle = quote.vehicleId
     const vehicleName = vehicle
@@ -45,19 +45,10 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                 setIsCreatingShipment(true)
                 try {
                     await onCreateShipment(quote._id)
-                    showAlert({
-                        type: "success",
-                        title: "Shipment Created",
-                        message: "The shipment has been created successfully and the quote has been moved to shipments."
-                    })
                 } catch (error) {
                     console.error('Error creating shipment:', error)
-                    showAlert({
-                        type: "error",
-                        title: "Error",
-                        message: "Failed to create shipment. Please try again."
-                    })
                     setIsCreatingShipment(false)
+                    throw error
                 }
             }
         })
@@ -74,19 +65,10 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                 setIsDeleting(true)
                 try {
                     await onDelete(quote._id)
-                    showAlert({
-                        type: "success",
-                        title: "Quote Deleted",
-                        message: "The quote has been successfully deleted."
-                    })
                 } catch (error) {
                     console.error('Error deleting quote:', error)
-                    showAlert({
-                        type: "error",
-                        title: "Error",
-                        message: "Failed to delete quote. Please try again."
-                    })
                     setIsDeleting(false)
+                    throw error
                 }
             }
         })
@@ -104,7 +86,7 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
     return (
         <>
             <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300 overflow-hidden">
-                <AlertComponent />
+                <AlertDialog {...alert} onOpenChange={hideAlert} />
                 <CardContent className="p-0">
                     <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-700">
                         {/* Left Section - Vehicle Info */}
