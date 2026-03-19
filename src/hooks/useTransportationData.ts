@@ -89,6 +89,11 @@ export function useTransportationData() {
 
     try {
       const token = await getToken();
+      if (!token) {
+        if (!silent) setIsLoading(false);
+        else setIsSilentRefreshing(false);
+        return;
+      }
       const config = {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -162,6 +167,13 @@ export function useTransportationData() {
       }
     }
   }, [extractData, transformVehicles, getToken, isSignedIn]);
+
+  // Initial fetch once auth is ready
+  React.useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn]);
 
   // Background polling every 30 seconds
   React.useEffect(() => {
@@ -316,9 +328,6 @@ export function useTransportationData() {
           ...prev,
           all: Math.max(0, prev.all - 1),
         }));
-
-
-        return true;
       } catch (error) {
         console.error("[TransportationData] Error deleting shipment:", error);
         const axiosError = error as AxiosError;

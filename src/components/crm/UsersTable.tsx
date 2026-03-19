@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, UserX, MoreVertical, Pencil, Trash2, PowerOff, Power } from "lucide-react"
+import { Loader2, UserX, MoreVertical, Pencil, Trash2, PowerOff, Power, KeyRound } from "lucide-react"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,8 +13,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { apiClient } from "@/lib/api-client"
 import { EditUserModal } from "@/components/crm/EditUserModal"
+import { ResetPasswordModal } from "@/components/crm/ResetPasswordModal"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -133,6 +145,9 @@ export function UsersTable({ token, refreshKey }: UsersTableProps) {
   const [loading, setLoading] = React.useState(true)
   const [actioningId, setActioningId] = React.useState<string | null>(null)
   const [editTarget, setEditTarget] = React.useState<CrmUserRow | null>(null)
+  const [resetTarget, setResetTarget] = React.useState<CrmUserRow | null>(null)
+  const [deleteTarget, setDeleteTarget] = React.useState<CrmUserRow | null>(null)
+  const [deleting, setDeleting] = React.useState(false)
 
   const fetchUsers = React.useCallback(() => {
     if (!token) return
@@ -166,20 +181,21 @@ export function UsersTable({ token, refreshKey }: UsersTableProps) {
     }
   }
 
-  // ── Delete ──
-  const handleDelete = async (user: CrmUserRow) => {
-    if (!confirm(`Delete ${user.fullName}? This cannot be undone.`)) return
-    setActioningId(user._id)
+  // ── Delete (confirmed via AlertDialog) ──
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      await apiClient.delete(`/api/crm/users/${user._id}`, {
+      await apiClient.delete(`/api/crm/users/${deleteTarget._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      toast.success(`${user.fullName} has been deleted.`)
+      toast.success(`${deleteTarget.fullName} has been deleted.`)
+      setDeleteTarget(null)
       fetchUsers()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to delete user.")
     } finally {
-      setActioningId(null)
+      setDeleting(false)
     }
   }
 
@@ -313,6 +329,14 @@ export function UsersTable({ token, refreshKey }: UsersTableProps) {
                         </DropdownMenuItem>
 
                         <DropdownMenuItem
+                          onClick={() => setResetTarget(u)}
+                          className="rounded-lg text-xs h-8 gap-2.5 cursor-pointer"
+                        >
+                          <KeyRound className="h-3.5 w-3.5 text-amber-500" />
+                          <span className="text-amber-600">Reset Password</span>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
                           onClick={() => handleToggleStatus(u)}
                           className="rounded-lg text-xs h-8 gap-2.5 cursor-pointer"
                         >
@@ -332,7 +356,7 @@ export function UsersTable({ token, refreshKey }: UsersTableProps) {
                         <DropdownMenuSeparator className="my-1" />
 
                         <DropdownMenuItem
-                          onClick={() => handleDelete(u)}
+                          onClick={() => setDeleteTarget(u)}
                           className="rounded-lg text-xs h-8 gap-2.5 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/5"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -372,6 +396,42 @@ export function UsersTable({ token, refreshKey }: UsersTableProps) {
           fetchUsers()
         }}
       />
+
+      {/* Reset password modal */}
+      <ResetPasswordModal
+        open={!!resetTarget}
+        onClose={() => setResetTarget(null)}
+        token={token}
+        user={resetTarget}
+        onReset={() => setResetTarget(null)}
+      />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null) }}>
+        <AlertDialogContent className="rounded-2xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm font-bold">Delete user?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground/60 leading-relaxed">
+              This will permanently delete <span className="font-semibold text-foreground">{deleteTarget?.fullName}</span>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel
+              disabled={deleting}
+              className="h-9 rounded-xl text-xs font-semibold border-border/50"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={handleDeleteConfirm}
+              className="h-9 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-500 text-white shadow-sm shadow-red-600/20 gap-2"
+            >
+              {deleting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting…</> : <><Trash2 className="h-3.5 w-3.5" /> Delete</>}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
