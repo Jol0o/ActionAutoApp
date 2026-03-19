@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react"
+import { UserCog, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,98 +24,73 @@ import { apiClient } from "@/lib/api-client"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface CreateUserForm {
+interface EditUserForm {
   fullName: string
   email: string
-  password: string
   role: string
 }
 
 interface FormErrors {
   fullName?: string
   email?: string
-  password?: string
   role?: string
 }
 
-interface CreateUserModalProps {
+interface EditUserModalProps {
   open: boolean
   onClose: () => void
   token: string
-  onCreated?: () => void
+  user: {
+    _id: string
+    fullName: string
+    email: string
+    role: string
+  } | null
+  onUpdated?: () => void
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function validate(form: CreateUserForm): FormErrors {
+function validate(form: EditUserForm): FormErrors {
   const errors: FormErrors = {}
-
-  if (!form.fullName.trim()) {
-    errors.fullName = "Full name is required."
-  }
+  if (!form.fullName.trim()) errors.fullName = "Full name is required."
   if (!form.email.trim()) {
     errors.email = "Email is required."
   } else if (!EMAIL_RE.test(form.email.trim())) {
     errors.email = "Enter a valid email address."
   }
-  if (!form.password) {
-    errors.password = "Password is required."
-  } else if (form.password.length < 8) {
-    errors.password = "Password must be at least 8 characters."
-  }
-  if (!form.role) {
-    errors.role = "Please select a role."
-  }
-
+  if (!form.role) errors.role = "Please select a role."
   return errors
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserModalProps) {
-  const [showPassword, setShowPassword] = React.useState(false)
-  const [employeeId, setEmployeeId] = React.useState("")
-  const [loadingId, setLoadingId] = React.useState(false)
+export function EditUserModal({ open, onClose, token, user, onUpdated }: EditUserModalProps) {
   const [submitting, setSubmitting] = React.useState(false)
   const [errors, setErrors] = React.useState<FormErrors>({})
-  const [form, setForm] = React.useState<CreateUserForm>({
+  const [form, setForm] = React.useState<EditUserForm>({
     fullName: "",
     email: "",
-    password: "",
     role: "",
   })
 
-  // Fetch next employee ID whenever modal opens
+  // Populate form when user changes
   React.useEffect(() => {
-    if (!open || !token) return
-
-    setLoadingId(true)
-    setEmployeeId("")
-
-    apiClient
-      .get("/api/crm/next-employee-id", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        const data = res.data?.data || res.data
-        setEmployeeId(data.employeeId ?? "")
-      })
-      .catch(() => setEmployeeId(""))
-      .finally(() => setLoadingId(false))
-  }, [open, token])
+    if (user) {
+      setForm({ fullName: user.fullName, email: user.email, role: user.role })
+      setErrors({})
+    }
+  }, [user])
 
   const handleClose = () => {
     if (submitting) return
-    setForm({ fullName: "", email: "", password: "", role: "" })
     setErrors({})
-    setShowPassword(false)
-    setEmployeeId("")
     onClose()
   }
 
-  const setField = (k: keyof CreateUserForm) =>
+  const setField = (k: keyof EditUserForm) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setForm((p) => ({ ...p, [k]: e.target.value }))
       if (errors[k]) setErrors((p) => ({ ...p, [k]: undefined }))
@@ -127,33 +102,31 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
   }
 
   const handleSubmit = async () => {
-    if (submitting) return
+    if (submitting || !user) return
 
     const fieldErrors = validate(form)
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors)
       return
     }
-    if (!employeeId) return
 
     setSubmitting(true)
     try {
-      await apiClient.post(
-        "/api/crm/users",
+      await apiClient.patch(
+        `/api/crm/users/${user._id}`,
         {
           fullName: form.fullName.trim(),
           email: form.email.trim(),
-          password: form.password,
           role: form.role,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      toast.success(`Account created — Employee ID: ${employeeId}`)
-      onCreated?.()
+      toast.success("User updated successfully")
+      onUpdated?.()
       handleClose()
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to create user. Try again."
+      const msg = err?.response?.data?.message || "Failed to update user. Try again."
       toast.error(msg)
     } finally {
       setSubmitting(false)
@@ -167,13 +140,13 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-5 border-b border-border/40 space-y-2">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-              <UserPlus className="h-4 w-4 text-emerald-500" />
+            <div className="h-9 w-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
+              <UserCog className="h-4 w-4 text-blue-500" />
             </div>
             <div>
-              <DialogTitle className="text-sm font-bold">Create New User</DialogTitle>
+              <DialogTitle className="text-sm font-bold">Edit User</DialogTitle>
               <DialogDescription className="text-[11px] text-muted-foreground/50 mt-0.5">
-                Add a new CRM user and assign their role.
+                Update account details and role.
               </DialogDescription>
             </div>
           </div>
@@ -191,78 +164,27 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
               placeholder="e.g. Juan dela Cruz"
               value={form.fullName}
               onChange={setField("fullName")}
-              className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 ${errors.fullName ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
+              className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-blue-500/30 ${errors.fullName ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
             />
             {errors.fullName && (
               <p className="text-[11px] text-red-500">{errors.fullName}</p>
             )}
           </div>
 
-          {/* Employee ID + Email row */}
-          <div className="grid grid-cols-2 gap-3">
-
-            {/* Employee ID — auto generated, read-only */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider flex items-center gap-1.5">
-                Employee ID
-                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-full normal-case tracking-normal">
-                  Auto
-                </span>
-              </Label>
-              <div className="relative">
-                <Input
-                  readOnly
-                  value={loadingId ? "" : employeeId}
-                  placeholder="Generating…"
-                  className="h-10 rounded-xl text-sm border-border/50 font-mono bg-muted/30 text-muted-foreground cursor-default select-none"
-                />
-                {loadingId && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground/40" />
-                )}
-              </div>
-            </div>
-
-            {/* Email */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
-                Email
-              </Label>
-              <Input
-                type="email"
-                placeholder="juan@actionauto.com"
-                value={form.email}
-                onChange={setField("email")}
-                className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 ${errors.email ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
-              />
-              {errors.email && (
-                <p className="text-[11px] text-red-500">{errors.email}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Password */}
+          {/* Email */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
-              Password
+              Email
             </Label>
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Min. 8 characters"
-                value={form.password}
-                onChange={setField("password")}
-                className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 pr-10 ${errors.password ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((p) => !p)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-[11px] text-red-500">{errors.password}</p>
+            <Input
+              type="email"
+              placeholder="juan@actionauto.com"
+              value={form.email}
+              onChange={setField("email")}
+              className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-blue-500/30 ${errors.email ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
+            />
+            {errors.email && (
+              <p className="text-[11px] text-red-500">{errors.email}</p>
             )}
           </div>
 
@@ -272,7 +194,7 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
               Role
             </Label>
             <Select value={form.role} onValueChange={setRole}>
-              <SelectTrigger className={`h-10 rounded-xl text-sm border-border/50 focus:ring-emerald-500/30 ${errors.role ? "border-red-400 focus:ring-red-400/30" : ""}`}>
+              <SelectTrigger className={`h-10 rounded-xl text-sm border-border/50 focus:ring-blue-500/30 ${errors.role ? "border-red-400 focus:ring-red-400/30" : ""}`}>
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
@@ -335,13 +257,13 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitting || loadingId}
-            className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md shadow-emerald-600/15 gap-2 disabled:opacity-40"
+            disabled={submitting}
+            className="flex-1 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-md shadow-blue-600/15 gap-2 disabled:opacity-40"
           >
             {submitting ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
             ) : (
-              <><UserPlus className="h-4 w-4" /> Create User</>
+              <><UserCog className="h-4 w-4" /> Save Changes</>
             )}
           </Button>
         </div>

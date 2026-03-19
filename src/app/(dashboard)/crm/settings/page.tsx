@@ -14,6 +14,7 @@ import {
   Users,
   ShieldCheck,
   ChevronRight,
+  Lock,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { apiClient } from "@/lib/api-client"
 import { CreateUserModal } from "@/components/crm/CreateUserModal"
+import { UsersTable } from "@/components/crm/UsersTable"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +55,7 @@ export default function CrmSettingsPage() {
   const [token, setToken] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(true)
   const [showCreateModal, setShowCreateModal] = React.useState(false)
+  const [createdCount, setCreatedCount] = React.useState(0)
 
   React.useEffect(() => {
     const check = async () => {
@@ -80,6 +83,12 @@ export default function CrmSettingsPage() {
     localStorage.removeItem("crm_user")
     router.push("/")
   }
+
+  const handleUserCreated = () => {
+    setCreatedCount((c) => c + 1)
+  }
+
+  const isAdmin = user?.role === "admin"
 
   if (isLoading) {
     return (
@@ -231,33 +240,34 @@ export default function CrmSettingsPage() {
                     <p className="text-[11px] text-muted-foreground/40 mt-0.5">Create and manage CRM user accounts</p>
                   </div>
                 </div>
-                <Button
-                  onClick={() => setShowCreateModal(true)}
-                  className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs gap-2 shadow-sm shadow-emerald-600/20"
-                >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  Create User
-                </Button>
+
+                {/* Only admins can create users */}
+                {isAdmin && (
+                  <Button
+                    onClick={() => setShowCreateModal(true)}
+                    className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs gap-2 shadow-sm shadow-emerald-600/20"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Create User
+                  </Button>
+                )}
               </div>
 
-              {/* Empty state — user list will load here on Monday */}
-              <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                <div className="h-16 w-16 rounded-2xl border-2 border-dashed border-border/25 flex items-center justify-center mb-4">
-                  <Users className="h-7 w-7 text-muted-foreground/15" />
+              {/* Body */}
+              {isAdmin ? (
+                <UsersTable token={token} refreshKey={createdCount} />
+              ) : (
+                /* Non-admin — restricted view */
+                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                  <div className="h-16 w-16 rounded-2xl bg-muted/30 flex items-center justify-center mb-4">
+                    <Lock className="h-6 w-6 text-muted-foreground/20" />
+                  </div>
+                  <p className="text-sm font-semibold text-muted-foreground/40">Restricted</p>
+                  <p className="text-xs text-muted-foreground/25 mt-1 max-w-xs">
+                    User management is only available to admins. Contact your administrator if you need access.
+                  </p>
                 </div>
-                <p className="text-sm font-semibold text-muted-foreground/40">No users yet</p>
-                <p className="text-xs text-muted-foreground/25 mt-1 max-w-xs">
-                  Create your first CRM user by clicking the button above.
-                </p>
-                <Button
-                  onClick={() => setShowCreateModal(true)}
-                  variant="outline"
-                  className="mt-5 h-9 rounded-xl text-xs font-semibold border-dashed border-border/40 gap-2 hover:border-emerald-500/30 hover:text-emerald-600 hover:bg-emerald-500/5 transition-all"
-                >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  Create First User
-                </Button>
-              </div>
+              )}
             </div>
 
             {/* Admin-only notice */}
@@ -278,10 +288,14 @@ export default function CrmSettingsPage() {
       </main>
 
       {/* ── Modals ── */}
-      <CreateUserModal
-        open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
+      {isAdmin && (
+        <CreateUserModal
+          open={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          token={token}
+          onCreated={handleUserCreated}
+        />
+      )}
     </div>
   )
 }

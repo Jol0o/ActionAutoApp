@@ -85,7 +85,7 @@ const data = {
       icon: ClipboardList,
     },
     {
-      title: "Billing",
+      title: "SupraPay",
       url: "/billing",
       icon: CreditCard,
     },

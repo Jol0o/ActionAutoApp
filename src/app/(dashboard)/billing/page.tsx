@@ -7,365 +7,375 @@ import { Payment, PaymentStats, CreatePaymentData } from "@/types/billing";
 import { DriverPayout, DeliverableShipment, DriverPayoutStats } from "@/types/driver-payout";
 import { formatCurrency } from "@/utils/format";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  CheckCircle2,
-  Loader2,
-  Receipt,
-  Send,
-  Users,
-} from "lucide-react";
+import { CheckCircle2, Loader2, Receipt, Send, Users } from "lucide-react";
 
 import { StatusBadge } from "@/components/billing/StatusBadges";
+import { BalanceCard } from "@/components/billing/BalanceCard";
+import { ReceiveModal } from "@/components/billing/ReceiveModal";
+import { SendModal } from "@/components/billing/SendModal";
 import { PaymentsTab } from "@/components/billing/PaymentsTab";
 import { DriverPayoutsTab } from "@/components/billing/DriverPayoutsTab";
 
+const DISPLAY = "'Rajdhani', var(--font-sans), sans-serif";
+const MONO    = "'Share Tech Mono', 'Roboto Mono', monospace";
+const ORANGE  = "#E55A00";
+const PAGE_BG = "#0a0a0c";
+
 export default function BillingPage() {
-  const { getToken } = useAuth();
+ const { getToken, userId: authUserId } = useAuth();
 
-  // ── Payments state ──────────────────────────────────────────────
-  const [payments, setPayments] = React.useState<Payment[]>([]);
+  const [balance,     setBalance]     = React.useState<number | null>(null);
+  const [activeModal, setActiveModal] = React.useState<"receive" | "send" | null>(null);
+
+  const [payments,        setPayments]        = React.useState<Payment[]>([]);
   const [pendingPayments, setPendingPayments] = React.useState<Payment[]>([]);
-  const [stats, setStats] = React.useState<PaymentStats | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [stats,           setStats]           = React.useState<PaymentStats | null>(null);
+  const [isLoading,       setIsLoading]       = React.useState(true);
+  const [search,          setSearch]          = React.useState("");
+  const [statusFilter,    setStatusFilter]    = React.useState("all");
 
-  // ── Create payment dialog state ─────────────────────────────────
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
-  const [createForm, setCreateForm] = React.useState<CreatePaymentData>({
-    customerName: "",
-    customerEmail: "",
-    customerPhone: "",
-    amount: 0,
-    description: "",
-    dueDate: "",
-    notes: "",
+  const [createForm,       setCreateForm]       = React.useState<CreatePaymentData>({
+    customerName: "", customerEmail: "", customerPhone: "",
+    amount: 0, description: "", dueDate: "", notes: "",
   });
   const [isCreating, setIsCreating] = React.useState(false);
-
-  // ── Payment detail modal state ──────────────────────────────────
   const [paymentDetailView, setPaymentDetailView] = React.useState<Payment | null>(null);
-
-  // ── Request payment inline feedback ────────────────────────────
   const [requestingPaymentId, setRequestingPaymentId] = React.useState<string | null>(null);
-  const [requestFeedback, setRequestFeedback] = React.useState<{ id: string; ok: boolean; msg: string } | null>(null);
+  const [requestFeedback,     setRequestFeedback]     = React.useState<{ id: string; ok: boolean; msg: string } | null>(null);
 
-  // ── Tab + driver payout state ───────────────────────────────────
-  const [billingTab, setBillingTab] = React.useState<"payments" | "driver-payouts">("payments");
+  const [billingTab,           setBillingTab]           = React.useState<"payments" | "driver-payouts" | "awaiting-payment">("payments");
   const [deliverableShipments, setDeliverableShipments] = React.useState<DeliverableShipment[]>([]);
-  const [payouts, setPayouts] = React.useState<DriverPayout[]>([]);
-  const [payoutStats, setPayoutStats] = React.useState<DriverPayoutStats | null>(null);
-  const [payoutsLoading, setPayoutsLoading] = React.useState(false);
-  const [createPayoutTarget, setCreatePayoutTarget] = React.useState<DeliverableShipment | null>(null);
-  const [createPayoutAmount, setCreatePayoutAmount] = React.useState<number>(0);
-  const [createPayoutNotes, setCreatePayoutNotes] = React.useState("");
-  const [isCreatingPayout, setIsCreatingPayout] = React.useState(false);
-  const [payoutError, setPayoutError] = React.useState<string | null>(null);
-  const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
+  const [payouts,              setPayouts]              = React.useState<DriverPayout[]>([]);
+  const [payoutStats,          setPayoutStats]          = React.useState<DriverPayoutStats | null>(null);
+  const [payoutsLoading,       setPayoutsLoading]       = React.useState(false);
+  const [createPayoutTarget,   setCreatePayoutTarget]   = React.useState<DeliverableShipment | null>(null);
+  const [createPayoutAmount,   setCreatePayoutAmount]   = React.useState<number>(0);
+  const [createPayoutNotes,    setCreatePayoutNotes]    = React.useState("");
+  const [isCreatingPayout,     setIsCreatingPayout]     = React.useState(false);
+  const [payoutError,          setPayoutError]          = React.useState<string | null>(null);
+  const [confirmingId,         setConfirmingId]         = React.useState<string | null>(null);
 
-  // ── Helpers ─────────────────────────────────────────────────────
   const authHeaders = async () => {
     const token = await getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // ── Fetch payments ───────────────────────────────────────────────
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     try {
       const headers = await authHeaders();
-      const [paymentsRes, pendingRes, statsRes] = await Promise.all([
-        apiClient.get("/api/payments", {
-          headers,
-          params: { status: statusFilter !== "all" ? statusFilter : undefined, search: search || undefined },
-        }),
+      const [paymentsRes, pendingRes, statsRes, balanceRes] = await Promise.allSettled([
+        apiClient.get("/api/payments", { headers, params: { status: statusFilter !== "all" ? statusFilter : undefined, search: search || undefined } }),
         apiClient.get("/api/payments/pending", { headers }),
-        apiClient.get("/api/payments/stats", { headers }),
+        apiClient.get("/api/payments/stats",   { headers }),
+        apiClient.get("/api/billing/balance",  { headers }),
       ]);
-      setPayments(paymentsRes.data.data.payments || []);
-      setPendingPayments(pendingRes.data.data || []);
-      setStats(statsRes.data.data || null);
-    } catch (err) {
-      console.error("[Billing] Error fetching data:", err);
-    } finally {
-      setIsLoading(false);
-    }
+      if (paymentsRes.status === "fulfilled") setPayments(paymentsRes.value.data.data.payments || []);
+      if (pendingRes.status  === "fulfilled") setPendingPayments(pendingRes.value.data.data || []);
+      if (statsRes.status    === "fulfilled") setStats(statsRes.value.data.data || null);
+      if (balanceRes.status  === "fulfilled") setBalance(balanceRes.value.data.data?.balance ?? null);
+    } catch (err) { console.error("[Billing] fetchData:", err); }
+    finally { setIsLoading(false); }
   }, [statusFilter, search]);
 
   React.useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Handle ?tab= URL param on mount
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("tab") === "driver-payouts") {
-      setBillingTab("driver-payouts");
-      window.history.replaceState({}, "", "/billing");
-    }
+    if (params.get("tab") === "driver-payouts") { setBillingTab("driver-payouts"); window.history.replaceState({}, "", "/billing"); }
   }, []);
 
-  // ── Payment handlers ─────────────────────────────────────────────
   const handleCreatePayment = async () => {
     if (!createForm.customerName || !createForm.customerEmail || !createForm.amount || !createForm.description) return;
     setIsCreating(true);
     try {
-      const headers = await authHeaders();
-      await apiClient.post("/api/payments", createForm, { headers });
+      await apiClient.post("/api/payments", createForm, { headers: await authHeaders() });
       setShowCreateDialog(false);
       setCreateForm({ customerName: "", customerEmail: "", customerPhone: "", amount: 0, description: "", dueDate: "", notes: "" });
       fetchData();
-    } catch (err) {
-      console.error("[Billing] Error creating payment:", err);
-    } finally {
-      setIsCreating(false);
-    }
+    } catch (err) { console.error("[Billing] createPayment:", err); }
+    finally { setIsCreating(false); }
   };
 
   const handleRequestPayment = async (payment: Payment) => {
-    setRequestingPaymentId(payment._id);
-    setRequestFeedback(null);
+    setRequestingPaymentId(payment._id); setRequestFeedback(null);
     try {
-      const headers = await authHeaders();
-      await apiClient.post(`/api/payments/${payment._id}/request`, {}, { headers });
-      setRequestFeedback({ id: payment._id, ok: true, msg: "Payment request sent to customer." });
+      await apiClient.post(`/api/payments/${payment._id}/request`, {}, { headers: await authHeaders() });
+      setRequestFeedback({ id: payment._id, ok: true, msg: "Payment request sent." });
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Failed to send payment request.";
-      setRequestFeedback({ id: payment._id, ok: false, msg });
+      setRequestFeedback({ id: payment._id, ok: false, msg: err.response?.data?.message || "Failed." });
     } finally {
       setRequestingPaymentId(null);
-      // Auto-clear feedback after 4s
       setTimeout(() => setRequestFeedback(null), 4000);
     }
   };
 
-  const handleCancelPayment = async (paymentId: string) => {
-    try {
-      const headers = await authHeaders();
-      await apiClient.post(`/api/payments/${paymentId}/cancel`, {}, { headers });
-      fetchData();
-    } catch (err) {
-      console.error("[Billing] Cancel error:", err);
-    }
+  const handleCancelPayment = async (id: string) => {
+    try { await apiClient.post(`/api/payments/${id}/cancel`, {}, { headers: await authHeaders() }); fetchData(); }
+    catch (err) { console.error("[Billing] cancel:", err); }
   };
 
-  const handleUpdateStatus = async (paymentId: string, status: Payment["status"]) => {
-    try {
-      const headers = await authHeaders();
-      await apiClient.patch(`/api/payments/${paymentId}`, { status }, { headers });
-      fetchData();
-    } catch (err) {
-      console.error("[Billing] Update status error:", err);
-    }
+  const handleUpdateStatus = async (id: string, status: Payment["status"]) => {
+    try { await apiClient.patch(`/api/payments/${id}`, { status }, { headers: await authHeaders() }); fetchData(); }
+    catch (err) { console.error("[Billing] updateStatus:", err); }
   };
 
-  // ── Driver payout handlers ───────────────────────────────────────
   const fetchPayoutData = React.useCallback(async () => {
     setPayoutsLoading(true);
     try {
       const headers = await authHeaders();
-      const [deliverableRes, payoutsRes, statsRes] = await Promise.all([
+      const [dRes, pRes, sRes] = await Promise.all([
         apiClient.get("/api/driver-payouts/deliverable", { headers }),
-        apiClient.get("/api/driver-payouts", { headers }),
-        apiClient.get("/api/driver-payouts/stats", { headers }),
+        apiClient.get("/api/driver-payouts",             { headers }),
+        apiClient.get("/api/driver-payouts/stats",       { headers }),
       ]);
-      setDeliverableShipments(deliverableRes.data.data || []);
-      setPayouts(payoutsRes.data.data || []);
-      setPayoutStats(statsRes.data.data || null);
-    } catch (err) {
-      console.error("[Billing] Error fetching payout data:", err);
-    } finally {
-      setPayoutsLoading(false);
-    }
+      setDeliverableShipments(dRes.data.data || []);
+      setPayouts(pRes.data.data || []);
+      setPayoutStats(sRes.data.data || null);
+    } catch (err) { console.error("[Billing] fetchPayouts:", err); }
+    finally { setPayoutsLoading(false); }
   }, []);
 
-  React.useEffect(() => {
-    if (billingTab === "driver-payouts") fetchPayoutData();
-  }, [billingTab, fetchPayoutData]);
+  React.useEffect(() => { if (billingTab === "driver-payouts") fetchPayoutData(); }, [billingTab, fetchPayoutData]);
 
   const handleCreatePayout = async () => {
     if (!createPayoutTarget || createPayoutAmount <= 0) return;
-    setIsCreatingPayout(true);
-    setPayoutError(null);
+    setIsCreatingPayout(true); setPayoutError(null);
     try {
-      const headers = await authHeaders();
       await apiClient.post("/api/driver-payouts", {
-        shipmentId: createPayoutTarget._id,
-        driverId: createPayoutTarget.assignedDriverId._id,
-        amount: createPayoutAmount,
-        notes: createPayoutNotes,
-      }, { headers });
-      setCreatePayoutTarget(null);
-      setCreatePayoutAmount(0);
-      setCreatePayoutNotes("");
+        shipmentId: createPayoutTarget._id, driverId: createPayoutTarget.assignedDriverId._id,
+        amount: createPayoutAmount, notes: createPayoutNotes,
+      }, { headers: await authHeaders() });
+      setCreatePayoutTarget(null); setCreatePayoutAmount(0); setCreatePayoutNotes("");
       fetchPayoutData();
-    } catch (err: any) {
-      setPayoutError(err.response?.data?.message || "Failed to send payout");
-    } finally {
-      setIsCreatingPayout(false);
-    }
+    } catch (err: any) { setPayoutError(err.response?.data?.message || "Failed to send payout"); }
+    finally { setIsCreatingPayout(false); }
   };
 
-  const handleConfirmDelivery = async (shipmentId: string) => {
-    setConfirmingId(shipmentId);
-    try {
-      const headers = await authHeaders();
-      await apiClient.post(`/api/shipments/${shipmentId}/confirm-delivery`, {}, { headers });
-      fetchPayoutData();
-    } catch (err) {
-      console.error("[Billing] Confirm delivery error:", err);
-    } finally {
-      setConfirmingId(null);
-    }
+  const handleConfirmDelivery = async (id: string) => {
+    setConfirmingId(id);
+    try { await apiClient.post(`/api/shipments/${id}/confirm-delivery`, {}, { headers: await authHeaders() }); fetchPayoutData(); }
+    catch (err) { console.error("[Billing] confirmDelivery:", err); }
+    finally { setConfirmingId(null); }
   };
 
-  // ── Render ───────────────────────────────────────────────────────
+  const displayBalance = balance ?? stats?.totalRevenue ?? 0;
+  const userId   = authUserId ?? "USR-0000";
+  const userName = "Account";
+
+  const tabs = [
+    { key: "payments"         as const, Icon: Receipt, label: "Payments" },
+    { key: "driver-payouts"   as const, Icon: Users,   label: "Driver Payouts" },
+    { key: "awaiting-payment" as const, Icon: Send,    label: "Awaiting Payment", badge: pendingPayments.length },
+  ];
+
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] overflow-hidden">
-      {/* ── Left sidebar: Pending Payments (status display) ── */}
-      <aside className="w-full lg:w-80 xl:w-96 border-b lg:border-b-0 lg:border-r border-border bg-muted/30 overflow-y-auto shrink-0">
-        <div className="p-4 border-b border-border bg-background/80 backdrop-blur sticky top-0 z-10">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Receipt className="size-5 text-primary" />
-              <h2 className="font-semibold text-foreground">Awaiting Payment</h2>
-            </div>
-            <Badge variant="secondary" className="font-mono">{pendingPayments.length}</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">Customers who have pending or failed payments.</p>
-        </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
+        @keyframes supraSheen { 0%,62%{left:-110%} 100%{left:230%} }
+        @keyframes supraSpin  { to{transform:rotate(360deg)} }
+      `}</style>
 
-        <div className="p-3 space-y-2">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
-            ))
-          ) : pendingPayments.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <CheckCircle2 className="size-10 mx-auto mb-3 text-emerald-500" />
-              <p className="font-medium">All caught up!</p>
-              <p className="text-xs mt-1">No pending payments.</p>
+      <div className="dark" style={{ background: PAGE_BG, minHeight: "100%", fontFamily: DISPLAY }}>
+        <div style={{ maxWidth: "100%", padding: "20px 20px 40px", overflowY: "auto" }}>
+          <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
+
+            {/* Header */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ height: 3, width: 20, background: ORANGE, borderRadius: 1 }} />
+                  <div style={{ height: 3, width: 12, background: "rgba(229,90,0,0.50)", borderRadius: 1 }} />
+                </div>
+                <h1 style={{ fontFamily: DISPLAY, fontSize: 28, fontWeight: 700, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1 }}>
+                  SupraPay
+                </h1>
+              </div>
+              <p style={{ fontFamily: DISPLAY, fontSize: 12, color: "rgba(255,255,255,0.28)", letterSpacing: "0.05em", paddingLeft: 28 }}>
+                Manage payments and driver payouts
+              </p>
             </div>
-          ) : (
-            pendingPayments.map((p) => (
-              <div
-                key={p._id}
-                className="w-full text-left p-3 rounded-lg border border-border bg-background space-y-2"
-              >
-                <div className="flex justify-between items-start">
-                  <span className="font-medium text-sm text-foreground truncate max-w-[60%]">{p.customerName}</span>
-                  <span className="font-bold text-sm text-foreground">{formatCurrency(p.amount)}</span>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{p.description}</p>
-                <div className="flex items-center justify-between">
-                  <StatusBadge status={p.status} />
-                  {p.dueDate && (
-                    <span className="text-[10px] text-muted-foreground">
-                      Due {new Date(p.dueDate).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-                {/* Request Payment button */}
-                {requestFeedback?.id === p._id ? (
-                  <p className={`text-xs font-medium ${requestFeedback.ok ? "text-emerald-600" : "text-destructive"}`}>
-                    {requestFeedback.msg}
-                  </p>
+
+            {/* Balance card */}
+            <BalanceCard
+              balance={displayBalance} userId={userId} userName={userName}
+              isLoading={isLoading} stats={stats}
+              onReceive={() => setActiveModal("receive")}
+              onSend={() => setActiveModal("send")}
+            />
+
+            {/* Tab switcher */}
+            <div>
+              <div style={{ display: "inline-flex", flexWrap: "wrap", gap: 3, padding: 4, background: "#111116", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10 }}>
+                {tabs.map(({ key, Icon, label, badge }) => {
+                  const active = billingTab === key;
+                  return (
+                    <button key={key} onClick={() => setBillingTab(key)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 7,
+                        padding: "8px 16px", borderRadius: 7, border: "none",
+                        background: active ? ORANGE : "transparent",
+                        color: active ? "white" : "rgba(255,255,255,0.38)",
+                        fontFamily: DISPLAY, fontSize: 13, fontWeight: 600,
+                        letterSpacing: "0.02em", cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap",
+                      }}
+                      onMouseEnter={e => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.72)"; }}
+                      onMouseLeave={e => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.38)"; }}
+                    >
+                      <Icon style={{ width: 14, height: 14 }} />
+                      {label}
+                      {badge !== undefined && badge > 0 && (
+                        <span style={{
+                          fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                          background: active ? "rgba(0,0,0,0.20)" : "rgba(229,90,0,0.18)",
+                          color:      active ? "rgba(255,255,255,0.90)" : ORANGE,
+                          borderRadius: 10, padding: "1px 7px", marginLeft: 2,
+                        }}>
+                          {badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Payments tab */}
+            {billingTab === "payments" && (
+              <PaymentsTab
+                payments={payments} stats={stats} isLoading={isLoading}
+                search={search} statusFilter={statusFilter}
+                showCreateDialog={showCreateDialog} createForm={createForm} isCreating={isCreating}
+                paymentDetailView={paymentDetailView}
+                onSearch={setSearch} onStatusFilter={setStatusFilter} onRefresh={fetchData}
+                onShowCreateDialog={setShowCreateDialog} onCreateFormChange={setCreateForm}
+                onCreatePayment={handleCreatePayment} onRequestPayment={handleRequestPayment}
+                onCancelPayment={handleCancelPayment} onUpdateStatus={handleUpdateStatus}
+                onViewDetail={setPaymentDetailView}
+              />
+            )}
+
+            {/* Driver payouts tab */}
+            {billingTab === "driver-payouts" && (
+              <DriverPayoutsTab
+                deliverableShipments={deliverableShipments} payouts={payouts}
+                payoutStats={payoutStats} payoutsLoading={payoutsLoading}
+                confirmingId={confirmingId} createPayoutTarget={createPayoutTarget}
+                createPayoutAmount={createPayoutAmount} createPayoutNotes={createPayoutNotes}
+                payoutError={payoutError} isCreatingPayout={isCreatingPayout}
+                onRefresh={fetchPayoutData} onConfirmDelivery={handleConfirmDelivery}
+                onSetPayoutTarget={setCreatePayoutTarget} onPayoutAmountChange={setCreatePayoutAmount}
+                onPayoutNotesChange={setCreatePayoutNotes}
+                onPayoutClose={() => { setCreatePayoutTarget(null); setPayoutError(null); }}
+                onCreatePayout={handleCreatePayout}
+              />
+            )}
+
+            {/* Awaiting payment tab */}
+            {billingTab === "awaiting-payment" && (
+              <div>
+                <p style={{ fontFamily: DISPLAY, fontSize: 13, color: "rgba(255,255,255,0.35)", marginBottom: 16 }}>
+                  Customers with outstanding invoices that have not yet been paid.
+                </p>
+                {isLoading ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} style={{ height: 140, background: "rgba(255,255,255,0.05)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)" }} />
+                    ))}
+                  </div>
+                ) : pendingPayments.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "4rem 2rem" }}>
+                    <CheckCircle2 style={{ width: 36, height: 36, color: "#6EE7B7", display: "block", margin: "0 auto 12px" }} />
+                    <p style={{ fontFamily: DISPLAY, fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.70)", marginBottom: 5 }}>All caught up!</p>
+                    <p style={{ fontFamily: DISPLAY, fontSize: 13, color: "rgba(255,255,255,0.30)" }}>No pending payments at the moment.</p>
+                  </div>
                 ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full h-7 text-xs"
-                    disabled={requestingPaymentId === p._id}
-                    onClick={() => handleRequestPayment(p)}
-                  >
-                    {requestingPaymentId === p._id
-                      ? <Loader2 className="size-3 mr-1.5 animate-spin" />
-                      : <Send className="size-3 mr-1.5" />
-                    }
-                    Request Payment
-                  </Button>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+                    {pendingPayments.map(p => (
+                      <AwaitingCard
+                        key={p._id} payment={p}
+                        isRequesting={requestingPaymentId === p._id}
+                        feedback={requestFeedback?.id === p._id ? requestFeedback : null}
+                        onRequest={() => handleRequestPayment(p)}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
-            ))
-          )}
-        </div>
-      </aside>
+            )}
 
-      {/* ── Main content area ── */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-4 sm:p-6 space-y-6">
-          {/* Header + tab switcher */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Billing</h1>
-              <p className="text-sm text-muted-foreground">Manage payments and driver payouts.</p>
-              <div className="flex items-center gap-1 mt-3 p-1 bg-muted rounded-lg w-fit">
-                <button
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${billingTab === "payments" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                  onClick={() => setBillingTab("payments")}
-                >
-                  Payments
-                </button>
-                <button
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${billingTab === "driver-payouts" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                  onClick={() => setBillingTab("driver-payouts")}
-                >
-                  <Users className="size-3.5" />
-                  Driver Payouts
-                </button>
-              </div>
-            </div>
           </div>
-
-          {/* Payments tab */}
-          {billingTab === "payments" && (
-            <PaymentsTab
-              payments={payments}
-              stats={stats}
-              isLoading={isLoading}
-              search={search}
-              statusFilter={statusFilter}
-              showCreateDialog={showCreateDialog}
-              createForm={createForm}
-              isCreating={isCreating}
-              paymentDetailView={paymentDetailView}
-              onSearch={setSearch}
-              onStatusFilter={setStatusFilter}
-              onRefresh={fetchData}
-              onShowCreateDialog={setShowCreateDialog}
-              onCreateFormChange={setCreateForm}
-              onCreatePayment={handleCreatePayment}
-              onRequestPayment={handleRequestPayment}
-              onCancelPayment={handleCancelPayment}
-              onUpdateStatus={handleUpdateStatus}
-              onViewDetail={setPaymentDetailView}
-            />
-          )}
-
-          {/* Driver Payouts tab */}
-          {billingTab === "driver-payouts" && (
-            <DriverPayoutsTab
-              deliverableShipments={deliverableShipments}
-              payouts={payouts}
-              payoutStats={payoutStats}
-              payoutsLoading={payoutsLoading}
-              confirmingId={confirmingId}
-              createPayoutTarget={createPayoutTarget}
-              createPayoutAmount={createPayoutAmount}
-              createPayoutNotes={createPayoutNotes}
-              payoutError={payoutError}
-              isCreatingPayout={isCreatingPayout}
-              onRefresh={fetchPayoutData}
-              onConfirmDelivery={handleConfirmDelivery}
-              onSetPayoutTarget={setCreatePayoutTarget}
-              onPayoutAmountChange={setCreatePayoutAmount}
-              onPayoutNotesChange={setCreatePayoutNotes}
-              onPayoutClose={() => { setCreatePayoutTarget(null); setPayoutError(null); }}
-              onCreatePayout={handleCreatePayout}
-            />
-          )}
         </div>
-      </main>
+      </div>
+
+      <ReceiveModal open={activeModal === "receive"} userId={userId} userName={userName} onClose={() => setActiveModal(null)} />
+      <SendModal open={activeModal === "send"} onClose={() => setActiveModal(null)} onSuccess={fetchData} getToken={getToken} />
+    </>
+  );
+}
+
+function AwaitingCard({ payment, isRequesting, feedback, onRequest }: {
+  payment: Payment; isRequesting: boolean;
+  feedback: { ok: boolean; msg: string } | null; onRequest: () => void;
+}) {
+  const [hover,    setHover]    = React.useState(false);
+  const [btnHover, setBtnHover] = React.useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        position: "relative", overflow: "hidden",
+        background: hover ? "#111116" : "rgba(255,255,255,0.04)",
+        border: `1px solid ${hover ? "rgba(229,90,0,0.22)" : "rgba(255,255,255,0.08)"}`,
+        borderRadius: 12, padding: "14px 14px 14px 18px",
+        transition: "all 0.15s", display: "flex", flexDirection: "column", gap: 10,
+      }}
+    >
+      <div aria-hidden style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: ORANGE, borderRadius: "4px 0 0 4px" }} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <p style={{ fontFamily: DISPLAY, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.85)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>
+          {payment.customerName}
+        </p>
+        <p style={{ fontFamily: DISPLAY, fontSize: 15, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", flexShrink: 0 }}>
+          {formatCurrency(payment.amount)}
+        </p>
+      </div>
+      <p style={{ fontFamily: DISPLAY, fontSize: 12, color: "rgba(255,255,255,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {payment.description}
+      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <StatusBadge status={payment.status} />
+        {payment.dueDate && (
+          <span style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.28)" }}>
+            Due {new Date(payment.dueDate).toLocaleDateString()}
+          </span>
+        )}
+      </div>
+      {feedback ? (
+        <p style={{ fontFamily: DISPLAY, fontSize: 12, fontWeight: 600, color: feedback.ok ? "#6EE7B7" : "#FCA5A5" }}>
+          {feedback.msg}
+        </p>
+      ) : (
+        <button onClick={onRequest} disabled={isRequesting}
+          onMouseEnter={() => setBtnHover(true)} onMouseLeave={() => setBtnHover(false)}
+          style={{
+            position: "relative", overflow: "hidden",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            width: "100%", padding: "8px 12px", borderRadius: 7,
+            background: btnHover && !isRequesting ? "#cf4f00" : ORANGE,
+            border: "none", color: "white", cursor: isRequesting ? "not-allowed" : "pointer",
+            fontFamily: DISPLAY, fontSize: 13, fontWeight: 600, letterSpacing: "0.03em",
+            opacity: isRequesting ? 0.65 : 1, transition: "background 0.14s",
+          }}
+        >
+          {isRequesting
+            ? <Loader2 style={{ width: 13, height: 13, animation: "supraSpin 1s linear infinite" }} />
+            : <Send style={{ width: 12, height: 12 }} />
+          }
+          Request Payment
+        </button>
+      )}
     </div>
   );
 }
