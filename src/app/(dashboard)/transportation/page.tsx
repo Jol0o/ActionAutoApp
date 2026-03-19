@@ -49,10 +49,7 @@ export default function TransportationPage() {
         handleUpdateShipment
     } = useTransportationData()
 
-    React.useEffect(() => {
-        fetchData()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    // Initial fetch is handled inside useTransportationData when auth is ready
 
     // Update "X seconds ago" every second
     React.useEffect(() => {
