@@ -63,16 +63,16 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
 }) => {
     return (
         <Card className="p-0 shadow-xl border border-green-100 dark:border-green-900 overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 animate-gradient"></div>
-            <CardHeader className="py-4 bg-gradient-to-br from-green-50 to-emerald-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-green-100 dark:border-green-900">
-                <div className="flex items-center justify-between">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-cyan-500 to-teal-500 animate-gradient"></div>
+            <CardHeader className="py-3 sm:py-4 bg-linear-to-br from-green-50 to-emerald-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-green-100 dark:border-green-900">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3 animate-slide-in-left">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg hover:scale-110 transition-transform animate-bounce-in">
-                            <UserCog className="size-6 text-white" />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-linear-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                            <UserCog className="size-5 sm:size-6 text-white" />
                         </div>
                         <div>
-                            <CardTitle className="text-xl">Personal Information</CardTitle>
-                            <CardDescription>Manage your personal details</CardDescription>
+                            <CardTitle className="text-lg sm:text-xl">Personal Information</CardTitle>
+                            <CardDescription className="text-xs sm:text-sm">Manage your personal details</CardDescription>
                         </div>
                     </div>
                     {!editingPersonalInfo ? (
@@ -90,8 +90,8 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
+            <CardContent className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 animate-fade-in-up">
                     <div className="md:col-span-2 space-y-3 animate-slide-up stagger-1">
                         <Label htmlFor="bio" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
                             <Edit3 className="size-4 text-emerald-600" />Bio / Description
@@ -102,7 +102,7 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
                             onChange={(e) => handleBioChange(e.target.value)}
                             disabled={!editingPersonalInfo}
                             placeholder="Tell us about yourself..."
-                            className="min-h-[120px] p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors duration-200 focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium resize-none"
+                            className="min-h-30 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors duration-200 focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium resize-none"
                             maxLength={500}
                         />
                         <div className="flex justify-between items-center">
@@ -121,7 +121,7 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
                         </Label>
                         <div className="flex gap-2">
                             <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode} disabled={!editingPersonalInfo}>
-                                <SelectTrigger className="w-[140px] rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors hover:border-gray-300">
+                                <SelectTrigger className="w-35 rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors hover:border-gray-300">
                                     <SelectValue placeholder="Code" />
                                 </SelectTrigger>
                                 <SelectContent>

@@ -12,12 +12,12 @@ export const SettingsTab: React.FC = () => {
     const { theme, toggleTheme } = useTheme();
 
     return (
-        <div className="max-w-2xl space-y-6 animate-fade-in-up">
+        <div className="max-w-2xl space-y-4 sm:space-y-6 animate-fade-in-up">
             <Card className="shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-500 to-gray-600"></div>
-                <CardHeader className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-slate-500 to-gray-600"></div>
+                <CardHeader className="bg-linear-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-600 to-gray-700 flex items-center justify-center shadow-lg">
+                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-slate-600 to-gray-700 flex items-center justify-center shadow-lg">
                             {theme === 'dark' ? (
                                 <Moon className="size-6 text-white" />
                             ) : (
@@ -52,24 +52,30 @@ export const SettingsTab: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 mt-6">
-                            <div className={cn(
-                                "p-4 rounded-xl border-2 transition-all text-center cursor-pointer",
-                                theme === 'light'
-                                    ? "border-amber-400 bg-amber-50 dark:bg-amber-900/30"
-                                    : "border-gray-300 dark:border-gray-600"
-                            )}>
+                            <button
+                                onClick={() => { if (theme === 'dark') toggleTheme(); }}
+                                className={cn(
+                                    "p-4 rounded-xl border-2 transition-all text-center cursor-pointer",
+                                    theme === 'light'
+                                        ? "border-amber-400 bg-amber-50 dark:bg-amber-900/30"
+                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                )}
+                            >
                                 <Sun className="size-8 mx-auto mb-2 text-amber-500" />
-                                <p className="font-semibold text-sm">Light</p>
-                            </div>
-                            <div className={cn(
-                                "p-4 rounded-xl border-2 transition-all text-center cursor-pointer",
-                                theme === 'dark'
-                                    ? "border-blue-400 bg-blue-50 dark:bg-blue-900/30"
-                                    : "border-gray-300 dark:border-gray-600"
-                            )}>
+                                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">Light</p>
+                            </button>
+                            <button
+                                onClick={() => { if (theme === 'light') toggleTheme(); }}
+                                className={cn(
+                                    "p-4 rounded-xl border-2 transition-all text-center cursor-pointer",
+                                    theme === 'dark'
+                                        ? "border-blue-400 bg-blue-900/30"
+                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                )}
+                            >
                                 <Moon className="size-8 mx-auto mb-2 text-blue-500" />
-                                <p className="font-semibold text-sm">Dark</p>
-                            </div>
+                                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">Dark</p>
+                            </button>
                         </div>
 
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
@@ -80,7 +86,7 @@ export const SettingsTab: React.FC = () => {
             </Card>
 
             <Card className="shadow-lg border border-gray-200 dark:border-gray-800">
-                <CardHeader className="bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <CardHeader className="bg-linear-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
                     <CardTitle className="text-lg">Accessibility</CardTitle>
                     <CardDescription>Accessibility settings coming soon</CardDescription>
                 </CardHeader>

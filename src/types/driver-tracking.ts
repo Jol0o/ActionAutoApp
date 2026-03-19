@@ -1,8 +1,9 @@
-export type DriverStatus = "on-route" | "idle" | "offline";
+export type DriverStatus = "on-route" | "idle" | "on-break" | "waiting" | "offline";
 
 export interface DriverTrackingItem {
   id: string;
   status: DriverStatus;
+  organizationId?: string;
   coords: {
     lat: number;
     lng: number;

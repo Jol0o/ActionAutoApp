@@ -186,7 +186,7 @@ export const ProfileDialogs: React.FC<ProfileDialogsProps> = ({
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <LogOut className="size-5 text-gray-600" />Log Out?
+                            <LogOut className="size-5 text-gray-600 dark:text-gray-400" />Log Out?
                         </DialogTitle>
                         <DialogDescription>Are you sure you want to log out of your account?</DialogDescription>
                     </DialogHeader>
@@ -236,7 +236,7 @@ export const ProfileDialogs: React.FC<ProfileDialogsProps> = ({
                                             "flex flex-col items-start gap-1 p-3 rounded-lg border-2 transition-all",
                                             onlineStatus === option.value
                                                 ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950 shadow-md"
-                                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:hover-gray-600 hover:shadow-sm"
+                                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm"
                                         )}
                                     >
                                         <div className="flex items-center gap-2">
@@ -264,11 +264,11 @@ export const ProfileDialogs: React.FC<ProfileDialogsProps> = ({
                                 {customStatusError ? (
                                     <p className="text-xs text-red-500">{customStatusError}</p>
                                 ) : (
-                                    <p className="text-xs text-gray-500">Keep it short and fun!</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Keep it short and fun!</p>
                                 )}
                                 <p className={cn(
                                     "text-xs",
-                                    customStatus.length >= MAX_CUSTOM_STATUS_LENGTH ? "text-red-500" : "text-gray-500"
+                                    customStatus.length >= MAX_CUSTOM_STATUS_LENGTH ? "text-red-500" : "text-gray-500 dark:text-gray-400"
                                 )}>
                                     {customStatus.length}/{MAX_CUSTOM_STATUS_LENGTH}
                                 </p>

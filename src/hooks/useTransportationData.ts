@@ -181,7 +181,7 @@ export function useTransportationData() {
   const handleCalculateQuote = React.useCallback(
     async (formData: ShippingQuoteFormData) => {
       try {
-        
+
         const isValidMongoId =
           formData.vehicleId && /^[0-9a-fA-F]{24}$/.test(formData.vehicleId);
 
@@ -317,8 +317,6 @@ export function useTransportationData() {
           all: Math.max(0, prev.all - 1),
         }));
 
-
-        return true;
       } catch (error) {
         console.error("[TransportationData] Error deleting shipment:", error);
         const axiosError = error as AxiosError;
