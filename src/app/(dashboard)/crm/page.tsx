@@ -60,6 +60,8 @@ export default function CrmLoginPage() {
   const [forgotLoading, setForgotLoading]   = React.useState(false)
   const [forgotError, setForgotError]       = React.useState("")
   const [forgotSuccess, setForgotSuccess]   = React.useState(false)
+  const [resendCooldown, setResendCooldown] = React.useState(0)
+  const cooldownRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Biometric state
   const [biometricAvailable, setBiometricAvailable] = React.useState(false)
@@ -238,6 +240,26 @@ export default function CrmLoginPage() {
     }
   }
 
+  /* ── Resend cooldown cleanup ─────────────────────────────────────────────── */
+  React.useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current) }
+  }, [])
+
+  const startResendCooldown = () => {
+    setResendCooldown(50)
+    if (cooldownRef.current) clearInterval(cooldownRef.current)
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!)
+          cooldownRef.current = null
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
   /* ── Forgot Password ─────────────────────────────────────────────────────── */
   const openForgot = () => {
     setForgotOpen(true)
@@ -252,6 +274,8 @@ export default function CrmLoginPage() {
   const closeForgot = () => {
     if (forgotLoading) return
     setForgotOpen(false)
+    setResendCooldown(0)
+    if (cooldownRef.current) { clearInterval(cooldownRef.current); cooldownRef.current = null }
   }
 
   const handleForgotSendOtp = async () => {
@@ -261,6 +285,7 @@ export default function CrmLoginPage() {
     try {
       await apiClient.post("/api/crm/forgot-password", { email: forgotEmail.trim() })
       setForgotStep("otp")
+      startResendCooldown()
     } catch (err: any) {
       setForgotError(err?.response?.data?.message || "Something went wrong. Try again.")
     } finally {
@@ -750,7 +775,7 @@ export default function CrmLoginPage() {
                 </div>
                 {forgotError && <p className="text-[11px] text-red-500">{forgotError}</p>}
                 <div className="flex gap-2 pt-1">
-                  <Button variant="outline" onClick={() => { setForgotStep("email"); setForgotError("") }} disabled={forgotLoading} className="flex-1 h-10 rounded-xl text-sm border-border/50">
+                  <Button variant="outline" onClick={() => { setForgotStep("email"); setForgotError(""); setResendCooldown(0); if (cooldownRef.current) { clearInterval(cooldownRef.current); cooldownRef.current = null } }} disabled={forgotLoading} className="flex-1 h-10 rounded-xl text-sm border-border/50">
                     Back
                   </Button>
                   <Button onClick={handleForgotReset} disabled={forgotLoading} className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold gap-2">
@@ -761,10 +786,13 @@ export default function CrmLoginPage() {
                 <button
                   type="button"
                   onClick={handleForgotSendOtp}
-                  disabled={forgotLoading}
-                  className="w-full text-center text-[11px] text-muted-foreground/40 hover:text-emerald-600 transition-colors"
+                  disabled={forgotLoading || resendCooldown > 0}
+                  className="w-full text-center text-[11px] text-muted-foreground/40 hover:text-emerald-600 transition-colors disabled:pointer-events-none disabled:opacity-50"
                 >
-                  Didn't receive a code? Resend
+                  {resendCooldown > 0
+                    ? `Resend available in ${resendCooldown}s`
+                    : "Didn't receive a code? Resend"
+                  }
                 </button>
               </>
             )}
