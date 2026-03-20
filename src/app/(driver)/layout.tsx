@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { DriverSidebar } from "@/components/driver-sidebar";
 import { NotificationBell } from "@/components/notifications";
 import { NotificationProvider } from "@/context/NotificationContext";
-import { ThemeProvider } from "@/context/ThemeContext";
+
 import { useRouter } from "next/navigation";
 import { useUser, useAuthActions, useAuth } from "@/providers/AuthProvider";
 import { useOrg } from "@/hooks/useOrg";
@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ProfileProvider } from "@/context/ProfileContext";
 import { ProfileToastProvider } from "@/components/ProfileToast";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { driverNav } from "@/components/layout/mobile-nav-config";
 
 function DriverLayoutContent({
   children,
@@ -74,10 +76,10 @@ function DriverLayoutContent({
   // Show loading while guard is checking
   if (!guardPassed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#050505]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-emerald-500/60 font-medium uppercase tracking-widest italic animate-pulse">
+          <p className="text-sm text-emerald-600/60 dark:text-emerald-500/60 font-medium uppercase tracking-widest italic animate-pulse">
             Verifying Credentials...
           </p>
         </div>
@@ -89,7 +91,7 @@ function DriverLayoutContent({
     <SidebarProvider>
       <DriverSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between px-2 sm:px-4 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl sticky top-0 z-40">
+        <header className="flex h-16 shrink-0 items-center justify-between px-2 sm:px-4 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-[#050505]/80 backdrop-blur-xl sticky top-0 z-40">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
           </div>
@@ -97,7 +99,7 @@ function DriverLayoutContent({
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-xl overflow-hidden border border-white/5 hover:bg-white/5 transition-all">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-xl overflow-hidden border border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/5 transition-all">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user?.imageUrl} alt={user?.fullName || ""} />
                     <AvatarFallback className="bg-emerald-500/10 text-emerald-500 font-bold">
@@ -106,29 +108,29 @@ function DriverLayoutContent({
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64 mt-2 bg-[#0a0a0a] border-white/5 shadow-2xl rounded-2xl" align="end" forceMount>
+              <DropdownMenuContent className="w-64 mt-2 bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-white/5 shadow-2xl rounded-2xl" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal p-4">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-bold text-white leading-none">{user?.fullName}</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">{user?.fullName}</p>
                     <p className="text-xs leading-none text-zinc-500">
                       {user?.primaryEmailAddress?.emailAddress}
                     </p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-white/5" />
+                <DropdownMenuSeparator className="bg-gray-200 dark:bg-white/5" />
                 <DropdownMenuItem
                   onClick={() => router.push("/driver/profile")}
-                  className="p-3 text-zinc-400 focus:text-white focus:bg-emerald-500/10 cursor-pointer"
+                  className="p-3 text-zinc-600 dark:text-zinc-400 focus:text-gray-900 dark:focus:text-white focus:bg-emerald-500/10 cursor-pointer"
                 >
                   Account Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => router.push("/driver/settings")}
-                  className="p-3 text-zinc-400 focus:text-white focus:bg-emerald-500/10 cursor-pointer"
+                  className="p-3 text-zinc-600 dark:text-zinc-400 focus:text-gray-900 dark:focus:text-white focus:bg-emerald-500/10 cursor-pointer"
                 >
                   System Settings
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/5" />
+                <DropdownMenuSeparator className="bg-gray-200 dark:bg-white/5" />
                 <DropdownMenuItem
                   onClick={() => signOut()}
                   className="p-3 text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-medium"
@@ -139,7 +141,8 @@ function DriverLayoutContent({
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto bg-[#020202] p-6 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#020202] p-6 lg:p-8 pb-24 md:pb-8">{children}</main>
+        <MobileBottomNav items={driverNav} />
       </SidebarInset>
     </SidebarProvider>
   );
@@ -149,14 +152,12 @@ export default function DriverLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ThemeProvider>
-      <ProfileProvider>
-        <ProfileToastProvider>
-          <NotificationProvider>
-            <DriverLayoutContent>{children}</DriverLayoutContent>
-          </NotificationProvider>
-        </ProfileToastProvider>
-      </ProfileProvider>
-    </ThemeProvider>
+    <ProfileProvider>
+      <ProfileToastProvider>
+        <NotificationProvider>
+          <DriverLayoutContent>{children}</DriverLayoutContent>
+        </NotificationProvider>
+      </ProfileToastProvider>
+    </ProfileProvider>
   );
 }

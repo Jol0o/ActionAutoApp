@@ -221,8 +221,8 @@ function Avatar({ state, onClick, size = 'md' }: AvatarProps) {
           width: 8, height: 8, borderRadius: '50%', border: '1.5px solid #0a0812',
           background: state === 'error' ? '#ef4444'
             : state === 'listening' ? '#22c55e'
-            : state === 'speaking' ? '#3b82f6'
-            : '#fbbf24',
+              : state === 'speaking' ? '#3b82f6'
+                : '#fbbf24',
           boxShadow: `0 0 8px ${state === 'error' ? '#ef4444' : state === 'listening' ? '#22c55e' : '#fbbf24'}`,
         }} className="supra-avatar-pulse" />
       )}
@@ -298,12 +298,12 @@ interface StatusBadgeProps {
 
 function StatusBadge({ state }: StatusBadgeProps) {
   const map: Record<AIState, { label: string; color: string; bg: string }> = {
-    idle:      { label: 'Ready',     color: 'rgba(251,191,36,0.7)',  bg: 'rgba(251,191,36,0.08)'  },
-    reading:   { label: 'Reading',   color: 'rgba(251,191,36,1)',    bg: 'rgba(251,191,36,0.14)'  },
-    speaking:  { label: 'Speaking',  color: '#93c5fd',               bg: 'rgba(59,130,246,0.14)'  },
-    listening: { label: 'Listening', color: '#86efac',               bg: 'rgba(34,197,94,0.14)'   },
-    thinking:  { label: 'Thinking',  color: '#c4b5fd',               bg: 'rgba(167,139,250,0.14)' },
-    error:     { label: 'Error',     color: '#fca5a5',               bg: 'rgba(239,68,68,0.14)'   },
+    idle: { label: 'Ready', color: 'rgba(251,191,36,0.7)', bg: 'rgba(251,191,36,0.08)' },
+    reading: { label: 'Reading', color: 'rgba(251,191,36,1)', bg: 'rgba(251,191,36,0.14)' },
+    speaking: { label: 'Speaking', color: '#93c5fd', bg: 'rgba(59,130,246,0.14)' },
+    listening: { label: 'Listening', color: '#86efac', bg: 'rgba(34,197,94,0.14)' },
+    thinking: { label: 'Thinking', color: '#c4b5fd', bg: 'rgba(167,139,250,0.14)' },
+    error: { label: 'Error', color: '#fca5a5', bg: 'rgba(239,68,68,0.14)' },
   }
   const { label, color, bg } = map[state]
   return (
@@ -347,7 +347,7 @@ function Panel({
 
       {/* Header */}
       <div style={{ padding: '14px 16px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Avatar state={state} onClick={() => {}} size="sm" />
+        <Avatar state={state} onClick={() => { }} size="sm" />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="supra-font-display" style={{
@@ -661,22 +661,28 @@ interface FloatingVariantProps {
 function FloatingVariant({ position, state, panelOpen, onToggle, panelProps }: FloatingVariantProps) {
   const isLeft = position === 'bottom-left'
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 24,
-      ...(isLeft ? { left: 24 } : { right: 24 }),
-      zIndex: 9999,
-      display: 'flex', flexDirection: 'column',
-      alignItems: isLeft ? 'flex-start' : 'flex-end',
-      gap: 12,
-    }}>
+    <div
+      className="supra-floating-widget"
+      data-position={position}
+      data-panel-open={panelOpen ? 'true' : 'false'}
+      style={{
+        position: 'fixed',
+        bottom: 'var(--supra-leo-bottom, 24px)',
+        ...(isLeft
+          ? { left: 'var(--supra-leo-side, 24px)' }
+          : { right: 'var(--supra-leo-side, 24px)' }),
+        zIndex: 9999,
+        display: 'flex', flexDirection: 'column',
+        alignItems: isLeft ? 'flex-start' : 'flex-end',
+        gap: 12,
+      }}>
       {panelOpen && <Panel {...panelProps} />}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         flexDirection: isLeft ? 'row' : 'row-reverse',
       }}>
         {!panelOpen && (
-          <div className="supra-font-display supra-tag" style={{
+          <div className="supra-font-display supra-tag supra-floating-label" style={{
             padding: '6px 14px', borderRadius: 24,
             background: 'rgba(10,8,18,0.88)',
             border: '1px solid rgba(251,191,36,0.2)',
@@ -830,13 +836,13 @@ export default function SupraLeoDemo() {
     voiceName: activeState !== 'idle' ? 'Aria · Neural' : null,
     errorMsg: activeState === 'error' ? 'Voice synthesis unavailable. Check your audio settings.' : null,
     onStop: () => setActiveState('idle'),
-    onPause: () => {},
-    onResume: () => {},
+    onPause: () => { },
+    onResume: () => { },
     onClose: () => { setActiveState('idle'); setPanelOpen(false) },
     onReplay: () => setActiveState('reading'),
     onStartListeningForCommand: () => setActiveState('listening'),
     onStartReplyListening: () => setActiveState('listening'),
-    onSetTranscript: () => {},
+    onSetTranscript: () => { },
     onSendReply: () => setActiveState('idle'),
   }
 

@@ -48,6 +48,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { ReferralCatcher } from '@/components/referral/ReferralCatcher';
 import { SplashScreen } from '@/components/layout/SplashScreen';
+import { DevRoleSwitcher } from '@/components/dev/DevRoleSwitcher';
 import { Suspense } from 'react';
 
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -58,7 +59,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scrollbar-thin">
+    <html lang="en" className="scrollbar-thin" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.add('light')}else{document.documentElement.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`,
+        }} />
+      </head>
       <body
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -76,6 +82,7 @@ export default function RootLayout({
             </main>
             <Toaster />
             <ImpersonationBanner />
+            {process.env.NODE_ENV === "development" && <DevRoleSwitcher />}
             <ServiceWorkerRegistration />
             <InstallPrompt />
             <PushPrompt />

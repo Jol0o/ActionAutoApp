@@ -14,10 +14,19 @@ import {
   Copy,
   Check,
   KeyRound,
+  Mail,
+  ShieldCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { apiClient } from "@/lib/api-client"
 import {
   isWebAuthnSupported,
@@ -25,6 +34,7 @@ import {
 } from "@/lib/webauthn"
 
 type LoginMode = "password" | "biometric" | "ssh"
+type ForgotStep = "email" | "otp"
 
 export default function CrmLoginPage() {
   const router = useRouter()
@@ -39,6 +49,19 @@ export default function CrmLoginPage() {
 
   // Mode
   const [loginMode, setLoginMode] = React.useState<LoginMode>("password")
+
+  // Forgot password
+  const [forgotOpen, setForgotOpen]         = React.useState(false)
+  const [forgotStep, setForgotStep]         = React.useState<ForgotStep>("email")
+  const [forgotEmail, setForgotEmail]       = React.useState("")
+  const [forgotOtp, setForgotOtp]           = React.useState("")
+  const [forgotNewPw, setForgotNewPw]       = React.useState("")
+  const [showNewPw, setShowNewPw]           = React.useState(false)
+  const [forgotLoading, setForgotLoading]   = React.useState(false)
+  const [forgotError, setForgotError]       = React.useState("")
+  const [forgotSuccess, setForgotSuccess]   = React.useState(false)
+  const [resendCooldown, setResendCooldown] = React.useState(0)
+  const cooldownRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Biometric state
   const [biometricAvailable, setBiometricAvailable] = React.useState(false)
@@ -217,6 +240,78 @@ export default function CrmLoginPage() {
     }
   }
 
+  /* ── Resend cooldown cleanup ─────────────────────────────────────────────── */
+  React.useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current) }
+  }, [])
+
+  const startResendCooldown = () => {
+    setResendCooldown(50)
+    if (cooldownRef.current) clearInterval(cooldownRef.current)
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!)
+          cooldownRef.current = null
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  /* ── Forgot Password ─────────────────────────────────────────────────────── */
+  const openForgot = () => {
+    setForgotOpen(true)
+    setForgotStep("email")
+    setForgotEmail("")
+    setForgotOtp("")
+    setForgotNewPw("")
+    setForgotError("")
+    setForgotSuccess(false)
+  }
+
+  const closeForgot = () => {
+    if (forgotLoading) return
+    setForgotOpen(false)
+    setResendCooldown(0)
+    if (cooldownRef.current) { clearInterval(cooldownRef.current); cooldownRef.current = null }
+  }
+
+  const handleForgotSendOtp = async () => {
+    setForgotError("")
+    if (!forgotEmail.trim()) { setForgotError("Enter your email address."); return }
+    setForgotLoading(true)
+    try {
+      await apiClient.post("/api/crm/forgot-password", { email: forgotEmail.trim() })
+      setForgotStep("otp")
+      startResendCooldown()
+    } catch (err: any) {
+      setForgotError(err?.response?.data?.message || "Something went wrong. Try again.")
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const handleForgotReset = async () => {
+    setForgotError("")
+    if (!forgotOtp.trim()) { setForgotError("Enter the 6-digit code from your email."); return }
+    if (!forgotNewPw || forgotNewPw.length < 8) { setForgotError("Password must be at least 8 characters."); return }
+    setForgotLoading(true)
+    try {
+      await apiClient.post("/api/crm/reset-password", {
+        email: forgotEmail.trim(),
+        otp: forgotOtp.trim(),
+        newPassword: forgotNewPw,
+      })
+      setForgotSuccess(true)
+    } catch (err: any) {
+      setForgotError(err?.response?.data?.message || "Invalid or expired code.")
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
   /* ── Mode switch ─────────────────────────────────────────────────────────── */
   const switchMode = (mode: LoginMode) => {
     setError("")
@@ -361,6 +456,16 @@ export default function CrmLoginPage() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={openForgot}
+                  className="text-[11px] text-muted-foreground/50 hover:text-emerald-600 transition-colors"
+                >
+                  Forgot password?
+                </button>
               </div>
 
               <Button
@@ -560,6 +665,140 @@ export default function CrmLoginPage() {
           Action Auto CRM v1.0 &middot; Customer Lifecycle Management
         </p>
       </div>
+
+      {/* ── Forgot Password Modal ── */}
+      <Dialog open={forgotOpen} onOpenChange={closeForgot}>
+        <DialogContent className="sm:max-w-sm rounded-2xl p-0 overflow-hidden gap-0">
+
+          {/* Header */}
+          <DialogHeader className="px-6 pt-6 pb-5 border-b border-border/40 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${forgotSuccess ? "bg-emerald-500/10" : "bg-emerald-500/10"}`}>
+                {forgotSuccess
+                  ? <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  : forgotStep === "email"
+                  ? <Mail className="h-4 w-4 text-emerald-500" />
+                  : <KeyRound className="h-4 w-4 text-emerald-500" />
+                }
+              </div>
+              <div>
+                <DialogTitle className="text-sm font-bold">
+                  {forgotSuccess ? "Password Reset!" : forgotStep === "email" ? "Forgot Password" : "Enter Reset Code"}
+                </DialogTitle>
+                <DialogDescription className="text-[11px] text-muted-foreground/50 mt-0.5">
+                  {forgotSuccess
+                    ? "Your password has been updated."
+                    : forgotStep === "email"
+                    ? "We'll send a 6-digit code to your email."
+                    : `Code sent to ${forgotEmail}`
+                  }
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Body */}
+          <div className="px-6 py-5 space-y-4">
+
+            {/* Success state */}
+            {forgotSuccess && (
+              <div className="text-center py-4 space-y-3">
+                <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto">
+                  <ShieldCheck className="h-7 w-7 text-emerald-500" />
+                </div>
+                <p className="text-sm text-muted-foreground/60">You can now sign in with your new password.</p>
+                <Button
+                  onClick={closeForgot}
+                  className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
+                >
+                  Back to Sign In
+                </Button>
+              </div>
+            )}
+
+            {/* Step 1 — Email */}
+            {!forgotSuccess && forgotStep === "email" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Email Address</Label>
+                  <Input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={forgotEmail}
+                    onChange={(e) => { setForgotEmail(e.target.value); setForgotError("") }}
+                    disabled={forgotLoading}
+                    className="h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30"
+                  />
+                </div>
+                {forgotError && <p className="text-[11px] text-red-500">{forgotError}</p>}
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" onClick={closeForgot} disabled={forgotLoading} className="flex-1 h-10 rounded-xl text-sm border-border/50">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleForgotSendOtp} disabled={forgotLoading} className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold gap-2">
+                    {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                    {forgotLoading ? "Sending…" : "Send Code"}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Step 2 — OTP + New Password */}
+            {!forgotSuccess && forgotStep === "otp" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">6-Digit Code</Label>
+                  <Input
+                    placeholder="e.g. 482910"
+                    value={forgotOtp}
+                    onChange={(e) => { setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setForgotError("") }}
+                    disabled={forgotLoading}
+                    maxLength={6}
+                    className="h-10 rounded-xl text-sm border-border/50 font-mono tracking-widest focus-visible:ring-emerald-500/30"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">New Password</Label>
+                  <div className="relative">
+                    <Input
+                      type={showNewPw ? "text" : "password"}
+                      placeholder="Minimum 8 characters"
+                      value={forgotNewPw}
+                      onChange={(e) => { setForgotNewPw(e.target.value); setForgotError("") }}
+                      disabled={forgotLoading}
+                      className="h-10 rounded-xl text-sm border-border/50 pr-10 focus-visible:ring-emerald-500/30"
+                    />
+                    <button type="button" onClick={() => setShowNewPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground/70">
+                      {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                {forgotError && <p className="text-[11px] text-red-500">{forgotError}</p>}
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" onClick={() => { setForgotStep("email"); setForgotError(""); setResendCooldown(0); if (cooldownRef.current) { clearInterval(cooldownRef.current); cooldownRef.current = null } }} disabled={forgotLoading} className="flex-1 h-10 rounded-xl text-sm border-border/50">
+                    Back
+                  </Button>
+                  <Button onClick={handleForgotReset} disabled={forgotLoading} className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold gap-2">
+                    {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                    {forgotLoading ? "Resetting…" : "Reset Password"}
+                  </Button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleForgotSendOtp}
+                  disabled={forgotLoading || resendCooldown > 0}
+                  className="w-full text-center text-[11px] text-muted-foreground/40 hover:text-emerald-600 transition-colors disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {resendCooldown > 0
+                    ? `Resend available in ${resendCooldown}s`
+                    : "Didn't receive a code? Resend"
+                  }
+                </button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

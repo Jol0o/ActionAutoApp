@@ -49,10 +49,7 @@ export default function TransportationPage() {
         handleUpdateShipment
     } = useTransportationData()
 
-    React.useEffect(() => {
-        fetchData()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    // Initial fetch is handled inside useTransportationData when auth is ready
 
     // Update "X seconds ago" every second
     React.useEffect(() => {
@@ -134,11 +131,16 @@ export default function TransportationPage() {
             const query = searchQuery.toLowerCase()
             filtered = filtered.filter(s => {
                 const quote = s.quoteId
+                const preserved = s.preservedQuoteData
                 return (
                     quote?.firstName?.toLowerCase().includes(query) ||
                     quote?.lastName?.toLowerCase().includes(query) ||
                     quote?.vin?.toLowerCase().includes(query) ||
                     quote?.stockNumber?.toLowerCase().includes(query) ||
+                    preserved?.firstName?.toLowerCase().includes(query) ||
+                    preserved?.lastName?.toLowerCase().includes(query) ||
+                    preserved?.vin?.toLowerCase().includes(query) ||
+                    preserved?.stockNumber?.toLowerCase().includes(query) ||
                     s.trackingNumber?.toLowerCase().includes(query)
                 )
             })

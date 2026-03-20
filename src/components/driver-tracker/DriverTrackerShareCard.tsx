@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Navigation2 } from "lucide-react";
+import { Navigation2, Radio, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DriverStatus } from "@/types/driver-tracking";
 
 interface DriverTrackerShareCardProps {
@@ -13,12 +15,14 @@ interface DriverTrackerShareCardProps {
   onToggleSharing: () => void;
   lastShareAt: string | null;
   shareError: string | null;
+  hasActiveLoad?: boolean;
 }
 
-const statusOptions: Array<{ key: DriverStatus; label: string }> = [
-  { key: "on-route", label: "On Route" },
-  { key: "idle", label: "Idle" },
-  { key: "offline", label: "Offline" },
+const STATUS_CONFIG: Array<{ key: DriverStatus; label: string; color: string; needsLoad?: boolean }> = [
+  { key: "on-route", label: "On Route", color: "bg-emerald-500/10 text-emerald-600 border-emerald-200 hover:bg-emerald-500/20", needsLoad: true },
+  { key: "idle", label: "Idle", color: "bg-amber-500/10 text-amber-600 border-amber-200 hover:bg-amber-500/20" },
+  { key: "waiting", label: "Waiting", color: "bg-blue-500/10 text-blue-600 border-blue-200 hover:bg-blue-500/20" },
+  { key: "on-break", label: "On Break", color: "bg-slate-500/10 text-slate-600 border-slate-200 hover:bg-slate-500/20" },
 ];
 
 export function DriverTrackerShareCard({
@@ -28,47 +32,84 @@ export function DriverTrackerShareCard({
   onToggleSharing,
   lastShareAt,
   shareError,
+  hasActiveLoad = false,
 }: DriverTrackerShareCardProps) {
   return (
-    <Card className="border-border shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Driver GPS</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Share your live location from this device.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-2">
-          {statusOptions.map((item) => (
-            <Button
-              key={item.key}
-              size="sm"
-              variant={shareStatus === item.key ? "default" : "outline"}
-              className="h-8 px-3 text-xs"
-              onClick={() => onStatusChange(item.key)}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            className="h-8 px-4 text-xs"
-            variant={isSharing ? "secondary" : "default"}
-            onClick={onToggleSharing}
-          >
-            <Navigation2 className="size-3.5 mr-2" />
-            {isSharing ? "Stop Sharing" : "Start Sharing"}
-          </Button>
-          {lastShareAt && (
-            <span className="text-[11px] text-muted-foreground">
-              Last update: {lastShareAt}
-            </span>
+    <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-300 p-0 gap-0 overflow-hidden relative group">
+      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+        <Radio className="size-24" />
+      </div>
+      <CardHeader className="py-4 px-5 border-b border-border/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className={`size-8 rounded-lg flex items-center justify-center ${isSharing ? "bg-emerald-500/10" : "bg-muted/60"}`}>
+              {isSharing ? <Wifi className="size-4 text-emerald-500" /> : <WifiOff className="size-4 text-muted-foreground" />}
+            </div>
+            <div>
+              <CardTitle className="text-sm font-bold">Driver GPS</CardTitle>
+              <p className="text-[10px] text-muted-foreground/60 font-medium">Live location broadcast</p>
+            </div>
+          </div>
+          {isSharing && (
+            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200/50 text-[10px] font-bold gap-1.5 animate-pulse">
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+              LIVE
+            </Badge>
           )}
         </div>
+      </CardHeader>
+      <CardContent className="p-5 space-y-4">
+        <div className="grid grid-cols-2 gap-1.5">
+          {STATUS_CONFIG.map((item) => {
+            const locked = item.needsLoad && !hasActiveLoad;
+            const btn = (
+              <Button
+                key={item.key}
+                size="sm"
+                variant="outline"
+                disabled={locked}
+                className={`h-8 px-2 text-[11px] font-semibold transition-all duration-200 ${shareStatus === item.key
+                    ? item.color + " border"
+                    : "border-border/50 text-muted-foreground"
+                  } ${locked ? "opacity-40 cursor-not-allowed" : ""}`}
+                onClick={() => !locked && onStatusChange(item.key)}
+              >
+                {item.label}
+              </Button>
+            );
+            return locked ? (
+              <Tooltip key={item.key}>
+                <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                <TooltipContent side="bottom" className="text-[10px]">
+                  You need an active load to go On Route
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <React.Fragment key={item.key}>{btn}</React.Fragment>
+            );
+          })}
+        </div>
+        <Button
+          size="sm"
+          className={`w-full h-9 text-xs font-bold transition-all duration-300 ${isSharing
+            ? "bg-rose-500/10 text-rose-600 border border-rose-200/50 hover:bg-rose-500/20 shadow-none"
+            : "bg-primary text-primary-foreground shadow-sm hover:shadow-md"
+            }`}
+          variant={isSharing ? "outline" : "default"}
+          onClick={onToggleSharing}
+        >
+          <Navigation2 className={`size-3.5 mr-2 ${isSharing ? "animate-pulse" : ""}`} />
+          {isSharing ? "Stop Sharing" : "Start Sharing"}
+        </Button>
+        {lastShareAt && (
+          <p className="text-[10px] text-muted-foreground/60 text-center font-medium">
+            Last broadcast: {lastShareAt}
+          </p>
+        )}
         {shareError && (
-          <p className="text-[11px] text-destructive">{shareError}</p>
+          <div className="rounded-lg bg-destructive/5 border border-destructive/10 px-3 py-2">
+            <p className="text-[11px] text-destructive font-medium">{shareError}</p>
+          </div>
         )}
       </CardContent>
     </Card>

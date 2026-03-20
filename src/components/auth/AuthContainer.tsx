@@ -18,7 +18,9 @@ export function AuthContainer({ initialMode }: { initialMode?: "signin" | "signu
 
     const setMode = (newMode: "signin" | "signup") => {
         const targetPath = newMode === "signup" ? "/sign-up" : "/sign-in";
-        router.push(targetPath, { scroll: false });
+        const currentParams = searchParams.toString();
+        const finalPath = currentParams ? `${targetPath}?${currentParams}` : targetPath;
+        router.push(finalPath, { scroll: false });
     };
 
     return (

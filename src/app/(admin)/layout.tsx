@@ -6,6 +6,8 @@ import { AdminSidebar } from "@/components/admin-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { NotificationBell } from "@/components/notifications";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { adminNav } from "@/components/layout/mobile-nav-config";
 
 function AdminLayoutContent({
     children,
@@ -24,9 +26,10 @@ function AdminLayoutContent({
                     </div>
                     <NotificationBell />
                 </header>
-                <div className="flex flex-1 flex-col gap-4 p-4 pt-4 md:p-8">
+                <div className="flex flex-1 flex-col gap-4 p-4 pt-4 md:p-8 pb-24 md:pb-8">
                     {children}
                 </div>
+                <MobileBottomNav items={adminNav} />
             </SidebarInset>
         </SidebarProvider>
     );

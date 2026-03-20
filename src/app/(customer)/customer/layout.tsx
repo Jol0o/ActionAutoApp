@@ -5,9 +5,11 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { CustomerSidebar } from "@/components/customer/CustomerSidebar"
 import { NotificationBell } from "@/components/notifications"
 import { NotificationProvider } from "@/context/NotificationContext"
-import { ThemeProvider } from "@/context/ThemeContext"
+
 import { ProfileProvider } from "@/context/ProfileContext"
 import { ProfileToastProvider } from "@/components/ProfileToast"
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav"
+import { customerNav } from "@/components/layout/mobile-nav-config"
 import { useRouter } from "next/navigation"
 import { useAuthActions, useUser } from "@/providers/AuthProvider"
 import { useOrg } from "@/hooks/useOrg"
@@ -88,11 +90,12 @@ function CustomerLayoutContent({ children }: { children: React.ReactNode }) {
                         </div>
                     </header>
 
-                    <main className="flex-1 overflow-auto p-4 lg:p-8">
+                    <main className="flex-1 overflow-auto p-4 lg:p-8 pb-24 md:pb-8">
                         <div className="mx-auto container">
                             {children}
                         </div>
                     </main>
+                    <MobileBottomNav items={customerNav} />
                 </SidebarInset>
             </div>
         </SidebarProvider>
@@ -105,14 +108,12 @@ export default function CustomerLayout({
     children: React.ReactNode
 }) {
     return (
-        <ThemeProvider>
-            <ProfileProvider>
-                <ProfileToastProvider>
-                    <NotificationProvider>
-                        <CustomerLayoutContent>{children}</CustomerLayoutContent>
-                    </NotificationProvider>
-                </ProfileToastProvider>
-            </ProfileProvider>
-        </ThemeProvider>
+        <ProfileProvider>
+            <ProfileToastProvider>
+                <NotificationProvider>
+                    <CustomerLayoutContent>{children}</CustomerLayoutContent>
+                </NotificationProvider>
+            </ProfileToastProvider>
+        </ProfileProvider>
     )
 }

@@ -26,10 +26,41 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleNextStep = (e: React.FormEvent) => {
+    const handleNextStep = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name || !email || !password) return;
-        setStep("identity");
+
+        // If we have an invite token, we can skip the role selection step
+        const token = searchParams.get("token");
+        if (token) {
+            setIsLoading(true);
+            try {
+                // Pre-check the invite to get the role (optional, but good for UX)
+                // However, we can just pass the token to the register API and let it handle everything.
+                const firstName = name.split(" ")[0] || "";
+                const lastName = name.split(" ").slice(1).join(" ") || "";
+
+                const result = await (signUp as any).create({
+                    emailAddress: email,
+                    password: password,
+                    firstName,
+                    lastName,
+                    inviteToken: token
+                });
+
+                if (result.status === "needs_verification") {
+                    toast.success("Account created! Please verify your email.");
+                    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+                }
+            } catch (err: any) {
+                const errorMessage = err.errors?.[0]?.longMessage || "Failed to create account";
+                setError(errorMessage);
+                toast.error(errorMessage);
+                setIsLoading(false);
+            }
+        } else {
+            setStep("identity");
+        }
     };
 
     const handleSubmit = async (role: UserRole) => {
@@ -41,13 +72,15 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
         try {
             const firstName = name.split(" ")[0] || "";
             const lastName = name.split(" ").slice(1).join(" ") || "";
+            const token = searchParams.get("token");
 
             const result = await (signUp as any).create({
                 emailAddress: email,
                 password: password,
                 firstName,
                 lastName,
-                role: role // 'customer', 'driver', or 'dealership' (maps to 'admin' in backend flow)
+                role: role, // 'customer', 'driver', or 'dealership'
+                inviteToken: token || undefined
             });
 
             if (result.status === "needs_verification") {
@@ -65,9 +98,13 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
     const handleGoogleSignUp = (role: UserRole) => {
         const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://xj3pd14h-5000.asse.devtunnels.ms';
         const redirectUrl = searchParams.get('redirect_url');
+        const token = searchParams.get('token');
         let url = `${backendUrl}/api/auth/google?role=${role}`;
         if (redirectUrl) {
             url += `&redirect_url=${encodeURIComponent(redirectUrl)}`;
+        }
+        if (token) {
+            url += `&inviteToken=${token}`;
         }
         window.location.href = url;
     };
@@ -169,7 +206,7 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
                                 isLoading={isLoading && selectedRole === "customer"}
                                 disabled={isLoading}
                             />
-                            <IdentityCard
+                            {/* <IdentityCard
                                 icon={<Car className="h-6 w-6" />}
                                 title="I am a Driver"
                                 description="I want to sign up as a transportation provider."
@@ -177,7 +214,7 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
                                 onGoogleClick={() => handleGoogleSignUp("driver")}
                                 isLoading={isLoading && selectedRole === "driver"}
                                 disabled={isLoading}
-                            />
+                            /> */}
                             <IdentityCard
                                 icon={<Briefcase className="h-6 w-6" />}
                                 title="I am a Dealer"

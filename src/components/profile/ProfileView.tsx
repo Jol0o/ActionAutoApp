@@ -30,6 +30,7 @@ import { SecurityTab } from './SecurityTab';
 import { NotificationsTab } from './NotificationsTab';
 import { ActivityTab } from './ActivityTab';
 import { SupportTab } from './SupportTab';
+import { SettingsTab } from './SettingsTab';
 import { ProfileDialogs } from './ProfileDialogs';
 import { allNotificationCategories, containsCurseWord } from './profile-constants';
 
@@ -304,13 +305,13 @@ export const ProfileView: React.FC = () => {
                     <Loader2 className="size-12 animate-spin text-indigo-600" />
                     <div className="absolute inset-0 blur-xl bg-indigo-500/20 animate-pulse"></div>
                 </div>
-                <p className="text-gray-500 font-black uppercase tracking-widest animate-pulse">Loading Profile...</p>
+                <p className="text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest animate-pulse">Loading Profile...</p>
             </div>
         );
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 space-y-6 sm:space-y-8 animate-fade-in">
             <ProfileHeader
                 profile={profile}
                 authUser={authUser}
@@ -324,23 +325,24 @@ export const ProfileView: React.FC = () => {
             />
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                <div className="flex items-center justify-between mb-8 bg-white/50 dark:bg-gray-900/50 p-2 rounded-2xl border border-gray-200 dark:border-gray-800 backdrop-blur-sm sticky top-24 z-30 shadow-sm overflow-x-auto">
-                    <TabsList className="bg-transparent h-auto gap-2 p-0">
+                <div className="mb-6 sm:mb-8 bg-white/80 dark:bg-gray-900/70 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-gray-800 backdrop-blur-sm sticky top-20 sm:top-24 z-30 shadow-sm">
+                    <TabsList className="bg-transparent h-auto gap-1 sm:gap-1.5 p-0 w-full flex flex-nowrap overflow-x-auto scrollbar-hide">
                         {[
                             { value: 'overview', label: 'Overview', icon: Sparkles },
                             { value: 'personal', label: 'Personal', icon: User },
                             { value: 'security', label: 'Security', icon: Shield },
                             { value: 'notifications', label: 'Alerts', icon: Bell },
                             { value: 'activity', label: 'Feed', icon: Activity },
+                            { value: 'settings', label: 'Settings', icon: Settings },
                             { value: 'support', label: 'Support', icon: HelpCircle },
                         ].map((tab) => (
                             <TabsTrigger
                                 key={tab.value}
                                 value={tab.value}
-                                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-lg rounded-xl px-5 py-2.5 transition-all flex items-center gap-2 group border-2 border-transparent data-[state=active]:border-indigo-500/20"
+                                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-md rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 text-gray-600 dark:text-gray-400 border border-transparent data-[state=active]:border-emerald-500/20"
                             >
-                                <tab.icon className="size-4 group-data-[state=active]:text-indigo-500 transition-colors" />
-                                <span className="font-bold text-xs uppercase tracking-wider">{tab.label}</span>
+                                <tab.icon className="size-3.5 sm:size-4 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 transition-colors" />
+                                <span className="font-semibold text-[10px] sm:text-xs uppercase tracking-wider">{tab.label}</span>
                             </TabsTrigger>
                         ))}
                     </TabsList>
@@ -401,6 +403,10 @@ export const ProfileView: React.FC = () => {
                         fetchProfile={fetchProfile}
                         addToast={toast.addToast}
                     />
+                </TabsContent>
+
+                <TabsContent value="settings">
+                    <SettingsTab />
                 </TabsContent>
 
                 <TabsContent value="support">

@@ -52,11 +52,11 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
 
     return (
         <Card className="p-0 shadow-xl border border-green-100 dark:border-green-900 overflow-hidden hover-lift">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 animate-gradient"></div>
-            <CardHeader className="py-4 bg-gradient-to-br from-green-50 to-emerald-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-green-100 dark:border-green-900">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-green-500 via-emerald-500 to-teal-500 animate-gradient"></div>
+            <CardHeader className="py-4 bg-linear-to-br from-green-50 to-emerald-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-green-100 dark:border-green-900">
                 <div className="flex items-center justify-between animate-fade-in-left">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center shadow-lg animate-bounce-in hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-green-500 to-teal-600 flex items-center justify-center shadow-lg animate-bounce-in hover:scale-110 transition-transform">
                             <Bell className="size-6 text-white" />
                         </div>
                         <div>
@@ -182,7 +182,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                                 <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                                     <div className="flex items-center gap-3">
                                         <div className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-gradient-to-br",
+                                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-linear-to-br",
                                             category.color
                                         )}>
                                             <CategoryIcon className="size-5 text-white" />
@@ -248,7 +248,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                                                 className={cn(
                                                     "group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-300 hover-card-lift",
                                                     isEnabled
-                                                        ? "border-green-300 bg-gradient-to-br from-green-50 to-emerald-50/50 dark:border-green-700 dark:from-green-900/30 dark:to-emerald-900/20 shadow-sm"
+                                                        ? "border-green-300 bg-linear-to-br from-green-50 to-emerald-50/50 dark:border-green-700 dark:from-green-900/30 dark:to-emerald-900/20 shadow-sm"
                                                         : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-900",
                                                     isSaving && "opacity-70 pointer-events-none"
                                                 )}
@@ -264,7 +264,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                                                     <div className={cn(
                                                         "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300",
                                                         isEnabled
-                                                            ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25"
+                                                            ? "bg-linear-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25"
                                                             : "bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700"
                                                     )}>
                                                         <Icon className={cn(
@@ -287,7 +287,7 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                                                     onCheckedChange={(checked) => handlePreferenceChange(item.key as keyof NotificationPreferences, checked)}
                                                     disabled={isSaving}
                                                     className={cn(
-                                                        "data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600",
+                                                        "data-[state=checked]:bg-linear-to-r data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600",
                                                         "transition-all duration-300"
                                                     )}
                                                 />

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from "@/providers/AuthProvider";
+import { apiClient } from "@/lib/api-client";
 
 type Theme = 'light' | 'dark';
 
@@ -13,77 +14,60 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+function getInitialTheme(): Theme {
+  if (typeof window === 'undefined') return 'dark';
+  const saved = localStorage.getItem('theme') as Theme;
+  if (saved === 'light' || saved === 'dark') return saved;
+  return 'dark';
+}
+
+function applyThemeToDOM(theme: Theme) {
+  const root = document.documentElement;
+  root.classList.remove('light', 'dark');
+  root.classList.add(theme);
+}
+
+function persistTheme(theme: Theme) {
+  localStorage.setItem('theme', theme);
+  apiClient.patch('/api/profile/theme', { theme }).catch(() => { });
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [mounted, setMounted] = useState(false);
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const { user } = useUser();
+  const hasLocalSave = typeof window !== 'undefined' && localStorage.getItem('theme') !== null;
 
   useEffect(() => {
-    setMounted(true);
-    // 1. Priority: User Profile Theme
-    if (user?.theme) {
-      setThemeState(user.theme as Theme);
-      return;
+    if (hasLocalSave) return;
+    if (user?.theme === 'light' || user?.theme === 'dark') {
+      setThemeState(user.theme);
+      applyThemeToDOM(user.theme);
     }
+  }, [user?.theme, hasLocalSave]);
 
-    // 2. Fallback: localStorage
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme) {
-      setThemeState(savedTheme);
-    } else {
-      // 3. Last Resort: System Preference
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-      setThemeState(systemTheme);
-    }
-  }, [user?.theme]);
-
-  // Sync theme to document element
   useEffect(() => {
-    if (!mounted) return;
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-  }, [theme, mounted]);
+    applyThemeToDOM(theme);
+  }, [theme]);
 
-  const applyTheme = (newTheme: Theme) => {
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(newTheme);
-  };
-
-  const setTheme = async (newTheme: Theme) => {
+  const setTheme = useCallback(async (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem('theme', newTheme);
-    applyTheme(newTheme);
+    applyThemeToDOM(newTheme);
+    persistTheme(newTheme);
+  }, []);
 
-    // Update theme on server
-    try {
-      await fetch('/api/profile/theme', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ theme: newTheme }),
-      });
-    } catch (error) {
-      console.error('Error updating theme on server:', error);
-    }
-  };
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      applyThemeToDOM(next);
+      persistTheme(next);
+      return next;
+    });
+  }, []);
 
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
-
-  // Prevent flash of wrong theme
-  if (!mounted) {
-    return null;
-  }
+  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
@@ -91,8 +75,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
+  if (!context) throw new Error('useTheme must be used within a ThemeProvider');
   return context;
 }

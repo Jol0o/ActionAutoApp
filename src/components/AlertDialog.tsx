@@ -125,7 +125,7 @@ export function AlertDialog({
               </DialogTitle>
             </div>
           </div>
-          <DialogDescription className="text-sm text-gray-600 leading-relaxed pl-16">
+          <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed pl-16">
             {message}
           </DialogDescription>
         </DialogHeader>
@@ -138,7 +138,7 @@ export function AlertDialog({
                 variant="outline"
                 onClick={handleCancel}
                 disabled={isLoading}
-                className="border-gray-300 hover:bg-gray-50"
+                className="border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 {cancelText}
               </Button>

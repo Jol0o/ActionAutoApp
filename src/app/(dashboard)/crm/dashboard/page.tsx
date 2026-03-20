@@ -23,6 +23,7 @@ import {
   Coffee,
   Play,
   MessageSquare,
+  Rss,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -111,9 +112,7 @@ function LiveClock() {
 
 interface ShiftTimerProps {
   startTime: string
-  // Total milliseconds already spent on break before this render cycle
   breakAccumulatedMs: number
-  // If currently on break, the timestamp when break started
   breakStartedAt: number | null
 }
 
@@ -127,9 +126,7 @@ function ShiftTimer({ startTime, breakAccumulatedMs, breakStartedAt }: ShiftTime
 
   const now = Date.now()
   const totalElapsedMs = now - new Date(startTime).getTime()
-  // Current break duration: already accumulated + ongoing break if active
   const currentBreakMs = breakAccumulatedMs + (breakStartedAt ? now - breakStartedAt : 0)
-  // Net worked time = total elapsed minus all break time
   const workedMs = Math.max(0, totalElapsedMs - currentBreakMs)
 
   const pad = (n: number) => n.toString().padStart(2, "0")
@@ -173,7 +170,7 @@ function ShiftTimer({ startTime, breakAccumulatedMs, breakStartedAt }: ShiftTime
         </div>
       )}
 
-      {/* Break time summary (only when not on break and has taken breaks) */}
+      {/* Break time summary */}
       {!isOnBreak && currentBreakMs > 0 && (
         <div className="flex items-center justify-center gap-2">
           <Coffee className="h-3 w-3 text-muted-foreground/25" />
@@ -221,7 +218,6 @@ export default function CrmDashboardPage() {
   const [todayLogs, setTodayLogs] = React.useState<CrmUserData["todayTimeLogs"]>([])
   const [isClocking, setIsClocking] = React.useState(false)
   const [clockMsg, setClockMsg] = React.useState("")
-  // Break state — tracked client-side (also sent to API)
   const [isOnBreak, setIsOnBreak] = React.useState(false)
   const [breakStartedAt, setBreakStartedAt] = React.useState<number | null>(null)
   const [breakAccumulatedMs, setBreakAccumulatedMs] = React.useState(0)
@@ -261,7 +257,6 @@ export default function CrmDashboardPage() {
       const res = await apiClient.post("/api/crm/time-clock", { type }, { headers: { Authorization: `Bearer ${token}` } })
       const data = res.data?.data || res.data
       setTodayLogs(data.todayLogs || [])
-      // Reset break state on end shift
       if (type === "time-out") {
         setIsOnBreak(false)
         setBreakStartedAt(null)
@@ -278,7 +273,6 @@ export default function CrmDashboardPage() {
   const handleBreak = async () => {
     setClockMsg("")
     if (!isOnBreak) {
-      // Start break
       const now = Date.now()
       setIsOnBreak(true)
       setBreakStartedAt(now)
@@ -287,7 +281,6 @@ export default function CrmDashboardPage() {
       } catch { /* non-blocking */ }
       setClockMsg(`Break started at ${fmt(new Date())}`)
     } else {
-      // End break — accumulate
       const now = Date.now()
       const elapsed = breakStartedAt ? now - breakStartedAt : 0
       setBreakAccumulatedMs((prev) => prev + elapsed)
@@ -386,7 +379,7 @@ export default function CrmDashboardPage() {
                     <DropdownMenuItem className="rounded-xl text-xs h-9 gap-2.5 cursor-pointer">
                       <User className="h-3.5 w-3.5 text-muted-foreground" /> My Profile
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-xl text-xs h-9 gap-2.5 cursor-pointer">
+                    <DropdownMenuItem onClick={() => router.push("/crm/settings")} className="rounded-xl text-xs h-9 gap-2.5 cursor-pointer">
                       <Settings className="h-3.5 w-3.5 text-muted-foreground" /> Settings
                     </DropdownMenuItem>
                   </div>
@@ -566,7 +559,7 @@ export default function CrmDashboardPage() {
               {/* Quick Actions */}
               <div className="rounded-2xl border border-border/40 bg-card p-6 flex-1">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">Quick Actions</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <QuickAction
                     icon={<CalendarCheck className="h-5 w-5 text-emerald-500" />}
                     label="Appointments"
@@ -586,6 +579,11 @@ export default function CrmDashboardPage() {
                     icon={<Fingerprint className="h-5 w-5 text-emerald-500" />}
                     label="Biometrics"
                     onClick={() => router.push("/crm/biometrics")}
+                  />
+                  <QuickAction
+                    icon={<Rss className="h-5 w-5 text-emerald-500" />}
+                    label="Feeds"
+                    onClick={() => router.push("/crm/feeds")}
                   />
                 </div>
               </div>

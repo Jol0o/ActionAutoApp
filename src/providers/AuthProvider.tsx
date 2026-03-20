@@ -379,7 +379,8 @@ export function useSignUp() {
                     email: data.emailAddress,
                     password: data.password,
                     name: `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.emailAddress.split('@')[0],
-                    role: data.role || 'customer'
+                    role: data.role || 'customer',
+                    inviteToken: data.inviteToken
                 });
 
                 const token = response.data?.data?.accessToken || response.data?.accessToken;

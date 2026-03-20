@@ -32,10 +32,10 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="p-0 shadow-xl border border-emerald-100 dark:border-emerald-900 overflow-hidden hover-lift">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-green-500 animate-gradient"></div>
-                <CardHeader className="py-4 bg-gradient-to-br from-emerald-50 to-green-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-emerald-100 dark:border-emerald-900">
+                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-emerald-500 to-green-500 animate-gradient"></div>
+                <CardHeader className="py-4 bg-linear-to-br from-emerald-50 to-green-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-emerald-100 dark:border-emerald-900">
                     <div className="flex items-center gap-3 animate-slide-in-left">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
                             <ShieldCheck className="size-6 text-white" />
                         </div>
                         <div>
@@ -109,10 +109,10 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
             </Card>
 
             <Card className="p-0 shadow-xl border border-blue-100 dark:border-blue-900 overflow-hidden hover-lift">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 animate-gradient"></div>
-                <CardHeader className="py-4 bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-blue-100 dark:border-blue-900">
+                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 to-indigo-500 animate-gradient"></div>
+                <CardHeader className="py-4 bg-linear-to-br from-blue-50 to-indigo-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-blue-100 dark:border-blue-900">
                     <div className="flex items-center gap-3 animate-slide-in-right">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
                             <Lock className="size-6 text-white" />
                         </div>
                         <div>
@@ -125,7 +125,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
                     <div className="space-y-4 animate-fade-in-up">
                         <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/50 border-2 border-blue-200 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors animate-slide-up stagger-2">
                             <div className="flex items-start gap-3">
-                                <AlertCircle className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                                <AlertCircle className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                                 <div>
                                     <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Account Control</p>
                                     <p className="text-sm text-blue-700 dark:text-blue-300 mt-1.5 leading-relaxed">
@@ -135,14 +135,14 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
                             </div>
                         </div>
 
-                        <Button onClick={() => openUserProfile()} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                        <Button onClick={() => openUserProfile()} className="w-full bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                             <Settings className="size-4 mr-2" />Open Security Settings
                         </Button>
 
                         <Separator />
 
                         <div className="space-y-3">
-                            <p className="text-sm font-medium">Quick Actions</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Quick Actions</p>
                             <div className="grid grid-cols-2 gap-3">
                                 <Button variant="outline" size="sm" onClick={() => openUserProfile()}>
                                     <Mail className="size-4 mr-2" />Change Email

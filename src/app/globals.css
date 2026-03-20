@@ -254,6 +254,15 @@ body.app-fullscreen .main-content {
   @apply bg-zinc-400 dark:bg-zinc-700 border-2 border-transparent bg-clip-padding;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Smooth transitions for theme changes */
 @layer components {
   .theme-transition {
@@ -1053,5 +1062,34 @@ body.app-fullscreen .main-content {
 
   .stat-card-clickable:active {
     transform: translateY(-1px) scale(0.98);
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --mobile-bottom-nav-offset: 6.25rem;
+    --supra-leo-bottom: calc(var(--mobile-bottom-nav-offset) + 0.9rem);
+    --supra-leo-side: 0.75rem;
+  }
+
+  .supra-floating-widget {
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  .supra-floating-widget .supra-floating-label {
+    display: none;
+  }
+
+  .supra-floating-widget[data-panel-open='true'] {
+    right: 0.75rem !important;
+    left: auto !important;
+  }
+
+  .supra-floating-widget[data-position='bottom-left'] {
+    left: var(--supra-leo-side) !important;
+  }
+
+  .supra-floating-widget[data-position='bottom-right'] {
+    right: var(--supra-leo-side) !important;
   }
 }

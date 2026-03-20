@@ -65,20 +65,20 @@ const getCroppedImg = async (
     Math.round(0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y)
   );
 
-  // Resize to max 512x512 to keep file size reasonable
-  const maxDimension = 512;
+  // Resize to max 400x400 to keep file size under 1MB
+  const maxDimension = 400;
   const finalCanvas = document.createElement('canvas');
   const finalCtx = finalCanvas.getContext('2d');
-  
+
   if (!finalCtx) {
     throw new Error('No 2d context for final canvas');
   }
-  
+
   finalCanvas.width = maxDimension;
   finalCanvas.height = maxDimension;
-  
+
   finalCtx.drawImage(canvas, 0, 0, maxDimension, maxDimension);
-  
+
   // Return as Blob (JPEG at 70% quality) instead of base64
   return new Promise<Blob>((resolve, reject) => {
     finalCanvas.toBlob(
@@ -116,27 +116,28 @@ export default function ProfileImageCropper({
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.addEventListener('load', () => {
-        setImageSrc(reader.result as string);
-        setPreviewUrl(null);
-        setZoom(1);
-        setRotation(0);
-        setCrop({ x: 0, y: 0 });
-      });
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) return;
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setImageSrc(reader.result as string);
+      setPreviewUrl(null);
+      setZoom(1);
+      setRotation(0);
+      setCrop({ x: 0, y: 0 });
+    });
+    reader.readAsDataURL(file);
   };
 
   const handlePreview = useCallback(async () => {
     if (!imageSrc || !croppedAreaPixels) return;
-    
+
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
       const previewDataUrl = URL.createObjectURL(croppedBlob);
       setPreviewUrl(previewDataUrl);
-      
+
       // Calculate file size from the blob
       const sizeInBytes = croppedBlob.size;
       let sizeDisplay = '';
@@ -159,16 +160,16 @@ export default function ProfileImageCropper({
     setIsSaving(true);
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
-      
+
       // Check file size
       const sizeInMB = croppedBlob.size / (1024 * 1024);
-      
+
       console.log(`Image size: ${sizeInMB > 1 ? sizeInMB.toFixed(2) + 'MB' : (croppedBlob.size / 1024).toFixed(2) + 'KB'}`);
-      
-      if (sizeInMB > 5) {
-        throw new Error(`Image too large: ${sizeInMB.toFixed(2)}MB (max 5MB)`);
+
+      if (sizeInMB > 1) {
+        throw new Error(`Image too large: ${sizeInMB.toFixed(2)}MB (max 1MB)`);
       }
-      
+
       await onSave(croppedBlob);
       handleClose();
     } catch (e) {
@@ -206,23 +207,23 @@ export default function ProfileImageCropper({
           {/* Upload Section */}
           {!imageSrc && (
             <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl bg-gray-50 dark:bg-gray-900/50 hover:border-emerald-500 dark:hover:border-emerald-600 transition-colors">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-linear-to-br from-emerald-500 to-green-600 flex items-center justify-center mb-4">
                 <Upload className="size-8 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 Choose a photo
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">
-                Select a JPG, PNG, or GIF image up to 5MB
+                Select a JPG, PNG, or WebP image up to 1MB
               </p>
               <label className="cursor-pointer">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
-                <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl">
+                <div className="inline-flex items-center gap-2 px-6 py-3 bg-linear-to-r from-emerald-600 to-green-600 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl">
                   <ImageIcon className="size-5" />
                   Browse Files
                 </div>
@@ -260,7 +261,7 @@ export default function ProfileImageCropper({
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">Preview</p>
                   <div className="relative">
                     {/* Outer ring for aesthetic */}
-                    <div className="absolute -inset-2 bg-gradient-to-br from-emerald-400 to-green-600 rounded-full blur-sm opacity-50" />
+                    <div className="absolute -inset-2 bg-linear-to-br from-emerald-400 to-green-600 rounded-full blur-sm opacity-50" />
                     {/* Circle preview container */}
                     <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-white dark:border-gray-800 shadow-xl">
                       {previewUrl ? (
@@ -306,10 +307,10 @@ export default function ProfileImageCropper({
                       <ZoomIn className="size-4 text-emerald-600" />
                       Zoom
                     </Label>
-                    <span className="text-sm text-gray-500">{Math.round(zoom * 100)}%</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{Math.round(zoom * 100)}%</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <ZoomOut className="size-4 text-gray-400" />
+                    <ZoomOut className="size-4 text-gray-400 dark:text-gray-500" />
                     <Slider
                       value={[zoom]}
                       min={1}
@@ -318,7 +319,7 @@ export default function ProfileImageCropper({
                       onValueChange={(val: number[]) => setZoom(val[0])}
                       className="flex-1"
                     />
-                    <ZoomIn className="size-4 text-gray-400" />
+                    <ZoomIn className="size-4 text-gray-400 dark:text-gray-500" />
                   </div>
                 </div>
 
@@ -329,10 +330,10 @@ export default function ProfileImageCropper({
                       <RotateCw className="size-4 text-emerald-600" />
                       Rotation
                     </Label>
-                    <span className="text-sm text-gray-500">{rotation}°</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{rotation}°</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400">-180°</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">-180°</span>
                     <Slider
                       value={[rotation]}
                       min={-180}
@@ -341,7 +342,7 @@ export default function ProfileImageCropper({
                       onValueChange={(val: number[]) => setRotation(val[0])}
                       className="flex-1"
                     />
-                    <span className="text-xs text-gray-400">180°</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">180°</span>
                   </div>
                 </div>
 
@@ -350,7 +351,7 @@ export default function ProfileImageCropper({
                   <label className="cursor-pointer">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       onChange={handleFileSelect}
                       className="hidden"
                     />
@@ -374,7 +375,7 @@ export default function ProfileImageCropper({
             <Button
               onClick={handleSave}
               disabled={isSaving || !croppedAreaPixels}
-              className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+              className="bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
             >
               {isSaving ? (
                 <>

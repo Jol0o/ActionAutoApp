@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
 
-type DriverStatus = "on-route" | "idle" | "offline";
+type DriverStatus = "on-route" | "idle" | "on-break" | "waiting" | "offline";
 
 const INTERVAL_MS = 10000;
 const STORAGE_KEY = "driver_location_sharing_enabled";
