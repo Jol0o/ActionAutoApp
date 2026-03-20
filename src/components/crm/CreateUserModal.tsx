@@ -47,7 +47,7 @@ interface CreateUserModalProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_DOMAIN = "@actionautoutah.com"
 
 function validate(form: CreateUserForm): FormErrors {
   const errors: FormErrors = {}
@@ -56,9 +56,9 @@ function validate(form: CreateUserForm): FormErrors {
     errors.fullName = "Full name is required."
   }
   if (!form.email.trim()) {
-    errors.email = "Email is required."
-  } else if (!EMAIL_RE.test(form.email.trim())) {
-    errors.email = "Enter a valid email address."
+    errors.email = "Email username is required."
+  } else if (/\s|@/.test(form.email.trim())) {
+    errors.email = "No spaces or @ allowed — just the username part."
   }
   if (!form.password) {
     errors.password = "Password is required."
@@ -125,7 +125,7 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
     setForm((p) => ({
       ...p,
       fullName,
-      email: emailTouched ? p.email : (firstName ? `${firstName}@actionauto.com` : ""),
+      email: emailTouched ? p.email : (firstName || ""),
     }))
     if (errors.fullName) setErrors((p) => ({ ...p, fullName: undefined }))
     if (errors.email && !emailTouched) setErrors((p) => ({ ...p, email: undefined }))
@@ -133,7 +133,8 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmailTouched(true)
-    setForm((p) => ({ ...p, email: e.target.value }))
+    // Strip @ and everything after — only allow the local part
+    setForm((p) => ({ ...p, email: e.target.value.replace(/@.*/, "").replace(/\s/g, "") }))
     if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
   }
 
@@ -170,7 +171,7 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
         "/api/crm/users",
         {
           fullName: form.fullName.trim(),
-          email: form.email.trim(),
+          email: `${form.email.trim()}${EMAIL_DOMAIN}`,
           password: form.password,
           role: form.role,
         },
@@ -258,13 +259,18 @@ export function CreateUserModal({ open, onClose, token, onCreated }: CreateUserM
                   Auto
                 </span>
               </Label>
-              <Input
-                type="email"
-                placeholder="juan@actionauto.com"
-                value={form.email}
-                onChange={handleEmailChange}
-                className={`h-10 rounded-xl text-sm border-border/50 focus-visible:ring-emerald-500/30 ${errors.email ? "border-red-400 focus-visible:ring-red-400/30" : ""}`}
-              />
+              <div className={`flex h-10 rounded-xl border text-sm overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/30 ${errors.email ? "border-red-400 focus-within:ring-red-400/30" : "border-border/50"}`}>
+                <input
+                  type="text"
+                  placeholder="juan"
+                  value={form.email}
+                  onChange={handleEmailChange}
+                  className="flex-1 min-w-0 bg-transparent px-3 outline-none text-sm placeholder:text-muted-foreground/30"
+                />
+                <span className="flex items-center pr-3 text-[11px] text-muted-foreground/40 whitespace-nowrap select-none bg-muted/20 pl-2 border-l border-border/30">
+                  @actionautoutah.com
+                </span>
+              </div>
               {errors.email && (
                 <p className="text-[11px] text-red-500">{errors.email}</p>
               )}
