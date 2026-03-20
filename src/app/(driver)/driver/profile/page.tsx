@@ -18,6 +18,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useProfileContext } from '@/context/ProfileContext';
 import { useProfileToast } from '@/components/ProfileToast';
 import { useOrg } from '@/hooks/useOrg';
+import { resolveImageUrl } from '@/lib/utils';
 import ProfileImageCropper from '@/components/ProfileImageCropper';
 import {
   User,
@@ -103,15 +104,6 @@ const containsCurseWord = (text: string): boolean => {
   return curseWords.some(word => lowerText.includes(word));
 };
 
-// Helper to resolve avatar URL (local uploads need backend URL prefix)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const getAvatarUrl = (avatar?: string | null): string | undefined => {
-  if (!avatar) return undefined;
-  if (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('data:')) {
-    return avatar;
-  }
-  return `${API_BASE_URL}${avatar}`;
-};
 
 export default function DriverProfilePage() {
   const { user: authUser } = useUser();
@@ -174,7 +166,7 @@ export default function DriverProfilePage() {
       setActivities(data.data.recentActivities || []);
 
       // Sync avatar to sidebar context
-      const avatarResolved = getAvatarUrl(data.data.avatar);
+      const avatarResolved = resolveImageUrl(data.data.avatar);
       setAvatarUrl(avatarResolved || data.data.avatar || null);
 
       // Fetch real driver stats
@@ -221,7 +213,7 @@ export default function DriverProfilePage() {
       });
 
       const updatedUser = response.data?.data;
-      const newAvatarUrl = updatedUser?.avatar ? getAvatarUrl(updatedUser.avatar) : null;
+      const newAvatarUrl = updatedUser?.avatar ? resolveImageUrl(updatedUser.avatar) : null;
 
       toast.addToast({
         type: 'success',
@@ -401,7 +393,7 @@ export default function DriverProfilePage() {
         isOpen={showImageCropper}
         onClose={() => setShowImageCropper(false)}
         onSave={handleSaveProfilePicture}
-        currentImage={getAvatarUrl(profile?.avatar)}
+        currentImage={resolveImageUrl(profile?.avatar)}
       />
 
       {/* Background Pattern */}
@@ -432,9 +424,9 @@ export default function DriverProfilePage() {
                   className="relative w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-2xl border-4 border-white/40 flex items-center justify-center shadow-2xl overflow-hidden cursor-pointer"
                   onClick={() => setShowImageCropper(true)}
                 >
-                  {(getAvatarUrl(profile?.avatar)) ? (
+                  {resolveImageUrl(profile?.avatar) ? (
                     <img
-                      src={getAvatarUrl(profile?.avatar)}
+                      src={resolveImageUrl(profile?.avatar)}
                       alt="Profile"
                       className="w-full h-full object-cover"
                     />

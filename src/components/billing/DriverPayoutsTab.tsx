@@ -10,11 +10,11 @@ import { formatCurrency } from "@/utils/format";
 import { StatCard, PayoutStatusBadge } from "@/components/billing/StatusBadges";
 
 const DISPLAY = "'Rajdhani', var(--font-sans), sans-serif";
-const MONO    = "'Share Tech Mono', 'Roboto Mono', monospace";
-const ORANGE  = "#E55A00";
-const BG      = "#0d0d10";
+const MONO = "'Share Tech Mono', 'Roboto Mono', monospace";
+const ORANGE = "#E55A00";
+const BG = "#0d0d10";
 const SURFACE = "rgba(255,255,255,0.05)";
-const BORDER  = "rgba(255,255,255,0.10)";
+const BORDER = "rgba(255,255,255,0.10)";
 
 // ─── Shared Supra atoms ───────────────────────────────────────────────────────
 function SupraInput({ id, type = "text", placeholder, value, onChange }: {
@@ -177,14 +177,14 @@ function TableShell({ headers, children, loading, loadingCols, emptyMsg }: {
           <tbody>
             {loading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                    {Array.from({ length: loadingCols ?? headers.length }).map((_, j) => (
-                      <td key={j} style={{ padding: "12px 14px" }}>
-                        <div style={{ height: 11, width: 60, background: "rgba(255,255,255,0.07)", borderRadius: 4 }} />
-                      </td>
-                    ))}
-                  </tr>
-                ))
+                <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  {Array.from({ length: loadingCols ?? headers.length }).map((_, j) => (
+                    <td key={j} style={{ padding: "12px 14px" }}>
+                      <div style={{ height: 11, width: 60, background: "rgba(255,255,255,0.07)", borderRadius: 4 }} />
+                    </td>
+                  ))}
+                </tr>
+              ))
               : children}
           </tbody>
         </table>
@@ -221,10 +221,10 @@ export function DriverPayoutsTab({
   const pendingConf = deliverableShipments.filter(s => s.pendingConfirmation);
 
   const statCards = [
-    { label: "Total Paid Out",   value: formatCurrency(payoutStats?.totalPaid ?? 0),    icon: <Wallet    style={{ width: 15, height: 15, color: "#6EE7B7" }} /> },
-    { label: "Pending Payouts",  value: formatCurrency(payoutStats?.totalPending ?? 0), icon: <Clock     style={{ width: 15, height: 15, color: "#FCD34D" }} /> },
-    { label: "Drivers Paid",     value: String(payoutStats?.countPaid ?? 0),            icon: <UserCheck style={{ width: 15, height: 15, color: "#93C5FD" }} /> },
-    { label: "Ready to Pay",     value: String(readyToPay.length),                      icon: <Send      style={{ width: 15, height: 15, color: ORANGE }} /> },
+    { label: "Total Paid Out", value: formatCurrency(payoutStats?.totalPaid ?? 0), icon: <Wallet style={{ width: 15, height: 15, color: "#6EE7B7" }} /> },
+    { label: "Pending Payouts", value: formatCurrency(payoutStats?.totalPending ?? 0), icon: <Clock style={{ width: 15, height: 15, color: "#FCD34D" }} /> },
+    { label: "Drivers Paid", value: String(payoutStats?.countPaid ?? 0), icon: <UserCheck style={{ width: 15, height: 15, color: "#93C5FD" }} /> },
+    { label: "Ready to Pay", value: String(readyToPay.length), icon: <Send style={{ width: 15, height: 15, color: ORANGE }} /> },
   ];
 
   // inline row hover
@@ -285,59 +285,59 @@ export function DriverPayoutsTab({
                 <tbody>
                   {payoutsLoading
                     ? Array.from({ length: 2 }).map((_, i) => (
-                        <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                          {Array.from({ length: 6 }).map((_, j) => (
-                            <td key={j} style={{ padding: "12px 14px" }}>
-                              <div style={{ height: 11, width: 60, background: "rgba(255,255,255,0.07)", borderRadius: 4 }} />
-                            </td>
-                          ))}
-                        </tr>
-                      ))
+                      <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                        {Array.from({ length: 6 }).map((_, j) => (
+                          <td key={j} style={{ padding: "12px 14px" }}>
+                            <div style={{ height: 11, width: 60, background: "rgba(255,255,255,0.07)", borderRadius: 4 }} />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
                     : pendingConf.map(s => {
-                        const imgSrc = s.proofOfDelivery?.imageUrl
-                          ? `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"}${s.proofOfDelivery.imageUrl}`
-                          : null;
-                        return (
-                          <tr key={s._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", transition: "background 0.12s" }}
-                            onMouseEnter={e => rowHover(e, true)} onMouseLeave={e => rowHover(e, false)}
-                          >
-                            <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>
-                              {s.trackingNumber || "—"}
-                            </td>
-                            <td style={{ ...tdBase }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                                <Avatar name={s.assignedDriverId.name} />
-                                <div>
-                                  <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", margin: 0 }}>{s.assignedDriverId.name}</p>
-                                  <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.30)", margin: "2px 0 0" }}>{s.assignedDriverId.email}</p>
-                                </div>
+                      const imgSrc = s.proofOfDelivery?.imageUrl
+                        ? `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"}${s.proofOfDelivery.imageUrl}`
+                        : null;
+                      return (
+                        <tr key={s._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", transition: "background 0.12s" }}
+                          onMouseEnter={e => rowHover(e, true)} onMouseLeave={e => rowHover(e, false)}
+                        >
+                          <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>
+                            {s.trackingNumber || "—"}
+                          </td>
+                          <td style={{ ...tdBase }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                              <Avatar name={s.assignedDriverId.name} />
+                              <div>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", margin: 0 }}>{s.assignedDriverId.name}</p>
+                                <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.30)", margin: "2px 0 0" }}>{s.assignedDriverId.email}</p>
                               </div>
-                            </td>
-                            <td style={{ ...tdBase, fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
-                              {s.preservedQuoteData?.vehicleName || "—"}
-                            </td>
-                            <td style={{ ...tdBase, maxWidth: 140 }}>
-                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {s.origin} → {s.destination}
-                              </span>
-                            </td>
-                            <td style={{ ...tdBase }}>
-                              {imgSrc
-                                ? <a href={imgSrc} target="_blank" rel="noopener noreferrer">
-                                    <img src={imgSrc} alt="Proof" style={{ width: 38, height: 38, borderRadius: 7, objectFit: "cover", border: "1px solid rgba(255,255,255,0.10)", display: "block" }} />
-                                  </a>
-                                : <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>—</span>
-                              }
-                            </td>
-                            <td style={{ ...tdBase }}>
-                              <ConfirmBtn
-                                loading={confirmingId === s._id}
-                                onClick={() => onConfirmDelivery(s._id)}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
+                            </div>
+                          </td>
+                          <td style={{ ...tdBase, fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
+                            {s.preservedQuoteData?.vehicleName || "—"}
+                          </td>
+                          <td style={{ ...tdBase, maxWidth: 140 }}>
+                            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {s.origin} → {s.destination}
+                            </span>
+                          </td>
+                          <td style={{ ...tdBase }}>
+                            {imgSrc
+                              ? <a href={imgSrc} target="_blank" rel="noopener noreferrer">
+                                <img src={imgSrc} alt="Proof" style={{ width: 38, height: 38, borderRadius: 7, objectFit: "cover", border: "1px solid rgba(255,255,255,0.10)", display: "block" }} />
+                              </a>
+                              : <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>—</span>
+                            }
+                          </td>
+                          <td style={{ ...tdBase }}>
+                            <ConfirmBtn
+                              loading={confirmingId === s._id}
+                              onClick={() => onConfirmDelivery(s._id)}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
@@ -351,55 +351,55 @@ export function DriverPayoutsTab({
         <TableShell headers={["Driver", "Shipment", "Route", "Vehicle", "Rate", "Action"]} loading={payoutsLoading}>
           {readyToPay.length === 0
             ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "3rem", fontFamily: DISPLAY }}>
-                    <CheckCircle2 style={{ width: 26, height: 26, color: "#6EE7B7", display: "block", margin: "0 auto 8px" }} />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.28)" }}>All delivered loads have been paid.</span>
-                  </td>
-                </tr>
-              )
+              <tr>
+                <td colSpan={6} style={{ textAlign: "center", padding: "3rem", fontFamily: DISPLAY }}>
+                  <CheckCircle2 style={{ width: 26, height: 26, color: "#6EE7B7", display: "block", margin: "0 auto 8px" }} />
+                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.28)" }}>All delivered loads have been paid.</span>
+                </td>
+              </tr>
+            )
             : readyToPay.map(s => (
-                <tr key={s._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", transition: "background 0.12s" }}
-                  onMouseEnter={e => rowHover(e, true)} onMouseLeave={e => rowHover(e, false)}
-                >
-                  <td style={{ ...tdBase }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                      <Avatar name={s.assignedDriverId.name} />
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", margin: 0 }}>{s.assignedDriverId.name}</p>
-                        <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.30)", margin: "2px 0 0" }}>{s.assignedDriverId.email}</p>
-                      </div>
+              <tr key={s._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", transition: "background 0.12s" }}
+                onMouseEnter={e => rowHover(e, true)} onMouseLeave={e => rowHover(e, false)}
+              >
+                <td style={{ ...tdBase }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <Avatar name={s.assignedDriverId.name} />
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", margin: 0 }}>{s.assignedDriverId.name}</p>
+                      <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.30)", margin: "2px 0 0" }}>{s.assignedDriverId.email}</p>
                     </div>
-                  </td>
-                  <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{s.trackingNumber || "—"}</td>
-                  <td style={{ ...tdBase, maxWidth: 160 }}>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {s.origin} → {s.destination}
-                    </span>
-                  </td>
-                  <td style={{ ...tdBase, fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{s.preservedQuoteData?.vehicleName || "—"}</td>
-                  <td style={{ ...tdBase, fontFamily: DISPLAY, fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>
-                    {s.preservedQuoteData?.rate != null ? formatCurrency(s.preservedQuoteData.rate) : "—"}
-                  </td>
-                  <td style={{ ...tdBase }}>
-                    {!s.assignedDriverId.stripeConnectAccountId
-                      ? (
-                          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.30)", fontFamily: DISPLAY }}>
-                            <AlertTriangle style={{ width: 12, height: 12, color: "#FCD34D" }} />
-                            No Stripe
-                          </span>
-                        )
-                      : (
-                          <PayDriverBtn onClick={() => {
-                            onSetPayoutTarget(s);
-                            onPayoutAmountChange(s.preservedQuoteData?.rate ?? 0);
-                            onPayoutNotesChange("");
-                          }} />
-                        )
-                    }
-                  </td>
-                </tr>
-              ))}
+                  </div>
+                </td>
+                <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{s.trackingNumber || "—"}</td>
+                <td style={{ ...tdBase, maxWidth: 160 }}>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {s.origin} → {s.destination}
+                  </span>
+                </td>
+                <td style={{ ...tdBase, fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{s.preservedQuoteData?.vehicleName || "—"}</td>
+                <td style={{ ...tdBase, fontFamily: DISPLAY, fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>
+                  {s.preservedQuoteData?.rate != null ? formatCurrency(s.preservedQuoteData.rate) : "—"}
+                </td>
+                <td style={{ ...tdBase }}>
+                  {!s.assignedDriverId.stripeConnectAccountId
+                    ? (
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.30)", fontFamily: DISPLAY }}>
+                        <AlertTriangle style={{ width: 12, height: 12, color: "#FCD34D" }} />
+                        No Stripe
+                      </span>
+                    )
+                    : (
+                      <PayDriverBtn onClick={() => {
+                        onSetPayoutTarget(s);
+                        onPayoutAmountChange(s.preservedQuoteData?.rate ?? 0);
+                        onPayoutNotesChange("");
+                      }} />
+                    )
+                  }
+                </td>
+              </tr>
+            ))}
         </TableShell>
       </div>
 
@@ -409,38 +409,38 @@ export function DriverPayoutsTab({
         <TableShell headers={["Payout #", "Driver", "Shipment", "Amount", "Status", "Date"]} loading={payoutsLoading}>
           {payouts.length === 0
             ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "2.5rem", fontFamily: DISPLAY, fontSize: 13, color: "rgba(255,255,255,0.28)" }}>
-                    No payouts sent yet.
+              <tr>
+                <td colSpan={6} style={{ textAlign: "center", padding: "2.5rem", fontFamily: DISPLAY, fontSize: 13, color: "rgba(255,255,255,0.28)" }}>
+                  No payouts sent yet.
+                </td>
+              </tr>
+            )
+            : payouts.map(p => {
+              const driver = typeof p.driverId === "object" ? p.driverId : null;
+              const shipment = typeof p.shipmentId === "object" ? p.shipmentId : null;
+              return (
+                <tr key={p._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", transition: "background 0.12s" }}
+                  onMouseEnter={e => rowHover(e, true)} onMouseLeave={e => rowHover(e, false)}
+                >
+                  <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{p.payoutNumber || "—"}</td>
+                  <td style={{ ...tdBase }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <Avatar name={driver?.name || p.driverName || "?"} />
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", margin: 0 }}>{driver?.name || p.driverName}</p>
+                        <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.30)", margin: "2px 0 0" }}>{driver?.email || p.driverEmail}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{shipment?.trackingNumber || "—"}</td>
+                  <td style={{ ...tdBase, fontFamily: DISPLAY, fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{formatCurrency(p.amount)}</td>
+                  <td style={{ ...tdBase }}><PayoutStatusBadge status={p.status} /></td>
+                  <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.30)", whiteSpace: "nowrap" }}>
+                    {new Date(p.paidAt || p.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
-              )
-            : payouts.map(p => {
-                const driver   = typeof p.driverId   === "object" ? p.driverId   : null;
-                const shipment = typeof p.shipmentId === "object" ? p.shipmentId : null;
-                return (
-                  <tr key={p._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", transition: "background 0.12s" }}
-                    onMouseEnter={e => rowHover(e, true)} onMouseLeave={e => rowHover(e, false)}
-                  >
-                    <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{p.payoutNumber || "—"}</td>
-                    <td style={{ ...tdBase }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                        <Avatar name={driver?.name || p.driverName || "?"} />
-                        <div>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", margin: 0 }}>{driver?.name || p.driverName}</p>
-                          <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.30)", margin: "2px 0 0" }}>{driver?.email || p.driverEmail}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{shipment?.trackingNumber || "—"}</td>
-                    <td style={{ ...tdBase, fontFamily: DISPLAY, fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{formatCurrency(p.amount)}</td>
-                    <td style={{ ...tdBase }}><PayoutStatusBadge status={p.status} /></td>
-                    <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.30)", whiteSpace: "nowrap" }}>
-                      {new Date(p.paidAt || p.createdAt).toLocaleDateString()}
-                    </td>
-                  </tr>
-                );
-              })}
+              );
+            })}
         </TableShell>
       </div>
 

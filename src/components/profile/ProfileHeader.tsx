@@ -14,7 +14,7 @@ import {
     User
 } from 'lucide-react';
 import { UserProfile, OnlineStatus } from '@/types/user';
-import { cn } from '@/lib/utils';
+import { cn, resolveImageUrl } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
 import ProfileImageCropper from '@/components/ProfileImageCropper';
 import { onlineStatusOptions, languageOptions } from './profile-constants';
@@ -120,7 +120,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                         isOpen={isCropperOpen}
                         onClose={() => setIsCropperOpen(false)}
                         onSave={handleSaveAvatar}
-                        currentImage={avatarSrc || ''}
+                        currentImage={resolveImageUrl(profile?.avatarUrl || profile?.avatar || authUser?.imageUrl)}
                     />
 
                     <button
