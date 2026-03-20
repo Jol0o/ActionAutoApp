@@ -79,7 +79,7 @@ export default function RootLayout({
             </main>
             <Toaster />
             <ImpersonationBanner />
-            <DevRoleSwitcher /> {/* Disable in production */}
+            {process.env.NODE_ENV === "development" && <DevRoleSwitcher />}
             <InstallPrompt />
           </ThemeProvider>
         </AuthProvider>

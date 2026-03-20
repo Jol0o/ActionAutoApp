@@ -206,7 +206,7 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
                                 isLoading={isLoading && selectedRole === "customer"}
                                 disabled={isLoading}
                             />
-                            <IdentityCard
+                            {/* <IdentityCard
                                 icon={<Car className="h-6 w-6" />}
                                 title="I am a Driver"
                                 description="I want to sign up as a transportation provider."
@@ -214,7 +214,7 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
                                 onGoogleClick={() => handleGoogleSignUp("driver")}
                                 isLoading={isLoading && selectedRole === "driver"}
                                 disabled={isLoading}
-                            />
+                            /> */}
                             <IdentityCard
                                 icon={<Briefcase className="h-6 w-6" />}
                                 title="I am a Dealer"
