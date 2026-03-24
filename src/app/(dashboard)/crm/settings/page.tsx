@@ -15,6 +15,8 @@ import {
   ShieldCheck,
   ChevronRight,
   Lock,
+  Moon,
+  Sun,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,6 +31,9 @@ import {
 import { apiClient } from "@/lib/api-client"
 import { CreateUserModal } from "@/components/crm/CreateUserModal"
 import { UsersTable } from "@/components/crm/UsersTable"
+import { useTheme } from "@/context/ThemeContext"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,7 +83,7 @@ export default function CrmSettingsPage() {
   }, [router])
 
   const handleExit = async () => {
-    try { await apiClient.post("/api/crm/logout", {}, { headers: { Authorization: `Bearer ${token}` } }) } catch {}
+    try { await apiClient.post("/api/crm/logout", {}, { headers: { Authorization: `Bearer ${token}` } }) } catch { }
     localStorage.removeItem("crm_token")
     localStorage.removeItem("crm_user")
     router.push("/")
@@ -89,6 +94,7 @@ export default function CrmSettingsPage() {
   }
 
   const isAdmin = user?.role === "admin"
+  const { theme, setTheme } = useTheme()
 
   if (isLoading) {
     return (
@@ -279,6 +285,37 @@ export default function CrmSettingsPage() {
                   <p className="text-[11px] text-muted-foreground/30 mt-0.5 leading-relaxed">
                     Only users with the Admin role can create, edit, or deactivate CRM accounts. All changes are logged for security purposes.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Appearance card */}
+            <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border/30">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                    {theme === "dark" ? <Moon className="h-4 w-4 text-violet-500" /> : <Sun className="h-4 w-4 text-amber-500" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">Appearance</p>
+                    <p className="text-[11px] text-muted-foreground/40 mt-0.5">Customize your display preferences</p>
+                  </div>
+                </div>
+              </div>
+              <div className="px-6 py-5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="crm-dark-mode" className="flex items-center gap-3 cursor-pointer">
+                    <Moon className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="text-sm font-semibold">Dark Mode</span>
+                      <p className="text-[11px] text-muted-foreground/40 mt-0.5">Switch between light and dark themes</p>
+                    </div>
+                  </Label>
+                  <Switch
+                    id="crm-dark-mode"
+                    checked={theme === "dark"}
+                    onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                  />
                 </div>
               </div>
             </div>
