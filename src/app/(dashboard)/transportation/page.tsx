@@ -12,11 +12,13 @@ import { QuoteResultModal } from "@/components/QuoteResultModal"
 import { TransportationSidebar } from "@/components/TransportationSidebar"
 import { ShipmentCard } from "@/components/ShipmentCard"
 import { QuoteCard } from "@/components/QuoteCard"
+import { useRouter } from "next/navigation"
 import { useTransportationData } from "@/hooks/useTransportationData"
 import { useAlert } from "@/components/AlertDialog"
 import { Quote } from "@/types/transportation"
 
 export default function TransportationPage() {
+    const router = useRouter()
     const searchParams = useSearchParams()
     const [activeTab, setActiveTab] = React.useState("shipments")
     const [searchQuery, setSearchQuery] = React.useState(searchParams.get("search") || "")
@@ -234,6 +236,22 @@ export default function TransportationPage() {
                                 onClick={() => setActiveTab("drafts")}
                             >
                                 <span>QUOTES</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="hidden sm:flex gap-1 sm:gap-2 text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4 border-border"
+                                onClick={() => {
+                                    const params = new URLSearchParams()
+                                    if (searchQuery) params.set("search", searchQuery)
+                                    if (selectedStatus !== "all") params.set("status", selectedStatus)
+                                    if (activeTab !== "shipments") params.set("tab", activeTab)
+                                    const query = params.toString()
+                                    router.push(`/transportation/create-load${query ? `?${query}` : ""}`)
+                                }}
+                            >
+                                <Plus className="size-3.5 sm:size-4" />
+                                <span>CREATE LOAD</span>
                             </Button>
                             <Button
                                 size="sm"
