@@ -11,6 +11,8 @@ import {
   User,
   Settings,
   ChevronRight,
+  Package,
+  Wrench,
 } from "lucide-react";
 
 import {
@@ -39,6 +41,8 @@ import { useOrg } from "@/hooks/useOrg";
 const navItems = [
   { title: "Dashboard", url: "/driver", icon: LayoutDashboard },
   { title: "My Loads", url: "/driver/loads", icon: Truck },
+  { title: "Available Loads", url: "/driver/available-loads", icon: Package },
+  { title: "Equipment", url: "/driver/profile?tab=equipment", icon: Wrench },
   { title: "Schedule", url: "/driver/schedule", icon: Calendar },
   { title: "Earnings", url: "/driver/earnings", icon: DollarSign },
 ];

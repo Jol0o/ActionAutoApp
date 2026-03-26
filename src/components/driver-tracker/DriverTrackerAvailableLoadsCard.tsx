@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Package, Truck, Loader2, UserPlus, ChevronDown } from "lucide-react";
+import { Package, Truck, Loader2, UserPlus, ChevronDown, Megaphone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Shipment } from "@/types/transportation";
 import { DriverTrackingItem } from "@/types/driver-tracking";
+import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
+
+const trailerLabel = (val?: string) =>
+    trailerTypeOptions.find((t) => t.value === val)?.label || val || "";
 
 interface DriverTrackerAvailableLoadsCardProps {
     shipments: Shipment[];
@@ -97,6 +101,23 @@ export function DriverTrackerAvailableLoadsCard({
                                         {shipment.origin} → {shipment.destination}
                                     </p>
                                 )}
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {shipment.isPostedToBoard && (
+                                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-blue-300 text-blue-600">
+                                            <Megaphone className="size-2 mr-0.5" />Board
+                                        </Badge>
+                                    )}
+                                    {shipment.trailerTypeRequired && (
+                                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-purple-300 text-purple-600">
+                                            <Truck className="size-2 mr-0.5" />{trailerLabel(shipment.trailerTypeRequired)}
+                                        </Badge>
+                                    )}
+                                    {shipment.vehicleCount && shipment.vehicleCount > 1 && (
+                                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-indigo-300 text-indigo-600">
+                                            {shipment.vehicleCount} cars
+                                        </Badge>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

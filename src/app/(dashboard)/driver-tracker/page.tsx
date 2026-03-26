@@ -17,6 +17,7 @@ import { DriverTrackerLoadsCard } from "@/components/driver-tracker/DriverTracke
 import { DriverTrackerListCard } from "@/components/driver-tracker/DriverTrackerListCard";
 import { DriverAssignLoadModal } from "@/components/driver-tracker/DriverAssignLoadModal";
 import { DriverTrackerAvailableLoadsCard } from "@/components/driver-tracker/DriverTrackerAvailableLoadsCard";
+import { DriverTrackerRequestsCard } from "@/components/driver-tracker/DriverTrackerRequestsCard";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { initializeSocket, getSocket, disconnectSocket } from "@/lib/socket.client";
@@ -80,6 +81,10 @@ export default function DriverTrackerPage() {
   const [assignModalOpen, setAssignModalOpen] = React.useState(false);
   const [assigningTo, setAssigningTo] =
     React.useState<DriverTrackingItem | null>(null);
+  const [loadRequests, setLoadRequests] = React.useState<any[]>([]);
+  const [loadRequestsLoading, setLoadRequestsLoading] = React.useState(false);
+  const [approvingId, setApprovingId] = React.useState<string | null>(null);
+  const [rejectingId, setRejectingId] = React.useState<string | null>(null);
 
   const mapRef = React.useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = React.useRef<any>(null);
@@ -266,6 +271,67 @@ export default function DriverTrackerPage() {
     [getToken, isSignedIn, fetchDrivers, fetchAvailableShipments],
   );
 
+  const fetchLoadRequests = React.useCallback(async () => {
+    if (!isSignedIn || isDriver) return;
+    setLoadRequestsLoading(true);
+    try {
+      const token = await getToken();
+      const res = await apiClient.get("/api/driver-tracking/load-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLoadRequests(res.data?.data || []);
+    } catch {
+    } finally {
+      setLoadRequestsLoading(false);
+    }
+  }, [getToken, isSignedIn, isDriver]);
+
+  const handleApproveRequest = React.useCallback(
+    async (shipmentId: string, driverId: string) => {
+      const key = `${shipmentId}-${driverId}`;
+      setApprovingId(key);
+      try {
+        const token = await getToken();
+        await apiClient.post(
+          "/api/driver-tracking/approve-request",
+          { shipmentId, driverId },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        toast.success("Load request approved — driver dispatched");
+        fetchLoadRequests();
+        fetchDrivers();
+        fetchAvailableShipments();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to approve request");
+      } finally {
+        setApprovingId(null);
+      }
+    },
+    [getToken, fetchLoadRequests, fetchDrivers, fetchAvailableShipments],
+  );
+
+  const handleRejectRequest = React.useCallback(
+    async (shipmentId: string, driverId: string) => {
+      const key = `${shipmentId}-${driverId}`;
+      setRejectingId(key);
+      try {
+        const token = await getToken();
+        await apiClient.post(
+          "/api/driver-tracking/reject-request",
+          { shipmentId, driverId },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        toast.success("Load request rejected");
+        fetchLoadRequests();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to reject request");
+      } finally {
+        setRejectingId(null);
+      }
+    },
+    [getToken, fetchLoadRequests],
+  );
+
   React.useEffect(() => {
     fetchDrivers();
     const interval = setInterval(fetchDrivers, LOCATION_INTERVAL_MS);
@@ -275,6 +341,10 @@ export default function DriverTrackerPage() {
   React.useEffect(() => {
     fetchAvailableShipments();
   }, [fetchAvailableShipments]);
+
+  React.useEffect(() => {
+    fetchLoadRequests();
+  }, [fetchLoadRequests]);
 
   React.useEffect(() => {
     if (!isSignedIn) return;
@@ -309,6 +379,7 @@ export default function DriverTrackerPage() {
         socket.on("driver:loads_updated", () => {
           fetchDrivers();
           fetchAvailableShipments();
+          fetchLoadRequests();
         });
       } catch { }
     };
@@ -726,6 +797,15 @@ export default function DriverTrackerPage() {
               hasActiveLoad={drivers.some((d) => d.driver?.id === user?.id && (d.shipments?.length ?? 0) > 0)}
             />
           )}
+
+          <DriverTrackerRequestsCard
+            requests={loadRequests}
+            isLoading={loadRequestsLoading}
+            onApprove={handleApproveRequest}
+            onReject={handleRejectRequest}
+            approvingId={approvingId}
+            rejectingId={rejectingId}
+          />
 
           <DriverTrackerLoadsCard
             drivers={driversWithLoads}

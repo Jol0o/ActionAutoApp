@@ -1,4 +1,4 @@
-import { MapPin, Truck, Download, Package, Calendar, CheckCircle, Clock, ArrowRight, Trash2, Mail, User, Building2 } from "lucide-react"
+import { MapPin, Truck, Download, Package, Calendar, CheckCircle, Clock, ArrowRight, Trash2, Mail, User, Building2, Megaphone } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -7,6 +7,10 @@ import * as React from "react"
 import { useAlert, AlertDialog } from "@/components/AlertDialog"
 import { EditShipmentModal } from "./EditShipmentModal"
 import { generateShipmentPDF } from "@/utils/pdfGenerator"
+import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants"
+
+const trailerLabel = (val?: string) =>
+    trailerTypeOptions.find((t) => t.value === val)?.label || val || "";
 
 interface ShipmentCardProps {
     shipment: Shipment
@@ -101,6 +105,27 @@ const ShipmentCardInner = React.memo(function ShipmentCardInner({
                                         {shipment.status}
                                     </Badge>
                                 </div>
+                                {(shipment.isPostedToBoard || shipment.trailerTypeRequired) && (
+                                    <div className="absolute top-10 sm:top-11 left-2 flex flex-wrap gap-1">
+                                        {shipment.isPostedToBoard && (
+                                            <Badge className="bg-blue-600/90 text-white backdrop-blur-sm px-1.5 py-0.5 text-[9px] sm:text-[10px] shadow-lg">
+                                                <Megaphone className="w-2.5 h-2.5 mr-0.5" />
+                                                On Board
+                                            </Badge>
+                                        )}
+                                        {shipment.trailerTypeRequired && (
+                                            <Badge className="bg-purple-600/90 text-white backdrop-blur-sm px-1.5 py-0.5 text-[9px] sm:text-[10px] shadow-lg">
+                                                <Truck className="w-2.5 h-2.5 mr-0.5" />
+                                                {trailerLabel(shipment.trailerTypeRequired)}
+                                            </Badge>
+                                        )}
+                                        {shipment.vehicleCount && shipment.vehicleCount > 1 && (
+                                            <Badge className="bg-indigo-600/90 text-white backdrop-blur-sm px-1.5 py-0.5 text-[9px] sm:text-[10px] shadow-lg">
+                                                {shipment.vehicleCount} cars
+                                            </Badge>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 text-white">
                                     <div className="backdrop-blur-md bg-black/40 rounded-lg p-2 sm:p-3 border border-white/10">
                                         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 sm:gap-2">
