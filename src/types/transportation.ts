@@ -48,11 +48,11 @@ export interface Shipment {
   quoteId?: Quote;
   preservedQuoteData?: Quote;
   status:
-    | "Available for Pickup"
-    | "Cancelled"
-    | "Delivered"
-    | "Dispatched"
-    | "In-Route";
+  | "Available for Pickup"
+  | "Cancelled"
+  | "Delivered"
+  | "Dispatched"
+  | "In-Route";
   origin: string;
   destination: string;
   requestedPickupDate: string;
@@ -63,13 +63,13 @@ export interface Shipment {
   trackingNumber?: string;
   createdAt: string;
   assignedDriverId?:
-    | string
-    | {
-        _id: string;
-        name?: string;
-        email?: string;
-        avatar?: string | null;
-      };
+  | string
+  | {
+    _id: string;
+    name?: string;
+    email?: string;
+    avatar?: string | null;
+  };
   assignedAt?: string;
   driverAcceptedAt?: string;
   proofOfDelivery?: {
@@ -79,6 +79,43 @@ export interface Shipment {
     confirmedAt?: string;
     confirmedBy?: string;
   };
+  trailerTypeRequired?: string;
+  vehicleCount?: number;
+  isPostedToBoard?: boolean;
+  preDispatchNotes?: string;
+  pendingDriverRequests?: Array<{
+    driverId: string;
+    driverName: string;
+    requestedAt: string;
+    status: "pending" | "approved" | "rejected";
+    reviewedAt?: string;
+    reviewedBy?: string;
+    rejectionReason?: string;
+  }>;
+  carrierPayAmount?: number;
+  copCodAmount?: number;
+  balanceAmount?: number;
+  specialInstructions?: string;
+  loadSpecificTerms?: string;
+  desiredDeliveryDate?: string;
+  internalLoadId?: string;
+  originContact?: {
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    cellPhone?: string;
+    buyerReferenceNumber?: string;
+  };
+  destinationContact?: {
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    cellPhone?: string;
+    buyerReferenceNumber?: string;
+  };
+  myRequestStatus?: "pending" | "approved" | "rejected" | null;
+  myRequestedAt?: string | null;
+  rejectionReason?: string | null;
   createdBy?: {
     _id: string;
     name?: string;
