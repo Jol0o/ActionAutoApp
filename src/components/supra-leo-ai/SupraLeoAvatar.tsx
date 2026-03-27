@@ -357,7 +357,7 @@ export function SupraLeoAvatar({ state = 'idle', size = 44, onClick, className =
   const blinkDirRef = useRef(-1)
   const jawRef = useRef(0)
   const rafRef = useRef<number>(0)
-  const blinkTimer = useRef<ReturnType<typeof setTimeout>>()
+const blinkTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const tRef = useRef(0)
 
   const render = useCallback(() => {
