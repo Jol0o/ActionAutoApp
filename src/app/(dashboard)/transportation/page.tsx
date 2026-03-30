@@ -17,6 +17,14 @@ import { useAlert } from "@/components/AlertDialog"
 import { Quote } from "@/types/transportation"
 
 export default function TransportationPage() {
+    return (
+        <React.Suspense fallback={null}>
+            <TransportationPageInner />
+        </React.Suspense>
+    )
+}
+
+function TransportationPageInner() {
     const searchParams = useSearchParams()
     const [activeTab, setActiveTab] = React.useState("shipments")
     const [searchQuery, setSearchQuery] = React.useState(searchParams.get("search") || "")

@@ -7,6 +7,12 @@ export const initializeSocket = (token: string): Socket => {
     return socket;
   }
 
+  if (socket) {
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
+  }
+
   const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   socket = io(SOCKET_URL, {
