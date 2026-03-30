@@ -28,11 +28,8 @@ import {
     Sparkles,
     Loader2,
     UserCog,
-    Truck,
     CircleDot,
     Check,
-    Shield,
-    MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -45,9 +42,6 @@ import { SupportTab } from '@/components/profile/SupportTab';
 import { ProfileDialogs } from '@/components/profile/ProfileDialogs';
 import { containsCurseWord } from '@/components/profile/profile-constants';
 import { DriverOverviewTab } from './DriverOverviewTab';
-import { EquipmentTab } from './EquipmentTab';
-import { ComplianceTab } from './ComplianceTab';
-import { LogisticsTab } from './LogisticsTab';
 import { driverStatusOptions } from './driver-profile-constants';
 import { DriverProfile } from '@/types/driver-profile';
 
@@ -141,71 +135,6 @@ export const DriverProfileView: React.FC = () => {
     useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
     const handleTabChange = (value: string) => setActiveTab(value);
-
-    const handleSaveEquipment = async (data: Record<string, any>) => {
-        try {
-            const token = await getToken();
-            const res = await apiClient.patch('/api/driver-profile/equipment', data, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data?.data) setDriverProfile(res.data.data);
-            toast.success('Equipment updated');
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to save equipment');
-        }
-    };
-
-    const handleSaveCompliance = async (data: Record<string, any>) => {
-        try {
-            const token = await getToken();
-            const res = await apiClient.patch('/api/driver-profile/compliance', data, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data?.data) setDriverProfile(res.data.data);
-            toast.success('Compliance info updated');
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to save compliance info');
-        }
-    };
-
-    const handleUploadDocument = async (formData: FormData) => {
-        try {
-            const token = await getToken();
-            const res = await apiClient.post('/api/driver-profile/documents', formData, {
-                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
-            });
-            if (res.data?.data) setDriverProfile(res.data.data);
-            toast.success('Document uploaded');
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to upload document');
-        }
-    };
-
-    const handleDeleteDocument = async (documentId: string) => {
-        try {
-            const token = await getToken();
-            const res = await apiClient.delete(`/api/driver-profile/documents/${documentId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data?.data) setDriverProfile(res.data.data);
-            toast.success('Document deleted');
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to delete document');
-        }
-    };
-
-    const handleSaveLogistics = async (data: Record<string, any>) => {
-        try {
-            const token = await getToken();
-            const res = await apiClient.patch('/api/driver-profile/logistics', data, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data?.data) setDriverProfile(res.data.data);
-            toast.success('Logistics updated');
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to save logistics');
-        }
-    };
 
     const handleBioChange = (value: string) => {
         setPersonalInfo({ ...personalInfo, bio: value });
@@ -370,9 +299,6 @@ export const DriverProfileView: React.FC = () => {
 
     const tabs = [
         { value: 'overview', label: 'Overview', icon: Sparkles },
-        { value: 'equipment', label: 'Equipment', icon: Truck },
-        { value: 'docs', label: 'Docs', icon: Shield },
-        { value: 'logistics', label: 'Logistics', icon: MapPin },
         { value: 'personal', label: 'Personal', icon: UserCog },
         { value: 'notifications', label: 'Alerts', icon: Bell },
         { value: 'activity', label: 'Feed', icon: Activity },
@@ -420,29 +346,6 @@ export const DriverProfileView: React.FC = () => {
                         driverStats={driverStats}
                         organization={organization}
                     />
-                </TabsContent>
-
-                <TabsContent value="equipment">
-                    {driverProfile && (
-                        <EquipmentTab profile={driverProfile} onSave={handleSaveEquipment} />
-                    )}
-                </TabsContent>
-
-                <TabsContent value="docs">
-                    {driverProfile && (
-                        <ComplianceTab
-                            profile={driverProfile}
-                            onSave={handleSaveCompliance}
-                            onUploadDocument={handleUploadDocument}
-                            onDeleteDocument={handleDeleteDocument}
-                        />
-                    )}
-                </TabsContent>
-
-                <TabsContent value="logistics">
-                    {driverProfile && (
-                        <LogisticsTab profile={driverProfile} onSave={handleSaveLogistics} />
-                    )}
                 </TabsContent>
 
                 <TabsContent value="personal">

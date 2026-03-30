@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -19,9 +20,7 @@ import {
   Truck,
   Package,
   Search,
-  MapPin,
   Loader2,
-  Calendar,
   ArrowRight,
   AlertTriangle,
   RefreshCw,
@@ -31,15 +30,21 @@ import {
   Clock,
   Map as MapIcon,
   List,
-  CheckCircle2,
   XCircle,
   Timer,
+  ArrowUpDown,
+  TrendingUp,
+  CalendarClock,
+  MapPin,
+  Calendar,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
@@ -77,7 +82,7 @@ const trailerLabel = (val?: string) =>
 
 const formatDate = (d?: string) => {
   if (!d) return "TBD";
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Denver" });
 };
 
 const timeAgo = (d: string) => {
@@ -90,7 +95,11 @@ const timeAgo = (d: string) => {
   return `${Math.floor(hrs / 24)}d ago`;
 };
 
+const extractError = (err: any, fallback: string) =>
+  err?.response?.data?.message || err?.message || fallback;
+
 type ViewMode = "list" | "map";
+type SortMode = "newest" | "pay-high" | "pay-low" | "pickup-soon";
 
 export default function AvailableLoadsPage() {
   const { getToken } = useAuth();
@@ -98,6 +107,7 @@ export default function AvailableLoadsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [trailerFilter, setTrailerFilter] = React.useState<string>("all");
+  const [sortBy, setSortBy] = React.useState<SortMode>("newest");
   const [requestTarget, setRequestTarget] = React.useState<AvailableLoad | null>(null);
   const [requesting, setRequesting] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -114,8 +124,8 @@ export default function AvailableLoadsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLoads(res.data?.data || []);
-    } catch {
-      toast.error("Failed to load available loads");
+    } catch (err: any) {
+      toast.error(extractError(err, "Failed to load available loads"));
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -134,7 +144,7 @@ export default function AvailableLoadsPage() {
 
     const initMap = async () => {
       const mapboxgl = (await import("mapbox-gl")).default;
-      // @ts-ignore - CSS import for mapbox styling
+      // @ts-ignore
       await import("mapbox-gl/dist/mapbox-gl.css");
       if (cancelled || mapInstanceRef.current) return;
 
@@ -192,7 +202,7 @@ export default function AvailableLoadsPage() {
       setRequestTarget(null);
       fetchLoads();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to request load");
+      toast.error(extractError(err, "Failed to request load"));
     } finally {
       setRequesting(false);
     }
@@ -205,7 +215,7 @@ export default function AvailableLoadsPage() {
 
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase().trim();
-    return loads.filter((l) => {
+    let result = loads.filter((l) => {
       if (trailerFilter !== "all" && l.trailerTypeRequired !== trailerFilter) return false;
       if (!q) return true;
       return (
@@ -215,20 +225,34 @@ export default function AvailableLoadsPage() {
         l.preservedQuoteData?.vehicleName?.toLowerCase().includes(q)
       );
     });
-  }, [loads, search, trailerFilter]);
+
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case "pay-high":
+          return (b.carrierPayAmount || b.preservedQuoteData?.rate || 0) - (a.carrierPayAmount || a.preservedQuoteData?.rate || 0);
+        case "pay-low":
+          return (a.carrierPayAmount || a.preservedQuoteData?.rate || 0) - (b.carrierPayAmount || b.preservedQuoteData?.rate || 0);
+        case "pickup-soon": {
+          const aDate = a.scheduledPickup || a.requestedPickupDate || a.createdAt;
+          const bDate = b.scheduledPickup || b.requestedPickupDate || b.createdAt;
+          return new Date(aDate).getTime() - new Date(bDate).getTime();
+        }
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+
+    return result;
+  }, [loads, search, trailerFilter, sortBy]);
 
   const pendingCount = loads.filter((l) => l.myRequestStatus === "pending").length;
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Loader2 className="size-8 animate-spin text-primary" />
-        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
-          Finding available loads
-        </p>
-      </div>
-    );
-  }
+  const sortOptions: { key: SortMode; label: string; icon: React.ReactNode }[] = [
+    { key: "newest", label: "Newest First", icon: <Clock className="size-3.5" /> },
+    { key: "pay-high", label: "Highest Pay", icon: <TrendingUp className="size-3.5" /> },
+    { key: "pay-low", label: "Lowest Pay", icon: <DollarSign className="size-3.5" /> },
+    { key: "pickup-soon", label: "Pickup Soonest", icon: <CalendarClock className="size-3.5" /> },
+  ];
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4">
@@ -238,7 +262,7 @@ export default function AvailableLoadsPage() {
             Available Loads
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {loads.length} load{loads.length !== 1 ? "s" : ""} on the board
+            {isLoading ? "Loading..." : `${loads.length} load${loads.length !== 1 ? "s" : ""} on the board`}
             {pendingCount > 0 && (
               <span className="ml-1.5 text-amber-600 font-semibold">
                 · {pendingCount} pending request{pendingCount > 1 ? "s" : ""}
@@ -278,25 +302,45 @@ export default function AvailableLoadsPage() {
             className="pl-9 h-9"
           />
         </div>
-        {uniqueTrailers.length > 0 && (
+        <div className="flex gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5 h-9 shrink-0">
-                <Filter className="size-3.5" />
-                {trailerFilter === "all" ? "All Trailers" : trailerLabel(trailerFilter)}
+                <ArrowUpDown className="size-3.5" />
+                {sortOptions.find((s) => s.key === sortBy)?.label || "Sort"}
                 <ChevronDown className="size-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTrailerFilter("all")}>All Trailers</DropdownMenuItem>
-              {uniqueTrailers.map((t) => (
-                <DropdownMenuItem key={t} onClick={() => setTrailerFilter(t)}>
-                  {trailerLabel(t)}
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">Sort By</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {sortOptions.map((opt) => (
+                <DropdownMenuItem key={opt.key} onClick={() => setSortBy(opt.key)} className={sortBy === opt.key ? "bg-accent" : ""}>
+                  <span className="flex items-center gap-2">{opt.icon}{opt.label}</span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        )}
+          {uniqueTrailers.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 h-9 shrink-0">
+                  <Filter className="size-3.5" />
+                  {trailerFilter === "all" ? "All Trailers" : trailerLabel(trailerFilter)}
+                  <ChevronDown className="size-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setTrailerFilter("all")}>All Trailers</DropdownMenuItem>
+                {uniqueTrailers.map((t) => (
+                  <DropdownMenuItem key={t} onClick={() => setTrailerFilter(t)}>
+                    {trailerLabel(t)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {view === "map" && (
@@ -316,7 +360,34 @@ export default function AvailableLoadsPage() {
         </Card>
       )}
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="grid gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-border/50 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex flex-col sm:flex-row">
+                  <Skeleton className="w-full sm:w-40 h-28 sm:h-auto" />
+                  <div className="flex-1 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-4 w-4" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+                    <div className="flex gap-3">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <div className="size-14 rounded-2xl bg-muted/40 flex items-center justify-center">
             <Package className="size-7 text-muted-foreground/40" />

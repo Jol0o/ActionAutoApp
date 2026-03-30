@@ -35,6 +35,15 @@ export type ComplianceDocumentType =
   | "liability_insurance"
   | "other";
 
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export type VerificationStatus =
+  | "not_started"
+  | "in_progress"
+  | "under_review"
+  | "verified"
+  | "rejected";
+
 export interface ComplianceDocument {
   _id: string;
   type: ComplianceDocumentType;
@@ -49,6 +58,9 @@ export interface ComplianceDocument {
   verified: boolean;
   verifiedBy?: string;
   verifiedAt?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
+  reviewStatus?: ReviewStatus;
 }
 
 export interface DriverEquipment {
@@ -60,6 +72,13 @@ export interface DriverEquipment {
   trailerLength?: number;
   dotNumber: string;
   mcNumber: string;
+  vin?: string;
+  plateNumber?: string;
+  truckColor?: string;
+  gvwr?: number;
+  trailerAxles?: number;
+  trailerGvwr?: number;
+  engineType?: string;
   specialFeatures: string[];
 }
 
@@ -101,6 +120,13 @@ export interface DriverProfile {
   trailerLength?: number;
   dotNumber: string;
   mcNumber: string;
+  vin?: string;
+  plateNumber?: string;
+  truckColor?: string;
+  gvwr?: number;
+  trailerAxles?: number;
+  trailerGvwr?: number;
+  engineType?: string;
   specialFeatures: string[];
   driversLicenseNumber: string;
   licenseState: string;
@@ -122,6 +148,13 @@ export interface DriverProfile {
   serviceRadius: number;
   preferredRoutes: string[];
   availableDays: string[];
+  ssnLast4?: string;
+  backgroundCheckConsent?: boolean;
+  backgroundCheckConsentDate?: string;
+  verificationAgreement?: boolean;
+  verificationAgreementDate?: string;
+  verificationStatus?: VerificationStatus;
+  verificationNotes?: string;
   profileCompletionScore: number;
   isComplianceExpired: boolean;
   createdAt: string;
