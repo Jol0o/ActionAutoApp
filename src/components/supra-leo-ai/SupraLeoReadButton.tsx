@@ -19,6 +19,7 @@ interface Props {
 
 export function SupraLeoReadButton({ lead, leadId, size = 'sm', className = '' }: Props) {
   const [active, setActive] = React.useState(false)
+  const [hovered, setHovered] = React.useState(false)
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -27,76 +28,121 @@ export function SupraLeoReadButton({ lead, leadId, size = 'sm', className = '' }
     setActive(true)
     setTimeout(() => setActive(false), 1600)
     window.dispatchEvent(new CustomEvent('supraleo:read-message', {
-      detail: { leadId: id, firstName: lead?.firstName, lastName: lead?.lastName, senderName: lead?.senderName, senderEmail: lead?.senderEmail, email: lead?.email, subject: lead?.subject, body: lead?.body, status: lead?.status },
+      detail: {
+        leadId: id,
+        firstName: lead?.firstName,
+        lastName: lead?.lastName,
+        senderName: lead?.senderName,
+        senderEmail: lead?.senderEmail,
+        email: lead?.email,
+        subject: lead?.subject,
+        body: lead?.body,
+        status: lead?.status,
+      },
     }))
   }
 
   const dim = size === 'sm' ? 24 : 30
   const iconSz = size === 'sm' ? 13 : 16
+  const isOn = active || hovered
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
           onClick={handleClick}
-          aria-label="Read with Supra Leo AI"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          aria-label="Read with Autrix AI"
           className={className}
           style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: dim, height: dim,
-            border: `1px solid ${active ? 'rgba(184,137,46,0.6)' : 'rgba(184,137,46,0.2)'}`,
-            borderRadius: 3,
-            background: active ? 'rgba(184,137,46,0.14)' : 'rgba(184,137,46,0.05)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: dim,
+            height: dim,
+            border: `1px solid ${active ? 'rgba(59,130,246,0.6)' : isOn ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.18)'}`,
+            borderRadius: 6,
+            background: active ? 'rgba(59,130,246,0.16)' : isOn ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.04)',
             cursor: 'pointer',
             padding: 0,
-            transition: 'background 0.14s, border-color 0.14s, transform 0.1s',
-            transform: active ? 'scale(0.92)' : 'scale(1)',
+            transition: 'background 0.15s, border-color 0.15s, transform 0.10s, box-shadow 0.15s',
+            transform: active ? 'scale(0.91)' : 'scale(1)',
+            boxShadow: active ? '0 0 8px rgba(59,130,246,0.3)' : isOn ? '0 0 4px rgba(59,130,246,0.12)' : 'none',
             flexShrink: 0,
           }}
-          onMouseEnter={e => {
-            if (!active) {
-              e.currentTarget.style.borderColor = 'rgba(184,137,46,0.42)'
-              e.currentTarget.style.background = 'rgba(184,137,46,0.1)'
-            }
-          }}
-          onMouseLeave={e => {
-            if (!active) {
-              e.currentTarget.style.borderColor = 'rgba(184,137,46,0.2)'
-              e.currentTarget.style.background = 'rgba(184,137,46,0.05)'
-            }
-          }}
         >
-          <svg width={iconSz} height={iconSz} viewBox="0 0 16 16" fill="none">
-            {/* Lion head circle */}
-            <circle cx="8" cy="7.5" r="4.2" stroke="rgba(184,137,46,0.8)" strokeWidth="0.9"/>
-            {/* Mane spikes */}
-            {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
-              const rad = (deg * Math.PI) / 180
-              const r1 = 4.5, r2 = i % 2 === 0 ? 6.0 : 5.4
-              return (
-                <line
-                  key={deg}
-                  x1={8 + Math.cos(rad) * r1}
-                  y1={7.5 + Math.sin(rad) * r1}
-                  x2={8 + Math.cos(rad) * r2}
-                  y2={7.5 + Math.sin(rad) * r2}
-                  stroke="rgba(184,137,46,0.65)"
-                  strokeWidth={i % 2 === 0 ? 0.9 : 0.6}
-                  strokeLinecap="round"
-                />
-              )
-            })}
-            {/* Eyes */}
-            <circle cx="6.5" cy="6.9" r="0.7" fill="rgba(184,137,46,0.9)"/>
-            <circle cx="9.5" cy="6.9" r="0.7" fill="rgba(184,137,46,0.9)"/>
-            {/* Nose */}
-            <ellipse cx="8" cy="8.5" rx="0.5" ry="0.35" fill="rgba(184,137,46,0.7)"/>
+          {/* Automotive AI icon - stylized car front with headlights */}
+          <svg width={iconSz} height={iconSz} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Outer circle - emblem ring */}
+            <circle
+              cx="8" cy="7.5" r="5.2"
+              stroke={active ? 'rgba(96,165,250,0.9)' : isOn ? 'rgba(59,130,246,0.75)' : 'rgba(59,130,246,0.55)'}
+              strokeWidth="0.8"
+            />
+
+            {/* Left DRL headlight strip */}
+            <line
+              x1="2.8" y1="6.2" x2="6.0" y2="6.2"
+              stroke={active ? '#60A5FA' : isOn ? 'rgba(59,130,246,0.85)' : 'rgba(59,130,246,0.55)'}
+              strokeWidth="1.1"
+              strokeLinecap="round"
+            />
+            <line
+              x1="3.2" y1="7.1" x2="5.5" y2="7.1"
+              stroke={active ? 'rgba(96,165,250,0.6)' : 'rgba(59,130,246,0.35)'}
+              strokeWidth="0.65"
+              strokeLinecap="round"
+            />
+
+            {/* Right DRL headlight strip */}
+            <line
+              x1="10.0" y1="6.2" x2="13.2" y2="6.2"
+              stroke={active ? '#60A5FA' : isOn ? 'rgba(59,130,246,0.85)' : 'rgba(59,130,246,0.55)'}
+              strokeWidth="1.1"
+              strokeLinecap="round"
+            />
+            <line
+              x1="10.5" y1="7.1" x2="12.8" y2="7.1"
+              stroke={active ? 'rgba(96,165,250,0.6)' : 'rgba(59,130,246,0.35)'}
+              strokeWidth="0.65"
+              strokeLinecap="round"
+            />
+
+            {/* Central "A" emblem */}
+            <text
+              x="8"
+              y="9.2"
+              textAnchor="middle"
+              fontSize="5.5"
+              fontWeight="700"
+              fontFamily="'Rajdhani', 'DM Sans', sans-serif"
+              fill={active ? '#60A5FA' : isOn ? 'rgba(59,130,246,0.9)' : 'rgba(59,130,246,0.65)'}
+              style={{ letterSpacing: '.05em' }}
+            >
+              A
+            </text>
+
+            {/* Car silhouette bottom */}
+            <path
+              d="M5.2 11.4 L5.8 10.6 C6.1 10.35 6.5 10.2 7 10.2 L9 10.2 C9.5 10.2 9.9 10.35 10.2 10.6 L10.8 11.4"
+              stroke={active ? 'rgba(96,165,250,0.5)' : 'rgba(59,130,246,0.28)'}
+              strokeWidth="0.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+
+            {/* Active pulse dot */}
+            {active && (
+              <circle cx="8" cy="7.5" r="1.5" fill="rgba(96,165,250,0.3)" />
+            )}
           </svg>
         </button>
       </TooltipTrigger>
       <TooltipContent side="top">
-        <span style={{ fontFamily: 'monospace', fontSize: 10, letterSpacing: '0.08em' }}>
-          Read with Supra Leo
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, letterSpacing: '0.08em' }}>
+          Read with Autrix AI
         </span>
       </TooltipContent>
     </Tooltip>
