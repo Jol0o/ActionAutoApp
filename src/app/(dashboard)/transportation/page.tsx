@@ -14,8 +14,10 @@ import { ShipmentCard } from "@/components/ShipmentCard"
 import { QuoteCard } from "@/components/QuoteCard"
 import { useRouter } from "next/navigation"
 import { useTransportationData } from "@/hooks/useTransportationData"
+import { useLoadsData } from "@/hooks/useLoadsData"
 import { useAlert } from "@/components/AlertDialog"
 import { Quote } from "@/types/transportation"
+import { LoadCard } from "@/components/LoadCard"
 
 export default function TransportationPage() {
     const router = useRouter()
@@ -50,6 +52,18 @@ export default function TransportationPage() {
         handleUpdateQuote,
         handleUpdateShipment
     } = useTransportationData()
+
+    const {
+        loads,
+        pagination: loadsPagination,
+        stats: loadStats,
+        isLoading: isLoadsLoading,
+        fetchLoads,
+        loadMore,
+    } = useLoadsData(
+        activeTab === "load-board" ? searchQuery : undefined,
+        activeTab === "load-board" ? selectedStatus : undefined,
+    )
 
     // Initial fetch is handled inside useTransportationData when auth is ready
 
@@ -162,6 +176,7 @@ export default function TransportationPage() {
             q.email?.toLowerCase().includes(query)
         )
     }, [quotes, searchQuery])
+
 
     if (error && !isLoading && shipments.length === 0 && quotes.length === 0) {
         return (
@@ -324,13 +339,93 @@ export default function TransportationPage() {
                     selectedStatus={selectedStatus}
                     setSelectedStatus={setSelectedStatus}
                     stats={stats}
+                    loadStats={loadStats}
                     isSidebarOpen={isSidebarOpen}
                     setIsSidebarOpen={setIsSidebarOpen}
                 />
 
                 {/* Main Content */}
                 <div className="flex-1 p-3 sm:p-4 md:p-6 bg-background">
-                    {activeTab === "shipments" ? (
+                    {activeTab === "load-board" ? (
+                        isLoadsLoading ? (
+                            <div className="space-y-3 sm:space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <Card key={i} className="border-border overflow-hidden">
+                                        <CardContent className="p-0">
+                                            <div className="h-1 w-full bg-muted" />
+                                            <div className="p-4 sm:p-5 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="space-y-2">
+                                                        <Skeleton className="h-4 w-32" />
+                                                        <Skeleton className="h-3 w-24" />
+                                                    </div>
+                                                    <Skeleton className="h-6 w-16 rounded-full" />
+                                                </div>
+                                                <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+                                                    <Skeleton className="h-16 rounded-lg" />
+                                                    <Skeleton className="h-4 w-8 rounded" />
+                                                    <Skeleton className="h-16 rounded-lg" />
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <Skeleton className="h-14 rounded-md" />
+                                                    <Skeleton className="h-14 rounded-md" />
+                                                    <Skeleton className="h-14 rounded-md" />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : loads.length === 0 ? (
+                            <Card className="border-border">
+                                <CardContent className="p-6 sm:p-8 md:p-12 text-center">
+                                    <Truck className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
+                                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-foreground mb-2">
+                                        No Loads Found
+                                    </h3>
+                                    <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 px-2 sm:px-4">
+                                        {searchQuery
+                                            ? "No loads match your search criteria."
+                                            : "No loads have been posted yet. Create a load to get started."}
+                                    </p>
+                                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                                        <Button
+                                            className="bg-green-500 hover:bg-green-600 text-white text-xs sm:text-sm h-8 sm:h-9"
+                                            onClick={() => router.push("/transportation/create-load")}
+                                        >
+                                            Create Load
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="text-xs sm:text-sm h-8 sm:h-9"
+                                            onClick={fetchLoads}
+                                        >
+                                            Refresh
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="space-y-3 sm:space-y-4">
+                                {loads.map((load) => (
+                                    <LoadCard key={load._id} load={load} />
+                                ))}
+                                {loadsPagination?.hasMore && (
+                                    <div className="flex justify-center pt-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs h-8"
+                                            onClick={loadMore}
+                                            disabled={isLoadsLoading}
+                                        >
+                                            {isLoadsLoading ? "Loading…" : `Load more (${loadsPagination.total - loads.length} remaining)`}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    ) : activeTab === "shipments" ? (
                         isLoading ? (
                             <div className="space-y-3 sm:space-y-4">
                                 {[...Array(3)].map((_, i) => (
