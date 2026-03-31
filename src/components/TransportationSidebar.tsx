@@ -1,4 +1,4 @@
-import { Truck, X, Phone, ClipboardList } from "lucide-react"
+import { X, Phone } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ShipmentStats } from "@/types/transportation"
 import { LoadStats } from "@/lib/api/loads"
@@ -75,15 +75,13 @@ export function TransportationSidebar({
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6 h-8 sm:h-10">
                     <TabsTrigger value="shipments" className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2">
-                        <Truck className="size-2.5 sm:size-3 mr-0.5 sm:mr-1" />
-                        <span>SHIPS</span>
+                        SHIPS
                     </TabsTrigger>
                     <TabsTrigger value="drafts" className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2">
                         DRAFTS
                     </TabsTrigger>
                     <TabsTrigger value="load-board" className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2">
-                        <ClipboardList className="size-2.5 sm:size-3 mr-0.5 sm:mr-1" />
-                        <span>LOADS</span>
+                        LOADS
                     </TabsTrigger>
                 </TabsList>
             </Tabs>

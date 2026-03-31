@@ -28,6 +28,7 @@ export default function TransportationPage() {
 }
 
 function TransportationPageInner() {
+    const router = useRouter()
     const searchParams = useSearchParams()
     const [activeTab, setActiveTab] = React.useState("shipments")
     const [searchQuery, setSearchQuery] = React.useState(searchParams.get("search") || "")
@@ -65,6 +66,7 @@ function TransportationPageInner() {
         pagination: loadsPagination,
         stats: loadStats,
         isLoading: isLoadsLoading,
+        error: loadsError,
         fetchLoads,
         loadMore,
     } = useLoadsData(
@@ -291,7 +293,11 @@ function TransportationPageInner() {
                         <div className="relative flex-1">
                             <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search by name, VIN, stock, or tracking number..."
+                                placeholder={
+                                    activeTab === "load-board"
+                                        ? "Search by load #, city, state, make, model, or VIN..."
+                                        : "Search by name, VIN, stock, or tracking number..."
+                                }
                                 className="pl-8 sm:pl-10 w-full text-sm h-8 sm:h-10 bg-background border-border text-foreground"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -354,7 +360,25 @@ function TransportationPageInner() {
                 {/* Main Content */}
                 <div className="flex-1 p-3 sm:p-4 md:p-6 bg-background">
                     {activeTab === "load-board" ? (
-                        isLoadsLoading ? (
+                        loadsError && !isLoadsLoading && loads.length === 0 ? (
+                            <Card className="border-border">
+                                <CardContent className="p-6 sm:p-8 md:p-12 text-center">
+                                    <Truck className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
+                                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-destructive mb-2">
+                                        Failed to Load Loads
+                                    </h3>
+                                    <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 px-2 sm:px-4">
+                                        {loadsError}
+                                    </p>
+                                    <Button
+                                        className="bg-green-500 hover:bg-green-600 text-white text-xs sm:text-sm h-8 sm:h-9"
+                                        onClick={fetchLoads}
+                                    >
+                                        Retry
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : isLoadsLoading ? (
                             <div className="space-y-3 sm:space-y-4">
                                 {[...Array(3)].map((_, i) => (
                                     <Card key={i} className="border-border overflow-hidden">

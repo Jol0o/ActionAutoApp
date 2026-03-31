@@ -89,6 +89,38 @@ export interface Shipment {
     name: string;
     logoUrl?: string;
   };
+
+  // Extended fields (from main branch merge)
+  desiredDeliveryDate?: string;
+  internalLoadId?: string;
+  carrierPayAmount?: number;
+  copCodAmount?: number;
+  balanceAmount?: number;
+  specialInstructions?: string;
+  loadSpecificTerms?: string;
+  preDispatchNotes?: string;
+  trailerTypeRequired?: string;
+  vehicleCount?: number;
+  isPostedToBoard?: boolean;
+  originContact?: {
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    cellPhone?: string;
+    buyerReferenceNumber?: string;
+  };
+  destinationContact?: {
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    cellPhone?: string;
+    buyerReferenceNumber?: string;
+  };
+
+  // Driver-specific response fields (injected by backend per-user)
+  myRequestStatus?: "pending" | "approved" | "rejected";
+  myRequestedAt?: string;
+  rejectionReason?: string;
 }
 
 export interface ShipmentStats {
