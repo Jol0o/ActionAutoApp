@@ -79,43 +79,6 @@ export interface Shipment {
     confirmedAt?: string;
     confirmedBy?: string;
   };
-  trailerTypeRequired?: string;
-  vehicleCount?: number;
-  isPostedToBoard?: boolean;
-  preDispatchNotes?: string;
-  pendingDriverRequests?: Array<{
-    driverId: string;
-    driverName: string;
-    requestedAt: string;
-    status: "pending" | "approved" | "rejected";
-    reviewedAt?: string;
-    reviewedBy?: string;
-    rejectionReason?: string;
-  }>;
-  carrierPayAmount?: number;
-  copCodAmount?: number;
-  balanceAmount?: number;
-  specialInstructions?: string;
-  loadSpecificTerms?: string;
-  desiredDeliveryDate?: string;
-  internalLoadId?: string;
-  originContact?: {
-    contactName?: string;
-    email?: string;
-    phone?: string;
-    cellPhone?: string;
-    buyerReferenceNumber?: string;
-  };
-  destinationContact?: {
-    contactName?: string;
-    email?: string;
-    phone?: string;
-    cellPhone?: string;
-    buyerReferenceNumber?: string;
-  };
-  myRequestStatus?: "pending" | "approved" | "rejected" | null;
-  myRequestedAt?: string | null;
-  rejectionReason?: string | null;
   createdBy?: {
     _id: string;
     name?: string;

@@ -9,50 +9,20 @@ import {
   TrendingUp,
   Clock,
   Receipt,
+  PlusCircle,
 } from "lucide-react";
 import { PaymentStats } from "@/types/billing";
 import { formatCurrency } from "@/utils/format";
 
-/*
- * Supra / Car-Dealership colour tokens
- * ─────────────────────────────────────
- * bg-card   : #0a0a0c   (near-black charcoal)
- * bg-pill   : #111116   (stat pill background)
- * accent    : #E55A00   (Supra Prominence Orange)
- * accent-muted       : rgba(229,90,0,0.25)
- * accent-ultra-muted : rgba(229,90,0,0.08)
- * text-primary  : #ffffff
- * text-secondary: rgba(255,255,255,0.60)
- * text-muted    : rgba(255,255,255,0.28)
- * border        : rgba(255,255,255,0.08)
- *
- * Decorative elements
- * ────────────────────
- * - Carbon-fibre crosshatch via repeating CSS gradients
- * - 4 px Supra-orange left-edge racing stripe
- * - 1 px horizontal accent line fading right
- * - Sheen sweep animation on the Send CTA
- * - Thin bottom-accent line under each stat pill
- *
- * Fonts (Google Fonts CDN — add to your next/font or global import if preferred):
- *   Rajdhani 500 600 700  → sporty display numerals & labels
- *   Share Tech Mono       → monospace account IDs
- */
-
-// ─── Supra orange constant (centralised for easy rebranding) ──────────────────
 const ORANGE = "#E55A00";
 const ORANGE_DIM = "rgba(229,90,0,0.55)";
 const ORANGE_MUTED = "rgba(229,90,0,0.28)";
 const ORANGE_BG = "rgba(229,90,0,0.08)";
 const ORANGE_BORDER = "rgba(229,90,0,0.30)";
 
-// ─── Mono font stack ───────────────────────────────────────────────────────────
 const MONO = "'Share Tech Mono', 'Roboto Mono', ui-monospace, monospace";
-
-// ─── Display font stack ────────────────────────────────────────────────────────
 const DISPLAY = "'Rajdhani', var(--font-sans), sans-serif";
 
-// ─── Shared inline-style helpers ──────────────────────────────────────────────
 const card: React.CSSProperties = {
   position: "relative",
   overflow: "hidden",
@@ -72,7 +42,6 @@ const carbonBg: React.CSSProperties = {
   `,
 };
 
-// ─── Props ─────────────────────────────────────────────────────────────────────
 interface BalanceCardProps {
   balance: number;
   userId: string;
@@ -81,9 +50,9 @@ interface BalanceCardProps {
   stats: PaymentStats | null;
   onReceive: () => void;
   onSend: () => void;
+  onCashIn: () => void;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 export function BalanceCard({
   balance,
   userId,
@@ -92,14 +61,16 @@ export function BalanceCard({
   stats,
   onReceive,
   onSend,
+  onCashIn,
 }: BalanceCardProps) {
   const [visible, setVisible] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     return sessionStorage.getItem("billing_bal_vis") !== "false";
   });
 
-  const [sendHover, setSendHover] = React.useState(false);
-  const [recvHover, setRecvHover] = React.useState(false);
+  const [sendHover,    setSendHover]    = React.useState(false);
+  const [recvHover,    setRecvHover]    = React.useState(false);
+  const [cashInHover,  setCashInHover]  = React.useState(false);
 
   const toggle = () => {
     const next = !visible;
@@ -133,8 +104,6 @@ export function BalanceCard({
 
   return (
     <>
-      {/* Google Fonts — swap for next/font if preferred */}
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
         @keyframes supraSheen {
@@ -152,33 +121,27 @@ export function BalanceCard({
           aria-hidden
           style={{
             position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
+            left: 0, top: 0, bottom: 0,
             width: 4,
             background: ORANGE,
           }}
         />
 
-        {/* Top accent line (fades right) */}
+        {/* Top accent line */}
         <div
           aria-hidden
           style={{
             position: "absolute",
-            top: 0,
-            left: 4,
-            right: 0,
+            top: 0, left: 4, right: 0,
             height: 1,
             background: `linear-gradient(90deg, ${ORANGE}, rgba(229,90,0,0.32), transparent)`,
           }}
         />
 
-        {/* ── Content ── */}
         <div style={{ position: "relative", padding: "22px 24px 20px 20px" }}>
 
           {/* Top bar */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            {/* Logo mark */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <div style={{ height: 3, width: 18, background: ORANGE, borderRadius: 1 }} />
@@ -189,7 +152,6 @@ export function BalanceCard({
               </span>
             </div>
 
-            {/* Live badge */}
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 5,
               fontSize: 10, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase",
@@ -232,7 +194,7 @@ export function BalanceCard({
                 >
                   {visible
                     ? <EyeOff style={{ width: 16, height: 16, color: "rgba(255,255,255,0.48)" }} />
-                    : <Eye style={{ width: 16, height: 16, color: "rgba(255,255,255,0.48)" }} />
+                    : <Eye    style={{ width: 16, height: 16, color: "rgba(255,255,255,0.48)" }} />
                   }
                 </button>
               </div>
@@ -261,7 +223,6 @@ export function BalanceCard({
                   borderRadius: 8, padding: "10px 12px",
                 }}
               >
-                {/* Bottom accent stripe */}
                 <div aria-hidden style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: ORANGE_MUTED }} />
 
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
@@ -307,7 +268,29 @@ export function BalanceCard({
               </div>
             </button>
 
-            {/* Send — Supra orange with sheen sweep */}
+            {/* Cash In */}
+            <button
+              onClick={onCashIn}
+              onMouseEnter={() => setCashInHover(true)}
+              onMouseLeave={() => setCashInHover(false)}
+              style={{
+                flex: 1, display: "flex", alignItems: "center", gap: 10,
+                padding: "11px 14px", borderRadius: 8,
+                background: cashInHover ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                cursor: "pointer", textAlign: "left", transition: "background 0.15s",
+              }}
+            >
+              <span style={{ width: 34, height: 34, borderRadius: 6, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <PlusCircle style={{ width: 16, height: 16, color: ORANGE }} />
+              </span>
+              <div>
+                <p style={{ fontFamily: DISPLAY, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.78)", lineHeight: 1 }}>Cash In</p>
+                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.32)", marginTop: 3, letterSpacing: "0.04em" }}>Add funds</p>
+              </div>
+            </button>
+
+            {/* Send */}
             <button
               onClick={onSend}
               onMouseEnter={() => setSendHover(true)}
@@ -342,6 +325,7 @@ export function BalanceCard({
                 <p style={{ fontSize: 10, color: "rgba(255,255,255,0.58)", marginTop: 3, letterSpacing: "0.04em" }}>Transfer funds</p>
               </div>
             </button>
+
           </div>
 
           {/* Footer */}

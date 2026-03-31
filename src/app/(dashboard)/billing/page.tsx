@@ -15,6 +15,7 @@ import { ReceiveModal } from "@/components/billing/ReceiveModal";
 import { SendModal } from "@/components/billing/SendModal";
 import { PaymentsTab } from "@/components/billing/PaymentsTab";
 import { DriverPayoutsTab } from "@/components/billing/DriverPayoutsTab";
+import { CashInModal } from "@/components/CashInModal";
 
 const DISPLAY = "'Rajdhani', var(--font-sans), sans-serif";
 const MONO    = "'Share Tech Mono', 'Roboto Mono', monospace";
@@ -25,7 +26,7 @@ export default function BillingPage() {
  const { getToken, userId: authUserId } = useAuth();
 
   const [balance,     setBalance]     = React.useState<number | null>(null);
-  const [activeModal, setActiveModal] = React.useState<"receive" | "send" | null>(null);
+const [activeModal, setActiveModal] = React.useState<"receive" | "send" | "cashin" | null>(null);
 
   const [payments,        setPayments]        = React.useState<Payment[]>([]);
   const [pendingPayments, setPendingPayments] = React.useState<Payment[]>([]);
@@ -198,12 +199,13 @@ export default function BillingPage() {
             </div>
 
             {/* Balance card */}
-            <BalanceCard
-              balance={displayBalance} userId={userId} userName={userName}
-              isLoading={isLoading} stats={stats}
-              onReceive={() => setActiveModal("receive")}
-              onSend={() => setActiveModal("send")}
-            />
+           <BalanceCard
+            balance={displayBalance} userId={userId} userName={userName}
+            isLoading={isLoading} stats={stats}
+            onReceive={() => setActiveModal("receive")}
+            onSend={() => setActiveModal("send")}
+            onCashIn={() => setActiveModal("cashin")}
+          />
 
             {/* Tab switcher */}
             <div>
@@ -308,7 +310,8 @@ export default function BillingPage() {
           </div>
         </div>
       </div>
-
+      
+      <CashInModal open={activeModal === "cashin"} onClose={() => setActiveModal(null)} />
       <ReceiveModal open={activeModal === "receive"} userId={userId} userName={userName} onClose={() => setActiveModal(null)} />
       <SendModal open={activeModal === "send"} onClose={() => setActiveModal(null)} onSuccess={fetchData} getToken={getToken} />
     </>
