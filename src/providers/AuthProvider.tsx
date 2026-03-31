@@ -206,7 +206,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Token Management
     const getToken = useCallback(async () => {
-        // If we have a token in memory and it's not expired (would need expiry check logic)
+        // Synchronization: Check if background refresh (via api-client interceptor)
+        // has updated the global window variable.
+        if (typeof window !== 'undefined' && (window as any).__AUTH_TOKEN__) {
+            const globalToken = (window as any).__AUTH_TOKEN__;
+            if (globalToken !== accessToken) {
+                console.log('[AuthProvider] Syncing stale accessToken with window.__AUTH_TOKEN__');
+                setAccessTokenState(globalToken);
+                return globalToken;
+            }
+        }
+
+        // If we have a token in memory and it's not expired
         if (accessToken) return accessToken;
 
         // Otherwise, try to refresh

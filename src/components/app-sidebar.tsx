@@ -17,6 +17,7 @@ import {
   MapPin,
   Gift,
   Wallet,
+  LayoutGrid,
 } from "lucide-react"
 
 import {
@@ -47,6 +48,7 @@ import {
   User as UserIcon,
   Settings as SettingsIcon,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const data = {
   navMain: [
@@ -65,6 +67,12 @@ const data = {
       title: "All Inventory",
       url: "/inventory",
       icon: Car,
+    },
+    {
+      title: "Plugins",
+      url: "/plugins",
+      icon: LayoutGrid,
+      isNew: true,
     },
   ],
 
@@ -155,16 +163,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {activeNavMain.map((item) => (
+          {activeNavMain.map((item: any) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
                 tooltip={item.title}
                 isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
+                className={item.isNew ? "bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary transition-colors" : ""}
               >
                 <Link href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
+                  <item.icon className={item.isNew ? "animate-pulse" : ""} />
+                  <span className="font-medium">{item.title}</span>
+                  {item.isNew && (
+                    <Badge variant="secondary" className="ml-auto text-[8px] h-4 px-1 leading-none uppercase tracking-tighter bg-primary text-primary-foreground border-none group-data-[collapsible=icon]:hidden">New</Badge>
+                  )}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -25,7 +25,7 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
       const token = await getToken()
 
       const response = await apiClient.post(
-        '/api/google-calendar/sync-events',
+        '/api/org-lead/sync',
         {},
         {
           headers: { Authorization: `Bearer ${token}` },

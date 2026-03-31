@@ -194,18 +194,12 @@ class ApiClient {
     }
 
     // Extended timeout (120s) for long-running operations like Gmail sync.
-    // Uses a one-off axios instance so the global 30s default is not affected.
+    // Now uses the primary client to ensure interceptors (Tokens/Retry) are applied.
     async syncPost<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-        const syncClient = axios.create({
-            baseURL: this.client.defaults.baseURL,
-            headers: {
-                'Content-Type': 'application/json',
-                ...(config?.headers || {}),
-            },
-            timeout: 120000,
-            withCredentials: true,
+        return this.client.post<T>(url, data, {
+            ...config,
+            timeout: 120000, // Explicitly set long timeout for sync operations
         });
-        return syncClient.post<T>(url, data, config);
     }
 
     // ── Organization Methods ─────────────────────────────────────────────────
