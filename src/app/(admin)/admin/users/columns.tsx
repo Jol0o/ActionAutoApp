@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/providers/AuthProvider";
+import { useAuth } from "@clerk/nextjs";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   MoreHorizontal,

@@ -20,7 +20,14 @@ import { Quote } from "@/types/transportation"
 import { LoadCard } from "@/components/LoadCard"
 
 export default function TransportationPage() {
-    const router = useRouter()
+    return (
+        <React.Suspense fallback={null}>
+            <TransportationPageInner />
+        </React.Suspense>
+    )
+}
+
+function TransportationPageInner() {
     const searchParams = useSearchParams()
     const [activeTab, setActiveTab] = React.useState("shipments")
     const [searchQuery, setSearchQuery] = React.useState(searchParams.get("search") || "")
