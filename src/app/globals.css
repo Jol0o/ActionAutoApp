@@ -1065,6 +1065,67 @@ body.app-fullscreen .main-content {
   }
 }
 
+@keyframes carCruise {
+  0% {
+    transform: translateX(-20px) translateY(0);
+  }
+
+  25% {
+    transform: translateX(10px) translateY(-2px);
+  }
+
+  50% {
+    transform: translateX(20px) translateY(0);
+  }
+
+  75% {
+    transform: translateX(5px) translateY(-1px);
+  }
+
+  100% {
+    transform: translateX(-20px) translateY(0);
+  }
+}
+
+@keyframes carCruiseSlow {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+
+  50% {
+    transform: translateX(30px) translateY(-1px);
+  }
+
+  100% {
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@keyframes roadDash {
+  0% {
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    stroke-dashoffset: -70;
+  }
+}
+
+@layer utilities {
+  .animate-car-cruise {
+    animation: carCruise 8s ease-in-out infinite;
+  }
+
+  .animate-car-cruise-slow {
+    animation: carCruiseSlow 12s ease-in-out infinite;
+  }
+
+  .animate-road-dash {
+    stroke-dasharray: 12 8;
+    animation: roadDash 3s linear infinite;
+  }
+}
+
 @media (max-width: 767px) {
   :root {
     --mobile-bottom-nav-offset: 6.25rem;

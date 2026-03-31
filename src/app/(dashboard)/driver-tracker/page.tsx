@@ -276,17 +276,20 @@ export default function DriverTrackerPage() {
     fetchAvailableShipments();
   }, [fetchAvailableShipments]);
 
+  const socketRef = React.useRef<ReturnType<typeof getSocket>>(null);
+
   React.useEffect(() => {
     if (!isSignedIn) return;
-    let socket = getSocket();
+    let cancelled = false;
 
     const connectSocket = async () => {
       try {
         const token = await getToken();
-        if (!token) return;
-        socket = initializeSocket(token);
+        if (cancelled || !token) return;
+        const sock = initializeSocket(token);
+        socketRef.current = sock;
 
-        socket.on("driver:location_update", (data: {
+        sock.on("driver:location_update", (data: {
           driverId: string;
           coords: { lat: number; lng: number };
           status: DriverStatus;
@@ -306,7 +309,7 @@ export default function DriverTrackerPage() {
           });
         });
 
-        socket.on("driver:loads_updated", () => {
+        sock.on("driver:loads_updated", () => {
           fetchDrivers();
           fetchAvailableShipments();
         });
@@ -316,10 +319,12 @@ export default function DriverTrackerPage() {
     connectSocket();
 
     return () => {
-      socket?.off("driver:location_update");
-      socket?.off("driver:loads_updated");
+      cancelled = true;
+      socketRef.current?.off("driver:location_update");
+      socketRef.current?.off("driver:loads_updated");
+      socketRef.current = null;
     };
-  }, [isSignedIn, getToken]);
+  }, [isSignedIn]);
 
   React.useEffect(() => {
     if (!normalizedToken || !mapRef.current || mapInstanceRef.current) return;
@@ -401,6 +406,11 @@ export default function DriverTrackerPage() {
 
     const updateMarkers = async () => {
       const mapboxgl = (await import("mapbox-gl")).default;
+
+      if (!map.isStyleLoaded()) {
+        map.once("idle", () => updateMarkers());
+        return;
+      }
 
       filteredDrivers.forEach((driver) => {
         if (!driver.coords) return;

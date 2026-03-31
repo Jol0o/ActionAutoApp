@@ -66,23 +66,20 @@ export const timezoneOptions = [
     { value: 'GST', label: 'GST (Gulf Standard Time)', abbr: 'GST' },
 ];
 
-// Expanded language options
+// Most commonly used languages in the US
 export const languageOptions = [
     { code: 'en', name: 'English' },
-    { code: 'es', name: 'Spanish (EspaÃƒÂ±ol)' },
-    { code: 'fr', name: 'French (FranÃƒÂ§ais)' },
-    { code: 'de', name: 'German (Deutsch)' },
-    { code: 'it', name: 'Italian (Italiano)' },
-    { code: 'pt', name: 'Portuguese (PortuguÃƒÂªs)' },
-    { code: 'ja', name: 'Japanese (Ã¦â€”Â¥Ã¦Å“Â¬Ã¨ÂªÅ¾)' },
-    { code: 'ko', name: 'Korean (Ã­â€¢Å“ÃªÂµÂ­Ã¬â€“Â´)' },
-    { code: 'zh', name: 'Chinese (Ã¤Â¸Â­Ã¦â€“â€¡)' },
-    { code: 'ar', name: 'Arabic (Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â±Ã˜Â¨Ã™Å Ã˜Â©)' },
-    { code: 'hi', name: 'Hindi (Ã Â¤Â¹Ã Â¤Â¿Ã Â¤Â¨Ã Â¥Â Ã Â¤Â¦Ã Â¥â‚¬)' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'zh', name: 'Chinese (Mandarin)' },
     { code: 'fil', name: 'Filipino (Tagalog)' },
-    { code: 'vi', name: 'Vietnamese (TiÃ¡ÂºÂ¿ng ViÃ¡Â»â€¡t)' },
-    { code: 'th', name: 'Thai (Ã Â¹â€žÃ Â¸â€”Ã Â¸Â¢)' },
-    { code: 'ru', name: 'Russian (Ã Â Ã‘Æ’Ã‘Â Ã‘Â Ã ÂºÃ Â¸Ã Â¹)' },
+    { code: 'vi', name: 'Vietnamese' },
+    { code: 'ko', name: 'Korean' },
+    { code: 'fr', name: 'French' },
+    { code: 'ar', name: 'Arabic' },
+    { code: 'de', name: 'German' },
+    { code: 'pt', name: 'Portuguese' },
+    { code: 'hi', name: 'Hindi' },
+    { code: 'ru', name: 'Russian' },
 ];
 
 // Curse word filter

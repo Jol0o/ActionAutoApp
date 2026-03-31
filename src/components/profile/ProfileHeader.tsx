@@ -11,13 +11,30 @@ import {
     Calendar,
     ShieldCheck,
     Globe,
-    User
+    User,
+    Mail,
+    Pencil,
+    Share2,
+    Copy
 } from 'lucide-react';
 import { UserProfile, OnlineStatus } from '@/types/user';
 import { cn, resolveImageUrl } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
 import ProfileImageCropper from '@/components/ProfileImageCropper';
 import { onlineStatusOptions, languageOptions } from './profile-constants';
+import { toast } from 'sonner';
+
+const AVATAR_COLORS = [
+    'from-rose-500 to-pink-600', 'from-violet-500 to-purple-600', 'from-blue-500 to-indigo-600',
+    'from-cyan-500 to-teal-600', 'from-emerald-500 to-green-600', 'from-amber-500 to-orange-600',
+    'from-red-500 to-rose-600', 'from-fuchsia-500 to-pink-600',
+];
+
+const getInitialColor = (name: string) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
 
 interface ProfileHeaderProps {
     profile: UserProfile | null;
@@ -28,7 +45,7 @@ interface ProfileHeaderProps {
     setAvatarUrl: (url: string) => void;
     getToken: () => Promise<string | null>;
     setShowStatusDialog: (show: boolean) => void;
-    addToast: (toast: any) => void;
+    onEditProfile?: () => void;
 }
 
 const roleBadgeConfig: Record<string, { label: string; icon: typeof Crown; gradient: string }> = {
@@ -47,7 +64,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     setAvatarUrl,
     getToken,
     setShowStatusDialog,
-    addToast,
+    onEditProfile,
 }) => {
     const [isCropperOpen, setIsCropperOpen] = React.useState(false);
     const currentStatus = onlineStatusOptions.find(s => s.value === onlineStatus) || onlineStatusOptions[0];
@@ -63,24 +80,39 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             const response = await apiClient.patch('/api/profile/avatar', formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    'Content-Type': undefined
+                    'Content-Type': 'multipart/form-data'
                 }
             });
-            const newUrl = response.data.data.avatarUrl;
+            const newUrl = response.data.data.avatar;
             setAvatarUrl(newUrl);
             triggerRefresh();
-            addToast({
-                type: 'success',
-                title: 'Avatar Updated',
-                message: 'Your profile picture has been updated successfully.'
-            });
+            toast.success('Profile picture updated');
         } catch (error: any) {
-            addToast({
-                type: 'error',
-                title: 'Error',
-                message: error.response?.data?.message || 'Failed to update avatar.'
-            });
+            toast.error(error.response?.data?.message || 'Failed to update avatar');
             throw error;
+        }
+    };
+
+    const handleRemoveAvatar = async () => {
+        try {
+            const token = await getToken();
+            await apiClient.delete('/api/profile/avatar', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setAvatarUrl('');
+            triggerRefresh();
+            toast.success('Profile picture removed');
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to remove avatar');
+            throw error;
+        }
+    };
+
+    const handleCopyId = () => {
+        const id = profile?._id?.slice(-8).toUpperCase();
+        if (id) {
+            navigator.clipboard.writeText(id);
+            toast.success('Account ID copied');
         }
     };
 
@@ -91,28 +123,72 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         || 'User';
 
     const avatarSrc = profile?.avatarUrl || profile?.avatar || authUser?.imageUrl;
+    const initial = displayName.charAt(0).toUpperCase();
+    const initialGradient = getInitialColor(displayName);
 
     return (
-        <div className="relative mb-8 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl border border-gray-200/60 dark:border-white/10 group h-fit flex flex-col">
-            <div className="absolute inset-0 bg-linear-to-br from-emerald-600 via-teal-600 to-cyan-700 dark:from-emerald-800 dark:via-teal-900 dark:to-cyan-950" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
-            <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-linear-to-t from-black/20 to-transparent" />
+        <div className="relative mb-6 sm:mb-8 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl border border-gray-200/60 dark:border-white/10 group h-fit flex flex-col">
+            <div className="absolute inset-0 bg-linear-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950" />
+
+            <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full opacity-[0.07]">
+                    <svg className="w-full h-full" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice">
+                        <defs>
+                            <linearGradient id="roadGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+                                <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.6" />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity="0.3" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M-50 350 Q200 320 400 330 Q600 340 850 310" stroke="url(#roadGrad)" strokeWidth="80" fill="none" opacity="0.4" />
+                        <line x1="0" y1="335" x2="800" y2="325" stroke="#10b981" strokeWidth="2" strokeDasharray="20 15" opacity="0.5" className="animate-road-dash" />
+                    </svg>
+                </div>
+
+                <div className="absolute bottom-8 sm:bottom-12 right-12 sm:right-24 opacity-[0.08] animate-car-cruise">
+                    <svg width="120" height="50" viewBox="0 0 120 50" fill="none">
+                        <path d="M20 35 L25 20 Q30 10 45 10 L75 10 Q90 10 95 20 L100 35" stroke="#10b981" strokeWidth="2" fill="none" />
+                        <rect x="15" y="35" width="90" height="10" rx="3" stroke="#10b981" strokeWidth="2" fill="none" />
+                        <circle cx="35" cy="48" r="6" stroke="#10b981" strokeWidth="2" fill="none" />
+                        <circle cx="85" cy="48" r="6" stroke="#10b981" strokeWidth="2" fill="none" />
+                        <rect x="30" y="14" width="18" height="12" rx="2" stroke="#06b6d4" strokeWidth="1.5" fill="none" opacity="0.6" />
+                        <rect x="55" y="14" width="18" height="12" rx="2" stroke="#06b6d4" strokeWidth="1.5" fill="none" opacity="0.6" />
+                    </svg>
+                </div>
+
+                <div className="absolute bottom-6 sm:bottom-10 left-[15%] opacity-[0.06] animate-car-cruise-slow">
+                    <svg width="80" height="35" viewBox="0 0 120 50" fill="none">
+                        <path d="M20 35 L25 20 Q30 10 45 10 L75 10 Q90 10 95 20 L100 35" stroke="#06b6d4" strokeWidth="2" fill="none" />
+                        <rect x="15" y="35" width="90" height="10" rx="3" stroke="#06b6d4" strokeWidth="2" fill="none" />
+                        <circle cx="35" cy="48" r="6" stroke="#06b6d4" strokeWidth="2" fill="none" />
+                        <circle cx="85" cy="48" r="6" stroke="#06b6d4" strokeWidth="2" fill="none" />
+                    </svg>
+                </div>
+
+                <div className="absolute top-6 right-[20%] w-1.5 h-1.5 rounded-full bg-emerald-400/30 animate-pulse" />
+                <div className="absolute top-12 right-[35%] w-1 h-1 rounded-full bg-cyan-400/20 animate-pulse" style={{ animationDelay: '1s' }} />
+                <div className="absolute top-8 left-[25%] w-1 h-1 rounded-full bg-emerald-300/20 animate-pulse" style={{ animationDelay: '2s' }} />
+            </div>
+
+            <div className="absolute inset-0 bg-linear-to-r from-emerald-500/10 via-transparent to-cyan-500/10" />
+            <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-linear-to-t from-black/40 to-transparent" />
 
             <div className="relative w-full px-5 py-6 sm:px-8 sm:py-8 md:px-10 md:py-10 flex flex-col sm:flex-row items-center sm:items-end gap-5 sm:gap-8">
                 <div className="relative group/avatar shrink-0">
+                    <div className="absolute -inset-1 rounded-2xl sm:rounded-3xl bg-linear-to-br from-emerald-400/40 to-cyan-400/40 blur-md opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-500" />
                     <div
-                        className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-2xl sm:rounded-3xl overflow-hidden ring-[3px] ring-white/50 dark:ring-white/30 shadow-2xl transition-all duration-300 group-hover/avatar:ring-white/80 cursor-pointer"
+                        className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-2xl sm:rounded-3xl overflow-hidden ring-[3px] ring-white/20 dark:ring-white/10 shadow-2xl transition-all duration-300 group-hover/avatar:ring-emerald-400/50 cursor-pointer"
                         onClick={() => setIsCropperOpen(true)}
                     >
                         {avatarSrc ? (
-                            <img src={avatarSrc} alt="Profile" className="w-full h-full object-cover" />
+                            <img src={resolveImageUrl(avatarSrc)} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full bg-white/20 flex items-center justify-center">
-                                <User className="size-12 sm:size-16 text-white/70" />
+                            <div className={cn("w-full h-full bg-linear-to-br flex items-center justify-center", initialGradient)}>
+                                <span className="text-white font-bold text-3xl sm:text-4xl md:text-5xl select-none">{initial}</span>
                             </div>
                         )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
-                            <Camera className="size-6 sm:size-8 text-white" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                            <Camera className="size-6 sm:size-8 text-white drop-shadow-lg" />
                         </div>
                     </div>
 
@@ -120,12 +196,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                         isOpen={isCropperOpen}
                         onClose={() => setIsCropperOpen(false)}
                         onSave={handleSaveAvatar}
+                        onRemove={handleRemoveAvatar}
                         currentImage={resolveImageUrl(profile?.avatarUrl || profile?.avatar || authUser?.imageUrl)}
                     />
 
                     <button
                         onClick={() => setShowStatusDialog(true)}
-                        className="absolute -bottom-1.5 -right-1.5 sm:-bottom-2 sm:-right-2 h-7 w-7 sm:h-9 sm:w-9 rounded-xl bg-white dark:bg-gray-900 shadow-lg border-2 border-white/80 dark:border-gray-700 hover:scale-110 transition-all active:scale-95 flex items-center justify-center"
+                        className="absolute -bottom-1.5 -right-1.5 sm:-bottom-2 sm:-right-2 h-7 w-7 sm:h-9 sm:w-9 rounded-xl bg-gray-900 dark:bg-zinc-900 shadow-lg border-2 border-gray-700 hover:scale-110 transition-all active:scale-95 flex items-center justify-center"
                     >
                         <div className={cn("w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full", currentStatus.color)} />
                     </button>
@@ -141,51 +218,77 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                         </Badge>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4">
+                    {profile?.email && (
+                        <p className="text-white/40 text-xs sm:text-sm font-medium truncate">{profile.email}</p>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3">
                         <button
                             onClick={() => setShowStatusDialog(true)}
-                            className="group/msg inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 transition-all backdrop-blur-sm"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
                         >
-                            <CircleDot className={cn("size-3.5", currentStatus.color.replace('bg-', 'text-'))} />
-                            <span className="text-white/85 font-medium text-xs sm:text-sm italic truncate max-w-45 sm:max-w-70">
+                            <CircleDot className={cn("size-3", currentStatus.color.replace('bg-', 'text-'))} />
+                            <span className="text-white/70 font-medium text-xs truncate max-w-40 sm:max-w-60">
                                 {customStatus || 'Set your status...'}
                             </span>
                         </button>
-                        <div className="hidden sm:flex items-center gap-4 text-white/70 text-xs sm:text-sm font-medium">
+                        <div className="hidden sm:flex items-center gap-3 text-white/40 text-xs font-medium">
+                            {profile?.personalInfo?.location && (
+                                <span className="inline-flex items-center gap-1.5">
+                                    <MapPin className="size-3 text-emerald-400/60" />
+                                    {profile.personalInfo.location}
+                                </span>
+                            )}
                             <span className="inline-flex items-center gap-1.5">
-                                <MapPin className="size-3.5 text-emerald-200" />
-                                {profile?.personalInfo?.location || 'Earth'}
-                            </span>
-                            <span className="inline-flex items-center gap-1.5">
-                                <Globe className="size-3.5 text-cyan-200" />
+                                <Globe className="size-3 text-cyan-400/60" />
                                 {profile?.personalInfo?.language ? languageOptions.find(l => l.code === profile?.personalInfo?.language)?.name : 'English'}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 border-white/25 text-white hover:bg-white/15 backdrop-blur-sm font-semibold hidden sm:inline-flex"
-                    onClick={() => setShowStatusDialog(true)}
-                >
-                    <CircleDot className="size-4 mr-2" />Status
-                </Button>
+                <div className="shrink-0 flex items-center gap-2">
+                    {onEditProfile && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium hidden sm:inline-flex"
+                            onClick={onEditProfile}
+                        >
+                            <Pencil className="size-3.5 mr-1.5" />Edit Profile
+                        </Button>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium"
+                        onClick={() => setShowStatusDialog(true)}
+                    >
+                        <CircleDot className="size-3.5 mr-1.5" />Status
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium hidden sm:inline-flex"
+                        onClick={handleCopyId}
+                    >
+                        <Copy className="size-3.5 mr-1.5" />ID
+                    </Button>
+                </div>
             </div>
 
-            <div className="relative w-full border-t border-white/15 bg-black/15 backdrop-blur-md px-5 py-4 sm:px-8 sm:py-5 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+            <div className="relative w-full border-t border-white/5 bg-white/3 backdrop-blur-md px-5 py-3.5 sm:px-8 sm:py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                 {[
-                    { label: 'Role', value: profile?.role?.replace('_', ' ') || 'Customer', icon: Crown, color: 'text-amber-300' },
-                    { label: 'Account ID', value: profile?._id?.slice(-8).toUpperCase() || 'NEW', icon: Zap, color: 'text-cyan-300' },
-                    { label: 'Member Since', value: profile?.createdAt ? new Date(profile.createdAt).getFullYear().toString() : new Date().getFullYear().toString(), icon: Calendar, color: 'text-emerald-300' },
-                    { label: 'Identity', value: profile?.securityStatus?.emailVerified ? 'Verified' : 'Unverified', icon: ShieldCheck, color: 'text-pink-300' }
+                    { label: 'Role', value: profile?.role?.replace('_', ' ') || 'Customer', icon: Crown, color: 'text-amber-400/80' },
+                    { label: 'Account ID', value: profile?._id?.slice(-8).toUpperCase() || 'NEW', icon: Zap, color: 'text-cyan-400/80' },
+                    { label: 'Member Since', value: profile?.createdAt ? new Date(profile.createdAt).getFullYear().toString() : new Date().getFullYear().toString(), icon: Calendar, color: 'text-emerald-400/80' },
+                    { label: 'Identity', value: profile?.securityStatus?.emailVerified ? 'Verified' : 'Unverified', icon: ShieldCheck, color: 'text-pink-400/80' }
                 ].map((stat, i) => (
-                    <div key={i} className="flex flex-col gap-0.5 group/stat">
-                        <span className="text-white/40 text-[9px] sm:text-[10px] uppercase font-bold tracking-widest">{stat.label}</span>
+                    <div key={i} className="flex flex-col gap-0.5">
+                        <span className="text-white/25 text-[9px] sm:text-[10px] uppercase font-bold tracking-widest">{stat.label}</span>
                         <div className="flex items-center gap-1.5">
                             <stat.icon className={cn("size-3.5 sm:size-4", stat.color)} />
-                            <span className="text-white font-bold text-sm sm:text-base capitalize truncate">{stat.value}</span>
+                            <span className="text-white/80 font-bold text-sm sm:text-base capitalize truncate">{stat.value}</span>
                         </div>
                     </div>
                 ))}

@@ -5,6 +5,14 @@ process.env.SERWIST_SUPPRESS_TURBOPACK_WARNING = "1";
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  async rewrites() {
+    return [
+      {
+        source: '/api/supraleo/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/supraleo/:path*`,
+      },
+    ]
+  },
   experimental: {
     serverActions: {
       allowedOrigins: [

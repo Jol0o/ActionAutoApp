@@ -1,54 +1,46 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthActions, useUser, useAuth } from "@/providers/AuthProvider";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useTheme } from '@/context/ThemeContext';
 import { useProfileContext } from '@/context/ProfileContext';
-import { useProfileToast } from '@/components/ProfileToast';
 import { apiClient } from '@/lib/api-client';
 import { UserProfile, OnlineStatus, PersonalInfo, RecentActivity, SocialLink } from '@/types/user';
 import { NotificationPreferences } from '@/types/notification';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     User,
-    Settings,
-    Shield,
     Bell,
     Activity,
     HelpCircle,
     Sparkles,
-    Loader2
+    Loader2,
+    UserCog
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
-// Import sub-components
 import { ProfileHeader } from './ProfileHeader';
 import { ProfileOverviewTab } from './ProfileOverviewTab';
 import { PersonalInfoTab } from './PersonalInfoTab';
-import { SecurityTab } from './SecurityTab';
 import { NotificationsTab } from './NotificationsTab';
 import { ActivityTab } from './ActivityTab';
 import { SupportTab } from './SupportTab';
-import { SettingsTab } from './SettingsTab';
 import { ProfileDialogs } from './ProfileDialogs';
-import { allNotificationCategories, containsCurseWord } from './profile-constants';
+import { containsCurseWord } from './profile-constants';
 
 export const ProfileView: React.FC = () => {
     const { user: authUser } = useUser();
     const { signOut, openUserProfile } = useAuthActions();
     const { getToken } = useAuth();
     const { setAvatarUrl, triggerRefresh } = useProfileContext();
-    const toast = useProfileToast();
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // State Management
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
 
-    // Personal Info State
     const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({});
     const [editingPersonalInfo, setEditingPersonalInfo] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -56,25 +48,23 @@ export const ProfileView: React.FC = () => {
     const [phoneCountryCode, setPhoneCountryCode] = useState('+1');
     const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
 
-    // Notification State
     const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
     const [savingPreference, setSavingPreference] = useState<string | null>(null);
 
-    // Activity State
     const [activities, setActivities] = useState<RecentActivity[]>([]);
 
-    // Online Status State
     const [onlineStatus, setOnlineStatus] = useState<OnlineStatus>('online');
     const [customStatus, setCustomStatus] = useState('');
     const [customStatusError, setCustomStatusError] = useState<string | null>(null);
 
-    // Dialog States
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
     const [showStatusDialog, setShowStatusDialog] = useState(false);
+
+    const toastShownRef = useRef(false);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -85,9 +75,13 @@ export const ProfileView: React.FC = () => {
             });
             const data = response.data.data;
             setProfile(data);
-            setPersonalInfo(data.personalInfo || {});
+            const pInfo = data.personalInfo || {};
+            if (pInfo.dateOfBirth) {
+                pInfo.dateOfBirth = pInfo.dateOfBirth.substring(0, 10);
+            }
+            setPersonalInfo(pInfo);
             setPhoneCountryCode(data.personalInfo?.phoneCountryCode || '+1');
-            setSocialLinks(data.socialLinks || []);
+            setSocialLinks(data.personalInfo?.socialLinks || []);
             setPreferences(data.notificationPreferences);
             setActivities(data.recentActivity || []);
             setOnlineStatus(data.onlineStatus || 'online');
@@ -96,16 +90,15 @@ export const ProfileView: React.FC = () => {
             if (data.avatarUrl) {
                 setAvatarUrl(data.avatarUrl);
             }
-        } catch (error: any) {
-            toast.addToast({
-                type: 'error',
-                title: 'Error',
-                message: 'Failed to load profile data.'
-            });
+        } catch {
+            if (!toastShownRef.current) {
+                toastShownRef.current = true;
+                toast.error('Failed to load profile data');
+            }
         } finally {
             setIsLoading(false);
         }
-    }, [getToken, setAvatarUrl, toast]);
+    }, [getToken, setAvatarUrl]);
 
     useEffect(() => {
         fetchProfile();
@@ -117,17 +110,11 @@ export const ProfileView: React.FC = () => {
 
     const handleBioChange = (value: string) => {
         setPersonalInfo({ ...personalInfo, bio: value });
-        if (value.length > 500) {
-            setBioError('Bio must be 500 characters or less');
-        } else {
-            setBioError('');
-        }
+        setBioError(value.length > 500 ? 'Bio must be 500 characters or less' : '');
     };
 
     const addSocialLink = () => {
-        if (socialLinks.length < 4) {
-            setSocialLinks([...socialLinks, { label: '', url: '' }]);
-        }
+        if (socialLinks.length < 4) setSocialLinks([...socialLinks, { label: '', url: '' }]);
     };
 
     const updateSocialLink = (index: number, field: 'label' | 'url', value: string) => {
@@ -143,30 +130,48 @@ export const ProfileView: React.FC = () => {
     const handleSavePersonalInfo = async () => {
         setShowSaveConfirmDialog(false);
         if (personalInfo.bio && personalInfo.bio.length > 500) {
-            toast.addToast({ type: 'error', title: 'Bio Too Long', message: 'Bio must be 500 characters or less.' });
+            toast.error('Bio must be 500 characters or less');
             return;
+        }
+
+        const phone = personalInfo.phone?.replace(/\D/g, '') || '';
+        if (phone && phone.length !== 10) {
+            toast.error('Phone number must be a valid 10-digit US number');
+            return;
+        }
+
+        for (const link of socialLinks) {
+            if (link.url && !/^https?:\/\/.+/.test(link.url)) {
+                toast.error(`Invalid URL for "${link.label || 'link'}". Must start with https://`);
+                return;
+            }
+            if (link.label && link.label.length > 30) {
+                toast.error('Link labels must be 30 characters or less');
+                return;
+            }
         }
 
         const fieldsToCheck = [personalInfo.bio, personalInfo.jobTitle, personalInfo.department, customStatus].filter(Boolean);
         for (const field of fieldsToCheck) {
             if (field && containsCurseWord(field)) {
-                toast.addToast({ type: 'error', title: 'Inappropriate Content', message: 'Please remove inappropriate language.' });
+                toast.error('Please remove inappropriate language');
                 return;
             }
         }
 
         setIsSaving(true);
         try {
-            const updatedInfo = { ...personalInfo, phoneCountryCode, socialLinks };
+            const cleanLinks = socialLinks.filter(l => l.label?.trim() || l.url?.trim());
+            const updatedInfo = { ...personalInfo, phoneCountryCode, socialLinks: cleanLinks };
             const token = await getToken();
             await apiClient.patch('/api/profile/personal-info', updatedInfo, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            toast.addToast({ type: 'success', title: 'Information Saved', message: 'Your personal information has been updated.' });
+            toast.success('Personal information updated');
             setEditingPersonalInfo(false);
             fetchProfile();
         } catch (error: any) {
-            toast.addToast({ type: 'error', title: 'Error', message: error.response?.data?.message || 'Failed to save information.' });
+            toast.error(error.response?.data?.message || 'Failed to save information');
         } finally {
             setIsSaving(false);
         }
@@ -183,9 +188,9 @@ export const ProfileView: React.FC = () => {
             await apiClient.patch('/api/profile/notification-preferences', { [key]: value }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-        } catch (error: any) {
+        } catch {
             setPreferences(oldPreferences);
-            toast.addToast({ type: 'error', title: 'Error', message: 'Failed to update preferences.' });
+            toast.error('Failed to update preferences');
         } finally {
             setSavingPreference(null);
         }
@@ -196,19 +201,17 @@ export const ProfileView: React.FC = () => {
         setSavingPreference('all');
         try {
             const token = await getToken();
-            const updates: any = {};
+            const updates: Record<string, boolean> = {};
             Object.keys(preferences).forEach(key => {
-                if (typeof preferences[key as keyof NotificationPreferences] === 'boolean') {
-                    updates[key] = true;
-                }
+                if (typeof preferences[key as keyof NotificationPreferences] === 'boolean') updates[key] = true;
             });
             await apiClient.patch('/api/profile/notification-preferences', updates, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchProfile();
-            toast.addToast({ type: 'success', title: 'Notifications Enabled', message: 'All notifications have been turned on.' });
-        } catch (error) {
-            toast.addToast({ type: 'error', title: 'Error', message: 'Failed to enable all notifications.' });
+            toast.success('All notifications enabled');
+        } catch {
+            toast.error('Failed to enable notifications');
         } finally {
             setSavingPreference(null);
         }
@@ -219,19 +222,17 @@ export const ProfileView: React.FC = () => {
         setSavingPreference('all');
         try {
             const token = await getToken();
-            const updates: any = {};
+            const updates: Record<string, boolean> = {};
             Object.keys(preferences).forEach(key => {
-                if (typeof preferences[key as keyof NotificationPreferences] === 'boolean') {
-                    updates[key] = false;
-                }
+                if (typeof preferences[key as keyof NotificationPreferences] === 'boolean') updates[key] = false;
             });
             await apiClient.patch('/api/profile/notification-preferences', updates, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchProfile();
-            toast.addToast({ type: 'success', title: 'Notifications Disabled', message: 'All notifications have been turned off.' });
-        } catch (error) {
-            toast.addToast({ type: 'error', title: 'Error', message: 'Failed to disable all notifications.' });
+            toast.success('All notifications disabled');
+        } catch {
+            toast.error('Failed to disable notifications');
         } finally {
             setSavingPreference(null);
         }
@@ -239,35 +240,28 @@ export const ProfileView: React.FC = () => {
 
     const handleCustomStatusChange = (text: string) => {
         setCustomStatus(text);
-        if (containsCurseWord(text)) {
-            setCustomStatusError('Please remove inappropriate language');
-        } else {
-            setCustomStatusError(null);
-        }
+        setCustomStatusError(containsCurseWord(text) ? 'Please remove inappropriate language' : null);
     };
 
     const handleUpdateOnlineStatus = async () => {
         setIsSaving(true);
         try {
             const token = await getToken();
-            await apiClient.patch('/api/profile/personal-info', {
-                onlineStatus,
-                customStatus
-            }, {
+            await apiClient.patch('/api/profile/personal-info', { onlineStatus, customStatus }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            toast.addToast({ type: 'success', title: 'Status Updated', message: 'Your online status has been updated.' });
+            toast.success('Status updated');
             setShowStatusDialog(false);
             fetchProfile();
-        } catch (error) {
-            toast.addToast({ type: 'error', title: 'Error', message: 'Failed to update status.' });
+        } catch {
+            toast.error('Failed to update status');
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleVerifyEmail = async () => {
-        toast.addToast({ type: 'info', title: 'Verification', message: 'Please check your email for a verification link from Action Auto.' });
+        toast.info('Check your email for a verification link');
         openUserProfile();
     };
 
@@ -278,11 +272,11 @@ export const ProfileView: React.FC = () => {
             await apiClient.delete('/api/profile/delete-account', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            toast.addToast({ type: 'success', title: 'Account Deleted', message: 'Your account has been permanently removed.' });
+            toast.success('Account deleted');
             signOut();
             router.push('/');
-        } catch (error) {
-            toast.addToast({ type: 'error', title: 'Error', message: 'Failed to delete account. Please contact support.' });
+        } catch {
+            toast.error('Failed to delete account. Contact support.');
         }
     };
 
@@ -294,21 +288,27 @@ export const ProfileView: React.FC = () => {
     const getNotificationStats = () => {
         if (!preferences) return { enabled: 0, total: 0 };
         const keys = Object.keys(preferences).filter(key => typeof preferences[key as keyof NotificationPreferences] === 'boolean');
-        const enabled = keys.filter(key => preferences[key as keyof NotificationPreferences]).length;
-        return { enabled, total: keys.length };
+        return { enabled: keys.filter(key => preferences[key as keyof NotificationPreferences]).length, total: keys.length };
     };
 
     if (isLoading && !profile) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
                 <div className="relative">
-                    <Loader2 className="size-12 animate-spin text-indigo-600" />
-                    <div className="absolute inset-0 blur-xl bg-indigo-500/20 animate-pulse"></div>
+                    <Loader2 className="size-10 animate-spin text-emerald-600" />
                 </div>
-                <p className="text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest animate-pulse">Loading Profile...</p>
+                <p className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-xs animate-pulse">Loading Profile</p>
             </div>
         );
     }
+
+    const tabs = [
+        { value: 'overview', label: 'Overview', icon: Sparkles },
+        { value: 'personal', label: 'Personal', icon: UserCog },
+        { value: 'notifications', label: 'Alerts', icon: Bell },
+        { value: 'activity', label: 'Feed', icon: Activity },
+        { value: 'support', label: 'Support', icon: HelpCircle },
+    ];
 
     return (
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 space-y-6 sm:space-y-8 animate-fade-in">
@@ -321,27 +321,19 @@ export const ProfileView: React.FC = () => {
                 setAvatarUrl={setAvatarUrl}
                 getToken={getToken}
                 setShowStatusDialog={setShowStatusDialog}
-                addToast={toast.addToast}
+                onEditProfile={() => { setActiveTab('personal'); setEditingPersonalInfo(true); }}
             />
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <div className="mb-6 sm:mb-8 bg-white/80 dark:bg-gray-900/70 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-gray-800 backdrop-blur-sm sticky top-20 sm:top-24 z-30 shadow-sm">
                     <TabsList className="bg-transparent h-auto gap-1 sm:gap-1.5 p-0 w-full flex flex-nowrap overflow-x-auto scrollbar-hide">
-                        {[
-                            { value: 'overview', label: 'Overview', icon: Sparkles },
-                            { value: 'personal', label: 'Personal', icon: User },
-                            { value: 'security', label: 'Security', icon: Shield },
-                            { value: 'notifications', label: 'Alerts', icon: Bell },
-                            { value: 'activity', label: 'Feed', icon: Activity },
-                            { value: 'settings', label: 'Settings', icon: Settings },
-                            { value: 'support', label: 'Support', icon: HelpCircle },
-                        ].map((tab) => (
+                        {tabs.map((tab) => (
                             <TabsTrigger
                                 key={tab.value}
                                 value={tab.value}
                                 className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-md rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 text-gray-600 dark:text-gray-400 border border-transparent data-[state=active]:border-emerald-500/20"
                             >
-                                <tab.icon className="size-3.5 sm:size-4 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 transition-colors" />
+                                <tab.icon className="size-3.5 sm:size-4" />
                                 <span className="font-semibold text-[10px] sm:text-xs uppercase tracking-wider">{tab.label}</span>
                             </TabsTrigger>
                         ))}
@@ -377,14 +369,6 @@ export const ProfileView: React.FC = () => {
                     />
                 </TabsContent>
 
-                <TabsContent value="security">
-                    <SecurityTab
-                        profile={profile}
-                        openUserProfile={openUserProfile}
-                        handleVerifyEmail={handleVerifyEmail}
-                    />
-                </TabsContent>
-
                 <TabsContent value="notifications">
                     <NotificationsTab
                         preferences={preferences}
@@ -401,16 +385,11 @@ export const ProfileView: React.FC = () => {
                     <ActivityTab
                         activities={activities}
                         fetchProfile={fetchProfile}
-                        addToast={toast.addToast}
                     />
                 </TabsContent>
 
-                <TabsContent value="settings">
-                    <SettingsTab />
-                </TabsContent>
-
                 <TabsContent value="support">
-                    <SupportTab setShowDeleteDialog={setShowDeleteDialog} />
+                    <SupportTab />
                 </TabsContent>
             </Tabs>
 

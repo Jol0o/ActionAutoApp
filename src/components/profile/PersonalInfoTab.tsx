@@ -15,16 +15,16 @@ import {
     User,
     Briefcase,
     Building2,
-    Clock,
     Globe,
     Link2,
     Plus,
     X,
-    Loader2
+    Loader2,
+    AlertCircle
 } from 'lucide-react';
 import { PersonalInfo, SocialLink } from '@/types/user';
 import { cn } from '@/lib/utils';
-import { countryCodes, timezoneOptions, languageOptions } from './profile-constants';
+import { languageOptions } from './profile-constants';
 
 interface PersonalInfoTabProps {
     personalInfo: PersonalInfo;
@@ -44,6 +44,22 @@ interface PersonalInfoTabProps {
     removeSocialLink: (index: number) => void;
 }
 
+const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+};
+
+const isValidUrl = (url: string) => {
+    try {
+        const u = new URL(url);
+        return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch { return false; }
+};
+
+const linkLabelExamples = ['LinkedIn', 'Portfolio', 'GitHub', 'Instagram', 'Twitter / X', 'YouTube', 'Personal Blog', 'Company Site'];
+
 export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
     personalInfo,
     editingPersonalInfo,
@@ -62,39 +78,36 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
     removeSocialLink,
 }) => {
     return (
-        <Card className="p-0 shadow-xl border border-green-100 dark:border-green-900 overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-cyan-500 to-teal-500 animate-gradient"></div>
-            <CardHeader className="py-3 sm:py-4 bg-linear-to-br from-green-50 to-emerald-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-green-100 dark:border-green-900">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 animate-slide-in-left">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-linear-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                            <UserCog className="size-5 sm:size-6 text-white" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-lg sm:text-xl">Personal Information</CardTitle>
-                            <CardDescription className="text-xs sm:text-sm">Manage your personal details</CardDescription>
-                        </div>
+        <Card className="p-0 shadow-lg border border-gray-200/80 dark:border-gray-800 overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-linear-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                        <UserCog className="size-4 text-white" />
                     </div>
-                    {!editingPersonalInfo ? (
-                        <Button onClick={() => setEditingPersonalInfo(true)} className="hover-lift">
-                            <Edit3 className="size-4 mr-2" />Edit
-                        </Button>
-                    ) : (
-                        <div className="flex gap-2 animate-slide-in-right">
-                            <Button variant="outline" onClick={() => setEditingPersonalInfo(false)} className="transition-all hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</Button>
-                            <Button onClick={() => setShowSaveConfirmDialog(true)} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700 transition-all hover-lift">
-                                {isSaving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Check className="size-4 mr-2" />}
-                                Save
-                            </Button>
-                        </div>
-                    )}
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Personal Information</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Manage your personal details</p>
+                    </div>
                 </div>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 animate-fade-in-up">
-                    <div className="md:col-span-2 space-y-3 animate-slide-up stagger-1">
+                {!editingPersonalInfo ? (
+                    <Button onClick={() => setEditingPersonalInfo(true)} size="sm">
+                        <Edit3 className="size-4 mr-2" />Edit
+                    </Button>
+                ) : (
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setEditingPersonalInfo(false)}>Cancel</Button>
+                        <Button size="sm" onClick={() => setShowSaveConfirmDialog(true)} disabled={isSaving} className="bg-emerald-600 hover:bg-emerald-700">
+                            {isSaving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Check className="size-4 mr-2" />}
+                            Save
+                        </Button>
+                    </div>
+                )}
+            </div>
+            <CardContent className="p-4 sm:p-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                    <div className="md:col-span-2 space-y-3">
                         <Label htmlFor="bio" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <Edit3 className="size-4 text-emerald-600" />Bio / Description
+                            <Edit3 className="size-4 text-emerald-600 dark:text-emerald-400" />Bio / Description
                         </Label>
                         <Textarea
                             id="bio"
@@ -115,46 +128,46 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
                         </div>
                     </div>
 
-                    <div className="space-y-3 animate-slide-up stagger-2">
+                    <div className="space-y-3">
                         <Label htmlFor="phone" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <Phone className="size-4 text-emerald-600" />Phone Number
+                            <Phone className="size-4 text-emerald-600 dark:text-emerald-400" />Phone Number
                         </Label>
                         <div className="flex gap-2">
-                            <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode} disabled={!editingPersonalInfo}>
-                                <SelectTrigger className="w-35 rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors hover:border-gray-300">
-                                    <SelectValue placeholder="Code" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {countryCodes.map((cc) => (
-                                        <SelectItem key={cc.code} value={cc.code}>
-                                            {cc.code} - {cc.country}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="flex items-center justify-center w-16 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm font-semibold text-gray-600 dark:text-gray-400 select-none shrink-0">
+                                +1
+                            </div>
                             <Input
                                 id="phone"
-                                value={personalInfo.phone || ''}
-                                onChange={(e) => setPersonalInfo({ ...personalInfo, phone: e.target.value })}
+                                value={formatPhone(personalInfo.phone || '')}
+                                onChange={(e) => {
+                                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                    setPersonalInfo({ ...personalInfo, phone: digits });
+                                }}
                                 disabled={!editingPersonalInfo}
                                 placeholder="(555) 123-4567"
+                                maxLength={14}
                                 className="flex-1 rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                             />
                         </div>
+                        {personalInfo.phone && personalInfo.phone.replace(/\D/g, '').length > 0 && personalInfo.phone.replace(/\D/g, '').length < 10 && editingPersonalInfo && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                <AlertCircle className="size-3" /> Enter a valid 10-digit US number
+                            </p>
+                        )}
                     </div>
 
-                    <div className="space-y-3 animate-slide-up stagger-3">
+                    <div className="space-y-3">
                         <Label htmlFor="location" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <MapPin className="size-4 text-emerald-600" />Location
+                            <MapPin className="size-4 text-emerald-600 dark:text-emerald-400" />Location
                         </Label>
                         <Input id="location" value={personalInfo.location || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, location: e.target.value })} disabled={!editingPersonalInfo} placeholder="City, State"
                             className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                         />
                     </div>
 
-                    <div className="space-y-3 animate-slide-up stagger-4">
+                    <div className="space-y-3">
                         <Label htmlFor="dateOfBirth" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <Calendar className="size-4 text-emerald-600" />Date of Birth
+                            <Calendar className="size-4 text-emerald-600 dark:text-emerald-400" />Date of Birth
                         </Label>
                         <Input
                             id="dateOfBirth"
@@ -166,9 +179,9 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
                         />
                     </div>
 
-                    <div className="space-y-3 animate-slide-up stagger-5">
+                    <div className="space-y-3">
                         <Label htmlFor="gender" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <User className="size-4 text-emerald-600" />Gender
+                            <User className="size-4 text-emerald-600 dark:text-emerald-400" />Gender
                         </Label>
                         <Select value={personalInfo.gender || ''} onValueChange={(value) => setPersonalInfo({ ...personalInfo, gender: value })} disabled={!editingPersonalInfo}>
                             <SelectTrigger className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors hover:border-gray-300"><SelectValue placeholder="Select gender" /></SelectTrigger>
@@ -180,44 +193,27 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
                         </Select>
                     </div>
 
-                    <div className="space-y-3 animate-slide-up stagger-1">
+                    <div className="space-y-3">
                         <Label htmlFor="jobTitle" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <Briefcase className="size-4 text-emerald-600" />Job Title
+                            <Briefcase className="size-4 text-emerald-600 dark:text-emerald-400" />Job Title
                         </Label>
                         <Input id="jobTitle" value={personalInfo.jobTitle || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, jobTitle: e.target.value })} disabled={!editingPersonalInfo} placeholder="Sales Manager"
                             className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                         />
                     </div>
 
-                    <div className="space-y-3 animate-slide-up stagger-2">
+                    <div className="space-y-3">
                         <Label htmlFor="department" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <Building2 className="size-4 text-emerald-600" />Department
+                            <Building2 className="size-4 text-emerald-600 dark:text-emerald-400" />Department
                         </Label>
                         <Input id="department" value={personalInfo.department || ''} onChange={(e) => setPersonalInfo({ ...personalInfo, department: e.target.value })} disabled={!editingPersonalInfo} placeholder="Sales"
                             className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 font-medium p-3"
                         />
                     </div>
 
-                    <div className="space-y-3 animate-slide-up stagger-3">
-                        <Label htmlFor="timezone" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <Clock className="size-4 text-emerald-600" />Timezone
-                        </Label>
-                        <Select value={personalInfo.timezone || ''} onValueChange={(value) => setPersonalInfo({ ...personalInfo, timezone: value })} disabled={!editingPersonalInfo}>
-                            <SelectTrigger className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors hover:border-gray-300"><SelectValue placeholder="Select timezone" /></SelectTrigger>
-                            <SelectContent>
-                                {timezoneOptions.map((tz) => (
-                                    <SelectItem key={tz.value} value={tz.value}>
-                                        <span className="font-medium">{tz.abbr}</span>
-                                        <span className="text-gray-500 text-xs ml-2">- {tz.label.split('(')[1]?.replace(')', '') || tz.label}</span>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-3 animate-slide-up stagger-4">
+                    <div className="space-y-3">
                         <Label htmlFor="language" className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                            <Globe className="size-4 text-emerald-600" />Language
+                            <Globe className="size-4 text-emerald-600 dark:text-emerald-400" />Language
                         </Label>
                         <Select value={personalInfo.language || ''} onValueChange={(value) => setPersonalInfo({ ...personalInfo, language: value })} disabled={!editingPersonalInfo}>
                             <SelectTrigger className="rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors hover:border-gray-300"><SelectValue placeholder="Select language" /></SelectTrigger>
@@ -230,13 +226,13 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
                     </div>
 
                     {/* Social Links Section */}
-                    <div className="md:col-span-2 space-y-4 pt-6 border-t border-gray-200 dark:border-gray-700 animate-slide-up stagger-5">
+                    <div className="md:col-span-2 space-y-4 pt-5 border-t border-gray-100 dark:border-gray-800">
                         <div className="flex items-center justify-between">
                             <Label className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-                                <Link2 className="size-4 text-emerald-600" />Additional Links ({socialLinks.length}/4)
+                                <Link2 className="size-4 text-emerald-600 dark:text-emerald-400" />Additional Links ({socialLinks.length}/4)
                             </Label>
                             {editingPersonalInfo && socialLinks.length < 4 && (
-                                <Button type="button" variant="outline" size="sm" onClick={addSocialLink} className="hover-lift transition-all">
+                                <Button type="button" variant="outline" size="sm" onClick={addSocialLink} className="">
                                     <Plus className="mr-1 size-3" /> Add Link
                                 </Button>
                             )}
@@ -247,37 +243,54 @@ export const PersonalInfoTab: React.FC<PersonalInfoTabProps> = ({
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {socialLinks.map((link, index) => (
-                                    <div key={index} className="flex gap-2 items-start animate-smooth-slide-in" style={{ animationDelay: `${index * 0.1}s` }}>
-                                        <div className="flex-1 space-y-2">
-                                            <Input
-                                                value={link.label}
-                                                onChange={(e) => updateSocialLink(index, 'label', e.target.value)}
-                                                disabled={!editingPersonalInfo}
-                                                placeholder="Label (e.g., Twitter, GitHub)"
-                                                className="text-sm rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 p-3"
-                                            />
-                                            <Input
-                                                value={link.url}
-                                                onChange={(e) => updateSocialLink(index, 'url', e.target.value)}
-                                                disabled={!editingPersonalInfo}
-                                                placeholder="https://..."
-                                                className="text-sm rounded-lg border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 transition-colors focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 disabled:bg-gray-50 dark:disabled:bg-gray-900 p-3"
-                                            />
+                                {socialLinks.map((link, index) => {
+                                    const placeholderLabel = linkLabelExamples[index % linkLabelExamples.length];
+                                    const urlError = link.url && !isValidUrl(link.url);
+                                    const labelTooLong = link.label.length > 30;
+                                    return (
+                                        <div key={index} className="flex gap-2 items-start" style={{ animationDelay: `${index * 0.1}s` }}>
+                                            <div className="flex-1 space-y-2">
+                                                <Input
+                                                    value={link.label}
+                                                    onChange={(e) => updateSocialLink(index, 'label', e.target.value.slice(0, 30))}
+                                                    disabled={!editingPersonalInfo}
+                                                    placeholder={`e.g. ${placeholderLabel}`}
+                                                    maxLength={30}
+                                                    className={cn(
+                                                        "text-sm rounded-lg border-2 transition-colors focus:ring-4 disabled:bg-gray-50 dark:disabled:bg-gray-900 p-3",
+                                                        labelTooLong ? "border-amber-400 focus:border-amber-500" : "border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-emerald-100 dark:focus:ring-emerald-900/30"
+                                                    )}
+                                                />
+                                                <Input
+                                                    value={link.url}
+                                                    onChange={(e) => updateSocialLink(index, 'url', e.target.value)}
+                                                    disabled={!editingPersonalInfo}
+                                                    placeholder="https://example.com"
+                                                    className={cn(
+                                                        "text-sm rounded-lg border-2 transition-colors focus:ring-4 disabled:bg-gray-50 dark:disabled:bg-gray-900 p-3",
+                                                        urlError ? "border-red-400 focus:border-red-500 focus:ring-red-100 dark:focus:ring-red-900/30" : "border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-emerald-100 dark:focus:ring-emerald-900/30"
+                                                    )}
+                                                />
+                                                {urlError && editingPersonalInfo && (
+                                                    <p className="text-xs text-red-500 flex items-center gap-1">
+                                                        <AlertCircle className="size-3" /> Enter a valid URL starting with https://
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {editingPersonalInfo && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeSocialLink(index)}
+                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                                                >
+                                                    <X className="size-4" />
+                                                </Button>
+                                            )}
                                         </div>
-                                        {editingPersonalInfo && (
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => removeSocialLink(index)}
-                                                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                                            >
-                                                <X className="size-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
