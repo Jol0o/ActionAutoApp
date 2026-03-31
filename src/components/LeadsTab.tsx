@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useLeads, Lead } from "@/hooks/useLeads"
+import { initializeSocket } from "@/lib/socket.client"
 import {
   Mail, Phone, Calendar, X, Send, Clock3, XCircle, LockOpen, Lock,
   ChevronLeft, RefreshCw, Search, CheckCircle2, AlertCircle, Info,
@@ -25,32 +26,32 @@ import { SupraLeoReadButton } from "@/components/supra-leo-ai/SupraLeoReadButton
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const LEADS_SOURCE_EMAIL    = 'leads@dealerscloud.com'
-const LEADS_PER_PAGE        = 20
-const AUTO_SYNC_INTERVAL_MS   = 30_000
+const LEADS_SOURCE_EMAIL = 'leads@dealerscloud.com'
+const LEADS_PER_PAGE = 20
+const AUTO_SYNC_INTERVAL_MS = 30_000
 const THREAD_POLL_INTERVAL_MS = 15_000
 
 // ─────────────────────────────────────────────────────────────
 // Status config
 // ─────────────────────────────────────────────────────────────
 const STATUS: Record<string, { bg: string; text: string; border: string; dot: string; label: string; icon: React.ReactNode }> = {
-  'New':             { bg: 'bg-emerald-500/10', text: 'text-emerald-400',  border: 'border-emerald-500/25', dot: 'bg-emerald-400',  label: 'New',        icon: <Mail className="h-3 w-3" /> },
-  'Pending':         { bg: 'bg-amber-500/10',   text: 'text-amber-400',    border: 'border-amber-500/25',   dot: 'bg-amber-400',    label: 'Pending',    icon: <Clock3 className="h-3 w-3" /> },
-  'Contacted':       { bg: 'bg-sky-500/10',     text: 'text-sky-400',      border: 'border-sky-500/25',     dot: 'bg-sky-400',      label: 'Contacted',  icon: <Phone className="h-3 w-3" /> },
-  'Appointment Set': { bg: 'bg-violet-500/10',  text: 'text-violet-400',   border: 'border-violet-500/25',  dot: 'bg-violet-400',   label: 'Appt. Set',  icon: <Calendar className="h-3 w-3" /> },
-  'Closed':          { bg: 'bg-slate-500/10',   text: 'text-slate-400',    border: 'border-slate-500/25',   dot: 'bg-slate-500',    label: 'Closed',     icon: <XCircle className="h-3 w-3" /> },
-  'Inbound Calls':   { bg: 'bg-teal-500/10',    text: 'text-teal-400',     border: 'border-teal-500/25',    dot: 'bg-teal-400',     label: 'Inbound',    icon: <PhoneIncoming className="h-3 w-3" /> },
+  'New': { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/25', dot: 'bg-emerald-400', label: 'New', icon: <Mail className="h-3 w-3" /> },
+  'Pending': { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/25', dot: 'bg-amber-400', label: 'Pending', icon: <Clock3 className="h-3 w-3" /> },
+  'Contacted': { bg: 'bg-sky-500/10', text: 'text-sky-400', border: 'border-sky-500/25', dot: 'bg-sky-400', label: 'Contacted', icon: <Phone className="h-3 w-3" /> },
+  'Appointment Set': { bg: 'bg-violet-500/10', text: 'text-violet-400', border: 'border-violet-500/25', dot: 'bg-violet-400', label: 'Appt. Set', icon: <Calendar className="h-3 w-3" /> },
+  'Closed': { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/25', dot: 'bg-slate-500', label: 'Closed', icon: <XCircle className="h-3 w-3" /> },
+  'Inbound Calls': { bg: 'bg-teal-500/10', text: 'text-teal-400', border: 'border-teal-500/25', dot: 'bg-teal-400', label: 'Inbound', icon: <PhoneIncoming className="h-3 w-3" /> },
 }
 
 // ─────────────────────────────────────────────────────────────
 // Channel config
 // ─────────────────────────────────────────────────────────────
 const CHANNEL: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
-  email: { label: 'Email', icon: <Mail className="h-2.5 w-2.5" />,          cls: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
-  sms:   { label: 'SMS',   icon: <MessageSquare className="h-2.5 w-2.5" />, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  adf:   { label: 'ADF',   icon: <FileText className="h-2.5 w-2.5" />,      cls: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-  phone: { label: 'Phone', icon: <Phone className="h-2.5 w-2.5" />,         cls: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
-  web:   { label: 'Web',   icon: <Globe className="h-2.5 w-2.5" />,         cls: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
+  email: { label: 'Email', icon: <Mail className="h-2.5 w-2.5" />, cls: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
+  sms: { label: 'SMS', icon: <MessageSquare className="h-2.5 w-2.5" />, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  adf: { label: 'ADF', icon: <FileText className="h-2.5 w-2.5" />, cls: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+  phone: { label: 'Phone', icon: <Phone className="h-2.5 w-2.5" />, cls: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
+  web: { label: 'Web', icon: <Globe className="h-2.5 w-2.5" />, cls: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -65,12 +66,12 @@ const cleanHTML = (html: string) => {
     .replace(/\r\n/g, '\n').trim()
 }
 const getInitials = (a?: string, b?: string) => ((a?.[0] || '') + (b?.[0] || '')).toUpperCase() || '??'
-const fmtTime  = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+const fmtTime = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 const fmtShort = (d: Date) => {
   const diff = Math.floor((Date.now() - d.getTime()) / 86400000)
   if (diff === 0) return fmtTime(d)
   if (diff === 1) return 'Yesterday'
-  if (diff < 7)  return d.toLocaleDateString([], { weekday: 'short' })
+  if (diff < 7) return d.toLocaleDateString([], { weekday: 'short' })
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 const fmtFull = (d: Date) => d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -115,12 +116,12 @@ function ChannelBadge({ channel }: { channel?: string }) {
 // ─────────────────────────────────────────────────────────────
 // Toast
 // ─────────────────────────────────────────────────────────────
-interface Toast { id: string; type: 'success'|'error'|'info'; message: string; ts: Date }
+interface Toast { id: string; type: 'success' | 'error' | 'info'; message: string; ts: Date }
 function ToastStack({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: string) => void }) {
   const V = {
     success: { cls: 'border-emerald-500/40 bg-[#0c2016]', icon: <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" /> },
-    error:   { cls: 'border-rose-500/40 bg-[#200c10]',    icon: <AlertCircle  className="h-4 w-4 text-rose-400 shrink-0" /> },
-    info:    { cls: 'border-sky-500/40 bg-[#0c1620]',     icon: <Info         className="h-4 w-4 text-sky-400 shrink-0" /> },
+    error: { cls: 'border-rose-500/40 bg-[#200c10]', icon: <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" /> },
+    info: { cls: 'border-sky-500/40 bg-[#0c1620]', icon: <Info className="h-4 w-4 text-sky-400 shrink-0" /> },
   }
   return (
     <div className="fixed top-5 right-5 z-50 space-y-2 max-w-sm pointer-events-none">
@@ -155,10 +156,10 @@ function getXmlAttr(xml: string, tag: string, attr: string): string {
 function isAdfBody(raw: string): boolean {
   const t = raw.toLowerCase()
   return (
-    t.includes('<adf>')        || t.includes('&lt;adf')      ||
-    t.includes('adf version')  || t.includes('adf%20version') ||
-    t.includes('<prospect ')   || t.includes('&lt;prospect ') ||
-    t.includes('<vehicle ')    || t.includes('&lt;vehicle ')  ||
+    t.includes('<adf>') || t.includes('&lt;adf') ||
+    t.includes('adf version') || t.includes('adf%20version') ||
+    t.includes('<prospect ') || t.includes('&lt;prospect ') ||
+    t.includes('<vehicle ') || t.includes('&lt;vehicle ') ||
     (t.includes('<!--?') && (t.includes('adf') || t.includes('requestdate')))
   )
 }
@@ -177,19 +178,19 @@ function AdfContent({ rawBody }: { rawBody: string }) {
     .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
     .replace(/<body[^>]*>|<\/body>/gi, '')
 
-  const vYear   = getXmlText(decoded, 'year')
-  const vMake   = getXmlText(decoded, 'make')
-  const vModel  = getXmlText(decoded, 'model')
-  const vTrim   = getXmlText(decoded, 'trim')
-  const vStyle  = getXmlText(decoded, 'bodystyle')
-  const vVin    = getXmlText(decoded, 'vin')
-  const vStock  = getXmlText(decoded, 'stock')
-  const vOdo    = getXmlText(decoded, 'odometer')
-  const vInt    = getXmlAttr(decoded, 'vehicle', 'interest')
+  const vYear = getXmlText(decoded, 'year')
+  const vMake = getXmlText(decoded, 'make')
+  const vModel = getXmlText(decoded, 'model')
+  const vTrim = getXmlText(decoded, 'trim')
+  const vStyle = getXmlText(decoded, 'bodystyle')
+  const vVin = getXmlText(decoded, 'vin')
+  const vStock = getXmlText(decoded, 'stock')
+  const vOdo = getXmlText(decoded, 'odometer')
+  const vInt = getXmlAttr(decoded, 'vehicle', 'interest')
   const vStatus = getXmlAttr(decoded, 'vehicle', 'status')
   const vSource = getXmlAttr(decoded, 'id', 'source')
 
-  const cName  = getXmlText(decoded, 'name')
+  const cName = getXmlText(decoded, 'name')
   const cEmail = getXmlText(decoded, 'email')
   const cPhone = getXmlText(decoded, 'phone')
 
@@ -213,13 +214,13 @@ function AdfContent({ rawBody }: { rawBody: string }) {
   const fmtReqDate = reqDate ? (() => { try { return new Date(reqDate).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) } catch { return reqDate } })() : ''
 
   const vehicleLabel = [vYear, vMake, vModel, vTrim].filter(Boolean).join(' ')
-  const hasVehicle   = !!(vYear || vMake || vModel)
+  const hasVehicle = !!(vYear || vMake || vModel)
 
   const KVRow = ({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) => (
     value ? (
-      <div className="flex items-baseline gap-4 py-2 border-b border-white/[0.05] last:border-0">
-        <span className="text-slate-500 text-[12px] font-medium shrink-0 w-28 text-right uppercase tracking-wide">{label}</span>
-        <span className={`text-slate-100 text-[14px] font-semibold ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <div className="flex items-baseline gap-4 py-2 border-b border-border/40 last:border-0">
+        <span className="text-muted-foreground text-[12px] font-medium shrink-0 w-28 text-right uppercase tracking-wide">{label}</span>
+        <span className={`text-foreground text-[14px] font-semibold ${mono ? 'font-mono' : ''}`}>{value}</span>
       </div>
     ) : null
   )
@@ -250,33 +251,33 @@ function AdfContent({ rawBody }: { rawBody: string }) {
       )}
 
       {hasVehicle && (
-        <div className="rounded-xl border border-emerald-900/30 bg-[#050f08] overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-emerald-900/20 bg-emerald-900/10">
+        <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 bg-emerald-500/10">
             <Car className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
             <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-500">Vehicle of Interest</span>
           </div>
           <div className="px-4 py-1">
             {vehicleLabel && (
-              <div className="py-3 border-b border-white/[0.05]">
-                <p className="text-[17px] font-bold text-white">{vehicleLabel}</p>
-                {vStyle && <p className="text-[12px] text-slate-500 mt-0.5">{vStyle}</p>}
+              <div className="py-3 border-b border-border/40">
+                <p className="text-[17px] font-bold text-foreground">{vehicleLabel}</p>
+                {vStyle && <p className="text-[12px] text-muted-foreground/80 mt-0.5">{vStyle}</p>}
               </div>
             )}
-            <KVRow label="VIN"       value={vVin}   mono />
-            <KVRow label="Stock #"   value={vStock} mono />
-            <KVRow label="Odometer"  value={vOdo ? `${Number(vOdo).toLocaleString()} mi` : ''} />
+            <KVRow label="VIN" value={vVin} mono />
+            <KVRow label="Stock #" value={vStock} mono />
+            <KVRow label="Odometer" value={vOdo ? `${Number(vOdo).toLocaleString()} mi` : ''} />
           </div>
         </div>
       )}
 
       {(cName || cEmail || cPhone) && (
-        <div className="rounded-xl border border-sky-900/25 bg-[#05090f] overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-sky-900/20 bg-sky-900/10">
+        <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 bg-sky-500/10">
             <Mail className="h-3.5 w-3.5 text-sky-400 shrink-0" />
             <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-400">Customer</span>
           </div>
           <div className="px-4 py-1">
-            <KVRow label="Name"  value={cName} />
+            <KVRow label="Name" value={cName} />
             <KVRow label="Email" value={cEmail} />
             <KVRow label="Phone" value={cPhone} />
           </div>
@@ -284,13 +285,13 @@ function AdfContent({ rawBody }: { rawBody: string }) {
       )}
 
       {comments && (
-        <div className="rounded-xl border border-white/[0.06] bg-[#08080a] overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06]">
-            <MessageSquare className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-600">Customer Comments</span>
+        <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40">
+            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground/80 shrink-0" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Customer Comments</span>
           </div>
           <div className="px-5 py-4">
-            <p className="text-[15px] text-slate-100 leading-[1.75]">{comments}</p>
+            <p className="text-[15px] text-foreground leading-[1.75]">{comments}</p>
           </div>
         </div>
       )}
@@ -307,7 +308,7 @@ function ParsedContent({ content, rawBody }: { content?: string; rawBody?: strin
   if (isAdfBody(raw)) return <AdfContent rawBody={raw} />
 
   const text = content || cleanHTML(raw)
-  if (!text) return <p className="text-[15px] text-slate-600 italic">No content available.</p>
+  if (!text) return <p className="text-[15px] text-muted-foreground/80 italic">No content available.</p>
   return (
     <div className="space-y-1.5">
       {text.split('\n').map((line, i) => {
@@ -315,21 +316,21 @@ function ParsedContent({ content, rawBody }: { content?: string; rawBody?: strin
         if (line.match(/^—\s.+\s—$/)) {
           return (
             <div key={i} className="flex items-center gap-3 mt-4 mb-1 first:mt-0">
-              <div className="h-px flex-1 bg-emerald-900/40" />
-              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-500">{line.replace(/—/g,'').trim()}</span>
-              <div className="h-px flex-1 bg-emerald-900/40" />
+              <div className="h-px flex-1 bg-border/60" />
+              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-500">{line.replace(/—/g, '').trim()}</span>
+              <div className="h-px flex-1 bg-border/60" />
             </div>
           )
         }
         const kv = line.match(/^(.+?):\s(.+)$/)
         if (kv) return (
-          <div key={i} className="flex gap-4 text-[14px] leading-relaxed items-baseline py-1.5 border-b border-white/[0.05] last:border-0">
-            <span className="text-slate-500 font-medium shrink-0 w-32 text-right">{kv[1]}</span>
-            <span className="text-slate-100 font-semibold">{kv[2]}</span>
+          <div key={i} className="flex gap-4 text-[14px] leading-relaxed items-baseline py-1.5 border-b border-border/40 last:border-0">
+            <span className="text-muted-foreground font-medium shrink-0 w-32 text-right">{kv[1]}</span>
+            <span className="text-foreground font-semibold">{kv[2]}</span>
           </div>
         )
-        if (i === 0) return <p key={i} className="text-[16px] font-bold text-white leading-snug">{line}</p>
-        return <p key={i} className="text-[15px] text-slate-100 leading-[1.75]">{line}</p>
+        if (i === 0) return <p key={i} className="text-[16px] font-bold text-foreground leading-snug">{line}</p>
+        return <p key={i} className="text-[15px] text-foreground leading-[1.75]">{line}</p>
       })}
     </div>
   )
@@ -343,30 +344,30 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }: {
 }) {
   if (totalPages <= 1) return null
   const start = (currentPage - 1) * LEADS_PER_PAGE + 1
-  const end   = Math.min(currentPage * LEADS_PER_PAGE, totalItems)
+  const end = Math.min(currentPage * LEADS_PER_PAGE, totalItems)
   const pages: (number | '…')[] = []
   if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i) }
   else {
     pages.push(1)
     if (currentPage > 3) pages.push('…')
-    for (let p = Math.max(2, currentPage-1); p <= Math.min(totalPages-1, currentPage+1); p++) pages.push(p)
-    if (currentPage < totalPages-2) pages.push('…')
+    for (let p = Math.max(2, currentPage - 1); p <= Math.min(totalPages - 1, currentPage + 1); p++) pages.push(p)
+    if (currentPage < totalPages - 2) pages.push('…')
     pages.push(totalPages)
   }
-  const btn = 'h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-200 hover:bg-[#1e3327] disabled:opacity-25 disabled:cursor-not-allowed transition-colors'
+  const btn = 'h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-25 disabled:cursor-not-allowed transition-colors'
   return (
-    <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#1e3327] shrink-0">
-      <span className="text-[10px] text-slate-700 tabular-nums">{start}–{end} of {totalItems}</span>
+    <div className="flex items-center justify-between px-4 py-2.5 border-t border-border/40 shrink-0">
+      <span className="text-[10px] text-muted-foreground/80 tabular-nums">{start}–{end} of {totalItems}</span>
       <div className="flex items-center gap-0.5">
-        <button onClick={() => onPageChange(1)} disabled={currentPage===1} className={btn}><ChevronsLeft className="h-3 w-3" /></button>
-        <button onClick={() => onPageChange(currentPage-1)} disabled={currentPage===1} className={btn}><ChevronLeft className="h-3 w-3" /></button>
-        {pages.map((p,i) => p==='…'
-          ? <span key={`el${i}`} className="px-1 text-[10px] text-slate-700">…</span>
+        <button onClick={() => onPageChange(1)} disabled={currentPage === 1} className={btn}><ChevronsLeft className="h-3 w-3" /></button>
+        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className={btn}><ChevronLeft className="h-3 w-3" /></button>
+        {pages.map((p, i) => p === '…'
+          ? <span key={`el${i}`} className="px-1 text-[10px] text-muted-foreground/80">…</span>
           : <button key={p} onClick={() => onPageChange(p as number)}
-              className={`h-6 min-w-[24px] px-1.5 rounded-md text-[10px] font-medium transition-colors ${currentPage===p ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-200 hover:bg-[#1e3327]'}`}>{p}</button>
+            className={`h-6 min-w-[24px] px-1.5 rounded-md text-[10px] font-medium transition-colors ${currentPage === p ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>{p}</button>
         )}
-        <button onClick={() => onPageChange(currentPage+1)} disabled={currentPage===totalPages} className={btn}><ChevronRight className="h-3 w-3" /></button>
-        <button onClick={() => onPageChange(totalPages)} disabled={currentPage===totalPages} className={btn}><ChevronsRight className="h-3 w-3" /></button>
+        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className={btn}><ChevronRight className="h-3 w-3" /></button>
+        <button onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} className={btn}><ChevronsRight className="h-3 w-3" /></button>
       </div>
     </div>
   )
@@ -376,48 +377,93 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }: {
 // MAIN
 // ═════════════════════════════════════════════════════════════
 export function LeadsTab() {
-  const { leads, isLoading, updateLeadStatus, markAsRead, refetch } = useLeads()
+  const [statusFilter, setStatusFilter] = React.useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState('')
+  const [currentPage, setCurrentPage] = React.useState(1)
+
+  // Connect cleanly to the new paginated hook
+  const {
+    leads, isLoading, total, pages, updateLeadStatus, markAsRead, refetch,
+    sync, isSyncing: isWorkerSyncing
+  } = useLeads({
+    page: currentPage,
+    limit: LEADS_PER_PAGE,
+    search: searchQuery,
+    status: statusFilter
+  })
+
   const { getToken } = useAuth()
 
-  const [selectedLead, setSelectedLead]             = React.useState<Lead | null>(null)
-  const [statusFilter, setStatusFilter]             = React.useState<string | null>(null)
-  const [searchQuery, setSearchQuery]               = React.useState('')
-  const [currentPage, setCurrentPage]               = React.useState(1)
-  const [isSyncing, setIsSyncing]                   = React.useState(false)
-  const [centralConnected, setCentralConnected]     = React.useState(false)
-  // ── FIX: track whether we've received the sync-status response ──
-  // This prevents syncAndRefresh from firing the Gmail sync before
-  // we know whether the central account is actually connected,
-  // eliminating the race condition that caused the 400 error.
+  const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null)
+  const [localIsSyncing, setLocalIsSyncing] = React.useState(false) // Local UI-only state if needed
+  const [centralConnected, setCentralConnected] = React.useState(false)
   const [centralStatusLoaded, setCentralStatusLoaded] = React.useState(false)
-  const [centralEmail, setCentralEmail]             = React.useState('')
-  const [lastSyncTime, setLastSyncTime]             = React.useState<Date | null>(null)
-  const [syncCountdown, setSyncCountdown]           = React.useState(0)
-  const [replyMessage, setReplyMessage]             = React.useState('')
-  const [isSending, setIsSending]                   = React.useState(false)
-  const [apptOpen, setApptOpen]                     = React.useState(false)
-  const [apptForm, setApptForm]                     = React.useState({ date:'', time:'', notes:'', locationOrVehicle:'' })
-  const [toasts, setToasts]                         = React.useState<Toast[]>([])
-  const [isClosed, setIsClosed]                     = React.useState(false)
-  const [threads, setThreads]                       = React.useState<Record<string, any[]>>({})
+  const [centralEmail, setCentralEmail] = React.useState('')
+  const [lastSyncTime, setLastSyncTime] = React.useState<Date | null>(null)
+  const [syncCountdown, setSyncCountdown] = React.useState(0)
+  const [replyMessage, setReplyMessage] = React.useState('')
+  const [isSending, setIsSending] = React.useState(false)
+  const [apptOpen, setApptOpen] = React.useState(false)
+  const [apptForm, setApptForm] = React.useState({ date: '', time: '', notes: '', locationOrVehicle: '' })
+  const [toasts, setToasts] = React.useState<Toast[]>([])
+  const [isClosed, setIsClosed] = React.useState(false)
+  const [threads, setThreads] = React.useState<Record<string, any[]>>({})
 
   const listRef = React.useRef<HTMLDivElement>(null)
-  const msgRef  = React.useRef<HTMLDivElement>(null)
+  const msgRef = React.useRef<HTMLDivElement>(null)
 
-  // ── sync status on mount ──
+  // ── Track newly arrived leads for visual highlighting ──
+  const [highlightedLeadIds, setHighlightedLeadIds] = React.useState<Set<string>>(new Set())
+
+  // ── Real-Time WebSocket Connection ──
+  React.useEffect(() => {
+    let socket: any = null
+    const setupSocket = async () => {
+      const token = await getToken()
+      if (!token) return
+
+      // initializeSocket from '@/lib/socket.client' (imported at top)
+      socket = initializeSocket(token)
+
+      socket.on('lead:new', (newLead: any) => {
+        // If we are on page 1, refresh the list immediately to show the new lead
+        if (currentPage === 1) {
+          refetch()
+          // Add to highlighted set for CSS animation
+          setHighlightedLeadIds(prev => new Set(prev).add(newLead._id))
+
+          // Clear highlight after 10 seconds
+          setTimeout(() => {
+            setHighlightedLeadIds(prev => {
+              const next = new Set(prev)
+              next.delete(newLead._id)
+              return next
+            })
+          }, 10000)
+
+          addToast('success', 'New lead received!')
+        }
+      })
+    }
+    setupSocket()
+
+    return () => {
+      if (socket) socket.off('lead:new')
+    }
+  }, [getToken, currentPage, refetch])
+
+  // ── Sync status on mount ──
   React.useEffect(() => {
     (async () => {
       try {
         const token = await getToken()
-        const res = await apiClient.get('/api/leads/sync-status', { headers: { Authorization: `Bearer ${token}` } })
+        const res = await apiClient.get('/api/org-lead/config', { headers: { Authorization: `Bearer ${token}` } })
         const d = res.data?.data
-        setCentralConnected(d?.connected || false)
-        setCentralEmail(d?.email || '')
+        setCentralConnected(d?.gmailConnected || false)
+        setCentralEmail(d?.gmailAddress || '')
       } catch {
         setCentralConnected(false)
       } finally {
-        // Always mark as loaded — even on error — so the sync loop
-        // can proceed (it will simply skip the Gmail sync branch).
         setCentralStatusLoaded(true)
       }
     })()
@@ -425,56 +471,59 @@ export function LeadsTab() {
 
   // ── 30s auto-sync + UI refresh ──
   const syncAndRefresh = React.useCallback(async () => {
+    if (isWorkerSyncing || localIsSyncing) return
+    setLocalIsSyncing(true)
     try {
       const token = await getToken()
       if (!token) return
 
-      // Always refresh the UI list first
       await refetch()
 
-      // ── FIX: only attempt Gmail sync after we've confirmed connection state ──
-      // Without this guard, syncAndRefresh could fire while centralConnected is
-      // still false (its initial value), skipping the sync correctly — but the
-      // useCallback re-creates when centralConnected flips to true, which causes
-      // the useEffect below to re-run and call syncAndRefresh a second time before
-      // the component is fully ready, producing a 400 from the backend.
       if (!centralStatusLoaded) return
 
       if (centralConnected) {
-        const r = await apiClient.syncPost(
-          '/api/leads/sync-central',
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        const n = r.data?.data?.syncedCount ?? 0
+        // Use the unified sync from useLeads hook
+        const r = await sync()
+        const n = r?.data?.leads?.synced ?? 0
         if (n > 0) {
-          await refetch()
           addToast('success', `${n} new lead${n > 1 ? 's' : ''} added`)
         }
         setLastSyncTime(new Date())
       }
     } catch {
-      try { await refetch() } catch {}
+      try { await refetch() } catch { }
     } finally {
+      setLocalIsSyncing(false)
       setSyncCountdown(AUTO_SYNC_INTERVAL_MS / 1000)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getToken, centralConnected, centralStatusLoaded, refetch])
+  }, [getToken, centralConnected, centralStatusLoaded, refetch, sync, isWorkerSyncing, localIsSyncing])
 
+  // Initial Sync Trigger (on mount only)
   React.useEffect(() => {
-    // Only start the sync loop once we know the connection state.
-    // This prevents a redundant immediate call before centralStatusLoaded is true.
+    if (centralStatusLoaded) {
+      syncAndRefresh()
+    }
+  }, [centralStatusLoaded]) // Only run once when config status is known
+
+  // Interval-based sync logic (Decoupled from render loop)
+  React.useEffect(() => {
     if (!centralStatusLoaded) return
 
-    syncAndRefresh()
-
-    setSyncCountdown(AUTO_SYNC_INTERVAL_MS / 1000)
-    const sI = setInterval(syncAndRefresh, AUTO_SYNC_INTERVAL_MS)
+    // Timer for countdown
     const cI = setInterval(() => setSyncCountdown(p => p > 0 ? p - 1 : 0), 1000)
-    return () => { clearInterval(sI); clearInterval(cI) }
+
+    // Interval for background sync
+    const sI = setInterval(() => {
+      syncAndRefresh()
+    }, AUTO_SYNC_INTERVAL_MS)
+
+    return () => {
+      clearInterval(sI)
+      clearInterval(cI)
+    }
   }, [syncAndRefresh, centralStatusLoaded])
 
-  // ── fetch thread on lead select + auto-poll every 15s while open ──
+  // ── Fetch thread on lead select + auto-poll ──
   const fetchThread = React.useCallback(async (lead: Lead) => {
     const threadId = (lead as any).threadId
     if (!threadId || typeof threadId !== 'string' || !threadId.trim()) {
@@ -497,17 +546,15 @@ export function LeadsTab() {
   React.useEffect(() => {
     if (!selectedLead) return
     fetchThread(selectedLead)
-    // Poll for new replies every 15s while this conversation is open
     const tid = setInterval(() => fetchThread(selectedLead), THREAD_POLL_INTERVAL_MS)
     return () => clearInterval(tid)
   }, [selectedLead, fetchThread])
 
-  // ── scroll messages to bottom ──
   React.useEffect(() => {
     if (msgRef.current) msgRef.current.scrollTop = msgRef.current.scrollHeight
   }, [threads, selectedLead])
 
-  // ── reset page on filter change ──
+  // ── Reset page on filter change ──
   React.useEffect(() => { setCurrentPage(1) }, [statusFilter, searchQuery])
 
   const addToast = (type: Toast['type'], msg: string) => {
@@ -539,7 +586,7 @@ export function LeadsTab() {
           const t = await getToken(); if (!t) return
           const res = await apiClient.get(`/api/leads/${selectedLead._id}/thread`, { headers: { Authorization: `Bearer ${t}` } })
           setThreads(p => ({ ...p, [selectedLead._id]: res.data?.data?.messages || [] }))
-        } catch {}
+        } catch { }
       }, 1200)
       await refetch()
     } catch { addToast('error', 'Failed to send') }
@@ -547,9 +594,7 @@ export function LeadsTab() {
   }
 
   const handleSync = async () => {
-    setIsSyncing(true)
     await syncAndRefresh()
-    setIsSyncing(false)
   }
 
   const handleAppt = async () => {
@@ -560,64 +605,35 @@ export function LeadsTab() {
       updateLeadStatus({ id: selectedLead._id, status: 'Appointment Set' })
       setSelectedLead(p => p ? { ...p, status: 'Appointment Set', appointment: apptForm } : null)
       addToast('success', 'Appointment saved')
-      setApptOpen(false); setApptForm({ date:'', time:'', notes:'', locationOrVehicle:'' })
+      setApptOpen(false); setApptForm({ date: '', time: '', notes: '', locationOrVehicle: '' })
       await refetch()
     } catch { addToast('error', 'Failed to save appointment') }
   }
 
-  // ── Filter / group / paginate ──
-  const filtered = React.useMemo(() => {
-    let f: Lead[] = leads
-    if (statusFilter && statusFilter !== 'Inbound Calls') f = f.filter((l: Lead) => l.status === statusFilter)
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      f = f.filter((l: Lead) =>
-        l.firstName?.toLowerCase().includes(q) || l.lastName?.toLowerCase().includes(q) ||
-        l.email?.toLowerCase().includes(q) || l.subject?.toLowerCase().includes(q) ||
-        (l as any).vehicle?.make?.toLowerCase().includes(q)
-      )
-    }
-    const byCustomer: Record<string, Lead[]> = {}
-    f.forEach(l => { const k = l.email?.toLowerCase() || l._id; (byCustomer[k] = byCustomer[k] || []).push(l) })
-    return Object.values(byCustomer)
-      .map(g => { const s = [...g].sort((a,b) => +new Date(b.createdAt) - +new Date(a.createdAt)); return { ...s[0], _g: s, _n: s.length } })
-      .sort((a,b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-  }, [leads, statusFilter, searchQuery])
-
-  const totalPages = Math.ceil(filtered.length / LEADS_PER_PAGE)
-  const page = React.useMemo(() => filtered.slice((currentPage-1)*LEADS_PER_PAGE, currentPage*LEADS_PER_PAGE), [filtered, currentPage])
-
-  const stats = React.useMemo(() => ({
-    total:   leads.length,
-    new:     leads.filter((l: Lead) => l.status==='New').length,
-    pending: leads.filter((l: Lead) => l.status==='Pending').length,
-    contact: leads.filter((l: Lead) => l.status==='Contacted').length,
-    appt:    leads.filter((l: Lead) => l.status==='Appointment Set').length,
-    closed:  leads.filter((l: Lead) => l.status==='Closed').length,
-  }), [leads])
-
   const activeThreads = selectedLead ? (threads[selectedLead._id] || []) : []
   const vehicle = selectedLead ? (selectedLead as any).vehicle : null
 
+  // Since we rely on server pagination now, we don't have accurate global counts for tabs 
+  // until we add a backend stats endpoint. For now, we omit the counts.
   const TABS = [
-    { key: null,              label: 'All',           count: stats.total },
-    { key: 'New',             label: 'New',           count: stats.new },
-    { key: 'Pending',         label: 'Pending',       count: stats.pending },
-    { key: 'Contacted',       label: 'Contacted',     count: stats.contact },
-    { key: 'Appointment Set', label: 'Appt. Set',     count: stats.appt },
-    { key: 'Closed',          label: 'Closed',        count: stats.closed },
-    { key: 'Inbound Calls',   label: 'Inbound Calls', count: null },
+    { key: null, label: 'All' },
+    { key: 'New', label: 'New' },
+    { key: 'Pending', label: 'Pending' },
+    { key: 'Contacted', label: 'Contacted' },
+    { key: 'Appointment Set', label: 'Appt. Set' },
+    { key: 'Closed', label: 'Closed' },
+    { key: 'Inbound Calls', label: 'Inbound Calls' },
   ] as const
 
   return (
-    <div className="flex flex-col bg-[#000000] text-slate-100" style={{ height: '100vh', minHeight: 860 }}>
+    <div className="flex flex-col bg-background text-foreground" style={{ height: '100vh', minHeight: 860 }}>
       <ToastStack toasts={toasts} dismiss={id => setToasts(p => p.filter(t => t.id !== id))} />
 
       {/* ═══ TOPBAR ═══ */}
       <div className="px-6 pt-5 pb-0 shrink-0">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-xl font-semibold text-white tracking-tight">Inquiries & Leads</h1>
+            <h1 className="text-xl font-semibold text-foreground tracking-tight">Inquiries & Leads</h1>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               {centralConnected ? (
                 <div className="flex items-center gap-2 text-[11px]">
@@ -626,9 +642,9 @@ export function LeadsTab() {
                     Live sync
                   </span>
                   <span className="text-[#2e4a38]">·</span>
-                  <span className="text-slate-500">{centralEmail}</span>
+                  <span className="text-muted-foreground">{centralEmail}</span>
                   <span className="text-[#2e4a38]">·</span>
-                  <span className="font-mono text-slate-600 text-[10px]">{LEADS_SOURCE_EMAIL}</span>
+                  <span className="font-mono text-muted-foreground/70 text-[10px]">{LEADS_SOURCE_EMAIL}</span>
                   {lastSyncTime && (
                     <>
                       <span className="text-[#2e4a38]">·</span>
@@ -647,11 +663,11 @@ export function LeadsTab() {
           <div className="flex items-center gap-2 shrink-0 mt-0.5">
             <button
               onClick={handleSync}
-              disabled={!centralConnected || isSyncing}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium border border-[#0d1f15] text-slate-400 hover:text-slate-100 hover:border-emerald-700/50 hover:bg-[#070e09] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!centralConnected || isWorkerSyncing || localIsSyncing}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium border border-border/40 text-muted-foreground hover:text-foreground hover:border-emerald-500/50 hover:bg-muted/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Syncing…' : 'Refresh'}
+              <RefreshCw className={`h-3.5 w-3.5 ${isWorkerSyncing || localIsSyncing ? 'animate-spin' : ''}`} />
+              {(isWorkerSyncing || localIsSyncing) ? 'Syncing…' : 'Refresh'}
             </button>
             <SupraLeoAI variant="toolbar" />
           </div>
@@ -661,90 +677,96 @@ export function LeadsTab() {
         <div className="flex items-center gap-1 overflow-x-auto pb-0 scrollbar-none">
           {TABS.map((tab, i) => {
             const active = statusFilter === (tab.key ?? null)
-            return (
-              <button
-                key={i}
-                onClick={() => { setStatusFilter(tab.key ?? null); setSelectedLead(null) }}
-                className={`flex items-center gap-1.5 px-3.5 h-9 rounded-t-lg text-xs font-medium border-b-2 transition-all whitespace-nowrap ${
-                  active
-                    ? 'text-emerald-400 border-b-emerald-500 bg-black'
-                    : 'text-slate-500 border-b-transparent hover:text-slate-300 hover:bg-[#050905]/60'
+            return <button
+              key={i}
+              onClick={() => { setStatusFilter(tab.key); setCurrentPage(1) }}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all sm:mx-1 shrink-0 ${statusFilter === tab.key
+                ? 'bg-white shadow-sm text-emerald-900 border border-emerald-100'
+                : 'text-emerald-700/60 hover:text-emerald-800 hover:bg-emerald-50'
                 }`}
-              >
-                {tab.label}
-                {tab.count !== null && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full transition-colors ${
-                    active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[#1a2e22] text-slate-600'
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            )
+            >
+              {tab.label}
+            </button>
           })}
         </div>
       </div>
 
       {/* ═══ BODY ═══ */}
       {statusFilter === 'Inbound Calls' ? (
-        <div className="flex-1 overflow-auto p-6 bg-black"><InboundCallsTab /></div>
+        <div className="flex-1 overflow-auto p-6 bg-background"><InboundCallsTab /></div>
       ) : (
-        <div className="flex flex-1 min-h-0 border-t border-emerald-900/30">
+        <div className="flex flex-1 min-h-0 border-t border-border shadow-inner">
 
           {/* ══════════════════════════
               LEFT — LEAD LIST
           ══════════════════════════ */}
-          <div className={`flex flex-col bg-[#060a07] border-r border-[#0f1f16] shrink-0 w-[320px] xl:w-[360px] ${selectedLead ? 'hidden lg:flex' : 'flex'}`}>
+          <div className={`flex flex-col bg-card border-r border-border shrink-0 w-[320px] xl:w-[360px] shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 ${selectedLead ? 'hidden lg:flex' : 'flex'}`}>
 
             {/* Search bar */}
-            <div className="px-4 py-3 border-b border-[#0f1f16] shrink-0">
+            <div className="px-4 py-3 border-b border-border shrink-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-700 pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60 pointer-events-none" />
                 <input
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search by name, email, vehicle…"
-                  className="w-full pl-9 pr-3 h-8 rounded-lg bg-black border border-[#0f1f16] text-sm text-slate-300 placeholder:text-slate-700 outline-none focus:border-emerald-600/50 transition-colors"
+                  className="w-full pl-9 pr-3 h-8 rounded-lg bg-background border border-border/50 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-emerald-600/50 transition-colors"
                 />
               </div>
             </div>
 
             {/* Column header */}
             <div className="flex items-center justify-between px-4 py-2 shrink-0">
-              <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-700">Conversations</span>
-              {filtered.length > 0 && (
+              <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/60">Conversations</span>
+              {isLoading ? (
+                <div className="flex-1 flex flex-col p-4 space-y-3">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="h-20 w-full rounded-2xl bg-muted/40 animate-pulse border border-border/40" />
+                  ))}
+                </div>
+              ) : leads.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 py-20 px-6 text-center">
+                  <div className="h-14 w-14 rounded-2xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center">
+                    <Inbox className="h-7 w-7 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-sm text-muted-foreground font-medium">No leads found</p>
+                  <p className="text-[10px] text-muted-foreground/40 font-mono">{LEADS_SOURCE_EMAIL}</p>
+                </div>
+              ) : (
                 <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">
-                  {filtered.length}
+                  {total}
                 </span>
               )}
             </div>
 
             {/* ── SCROLLABLE LIST ── */}
-            <div ref={listRef} className="flex-1 overflow-y-auto min-h-0">
+            <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 space-y-2">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3 py-20">
                   <div className="h-5 w-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
                   <p className="text-xs text-slate-700">Loading…</p>
                 </div>
-              ) : page.length === 0 ? (
+              ) : leads.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3 py-20 px-6 text-center">
-                  <div className="h-14 w-14 rounded-2xl border border-dashed border-[#1e3327] flex items-center justify-center">
-                    <Inbox className="h-7 w-7 text-slate-700" />
+                  <div className="h-14 w-14 rounded-2xl border-2 border-dashed border-border bg-muted/30 flex items-center justify-center shadow-sm">
+                    <Inbox className="h-7 w-7 text-muted-foreground/50" />
                   </div>
-                  <p className="text-sm text-slate-500 font-medium">No leads found</p>
-                  <p className="text-[10px] text-slate-700 font-mono">{LEADS_SOURCE_EMAIL}</p>
+                  <p className="text-sm text-muted-foreground font-medium">No leads found</p>
+                  <p className="text-[10px] text-muted-foreground/40 font-mono">{LEADS_SOURCE_EMAIL}</p>
                 </div>
               ) : (
-                page.map((lead: any) => {
+                leads.map((lead: any) => {
                   const sel = selectedLead?._id === lead._id
-                  const sc  = STATUS[lead.status as keyof typeof STATUS]
+                  const sc = STATUS[lead.status as keyof typeof STATUS]
+                  const isHighlighted = highlightedLeadIds.has(lead._id)
+
                   return (
-                    <div
-                      key={lead._id}
-                      onClick={() => { setSelectedLead(lead); if (!lead.isRead) markAsRead(lead._id); setIsClosed(lead.status === 'Closed') }}
-                      className={`relative px-4 py-4 cursor-pointer transition-all group border-l-2 ${sel ? 'border-emerald-500 bg-[#0a1510]' : 'border-transparent hover:bg-[#07100b]'}`}
-                    >
-                      <div className="flex items-start gap-3">
+                    <div key={lead._id} id={`lead-${lead._id}`} onClick={() => { setSelectedLead(lead); if (!lead.isRead) markAsRead(lead._id); }}
+                      className={`group relative overflow-hidden p-3 rounded-2xl border cursor-pointer transition-all duration-300 ${sel ? 'border-emerald-500/50 bg-emerald-500/10 shadow-md ring-2 ring-emerald-500/10 scale-[1.01] z-10' :
+                        isHighlighted ? 'border-emerald-500 bg-emerald-500/20 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500 animate-pulse' :
+                          'border-border bg-card hover:border-emerald-500/40 hover:shadow-md hover:scale-[1.005]'
+                        }`}
+                    >  <div className="flex items-start gap-3">
                         <div className="relative">
                           <Avatar first={lead.firstName} last={lead.lastName} size="md" />
                           {!lead.isRead && (
@@ -753,13 +775,13 @@ export function LeadsTab() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className={`text-sm font-semibold truncate leading-tight ${lead.isRead ? 'text-slate-400' : 'text-slate-100'}`}>
+                            <p className={`text-sm font-semibold truncate leading-tight ${lead.isRead ? 'text-muted-foreground/70' : 'text-foreground'}`}>
                               {lead.firstName} {lead.lastName}
                             </p>
-                            <span className="text-[10px] text-slate-600 shrink-0 tabular-nums">{fmtShort(new Date(lead.createdAt))}</span>
+                            <span className="text-[10px] text-muted-foreground/50 shrink-0 tabular-nums">{fmtShort(new Date(lead.createdAt))}</span>
                           </div>
-                          <p className="text-[11px] text-slate-600 truncate mb-1">{lead.email}</p>
-                          <p className={`text-xs truncate leading-snug ${lead.isRead ? 'text-slate-600' : 'text-slate-300'}`}>
+                          <p className="text-[11px] text-muted-foreground/50 truncate mb-1">{lead.email}</p>
+                          <p className={`text-xs truncate leading-snug ${lead.isRead ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
                             {lead.subject || '(No subject)'}
                           </p>
                         </div>
@@ -787,18 +809,18 @@ export function LeadsTab() {
               )}
             </div>
 
-            <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={filtered.length}
+            <Pagination currentPage={currentPage} totalPages={pages} totalItems={total}
               onPageChange={p => { setCurrentPage(p); setSelectedLead(null) }} />
           </div>
 
           {/* ══════════════════════════
               RIGHT — CONVERSATION
           ══════════════════════════ */}
-          <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-black ${!selectedLead ? 'hidden lg:flex' : 'flex'}`}>
+          <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-slate-50/50 dark:bg-background ${!selectedLead ? 'hidden lg:flex' : 'flex'}`}>
             {selectedLead ? (
               <>
                 {/* ── Conversation header ── */}
-                <div className="flex items-start justify-between gap-4 px-6 py-6 border-b border-emerald-900/40 bg-black shrink-0">
+                <div className="flex items-start justify-between gap-4 px-6 py-6 border-b border-border/40 bg-background shrink-0">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       onClick={() => setSelectedLead(null)}
@@ -832,7 +854,7 @@ export function LeadsTab() {
                 </div>
 
                 {/* ── Subject & meta strip ── */}
-                <div className="px-6 py-3.5 border-b border-[#0f1f16]/80 bg-[#030503] shrink-0">
+                <div className="px-6 py-3.5 border-b border-border/40 bg-card shrink-0">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                     <div className="flex items-center gap-1.5 text-[11px]">
                       <Mail className="h-3 w-3 text-slate-700 shrink-0" />
@@ -864,8 +886,8 @@ export function LeadsTab() {
                 {/* ── MESSAGE STREAM ── */}
                 <div
                   ref={msgRef}
-                  className="flex-1 overflow-y-auto min-h-0 px-10 py-10 space-y-10"
-                  style={{ scrollbarWidth: 'thin', scrollbarColor: '#0f1f16 transparent', background: 'linear-gradient(180deg, #020402 0%, #050905 100%)' }}
+                  className="flex-1 overflow-y-auto min-h-0 px-10 py-10 space-y-10 bg-background"
+                  style={{ scrollbarWidth: 'thin' }}
                 >
                   {/* Original lead message */}
                   <div className="flex items-start gap-3">
@@ -875,7 +897,7 @@ export function LeadsTab() {
                         <span className="text-[14px] font-bold text-white">{selectedLead.firstName} {selectedLead.lastName}</span>
                         <span className="text-xs text-slate-600">{fmtFull(new Date(selectedLead.createdAt))}</span>
                       </div>
-                      <div className="rounded-2xl rounded-tl-sm border border-emerald-900/30 bg-black px-7 py-6 shadow-2xl shadow-black/80 ring-1 ring-inset ring-white/[0.03]">
+                      <div className="rounded-2xl rounded-tl-sm border border-border/40 bg-card px-7 py-6 shadow-2xl shadow-black/80 ring-1 ring-inset ring-white/[0.03]">
                         <ParsedContent content={(selectedLead as any).parsedContent} rawBody={selectedLead.body} />
                       </div>
                     </div>
@@ -890,7 +912,7 @@ export function LeadsTab() {
                   )}
 
                   {activeThreads.map((msg: any) => {
-                    const msgBody  = msg.message || msg.body || ''
+                    const msgBody = msg.message || msg.body || ''
                     const msgIsAdf = !msg.isOwn && isAdfBody(msgBody)
                     return (
                       <div key={msg.id} className={`flex items-start gap-4 ${msg.isOwn ? 'flex-row-reverse' : ''}`}>
@@ -909,11 +931,11 @@ export function LeadsTab() {
                               {msgBody}
                             </div>
                           ) : msgIsAdf ? (
-                            <div className="w-full rounded-2xl rounded-tl-sm border border-emerald-900/30 bg-black px-7 py-6 shadow-2xl shadow-black/80 ring-1 ring-inset ring-white/[0.03]">
+                            <div className="w-full rounded-2xl rounded-tl-sm border border-border/40 bg-card px-7 py-6 shadow-2xl shadow-black/80 ring-1 ring-inset ring-white/[0.03]">
                               <ParsedContent rawBody={msgBody} />
                             </div>
                           ) : (
-                            <div className="px-6 py-5 text-[15px] leading-relaxed shadow-xl shadow-black/60 rounded-2xl rounded-tl-sm bg-black text-slate-100 border border-emerald-900/25 ring-1 ring-inset ring-white/[0.02]">
+                            <div className="px-6 py-5 text-[15px] leading-relaxed shadow-xl shadow-black/60 rounded-2xl rounded-tl-sm bg-card text-foreground border border-border/40 ring-1 ring-inset ring-white/[0.02]">
                               {msgBody}
                             </div>
                           )}
@@ -926,15 +948,15 @@ export function LeadsTab() {
 
                 {/* ── REPLY BAR ── */}
                 {!isClosed ? (
-                  <div className="border-t border-emerald-900/40 bg-black px-5 py-4 shrink-0">
-                    <div className="rounded-xl border border-[#0d1f15] bg-[#070e09] overflow-hidden focus-within:border-emerald-600/60 focus-within:ring-1 focus-within:ring-emerald-900/40 transition-all">
+                  <div className="border-t border-border/40 bg-background px-5 py-4 shrink-0">
+                    <div className="rounded-xl border border-border/40 bg-card overflow-hidden focus-within:border-emerald-600/60 focus-within:ring-1 focus-within:ring-emerald-900/40 transition-all">
                       <textarea
                         value={replyMessage}
                         onChange={e => setReplyMessage(e.target.value)}
                         placeholder="Write a reply…"
                         rows={5}
                         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSend() } }}
-                        className="w-full px-4 pt-4 pb-2 bg-transparent text-[14px] text-slate-100 placeholder:text-slate-700 resize-none outline-none leading-relaxed"
+                        className="w-full px-4 pt-4 pb-2 bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground/60 resize-none outline-none leading-relaxed"
                       />
                       <div className="flex items-center justify-between px-3 py-2.5 border-t border-[#0d1f15]">
                         <div className="flex items-center gap-0.5">
@@ -979,7 +1001,7 @@ export function LeadsTab() {
                     </div>
                   </div>
                 ) : (
-                  <div className="border-t border-emerald-900/40 px-5 py-3.5 flex items-center justify-between bg-black shrink-0">
+                  <div className="border-t border-border/40 px-5 py-3.5 flex items-center justify-between bg-background shrink-0">
                     <div className="flex items-center gap-2">
                       <Lock className="h-3.5 w-3.5 text-slate-700" />
                       <span className="text-xs text-slate-600">This inquiry is closed</span>
@@ -994,13 +1016,13 @@ export function LeadsTab() {
                 )}
               </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
-                <div className="h-20 w-20 rounded-3xl border border-dashed border-[#0d1f15] flex items-center justify-center">
-                  <Inbox className="h-8 w-8 text-[#0d1f15]" />
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8 bg-slate-50/50 dark:bg-background">
+                <div className="h-24 w-24 rounded-[32px] border-2 border-dashed border-border bg-white dark:bg-muted/10 shadow-sm flex items-center justify-center">
+                  <Inbox className="h-10 w-10 text-muted-foreground/40" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Select a conversation</p>
-                  <p className="text-[11px] text-slate-700 mt-1 font-mono">{LEADS_SOURCE_EMAIL}</p>
+                <div className="space-y-1 mt-2">
+                  <p className="text-base font-semibold text-foreground">Select a conversation</p>
+                  <p className="text-sm text-muted-foreground font-medium">{LEADS_SOURCE_EMAIL}</p>
                 </div>
               </div>
             )}
@@ -1010,7 +1032,7 @@ export function LeadsTab() {
 
       {/* ═══ APPOINTMENT DIALOG ═══ */}
       <Dialog open={apptOpen} onOpenChange={setApptOpen}>
-        <DialogContent className="max-w-sm rounded-2xl bg-[#060a07] border border-[#0d1f15] text-slate-100 shadow-2xl shadow-black/70">
+        <DialogContent className="max-w-sm rounded-2xl bg-card border border-border/40 text-foreground shadow-2xl shadow-black/70">
           <DialogHeader>
             <DialogTitle className="text-slate-100 text-base font-semibold">Schedule Appointment</DialogTitle>
             <DialogDescription className="text-slate-500 text-xs">
@@ -1020,9 +1042,9 @@ export function LeadsTab() {
           </DialogHeader>
           <div className="space-y-3 py-1">
             {[
-              { label:'Date *',              key:'date',              type:'date' },
-              { label:'Time *',              key:'time',              type:'time' },
-              { label:'Location / Vehicle',  key:'locationOrVehicle', type:'text', placeholder:'e.g. Showroom, Test Drive…' },
+              { label: 'Date *', key: 'date', type: 'date' },
+              { label: 'Time *', key: 'time', type: 'time' },
+              { label: 'Location / Vehicle', key: 'locationOrVehicle', type: 'text', placeholder: 'e.g. Showroom, Test Drive…' },
             ].map(f => (
               <div key={f.key}>
                 <label className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-700 block mb-1">{f.label}</label>
@@ -1031,7 +1053,7 @@ export function LeadsTab() {
                   placeholder={(f as any).placeholder || ''}
                   value={apptForm[f.key as keyof typeof apptForm]}
                   onChange={e => setApptForm({ ...apptForm, [f.key]: e.target.value })}
-                  className="w-full h-9 px-3 rounded-lg bg-[#0e1a14] border border-[#1e3327] text-sm text-slate-200 placeholder:text-slate-700 outline-none focus:border-emerald-700/60 transition-colors"
+                  className="w-full h-9 px-3 rounded-lg bg-background border border-border/40 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-emerald-700/60 transition-colors"
                 />
               </div>
             ))}
@@ -1042,13 +1064,13 @@ export function LeadsTab() {
                 value={apptForm.notes}
                 onChange={e => setApptForm({ ...apptForm, notes: e.target.value })}
                 rows={2}
-                className="w-full px-3 py-2 rounded-lg bg-[#0e1a14] border border-[#1e3327] text-sm text-slate-200 placeholder:text-slate-700 outline-none focus:border-emerald-700/60 transition-colors resize-none"
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border/40 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-emerald-700/60 transition-colors resize-none"
               />
             </div>
           </div>
           <DialogFooter className="gap-2 pt-1">
             <button
-              onClick={() => { setApptOpen(false); setApptForm({ date:'', time:'', notes:'', locationOrVehicle:'' }) }}
+              onClick={() => { setApptOpen(false); setApptForm({ date: '', time: '', notes: '', locationOrVehicle: '' }) }}
               className="px-4 h-8 rounded-lg text-xs text-slate-500 border border-[#1e3327] hover:text-slate-200 hover:bg-[#162a1f] transition-colors"
             >
               Cancel

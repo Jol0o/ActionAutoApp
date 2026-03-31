@@ -41,11 +41,11 @@ export function GoogleCalendarConnect({
     try {
       setIsLoading(true)
       const token = await getToken()
-      const response = await apiClient.get('/api/google-calendar/status', {
+      const response = await apiClient.get('/api/org-lead/config', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = response.data?.data || response.data
-      setIsConnected(data.connected || false)
+      setIsConnected(data.calendarConnected || false)
     } catch (error) {
       console.error('Failed to check Google Calendar connection:', error)
       setIsConnected(false)
@@ -60,7 +60,7 @@ export function GoogleCalendarConnect({
       setError(null)
 
       const token = await getToken()
-      const response = await apiClient.get('/api/google-calendar/auth', {
+      const response = await apiClient.get('/api/org-lead/auth', {
         headers: { Authorization: `Bearer ${token}` }
       })
 
@@ -94,11 +94,11 @@ export function GoogleCalendarConnect({
       const connectionCheckTimer = setInterval(async () => {
         try {
           const token = await getToken()
-          const response = await apiClient.get('/api/google-calendar/status', {
+          const response = await apiClient.get('/api/org-lead/config', {
             headers: { Authorization: `Bearer ${token}` }
           })
           const data = response.data?.data || response.data
-          if (data.connected) {
+          if (data.calendarConnected) {
             // Connected — clean up everything
             clearInterval(connectionCheckTimer)
             clearInterval(popupClosedTimer)
@@ -149,7 +149,7 @@ export function GoogleCalendarConnect({
       setError(null)
 
       const token = await getToken()
-      await apiClient.post('/api/google-calendar/disconnect', {}, {
+      await apiClient.post('/api/org-lead/disconnect', {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
 

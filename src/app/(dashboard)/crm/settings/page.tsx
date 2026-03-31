@@ -214,8 +214,11 @@ export default function CrmSettingsPage() {
               <div className="px-4 py-3 border-b border-border/30">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Navigation</p>
               </div>
-              <div className="p-2">
-                <button className="w-full flex items-center justify-between gap-2.5 rounded-xl px-3 h-9 text-xs font-semibold bg-emerald-500/10 text-emerald-600">
+              <div className="p-2 space-y-1">
+                <button
+                  onClick={() => router.push("/crm/settings")}
+                  className="w-full flex items-center justify-between gap-2.5 rounded-xl px-3 h-9 text-xs font-semibold bg-emerald-500/10 text-emerald-600"
+                >
                   <div className="flex items-center gap-2.5">
                     <Users className="h-3.5 w-3.5" />
                     User Management
@@ -224,6 +227,16 @@ export default function CrmSettingsPage() {
                     <ShieldCheck className="h-3 w-3 text-emerald-500/40" />
                     <ChevronRight className="h-3 w-3 text-emerald-500/40" />
                   </div>
+                </button>
+                <button
+                  onClick={() => router.push("/crm/settings/integrations")}
+                  className="w-full flex items-center justify-between gap-2.5 rounded-xl px-3 h-9 text-xs font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Lock className="h-3.5 w-3.5" />
+                    Lead Integrations
+                  </div>
+                  <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
                 </button>
               </div>
             </div>
