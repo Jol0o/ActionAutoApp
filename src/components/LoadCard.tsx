@@ -3,14 +3,17 @@
 import * as React from "react"
 import {
   MapPin, ArrowRight, Truck, DollarSign,
-  Calendar, Globe, Lock, ClipboardList, Car
+  Calendar, Globe, Lock, ClipboardList, Car, Trash2, Loader2
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Load } from "@/types/load"
 
 interface LoadCardProps {
   load: Load
+  onDelete?: (loadId: string) => void
+  isDeleting?: boolean
 }
 
 function formatCurrency(n?: number) {
@@ -49,7 +52,7 @@ function vehicleSummary(vehicles: Load["vehicles"] | undefined) {
   return makeStr || typeStr
 }
 
-export function LoadCard({ load }: LoadCardProps) {
+export function LoadCard({ load, onDelete, isDeleting }: LoadCardProps) {
   const pickup   = load.pickupLocation
   const delivery = load.deliveryLocation
   const vehicles = load.vehicles ?? []
@@ -83,13 +86,29 @@ export function LoadCard({ load }: LoadCardProps) {
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {isPublic
-                ? <Globe className="size-3.5 text-muted-foreground" />
-                : <Lock  className="size-3.5 text-muted-foreground" />
-              }
-              <span className="text-[10px] text-muted-foreground">{isPublic ? "Public" : "Private"}</span>
-              <span className="text-[10px] text-muted-foreground ml-1">· {formatDate(load.createdAt)}</span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                {isPublic
+                  ? <Globe className="size-3.5 text-muted-foreground" />
+                  : <Lock  className="size-3.5 text-muted-foreground" />
+                }
+                <span className="text-[10px] text-muted-foreground">{isPublic ? "Public" : "Private"}</span>
+                <span className="text-[10px] text-muted-foreground ml-1">· {formatDate(load.createdAt)}</span>
+              </div>
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  onClick={() => onDelete(load._id)}
+                  disabled={isDeleting}
+                >
+                  {isDeleting
+                    ? <Loader2 className="size-3.5 animate-spin" />
+                    : <Trash2 className="size-3.5" />
+                  }
+                </Button>
+              )}
             </div>
           </div>
 

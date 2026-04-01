@@ -183,14 +183,24 @@ export const LOCATION_TYPES = [
   "Other",
 ];
 
-export const TRAILER_TYPES = [
-  "Open",
-  "Enclosed",
-  "Driveaway",
-  "Flatbed",
-  "Hotshot",
-  "Single",
-  "Multiple",
+export const TRAILER_TYPES: { value: string; label: string }[] = [
+  { value: "open_3car_wedge",  label: "Open 3-Car Wedge" },
+  { value: "open_2car",        label: "Open 2-Car" },
+  { value: "5car_open",        label: "5-Car Open" },
+  { value: "9car_stinger",     label: "9-Car Stinger" },
+  { value: "7car_stinger",     label: "7-Car Stinger" },
+  { value: "enclosed_2car",    label: "Enclosed 2-Car" },
+  { value: "enclosed_3car",    label: "Enclosed 3-Car" },
+  { value: "flatbed",          label: "Flatbed" },
+  { value: "dually_flatbed",   label: "Dually Flatbed" },
+  { value: "hotshot",          label: "Hotshot" },
+  { value: "gooseneck",        label: "Gooseneck" },
+  { value: "lowboy",           label: "Lowboy" },
+  { value: "step_deck",        label: "Step Deck" },
+  { value: "rgn",              label: "RGN (Removable Gooseneck)" },
+  { value: "double_drop",      label: "Double Drop" },
+  { value: "power_only",       label: "Power Only" },
+  { value: "other",            label: "Other" },
 ];
 
 export const VEHICLE_CONDITIONS = ["Operable", "Inoperable"];

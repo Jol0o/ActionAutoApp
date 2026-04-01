@@ -69,6 +69,8 @@ function TransportationPageInner() {
         error: loadsError,
         fetchLoads,
         loadMore,
+        handleDeleteLoad,
+        deletingId,
     } = useLoadsData(
         activeTab === "load-board" ? searchQuery : undefined,
         activeTab === "load-board" ? selectedStatus : undefined,
@@ -439,7 +441,12 @@ function TransportationPageInner() {
                         ) : (
                             <div className="space-y-3 sm:space-y-4">
                                 {loads.map((load) => (
-                                    <LoadCard key={load._id} load={load} />
+                                    <LoadCard
+                                        key={load._id}
+                                        load={load}
+                                        onDelete={handleDeleteLoad}
+                                        isDeleting={deletingId === load._id}
+                                    />
                                 ))}
                                 {loadsPagination?.hasMore && (
                                     <div className="flex justify-center pt-2">

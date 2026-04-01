@@ -223,7 +223,7 @@ function VehicleForm({ value, onChange }: VehicleFormProps) {
             </SelectTrigger>
             <SelectContent>
               {TRAILER_TYPES.map((t) => (
-                <SelectItem key={t} value={t} className="text-sm">{t}</SelectItem>
+                <SelectItem key={t.value} value={t.value} className="text-sm">{t.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>

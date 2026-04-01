@@ -1,5 +1,5 @@
 import * as React from "react"
-import { getLoads, getLoadStats, LoadStats, LoadsPagination } from "@/lib/api/loads"
+import { getLoads, getLoadStats, deleteLoad, LoadStats, LoadsPagination } from "@/lib/api/loads"
 import { Load } from "@/types/load"
 import { useAuth } from "@/providers/AuthProvider"
 
@@ -46,5 +46,18 @@ export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
     if (pagination?.hasMore) fetchLoads(page + 1)
   }, [pagination, page, fetchLoads])
 
-  return { loads, pagination, stats, isLoading, error, fetchLoads: () => fetchLoads(1), loadMore }
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+
+  const handleDeleteLoad = React.useCallback(async (loadId: string) => {
+    setDeletingId(loadId)
+    try {
+      await deleteLoad(loadId)
+      setLoads((prev) => prev.filter((l) => l._id !== loadId))
+      getLoadStats().then(setStats).catch(() => {})
+    } finally {
+      setDeletingId(null)
+    }
+  }, [])
+
+  return { loads, pagination, stats, isLoading, error, fetchLoads: () => fetchLoads(1), loadMore, handleDeleteLoad, deletingId }
 }

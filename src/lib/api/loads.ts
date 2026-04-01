@@ -134,3 +134,7 @@ export async function createLoad(payload: CreateLoadPayload): Promise<CreatedLoa
   const res = await apiClient.post<{ data: CreatedLoad }>("/api/loads", body);
   return res.data.data;
 }
+
+export async function deleteLoad(loadId: string): Promise<void> {
+  await apiClient.delete(`/api/loads/${loadId}`);
+}
