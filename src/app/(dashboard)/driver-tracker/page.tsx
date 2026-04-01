@@ -287,14 +287,14 @@ export default function DriverTrackerPage() {
   }, [getToken, isSignedIn, isDriver]);
 
   const handleApproveRequest = React.useCallback(
-    async (shipmentId: string, driverId: string) => {
-      const key = `${shipmentId}-${driverId}`;
+    async (shipmentId: string | undefined, driverId: string, loadId?: string) => {
+      const key = `${loadId || shipmentId}-${driverId}`;
       setApprovingId(key);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/approve-request",
-          { shipmentId, driverId },
+          loadId ? { loadId, driverId } : { shipmentId, driverId },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load request approved — driver dispatched");
@@ -311,14 +311,14 @@ export default function DriverTrackerPage() {
   );
 
   const handleRejectRequest = React.useCallback(
-    async (shipmentId: string, driverId: string) => {
-      const key = `${shipmentId}-${driverId}`;
+    async (shipmentId: string | undefined, driverId: string, loadId?: string) => {
+      const key = `${loadId || shipmentId}-${driverId}`;
       setRejectingId(key);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/reject-request",
-          { shipmentId, driverId },
+          loadId ? { loadId, driverId } : { shipmentId, driverId },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load request rejected");

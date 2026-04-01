@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
 
 interface LoadRequest {
-  shipmentId: string;
+  shipmentId?: string;
+  loadId?: string;
   trackingNumber?: string;
   origin: string;
   destination: string;
@@ -34,8 +35,8 @@ interface LoadRequest {
 interface DriverTrackerRequestsCardProps {
   requests: LoadRequest[];
   isLoading: boolean;
-  onApprove: (shipmentId: string, driverId: string) => void;
-  onReject: (shipmentId: string, driverId: string) => void;
+  onApprove: (shipmentId: string | undefined, driverId: string, loadId?: string) => void;
+  onReject: (shipmentId: string | undefined, driverId: string, loadId?: string) => void;
   approvingId: string | null;
   rejectingId: string | null;
 }
@@ -100,7 +101,7 @@ export function DriverTrackerRequestsCard({
         )}
 
         {requests.map((req) => {
-          const key = `${req.shipmentId}-${req.driverId}`;
+          const key = `${req.loadId || req.shipmentId}-${req.driverId}`;
           const isApproving = approvingId === key;
           const isRejecting = rejectingId === key;
           const trailerMatch = req.equipment?.trailerType && req.trailerTypeRequired
@@ -135,7 +136,7 @@ export function DriverTrackerRequestsCard({
 
               <div className="flex items-center gap-1 text-[10px]">
                 <Badge variant="outline" className="text-[9px] font-semibold shrink-0">
-                  {req.trackingNumber || req.shipmentId.slice(-8)}
+                  {req.trackingNumber || (req.loadId || req.shipmentId || "").slice(-8)}
                 </Badge>
                 <span className="truncate text-muted-foreground">
                   {req.origin}
@@ -175,7 +176,7 @@ export function DriverTrackerRequestsCard({
                 <Button
                   size="sm"
                   className="flex-1 h-7 text-[10px] font-semibold gap-1"
-                  onClick={() => onApprove(req.shipmentId, req.driverId)}
+                  onClick={() => onApprove(req.shipmentId, req.driverId, req.loadId)}
                   disabled={isApproving || isRejecting}
                 >
                   {isApproving ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle2 className="size-3" />}
@@ -185,7 +186,7 @@ export function DriverTrackerRequestsCard({
                   size="sm"
                   variant="outline"
                   className="flex-1 h-7 text-[10px] font-semibold gap-1 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                  onClick={() => onReject(req.shipmentId, req.driverId)}
+                  onClick={() => onReject(req.shipmentId, req.driverId, req.loadId)}
                   disabled={isApproving || isRejecting}
                 >
                   {isRejecting ? <Loader2 className="size-3 animate-spin" /> : <XCircle className="size-3" />}

@@ -51,6 +51,7 @@ import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-c
 
 interface AvailableLoad {
   _id: string;
+  __docType?: "shipment" | "load";
   origin: string;
   destination: string;
   trackingNumber?: string;
@@ -195,7 +196,9 @@ export default function AvailableLoadsPage() {
       const token = await getToken();
       await apiClient.post(
         "/api/driver-tracking/request-load",
-        { shipmentId: requestTarget._id },
+        requestTarget.__docType === "load"
+          ? { loadId: requestTarget._id }
+          : { shipmentId: requestTarget._id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Load request submitted — pending dispatcher approval");
