@@ -16,6 +16,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   MapPin,
   Truck,
@@ -35,6 +36,11 @@ import {
   ArrowRight,
   Satellite,
   XCircle,
+  AlertTriangle,
+  Timer,
+  CircleDot,
+  Wrench,
+  PauseCircle,
 } from "lucide-react";
 
 type DriverStatus = "on-route" | "idle" | "on-break" | "waiting" | "offline";
@@ -86,11 +92,20 @@ const MAP_CENTER: [number, number] = [-98.5795, 39.8283];
 export default function DriverDashboardPage() {
   const { getToken } = useAuth();
   const [loads, setLoads] = React.useState<Shipment[]>([]);
+  const [dashStats, setDashStats] = React.useState<{
+    pendingRequests: number;
+    totalEarnings: number;
+    profileCompletionScore: number;
+    isComplianceExpired: boolean;
+  } | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [accepting, setAccepting] = React.useState<string | null>(null);
   const [dropping, setDropping] = React.useState<string | null>(null);
+  const [startingRoute, setStartingRoute] = React.useState<string | null>(null);
   const [mapReady, setMapReady] = React.useState(false);
   const [mapError, setMapError] = React.useState<string | null>(null);
+  const [opStatus, setOpStatus] = React.useState<string>("active");
+  const [savingOpStatus, setSavingOpStatus] = React.useState(false);
   const {
     isSharing,
     status,
@@ -110,11 +125,26 @@ export default function DriverDashboardPage() {
   const fetchLoads = React.useCallback(async () => {
     try {
       const token = await getToken();
-      const res = await apiClient.get("/api/driver-tracking/my-loads", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setLoads(res.data?.data || []);
-    } catch {
+      const [loadsRes, statsRes] = await Promise.all([
+        apiClient.get("/api/driver-tracking/my-loads", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        apiClient.get("/api/driver-tracking/dashboard-stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null),
+      ]);
+      setLoads(loadsRes.data?.data || []);
+      if (statsRes?.data?.data) setDashStats(statsRes.data.data);
+      try {
+        const profileRes = await apiClient.get("/api/driver-profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (profileRes.data?.data?.operationalStatus) {
+          setOpStatus(profileRes.data.data.operationalStatus);
+        }
+      } catch { }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to fetch loads");
     } finally {
       setIsLoading(false);
     }
@@ -291,6 +321,50 @@ export default function DriverDashboardPage() {
     [getToken, fetchLoads],
   );
 
+  const startRoute = React.useCallback(
+    async (shipmentId: string) => {
+      setStartingRoute(shipmentId);
+      try {
+        const token = await getToken();
+        await apiClient.post(
+          "/api/driver-tracking/start-route",
+          { shipmentId },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        toast.success("Route started — status updated to In-Route");
+        fetchLoads();
+      } catch (err: any) {
+        toast.error(
+          err.response?.data?.message || err.message || "Failed to start route",
+        );
+      } finally {
+        setStartingRoute(null);
+      }
+    },
+    [getToken, fetchLoads],
+  );
+
+  const updateOpStatus = React.useCallback(
+    async (newStatus: string) => {
+      setSavingOpStatus(true);
+      try {
+        const token = await getToken();
+        await apiClient.patch(
+          "/api/driver-profile/logistics",
+          { operationalStatus: newStatus },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        setOpStatus(newStatus);
+        toast.success(`Status set to ${newStatus.replace("_", " ")}`);
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to update status");
+      } finally {
+        setSavingOpStatus(false);
+      }
+    },
+    [getToken],
+  );
+
   const [currentTime, setCurrentTime] = React.useState(new Date());
   React.useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -298,9 +372,14 @@ export default function DriverDashboardPage() {
   }, []);
 
   const kpis = [
-    { label: "Total Loads", value: loads.length, icon: <Package className="size-7 text-blue-500/30" />, color: "text-foreground" },
     { label: "Active", value: activeLoads.length, icon: <Truck className="size-7 text-amber-500/30" />, color: "text-amber-500" },
     { label: "Completed", value: completedCount, icon: <CheckCircle2 className="size-7 text-emerald-500/30" />, color: "text-emerald-500" },
+    {
+      label: "Earnings",
+      value: dashStats ? `$${dashStats.totalEarnings.toLocaleString()}` : "$0",
+      icon: <Package className="size-7 text-blue-500/30" />,
+      color: "text-emerald-600",
+    },
     { label: "GPS", value: isSharing ? "LIVE" : "OFF", icon: <Radio className="size-7 text-primary/30" />, color: isSharing ? "text-emerald-500" : "text-muted-foreground" },
   ];
 
@@ -336,6 +415,26 @@ export default function DriverDashboardPage() {
           </Card>
         ))}
       </div>
+
+      {dashStats?.isComplianceExpired && (
+        <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-4 py-3">
+          <AlertTriangle className="size-4 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-700 dark:text-red-400">Compliance Documents Expired</p>
+            <p className="text-xs text-red-600 dark:text-red-500">Update your compliance documents in your Equipment profile to continue requesting loads.</p>
+          </div>
+        </div>
+      )}
+
+      {dashStats && dashStats.pendingRequests > 0 && (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-4 py-2.5">
+          <Timer className="size-4 text-amber-600 shrink-0" />
+          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+            You have <span className="font-bold">{dashStats.pendingRequests}</span> pending load request{dashStats.pendingRequests > 1 ? "s" : ""} awaiting dispatcher approval.
+          </p>
+          <a href="/driver/loads" className="ml-auto text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:underline shrink-0">View →</a>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
         <Card className="border-border/50 shadow-sm overflow-hidden p-0 gap-0">
@@ -505,7 +604,12 @@ export default function DriverDashboardPage() {
                 </div>
               ) : currentLoad ? (
                 <div className="space-y-3">
-                  <p className="text-sm font-mono font-bold">{currentLoad.trackingNumber || "No tracking #"}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-mono font-bold">{currentLoad.trackingNumber || "No tracking #"}</p>
+                    {currentLoad.carrierPayAmount != null && currentLoad.carrierPayAmount > 0 && (
+                      <span className="text-sm font-black text-emerald-600">${currentLoad.carrierPayAmount.toLocaleString()}</span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="truncate">{currentLoad.origin}</span>
                     <ArrowRight className="size-3 shrink-0 text-primary" />
@@ -514,7 +618,7 @@ export default function DriverDashboardPage() {
                   {currentLoad.scheduledPickup && (
                     <p className="text-[10px] text-muted-foreground/60 font-medium flex items-center gap-1">
                       <Clock className="size-3" />
-                      Pickup: {new Date(currentLoad.scheduledPickup).toLocaleDateString()}
+                      Pickup: {new Date(currentLoad.scheduledPickup).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })}
                     </p>
                   )}
                   {(currentLoad.status === "Available for Pickup" || currentLoad.status === "Dispatched") && !currentLoad.driverAcceptedAt && (
@@ -531,6 +635,29 @@ export default function DriverDashboardPage() {
                       )}
                     </Button>
                   )}
+                  {currentLoad.driverAcceptedAt && currentLoad.status === "Dispatched" && (
+                    <Button
+                      size="sm"
+                      className="w-full h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+                      disabled={startingRoute === currentLoad._id}
+                      onClick={() => startRoute(currentLoad._id)}
+                    >
+                      {startingRoute === currentLoad._id ? (
+                        <><Loader2 className="size-3.5 mr-2 animate-spin" />Starting...</>
+                      ) : (
+                        <><Navigation2 className="size-3.5 mr-2" />Start Route</>
+                      )}
+                    </Button>
+                  )}
+                  {currentLoad.status === "In-Route" && (
+                    <div className="flex items-center gap-2 py-1">
+                      <span className="relative flex size-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
+                      </span>
+                      <span className="text-[11px] font-bold text-emerald-600">Currently In Route</span>
+                    </div>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -546,13 +673,60 @@ export default function DriverDashboardPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-6 gap-2">
+                <div className="flex flex-col items-center justify-center py-6 gap-3">
                   <div className="size-10 rounded-xl bg-muted/40 flex items-center justify-center">
                     <Package className="size-5 text-muted-foreground/40" />
                   </div>
                   <p className="text-xs text-muted-foreground font-medium">No active loads</p>
+                  <a href="/driver/available-loads" className="text-[11px] font-semibold text-primary hover:underline">
+                    Browse Available Loads →
+                  </a>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-300 p-0 gap-0 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+              <CircleDot className="size-20" />
+            </div>
+            <CardHeader className="py-3.5 px-5 border-b border-border/10">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <CircleDot className="size-4 text-primary" />
+                  Operational Status
+                </CardTitle>
+                <Badge variant="outline" className={cn(
+                  "text-[10px] font-bold",
+                  opStatus === "active" ? "bg-emerald-500/10 text-emerald-600 border-emerald-200" :
+                    opStatus === "on_leave" ? "bg-amber-500/10 text-amber-600 border-amber-200" :
+                      opStatus === "maintenance" ? "bg-blue-500/10 text-blue-600 border-blue-200" :
+                        "bg-red-500/10 text-red-600 border-red-200"
+                )}>
+                  {opStatus.replace("_", " ")}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { key: "active", label: "Active", icon: <CheckCircle2 className="size-3.5" />, color: "bg-emerald-500/10 text-emerald-600 border-emerald-200 hover:bg-emerald-500/20" },
+                  { key: "on_leave", label: "On Leave", icon: <PauseCircle className="size-3.5" />, color: "bg-amber-500/10 text-amber-600 border-amber-200 hover:bg-amber-500/20" },
+                  { key: "maintenance", label: "Maintenance", icon: <Wrench className="size-3.5" />, color: "bg-blue-500/10 text-blue-600 border-blue-200 hover:bg-blue-500/20" },
+                ].map((item) => (
+                  <Button
+                    key={item.key}
+                    size="sm"
+                    variant="outline"
+                    disabled={savingOpStatus}
+                    className={`h-8 text-[11px] font-semibold gap-1.5 transition-all duration-200 ${opStatus === item.key ? item.color + " border" : "border-border/50 text-muted-foreground"
+                      }`}
+                    onClick={() => updateOpStatus(item.key)}
+                  >
+                    {item.icon} {item.label}
+                  </Button>
+                ))}
+              </div>
             </CardContent>
           </Card>
 

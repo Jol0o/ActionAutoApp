@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { User2, Package, Clock, UserPlus, Users } from "lucide-react";
+import { User2, Package, Clock, UserPlus, Users, Truck } from "lucide-react";
+import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,9 @@ interface DriverTrackerListCardProps {
   onAssignLoad?: (driver: DriverTrackingItem) => void;
   onDriverClick?: (driver: DriverTrackingItem) => void;
 }
+
+const trailerLabel = (val?: string) =>
+  trailerTypeOptions.find((t) => t.value === val)?.label ?? val ?? "Unknown";
 
 export function DriverTrackerListCard({
   drivers,
@@ -126,6 +130,31 @@ export function DriverTrackerListCard({
                       {new Date(driver.lastSeenAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
+                  {driver.equipment && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {driver.equipment.trailerType && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-[9px] font-semibold text-purple-600">
+                          <Truck className="size-2.5" />
+                          {trailerLabel(driver.equipment.trailerType)}
+                        </span>
+                      )}
+                      {driver.equipment.truckMake && (
+                        <span className="rounded-full bg-slate-500/10 px-2 py-0.5 text-[9px] font-semibold text-slate-600">
+                          {driver.equipment.truckMake} {driver.equipment.truckModel || ""}
+                        </span>
+                      )}
+                      {driver.equipment.maxVehicleCapacity && driver.equipment.maxVehicleCapacity > 0 && (
+                        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[9px] font-semibold text-indigo-600">
+                          Cap: {driver.equipment.maxVehicleCapacity}
+                        </span>
+                      )}
+                      {driver.equipment.isComplianceExpired && (
+                        <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-semibold text-red-600">
+                          Expired
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {onAssignLoad && (
                     <Button
                       size="sm"

@@ -1,6 +1,7 @@
-import { Truck, X, Phone } from "lucide-react"
+import { X, Phone } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ShipmentStats } from "@/types/transportation"
+import { LoadStats } from "@/lib/api/loads"
 
 interface TransportationSidebarProps {
     activeTab: string
@@ -8,6 +9,7 @@ interface TransportationSidebarProps {
     selectedStatus: string
     setSelectedStatus: (status: string) => void
     stats: ShipmentStats
+    loadStats?: LoadStats
     isSidebarOpen: boolean
     setIsSidebarOpen: (open: boolean) => void
 }
@@ -18,6 +20,7 @@ export function TransportationSidebar({
     selectedStatus,
     setSelectedStatus,
     stats,
+    loadStats,
     isSidebarOpen,
     setIsSidebarOpen
 }: TransportationSidebarProps) {
@@ -70,62 +73,90 @@ export function TransportationSidebar({
             </button>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-8 sm:h-10">
+                <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6 h-8 sm:h-10">
                     <TabsTrigger value="shipments" className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2">
-                        <Truck className="size-2.5 sm:size-3 mr-0.5 sm:mr-1" />
-                        <span>SHIPMENTS</span>
+                        SHIPS
                     </TabsTrigger>
                     <TabsTrigger value="drafts" className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2">
                         DRAFTS
                     </TabsTrigger>
+                    <TabsTrigger value="load-board" className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2">
+                        LOADS
+                    </TabsTrigger>
                 </TabsList>
             </Tabs>
 
-            <div className="space-y-1.5 sm:space-y-2">
-                <button
-                    onClick={() => {
-                        setSelectedStatus('all')
-                        setIsSidebarOpen(false)
-                    }}
-                    className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${
-                        selectedStatus === 'all' 
-                            ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300' 
-                            : 'hover:bg-muted text-foreground'
-                    }`}
-                >
-                    <span className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-400 dark:bg-yellow-500 rounded-sm"></span>
-                        <span className="truncate">Show All</span>
-                    </span>
-                    <span className="text-muted-foreground ml-2">{stats.all}</span>
-                </button>
-                
-                {Object.entries(stats).map(([status, count]) => {
-                    if (status === 'all') return null
-                    const colors = colorMap[status]
-                    
-                    return (
+            {/* Shipments / Drafts filters */}
+            {activeTab !== "load-board" && (
+                <div className="space-y-1.5 sm:space-y-2">
+                    <button
+                        onClick={() => { setSelectedStatus('all'); setIsSidebarOpen(false) }}
+                        className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${
+                            selectedStatus === 'all'
+                                ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300'
+                                : 'hover:bg-muted text-foreground'
+                        }`}
+                    >
+                        <span className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-400 dark:bg-yellow-500 rounded-sm"></span>
+                            <span className="truncate">Show All</span>
+                        </span>
+                        <span className="text-muted-foreground ml-2">{stats.all}</span>
+                    </button>
+
+                    {Object.entries(stats).map(([status, count]) => {
+                        if (status === 'all') return null
+                        const colors = colorMap[status]
+                        return (
+                            <button
+                                key={status}
+                                onClick={() => { setSelectedStatus(status); setIsSidebarOpen(false) }}
+                                className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${
+                                    selectedStatus === status
+                                        ? `${colors.light} ${colors.dark}`
+                                        : 'hover:bg-muted text-foreground'
+                                }`}
+                            >
+                                <span className="flex items-center gap-1.5 sm:gap-2">
+                                    <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${colors.bg} ${colors.bgDark} rounded-sm`}></span>
+                                    <span className="truncate">{status}</span>
+                                </span>
+                                <span className="text-muted-foreground ml-2">{count}</span>
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
+
+            {/* Load Board filters */}
+            {activeTab === "load-board" && loadStats && (
+                <div className="space-y-1.5 sm:space-y-2">
+                    {([
+                        { key: "all",        label: "All Loads",  dot: "bg-yellow-400 dark:bg-yellow-500", active: "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300" },
+                        { key: "Posted",     label: "Posted",     dot: "bg-green-500",                     active: "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300" },
+                        { key: "Assigned",   label: "Assigned",   dot: "bg-blue-500",                      active: "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300" },
+                        { key: "In-Transit", label: "In-Transit", dot: "bg-purple-500",                    active: "bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300" },
+                        { key: "Delivered",  label: "Delivered",  dot: "bg-emerald-500",                   active: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" },
+                        { key: "Cancelled",  label: "Cancelled",  dot: "bg-red-500",                       active: "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300" },
+                    ] as const).map(({ key, label, dot, active }) => (
                         <button
-                            key={status}
-                            onClick={() => {
-                                setSelectedStatus(status)
-                                setIsSidebarOpen(false)
-                            }}
+                            key={key}
+                            onClick={() => { setSelectedStatus(key); setIsSidebarOpen(false) }}
                             className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${
-                                selectedStatus === status 
-                                    ? `${colors.light} ${colors.dark}` 
-                                    : 'hover:bg-muted text-foreground'
+                                selectedStatus === key ? active : 'hover:bg-muted text-foreground'
                             }`}
                         >
                             <span className="flex items-center gap-1.5 sm:gap-2">
-                                <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${colors.bg} ${colors.bgDark} rounded-sm`}></span>
-                                <span className="truncate">{status}</span>
+                                <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${dot} rounded-sm`}></span>
+                                <span className="truncate">{label}</span>
                             </span>
-                            <span className="text-muted-foreground ml-2">{count}</span>
+                            <span className="text-muted-foreground ml-2">
+                                {loadStats[key as keyof typeof loadStats] ?? 0}
+                            </span>
                         </button>
-                    )
-                })}
-            </div>
+                    ))}
+                </div>
+            )}
 
             <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border">
                 <p className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 text-foreground">Having Transportation Issues?</p>
