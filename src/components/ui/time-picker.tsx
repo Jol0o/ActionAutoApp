@@ -116,7 +116,7 @@ export function TimePicker({
           {displayValue}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0 z-[300]" align="start">
         <div className="p-4">
           <div className="flex gap-2 mb-4">
             {/* Hour Selector */}

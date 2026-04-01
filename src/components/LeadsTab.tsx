@@ -444,11 +444,23 @@ export function LeadsTab() {
           addToast('success', 'New lead received!')
         }
       })
+
+      socket.on('lead:update', () => {
+        refetch()
+      })
+
+      socket.on('lead:delete', () => {
+        refetch()
+      })
     }
     setupSocket()
 
     return () => {
-      if (socket) socket.off('lead:new')
+      if (socket) {
+        socket.off('lead:new')
+        socket.off('lead:update')
+        socket.off('lead:delete')
+      }
     }
   }, [getToken, currentPage, refetch])
 
@@ -505,17 +517,19 @@ export function LeadsTab() {
     }
   }, [centralStatusLoaded]) // Only run once when config status is known
 
-  // Interval-based sync logic (Decoupled from render loop)
+  // Interval-based logic (WebSocket fallback / UI refresh)
   React.useEffect(() => {
     if (!centralStatusLoaded) return
 
-    // Timer for countdown
+    // Timer for visual countdown (if still used)
     const cI = setInterval(() => setSyncCountdown(p => p > 0 ? p - 1 : 0), 1000)
 
-    // Interval for background sync
+    // DEACTIVATED: Frequent 30s auto-sync removed in favor of WebSockets.
+    // Deep safety sync now runs every 20 minutes as a fallback.
+    const SAFETY_SYNC_MS = 20 * 60 * 1000;
     const sI = setInterval(() => {
       syncAndRefresh()
-    }, AUTO_SYNC_INTERVAL_MS)
+    }, SAFETY_SYNC_MS)
 
     return () => {
       clearInterval(sI)
