@@ -7,14 +7,8 @@ export const locationBlockSchema = z.object({
   locationType: z.enum(LOCATION_TYPES as [string, ...string[]]).optional().or(z.literal("")),
   companyName:  z.string().trim().max(100, "Company name is too long").optional(),
   contactName:  z.string().trim().min(1, "Contact name is required").max(50, "Contact name must be 50 characters or less"),
-  street:       z.string().trim()
-                  .min(1, "Street address is required")
-                  .max(100, "Street address must be 100 characters or less")
-                  .regex(/^\d+\s+\S/, "Enter a valid street address (e.g. 123 Main St)"),
-  city:         z.string().trim()
-                  .min(2, "City is required")
-                  .max(100, "City is too long")
-                  .regex(/^[a-zA-Z\s\-'.]+$/, "City must contain letters only — no numbers or special characters"),
+  street:       z.string().trim().min(1, "Street address is required").max(100, "Street address must be 100 characters or less"),
+  city:         z.string().trim().min(2, "City is required").max(100, "City is too long"),
   state:        z.enum(US_STATES as [string, ...string[]], { error: "State is required" }),
   zip:          z.string().trim().regex(/^\d{5}(-\d{4})?$/, "ZIP must be 5 digits (e.g. 84101)"),
   country:      z.string().trim().length(2).default("US"),

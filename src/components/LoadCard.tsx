@@ -101,7 +101,8 @@ export function LoadCard({ load, onDelete, isDeleting }: LoadCardProps) {
                   size="sm"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                   onClick={() => onDelete(load._id)}
-                  disabled={isDeleting}
+                  disabled={isDeleting || load.status === "In-Transit"}
+                  title={load.status === "In-Transit" ? "Cannot delete a load that is In-Transit" : "Delete load"}
                 >
                   {isDeleting
                     ? <Loader2 className="size-3.5 animate-spin" />

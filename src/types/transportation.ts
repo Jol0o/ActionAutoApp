@@ -52,7 +52,10 @@ export interface Shipment {
   | "Cancelled"
   | "Delivered"
   | "Dispatched"
-  | "In-Route";
+  | "In-Route"
+  | "Assigned"
+  | "In-Transit"
+  | "Posted";
   origin: string;
   destination: string;
   requestedPickupDate: string;

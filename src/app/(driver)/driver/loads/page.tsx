@@ -28,7 +28,9 @@ import Link from 'next/link';
 const STATUS_THEME: Record<string, string> = {
     'Available for Pickup': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
     Dispatched: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    Assigned: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
     'In-Route': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+    'In-Transit': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
     Delivered: 'bg-green-500/10 text-green-700 border-green-500/20',
     Cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
@@ -42,13 +44,15 @@ const STEPS = [
 
 const getStepIdx = (l: Shipment) => {
     if (l.status === 'Delivered') return 3;
-    if (l.status === 'In-Route') return 2;
+    if (l.status === 'In-Route' || l.status === 'In-Transit') return 2;
     if (l.driverAcceptedAt) return 1;
     return 0;
 };
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Denver' }) : '';
 const extractErr = (e: any, fb: string) => e?.response?.data?.message || e?.message || fb;
+const buildPayload = (load: Shipment) =>
+    (load as any).__docType === 'load' ? { loadId: load._id } : { shipmentId: load._id };
 
 type Tab = 'active' | 'requests' | 'completed' | 'all';
 
@@ -101,22 +105,22 @@ export default function DriverLoadsPage() {
 
     const handleRefresh = () => { setRefreshing(true); fetchLoads(); };
 
-    const handleAccept = async (id: string) => {
-        setAcceptingId(id);
+    const handleAccept = async (load: Shipment) => {
+        setAcceptingId(load._id);
         try {
             const token = await getToken();
-            await apiClient.post('/api/driver-tracking/accept-load', { shipmentId: id }, { headers: { Authorization: `Bearer ${token}` } });
-            toast.success('Load accepted — you are now dispatched');
+            await apiClient.post('/api/driver-tracking/accept-load', buildPayload(load), { headers: { Authorization: `Bearer ${token}` } });
+            toast.success('Load accepted — you are now in transit');
             await fetchLoads();
         } catch (err: any) { toast.error(extractErr(err, 'Failed to accept load')); }
         finally { setAcceptingId(null); }
     };
 
-    const handleDrop = async (id: string) => {
-        setDroppingId(id);
+    const handleDrop = async (load: Shipment) => {
+        setDroppingId(load._id);
         try {
             const token = await getToken();
-            await apiClient.post('/api/driver-tracking/drop-load', { shipmentId: id }, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.post('/api/driver-tracking/drop-load', buildPayload(load), { headers: { Authorization: `Bearer ${token}` } });
             toast.success('Load dropped successfully');
             setDropTarget(null);
             await fetchLoads();
@@ -124,11 +128,11 @@ export default function DriverLoadsPage() {
         finally { setDroppingId(null); }
     };
 
-    const handleStartRoute = async (id: string) => {
-        setStartingId(id);
+    const handleStartRoute = async (load: Shipment) => {
+        setStartingId(load._id);
         try {
             const token = await getToken();
-            await apiClient.post('/api/driver-tracking/start-route', { shipmentId: id }, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.post('/api/driver-tracking/start-route', buildPayload(load), { headers: { Authorization: `Bearer ${token}` } });
             toast.success('Route started — status updated to In-Route');
             await fetchLoads();
         } catch (err: any) { toast.error(extractErr(err, 'Failed to start route')); }
@@ -241,7 +245,7 @@ export default function DriverLoadsPage() {
             </motion.div>
 
             <DropConfirmDialog shipment={dropTarget} dropping={droppingId === dropTarget?._id}
-                onConfirm={() => dropTarget && handleDrop(dropTarget._id)} onCancel={() => setDropTarget(null)} />
+                onConfirm={() => dropTarget && handleDrop(dropTarget)} onCancel={() => setDropTarget(null)} />
             <SubmitProofModal shipment={proofTarget} getToken={getToken}
                 onClose={() => setProofTarget(null)} onSuccess={() => { setProofTarget(null); toast.success('Proof of delivery submitted'); fetchLoads(); }} />
         </div>
@@ -271,10 +275,11 @@ function StatusTimeline({ load }: { load: Shipment }) {
 
 function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAccept, onDrop, onStartRoute, onSubmitProof }: {
     load: Shipment; isRequest: boolean; acceptingId: string | null; droppingId: string | null; startingId: string | null;
-    onAccept: (id: string) => void; onDrop: (l: Shipment) => void; onStartRoute: (id: string) => void; onSubmitProof: () => void;
+    onAccept: (load: Shipment) => void; onDrop: (l: Shipment) => void; onStartRoute: (load: Shipment) => void; onSubmitProof: () => void;
 }) {
     const [expanded, setExpanded] = React.useState(false);
-    const isDispatched = load.status === 'Dispatched' || load.status === 'In-Route';
+    const isLoadType = (load as any).__docType === 'load';
+    const isDispatched = load.status === 'Dispatched' || load.status === 'In-Route' || load.status === 'In-Transit';
     const isActive = load.status !== 'Delivered' && load.status !== 'Cancelled';
     const isPending = load.myRequestStatus === 'pending';
     const isRejected = load.myRequestStatus === 'rejected';
@@ -285,7 +290,7 @@ function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAcce
     return (
         <Card className={cn('overflow-hidden border-border/20 hover:shadow-lg transition-all duration-200 rounded-2xl group',
             isPending ? 'border-amber-500/30 bg-amber-500/3' : isRejected ? 'border-red-500/20 opacity-75' :
-                load.status === 'In-Route' ? 'border-emerald-500/30 bg-emerald-500/3' : 'hover:border-primary/20')}>
+                (load.status === 'In-Route' || load.status === 'In-Transit') ? 'border-emerald-500/30 bg-emerald-500/3' : 'hover:border-primary/20')}>
             <CardContent className="p-0">
                 <div className="flex flex-col sm:flex-row">
                     {vehicleImg && (
@@ -326,18 +331,18 @@ function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAcce
 
                             {!isRequest && (
                                 <div className="flex flex-col items-end gap-2 shrink-0">
-                                    {!load.driverAcceptedAt && isActive && (
-                                        <Button size="sm" onClick={() => onAccept(load._id)} disabled={acceptingId === load._id} className="rounded-lg gap-1.5">
+                                    {(load.status === 'Assigned' || (!load.driverAcceptedAt && isActive && load.status !== 'In-Transit')) && (
+                                        <Button size="sm" onClick={() => onAccept(load)} disabled={acceptingId === load._id} className="rounded-lg gap-1.5">
                                             {acceptingId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><CheckCircle2 className="size-4" />Accept</>}
                                         </Button>
                                     )}
                                     {load.driverAcceptedAt && load.status === 'Dispatched' && (
-                                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg gap-1.5" onClick={() => onStartRoute(load._id)} disabled={startingId === load._id}>
+                                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg gap-1.5" onClick={() => onStartRoute(load)} disabled={startingId === load._id}>
                                             {startingId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Navigation2 className="size-4" />Start Route</>}
                                         </Button>
                                     )}
-                                    {load.status === 'In-Route' && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 animate-pulse"><Navigation2 className="size-3" />In Route</Badge>}
-                                    {(load.status === 'In-Route' || load.status === 'Dispatched') && !load.proofOfDelivery?.imageUrl && (
+                                    {(load.status === 'In-Route' || load.status === 'In-Transit') && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 animate-pulse"><Navigation2 className="size-3" />In Route</Badge>}
+                                    {(load.status === 'In-Route' || load.status === 'In-Transit' || load.status === 'Dispatched') && !load.proofOfDelivery?.imageUrl && (
                                         <Button size="sm" variant="outline" onClick={onSubmitProof} className="rounded-lg gap-1.5"><Camera className="size-4" />Submit Proof</Button>
                                     )}
                                     {load.proofOfDelivery?.imageUrl && (
@@ -345,7 +350,7 @@ function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAcce
                                             <ImageIcon className="size-2.5" />{load.proofOfDelivery.confirmedAt ? 'Confirmed' : 'Proof Sent'}
                                         </Badge>
                                     )}
-                                    {isActive && load.driverAcceptedAt && (
+                                    {isActive && (load.driverAcceptedAt || (isLoadType && ['Assigned', 'In-Transit'].includes(load.status))) && (
                                         <Button size="sm" variant="ghost" className="text-[10px] text-muted-foreground hover:text-red-500 h-6 px-2" onClick={() => onDrop(load)} disabled={droppingId === load._id}>
                                             {droppingId === load._id ? <Loader2 className="size-3 animate-spin" /> : <><Ban className="size-3 mr-1" />Drop</>}
                                         </Button>
@@ -467,7 +472,11 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
             const fd = new FormData();
             fd.append('proof', file);
             if (note.trim()) fd.append('note', note.trim());
-            await apiClient.post(`/api/shipments/${shipment._id}/submit-proof`, fd, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
+            const isLoadType = (shipment as any).__docType === "load";
+            const endpoint = isLoadType
+              ? `/api/loads/${shipment._id}/submit-proof`
+              : `/api/shipments/${shipment._id}/submit-proof`;
+            await apiClient.post(endpoint, fd, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
             onSuccess();
         } catch (err: any) { setError(extractErr(err, 'Failed to submit proof.')); }
         finally { setSubmitting(false); }
