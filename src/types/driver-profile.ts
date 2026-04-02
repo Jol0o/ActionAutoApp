@@ -63,6 +63,8 @@ export interface ComplianceDocument {
   reviewStatus?: ReviewStatus;
 }
 
+export type HitchType = "fifth_wheel" | "gooseneck" | "bumper_pull" | "pintle";
+
 export interface DriverEquipment {
   trailerType: TrailerType;
   maxVehicleCapacity: number;
@@ -79,6 +81,10 @@ export interface DriverEquipment {
   trailerAxles?: number;
   trailerGvwr?: number;
   engineType?: string;
+  trailerMake?: string;
+  trailerModel?: string;
+  trailerYear?: number;
+  hitchType?: HitchType;
   specialFeatures: string[];
 }
 
@@ -127,6 +133,10 @@ export interface DriverProfile {
   trailerAxles?: number;
   trailerGvwr?: number;
   engineType?: string;
+  trailerMake?: string;
+  trailerModel?: string;
+  trailerYear?: number;
+  hitchType?: string;
   specialFeatures: string[];
   driversLicenseNumber: string;
   licenseState: string;

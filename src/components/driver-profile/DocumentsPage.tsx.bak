@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -20,7 +19,6 @@ import {
   Save, Fingerprint, UserCheck, FileWarning, ChevronRight,
   BadgeCheck, ScanLine, CreditCard, Building2, Scale, FileCheck,
   Camera, Paperclip, TriangleAlert, CircleDot, Ban, Sparkles,
-  ChevronDown, ChevronUp, Info, ShieldX, Gavel, ScrollText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,11 +27,11 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 const STEPS = [
-  { id: 'identity', label: 'Identity', icon: ScanLine, desc: 'SSN & background authorization', color: 'from-violet-600 to-purple-500' },
-  { id: 'license', label: 'Credentials', icon: CreditCard, desc: 'License & insurance info', color: 'from-blue-600 to-indigo-500' },
+  { id: 'identity', label: 'Identity', icon: ScanLine, desc: 'SSN & background check', color: 'from-violet-600 to-purple-500' },
+  { id: 'license', label: 'Credentials', icon: CreditCard, desc: 'License & insurance', color: 'from-blue-600 to-indigo-500' },
   { id: 'documents', label: 'Documents', icon: FileCheck, desc: 'Upload required docs', color: 'from-emerald-600 to-teal-500' },
-  { id: 'agreement', label: 'Agreement', icon: Gavel, desc: 'Legally binding terms', color: 'from-amber-500 to-orange-500' },
-  { id: 'review', label: 'Review', icon: BadgeCheck, desc: 'Admin verification', color: 'from-emerald-500 to-green-500' },
+  { id: 'agreement', label: 'Agreement', icon: Scale, desc: 'Accept terms', color: 'from-amber-500 to-orange-500' },
+  { id: 'review', label: 'Verified', icon: BadgeCheck, desc: 'Admin approval', color: 'from-emerald-500 to-green-500' },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
@@ -55,80 +53,6 @@ const getExpStatus = (d?: string) => {
 
 const fmtSize = (b: number) => b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`;
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Denver' });
-
-const RingProgress = ({ value, size = 80, stroke = 6, color = 'text-emerald-500' }: { value: number; size?: number; stroke?: number; color?: string }) => {
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (value / 100) * circ;
-  return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-border/20" />
-      <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke}
-        strokeLinecap="round" className={color} strokeDasharray={circ}
-        initial={{ strokeDashoffset: circ }} animate={{ strokeDashoffset: offset }}
-        transition={{ duration: 1, ease: 'easeOut' }} />
-    </svg>
-  );
-};
-
-const AGREEMENT_SECTIONS = [
-  {
-    title: 'Independent Contractor Agreement',
-    items: [
-      'I acknowledge that I am an independent contractor and not an employee of Action Auto Utah LLC.',
-      'I am responsible for my own taxes, insurance, equipment, and operating expenses.',
-      'I agree to maintain all required federal and state licenses and permits at my own expense.',
-      'I understand that Action Auto does not withhold taxes and I am responsible for all tax obligations.',
-    ],
-  },
-  {
-    title: 'Vehicle Custody & Liability',
-    items: [
-      'I accept full responsibility for all vehicles in my custody from pickup to verified delivery.',
-      'I agree to carry minimum $100,000 cargo insurance coverage at all times while transporting.',
-      'I am personally liable for any damage, theft, or loss to vehicles during transport.',
-      'I agree to conduct a thorough vehicle condition inspection at pickup and document any pre-existing damage using photos.',
-      'I will report any incidents, accidents, or damage within 1 hour of occurrence.',
-    ],
-  },
-  {
-    title: 'Compliance & Regulatory',
-    items: [
-      'I certify compliance with all FMCSA regulations (49 CFR Parts 350-399).',
-      'I maintain a valid CDL or appropriate license for the equipment I operate.',
-      'I agree to periodic DOT compliance audits and inspection of my equipment.',
-      'I will maintain current DOT medical certification and notify Action Auto of any changes to my medical status.',
-      'I understand that operating under the influence of alcohol or controlled substances results in immediate contract termination and law enforcement notification.',
-    ],
-  },
-  {
-    title: 'Data & Security',
-    items: [
-      'I consent to GPS location sharing while actively transporting vehicles for dispatch coordination.',
-      'I understand my personal data (SSN, license) is encrypted using AES-256 and stored per SOC 2 guidelines.',
-      'I authorize Action Auto to verify my identity with the DMV, FMCSA, and insurance carriers.',
-      'I agree to the background check and understand results may affect my eligibility.',
-    ],
-  },
-  {
-    title: 'Payment & Financial',
-    items: [
-      'I agree to receive payment through the Stripe Connect platform upon confirmed delivery.',
-      'Payment will be released after proof of delivery is verified by the receiving party.',
-      'I understand that disputed deliveries may delay payment pending investigation.',
-      'Chargebacks due to fraud or misrepresentation will be deducted from future earnings.',
-    ],
-  },
-  {
-    title: 'Termination & Conduct',
-    items: [
-      'Either party may terminate this agreement with written notice.',
-      'Repeated load drops, late deliveries, or unprofessional conduct may result in account suspension.',
-      'Falsifying documents, identity, or delivery records is grounds for immediate termination and legal action.',
-      'I agree to maintain professional communication with all parties (shippers, receivers, dispatchers).',
-    ],
-  },
-];
 
 export const DocumentsPage: React.FC = () => {
   const { getToken } = useAuth();
@@ -161,8 +85,6 @@ export const DocumentsPage: React.FC = () => {
   const [verificationAgreement, setVerificationAgreement] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('not_started');
   const [savingIdentity, setSavingIdentity] = useState(false);
-  const [expandedAgreement, setExpandedAgreement] = useState<number | null>(null);
-  const [agreementChecks, setAgreementChecks] = useState<Record<number, boolean>>({});
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -246,7 +168,7 @@ export const DocumentsPage: React.FC = () => {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
       });
       if (res.data?.data) setProfile(res.data.data);
-      toast.success('Document uploaded — pending admin review');
+      toast.success('Document uploaded — pending review');
       setShowUploadDialog(false);
     } catch { toast.error('Failed to upload document'); }
     finally { setUploading(false); }
@@ -279,7 +201,6 @@ export const DocumentsPage: React.FC = () => {
   const uploadedCount = requiredDocs.filter(d => getDocStatus(d.type) !== 'missing').length;
   const identityDone = !!profile?.ssnLast4 && !!profile?.backgroundCheckConsent;
   const agreementDone = !!profile?.verificationAgreement;
-  const allAgreementsChecked = Object.keys(agreementChecks).length === AGREEMENT_SECTIONS.length && Object.values(agreementChecks).every(Boolean);
 
   const stepStatus = useMemo(() => ({
     identity: identityDone ? 'done' : 'active',
@@ -310,17 +231,12 @@ export const DocumentsPage: React.FC = () => {
   }, [identityDone, licenseNumber, licenseExp, insuranceProvider, uploadedCount, requiredDocs.length, agreementDone, verifiedCount]);
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
       <div className="relative">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} className="size-20">
-          <RingProgress value={75} size={80} stroke={4} color="text-emerald-500" />
-        </motion.div>
-        <Shield className="size-8 text-emerald-500 absolute inset-0 m-auto" />
+        <div className="size-16 rounded-full border-4 border-emerald-500/20 animate-pulse" />
+        <Loader2 className="size-8 animate-spin text-emerald-500 absolute inset-0 m-auto" />
       </div>
-      <div className="text-center space-y-1">
-        <p className="text-sm font-bold">Establishing Secure Connection</p>
-        <p className="text-xs text-muted-foreground">Loading verification data...</p>
-      </div>
+      <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Securing Connection</p>
     </div>
   );
 
@@ -328,70 +244,65 @@ export const DocumentsPage: React.FC = () => {
   const medStatus = getExpStatus(medicalExp);
   const insStatus = getExpStatus(insuranceExp);
   const curStep = STEPS.find(s => s.id === activeStep)!;
+  const curIdx = STEPS.findIndex(s => s.id === activeStep);
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-5">
 
-        <div className="relative overflow-hidden rounded-3xl">
+        <div className="relative overflow-hidden rounded-3xl shadow-2xl">
           <div className="absolute inset-0 bg-linear-to-br from-slate-950 via-slate-900 to-slate-950" />
-          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.15) 1px, transparent 0)', backgroundSize: '20px 20px' }} />
-          <div className="absolute top-0 right-0 w-100 h-100 bg-emerald-500/6 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/4" />
-          <div className="absolute bottom-0 left-0 w-72 h-72 bg-violet-500/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/3" />
+          <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-500/8 rounded-full blur-3xl -translate-y-1/3 translate-x-1/4" />
+          <div className="absolute bottom-0 left-0 w-56 h-56 bg-blue-500/6 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M20 20.5V18H0v-2h20v-2l2 3-2 3zM0 20.5V18h20v-2l2 3-2 3H0v-1.5z\' fill=\'%23fff\' fill-opacity=\'.5\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")' }} />
 
-          <div className="relative p-6 sm:p-8">
-            <div className="flex items-start justify-between gap-4 mb-6">
-              <div className="flex items-center gap-4">
-                <Link href="/driver/profile" className="group p-2.5 rounded-xl bg-white/6 hover:bg-white/12 transition-all border border-white/8 hover:border-white/15">
-                  <ArrowLeft className="size-5 text-white/70 group-hover:text-white transition-colors" />
+          <div className="relative p-5 sm:p-7">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div className="flex items-center gap-3">
+                <Link href="/driver/profile" className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10">
+                  <ArrowLeft className="size-4.5 text-white/80" />
                 </Link>
                 <div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Driver Verification</h1>
-                    <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/20">
-                      <Lock className="size-3 text-emerald-400" />
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">End-to-End Encrypted</span>
+                    <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/20">
+                      <Lock className="size-3 text-emerald-400" /><span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Encrypted</span>
                     </div>
                   </div>
-                  <p className="text-sm text-white/35 mt-1">FMCSA-compliant identity & document verification</p>
+                  <p className="text-sm text-white/40 mt-0.5">FMCSA-compliant driver onboarding</p>
                 </div>
               </div>
-              <div className="hidden sm:flex flex-col items-center">
-                <div className="relative">
-                  <RingProgress value={overallPct} size={64} stroke={4} color="text-emerald-400" />
-                  <span className="absolute inset-0 flex items-center justify-center text-lg font-black text-white tabular-nums">{overallPct}</span>
-                </div>
-                <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-1">Complete</p>
+              <div className="text-right hidden sm:block">
+                <span className="text-4xl font-black tabular-nums text-white">{overallPct}%</span>
+                <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Complete</p>
               </div>
             </div>
 
-            <div className="h-1 rounded-full bg-white/6 overflow-hidden mb-6">
+            <div className="h-1.5 rounded-full bg-white/8 overflow-hidden mb-5">
               <motion.div className="h-full rounded-full bg-linear-to-r from-emerald-400 to-teal-400" initial={false} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
             </div>
 
-            <div className="relative flex items-center gap-0 px-1">
+            <div className="relative flex items-center gap-0 px-2">
               {STEPS.map((step, i) => {
                 const status = stepStatus[step.id];
                 const active = activeStep === step.id;
                 return (
                   <React.Fragment key={step.id}>
                     <button type="button" onClick={() => setActiveStep(step.id)} className="relative z-10 flex flex-col items-center gap-1.5 group">
-                      <motion.div animate={active ? { scale: 1.1 } : { scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                        className={cn('size-11 sm:size-12 rounded-xl flex items-center justify-center transition-all border-2',
-                          active ? cn('border-white/30 shadow-lg shadow-white/5 bg-linear-to-br', curStep.color) :
+                      <motion.div animate={active ? { scale: 1.15 } : { scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                        className={cn('size-10 sm:size-11 rounded-xl flex items-center justify-center transition-all border-2',
+                          active ? 'bg-white/15 border-white/30 shadow-lg shadow-white/5' :
                             status === 'done' ? 'bg-emerald-500/20 border-emerald-500/30' :
                               status === 'partial' ? 'bg-amber-500/15 border-amber-500/20' :
-                                'bg-white/4 border-white/8')}>
+                                'bg-white/5 border-white/8')}>
                         {status === 'done' ? <CheckCircle2 className="size-5 text-emerald-400" /> :
-                          <step.icon className={cn('size-5', active ? 'text-white' : 'text-white/25')} />}
+                          <step.icon className={cn('size-4.5', active ? 'text-white' : 'text-white/30')} />}
                       </motion.div>
-                      <div className="text-center">
-                        <span className={cn('text-[10px] font-bold whitespace-nowrap block', active ? 'text-white' : status === 'done' ? 'text-emerald-400/70' : 'text-white/20')}>{step.label}</span>
-                      </div>
+                      <span className={cn('text-[10px] font-bold whitespace-nowrap', active ? 'text-white' : status === 'done' ? 'text-emerald-400/70' : 'text-white/25')}>{step.label}</span>
                     </button>
                     {i < STEPS.length - 1 && (
-                      <div className="flex-1 h-0.5 mx-1.5 rounded-full relative -mt-5">
-                        <div className="absolute inset-0 bg-white/6 rounded-full" />
+                      <div className="flex-1 h-0.5 mx-1 rounded-full relative -mt-5">
+                        <div className="absolute inset-0 bg-white/8 rounded-full" />
                         <motion.div initial={false} animate={{ width: status === 'done' ? '100%' : '0%' }}
                           className="absolute inset-y-0 left-0 bg-emerald-400/50 rounded-full" transition={{ duration: 0.4 }} />
                       </div>
@@ -410,7 +321,7 @@ export const DocumentsPage: React.FC = () => {
                 <div className="size-14 rounded-2xl bg-emerald-500/15 flex items-center justify-center"><Sparkles className="size-7 text-emerald-500" /></div>
                 <div className="flex-1">
                   <h2 className="text-lg font-black text-emerald-600 dark:text-emerald-400">Fully Verified Driver</h2>
-                  <p className="text-sm text-muted-foreground">All documents approved. You are cleared for load dispatch.</p>
+                  <p className="text-sm text-muted-foreground">All documents verified. You are cleared for dispatch.</p>
                 </div>
                 <BadgeCheck className="size-10 text-emerald-500 hidden sm:block" />
               </CardContent>
@@ -418,40 +329,30 @@ export const DocumentsPage: React.FC = () => {
           </motion.div>
         )}
 
-        {!identityDone && activeStep !== 'identity' && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 p-3 rounded-xl border border-red-500/20 bg-red-500/5 cursor-pointer" onClick={() => setActiveStep('identity')}>
-            <ShieldX className="size-4 text-red-500 shrink-0" />
-            <p className="text-xs text-red-600 dark:text-red-400 font-medium flex-1">Identity verification required before you can receive loads</p>
-            <ChevronRight className="size-4 text-red-400" />
-          </motion.div>
-        )}
-
         <AnimatePresence mode="wait">
           <motion.div key={activeStep} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
 
             {activeStep === 'identity' && (
-              <Card className="border-border/15 shadow-lg overflow-hidden rounded-2xl">
-                <div className="h-0.75 w-full bg-linear-to-r from-violet-600 to-purple-500" />
+              <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
+                <div className="h-1 w-full bg-linear-to-r from-violet-600 to-purple-500" />
                 <div className="p-5 sm:p-6 border-b border-border/10">
                   <div className="flex items-center gap-4">
                     <div className="size-12 rounded-2xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg"><Fingerprint className="size-6" /></div>
                     <div className="flex-1">
                       <h2 className="text-xl font-black">Identity Verification</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">AES-256 encrypted — only last 4 digits stored</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Your SSN is encrypted (AES-256) and never stored in full</p>
                     </div>
-                    {identityDone && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 text-xs"><CheckCircle2 className="size-3" /> Complete</Badge>}
+                    {identityDone && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 text-xs"><CheckCircle2 className="size-3" /> Verified</Badge>}
                   </div>
                 </div>
                 <CardContent className="p-5 sm:p-6 space-y-6">
                   <div className="rounded-xl border-2 border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
                     <TriangleAlert className="size-5 text-amber-500 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Federal Requirement (49 CFR 391.23)</p>
+                      <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Why we need this</p>
                       <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-1 leading-relaxed">
-                        Identity verification is mandatory for all commercial vehicle operators. Your SSN last 4 digits are used exclusively
-                        for background check authorization as required by the Fair Credit Reporting Act (FCRA). This data is encrypted at rest,
-                        transmitted over TLS 1.3, and never accessible in plaintext.
+                        Federal law (49 CFR 391.23) requires identity verification for all commercial drivers.
+                        This is used solely for background check authorization and is never shared externally.
                       </p>
                     </div>
                   </div>
@@ -462,12 +363,11 @@ export const DocumentsPage: React.FC = () => {
                       <div className="relative">
                         <Input value={ssnLast4} onChange={e => setSsnLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
                           placeholder="• • • •" maxLength={4} inputMode="numeric" disabled={!!profile?.ssnLast4}
-                          className="h-14 text-center text-3xl font-mono tracking-[0.6em] max-w-55 bg-background border-border/40 rounded-xl" />
+                          className="h-14 text-center text-3xl font-mono tracking-[0.6em] max-w-55 bg-muted/20 border-border/30 rounded-xl" />
                         {profile?.ssnLast4 && <div className="absolute right-3 top-1/2 -translate-y-1/2"><CheckCircle2 className="size-5 text-emerald-500" /></div>}
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Lock className="size-3 text-muted-foreground/50" />
-                        <p className="text-[10px] text-muted-foreground/70">Encrypted at rest — never stored in full — AES-256</p>
+                        <Lock className="size-3 text-muted-foreground/50" /><p className="text-[10px] text-muted-foreground/70">Encrypted at rest — only last 4 digits</p>
                       </div>
                     </div>
                     <div className="space-y-4">
@@ -478,30 +378,19 @@ export const DocumentsPage: React.FC = () => {
                         <div>
                           <span className="text-sm font-bold">Background Check Authorization</span>
                           <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                            I authorize Action Auto Utah LLC to conduct a background check in compliance with the Fair Credit Reporting Act (FCRA).
-                            I understand this may include criminal history, driving record, and employment verification.
+                            I authorize Action Auto to conduct a background check per the Fair Credit Reporting Act (FCRA).
                           </p>
                         </div>
                       </label>
-
-                      <div className="rounded-xl bg-muted/10 border border-border/10 p-3 space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1"><Info className="size-3" /> What we check</p>
-                        {['Federal & state criminal records', 'MVR (Motor Vehicle Record)', 'FMCSA safety history (PSP)', 'Sex offender registry'].map(item => (
-                          <div key={item} className="flex items-center gap-2">
-                            <CircleDot className="size-2.5 text-violet-500 shrink-0" />
-                            <span className="text-[11px] text-muted-foreground">{item}</span>
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   </div>
 
                   {!identityDone ? (
-                    <div className="flex items-center justify-between pt-2 border-t border-border/10">
-                      <p className="text-[11px] text-muted-foreground">This verification cannot be undone once submitted</p>
+                    <div className="flex items-center justify-between pt-2">
+                      <p className="text-[11px] text-muted-foreground">This step cannot be undone once verified</p>
                       <Button onClick={handleSaveIdentity} disabled={savingIdentity || ssnLast4.replace(/\D/g, '').length !== 4 || !bgCheckConsent}
                         className="gap-2 bg-linear-to-r from-violet-600 to-purple-500 hover:from-violet-500 hover:to-purple-400 text-white shadow-lg rounded-xl">
-                        {savingIdentity ? <Loader2 className="size-4 animate-spin" /> : <Fingerprint className="size-4" />} Verify Identity
+                        {savingIdentity ? <Loader2 className="size-4 animate-spin" /> : <Fingerprint className="size-4" />} Verify My Identity
                       </Button>
                     </div>
                   ) : (
@@ -512,69 +401,57 @@ export const DocumentsPage: React.FC = () => {
             )}
 
             {activeStep === 'license' && (
-              <Card className="border-border/15 shadow-lg overflow-hidden rounded-2xl">
-                <div className="h-0.75 w-full bg-linear-to-r from-blue-600 to-indigo-500" />
+              <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
+                <div className="h-1 w-full bg-linear-to-r from-blue-600 to-indigo-500" />
                 <div className="p-5 sm:p-6 border-b border-border/10">
                   <div className="flex items-center gap-4">
                     <div className="size-12 rounded-2xl bg-linear-to-br from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg"><CreditCard className="size-6" /></div>
                     <div className="flex-1">
                       <h2 className="text-xl font-black">License & Insurance</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">Expired credentials will block load assignments</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Expired credentials will block dispatch</p>
                     </div>
-                    {profile?.isComplianceExpired && <Badge variant="destructive" className="gap-1 text-xs"><AlertTriangle className="size-3" /> Credentials Expired</Badge>}
+                    {profile?.isComplianceExpired && <Badge variant="destructive" className="gap-1 text-xs"><AlertTriangle className="size-3" /> Expired</Badge>}
                   </div>
                 </div>
                 <CardContent className="p-5 sm:p-6 space-y-5">
-                  <div className="rounded-xl border border-border/15 bg-muted/5 p-4">
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { label: 'CDL', status: licStatus, exp: licenseExp },
-                        { label: 'Medical', status: medStatus, exp: medicalExp },
-                        { label: 'Insurance', status: insStatus, exp: insuranceExp },
-                      ].map(item => (
-                        <div key={item.label} className={cn('flex flex-col items-center gap-1 p-3 rounded-xl border', item.status.s === 'expired' ? 'border-red-500/20 bg-red-500/5' : item.status.s === 'warn' ? 'border-amber-500/20 bg-amber-500/5' : 'border-border/15')}>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{item.label}</p>
-                          <p className={cn('text-sm font-black', item.status.c)}>{item.exp ? item.status.l : '—'}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">CDL Number</Label>
-                      <Input value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} placeholder="DL-XXXXXXXX" className="h-11 font-mono bg-background border-border/40 rounded-xl" />
+                      <Input value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} placeholder="DL-XXXXXXXX" className="h-11 font-mono bg-muted/20 border-border/30 rounded-xl" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">License State</Label>
                       <Select value={licenseState} onValueChange={setLicenseState}>
-                        <SelectTrigger className="h-11 bg-background border-border/40 rounded-xl"><SelectValue placeholder="Select state" /></SelectTrigger>
+                        <SelectTrigger className="h-11 bg-muted/20 border-border/30 rounded-xl"><SelectValue placeholder="Select state" /></SelectTrigger>
                         <SelectContent>{US_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">CDL Expiration</Label>
-                      <Input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className="h-11 bg-background border-border/40 rounded-xl" />
+                      <Input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className="h-11 bg-muted/20 border-border/30 rounded-xl" />
+                      <p className={cn('text-[10px] font-bold', licStatus.c)}>{licStatus.l}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Medical Card Expiration</Label>
-                      <Input type="date" value={medicalExp} onChange={e => setMedicalExp(e.target.value)} className="h-11 bg-background border-border/40 rounded-xl" />
+                      <Input type="date" value={medicalExp} onChange={e => setMedicalExp(e.target.value)} className="h-11 bg-muted/20 border-border/30 rounded-xl" />
+                      <p className={cn('text-[10px] font-bold', medStatus.c)}>{medStatus.l}</p>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Insurance Expiration</Label>
-                      <Input type="date" value={insuranceExp} onChange={e => setInsuranceExp(e.target.value)} className="h-11 bg-background border-border/40 rounded-xl" />
+                      <Input type="date" value={insuranceExp} onChange={e => setInsuranceExp(e.target.value)} className="h-11 bg-muted/20 border-border/30 rounded-xl" />
+                      <p className={cn('text-[10px] font-bold', insStatus.c)}>{insStatus.l}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Insurance Provider</Label>
-                      <Input value={insuranceProvider} onChange={e => setInsuranceProvider(e.target.value)} placeholder="e.g. Progressive" className="h-11 bg-background border-border/40 rounded-xl" />
+                      <Input value={insuranceProvider} onChange={e => setInsuranceProvider(e.target.value)} placeholder="e.g. Progressive" className="h-11 bg-muted/20 border-border/30 rounded-xl" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Policy Number</Label>
-                      <Input value={insurancePolicyNumber} onChange={e => setInsurancePolicyNumber(e.target.value)} placeholder="e.g. POL-123456" className="h-11 font-mono bg-background border-border/40 rounded-xl" />
+                      <Input value={insurancePolicyNumber} onChange={e => setInsurancePolicyNumber(e.target.value)} placeholder="e.g. POL-123456" className="h-11 font-mono bg-muted/20 border-border/30 rounded-xl" />
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-2">
@@ -593,44 +470,28 @@ export const DocumentsPage: React.FC = () => {
             )}
 
             {activeStep === 'documents' && (
-              <Card className="border-border/15 shadow-lg overflow-hidden rounded-2xl">
-                <div className="h-0.75 w-full bg-linear-to-r from-emerald-600 to-teal-500" />
+              <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
+                <div className="h-1 w-full bg-linear-to-r from-emerald-600 to-teal-500" />
                 <div className="p-5 sm:p-6 border-b border-border/10">
                   <div className="flex items-center gap-4">
                     <div className="size-12 rounded-2xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg"><FileCheck className="size-6" /></div>
                     <div className="flex-1">
                       <h2 className="text-xl font-black">Required Documents</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">{uploadedCount}/{requiredDocs.length} uploaded · {verifiedCount} admin-verified</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{uploadedCount}/{requiredDocs.length} uploaded · {verifiedCount} verified</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="hidden sm:flex gap-1">
-                        {requiredDocs.map(d => {
-                          const st = getDocStatus(d.type);
-                          return <div key={d.type} className={cn('size-2.5 rounded-full', st === 'verified' ? 'bg-emerald-500' : st === 'pending' ? 'bg-amber-500' : st === 'rejected' ? 'bg-red-500' : 'bg-border')} />;
-                        })}
-                      </div>
-                      <Badge variant="outline" className="text-xs font-bold gap-1">{uploadedCount}/{requiredDocs.length}</Badge>
-                    </div>
+                    <Badge variant="outline" className="text-xs font-bold gap-1">{uploadedCount}/{requiredDocs.length}</Badge>
                   </div>
                 </div>
                 <CardContent className="p-5 sm:p-6 space-y-3">
-                  <div className="rounded-xl border border-border/10 bg-muted/5 p-3 flex items-start gap-2.5">
-                    <Info className="size-4 text-blue-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold">Document Verification Process</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">Each document is manually reviewed by our compliance team. Upload clear, full-page photos or PDF scans. Documents with poor quality, expired dates, or mismatched information will be rejected.</p>
-                    </div>
-                  </div>
-
                   {requiredDocs.map(req => {
                     const status = getDocStatus(req.type);
                     const ups = documents.filter((d: ComplianceDocument) => d.type === req.type);
                     const Icon = DOC_ICONS[req.type] || FileText;
                     return (
                       <div key={req.type} className={cn('rounded-xl border-2 transition-all overflow-hidden',
-                        status === 'verified' ? 'border-emerald-500/20 bg-emerald-500/2' :
-                          status === 'rejected' ? 'border-red-500/20 bg-red-500/2' :
-                            status === 'pending' ? 'border-amber-500/20 bg-amber-500/2' : 'border-border/15 hover:border-border/30')}>
+                        status === 'verified' ? 'border-emerald-500/20 bg-emerald-500/3' :
+                          status === 'rejected' ? 'border-red-500/20 bg-red-500/3' :
+                            status === 'pending' ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/20 hover:border-border/40')}>
                         <div className="flex items-center gap-3.5 p-4">
                           <div className={cn('size-10 rounded-xl flex items-center justify-center shrink-0',
                             status === 'verified' ? 'bg-emerald-500/10' : status === 'rejected' ? 'bg-red-500/10' :
@@ -648,7 +509,7 @@ export const DocumentsPage: React.FC = () => {
                                   status === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
                                     status === 'rejected' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
                                       'bg-destructive/10 text-destructive border-destructive/20')}>
-                                {status === 'verified' ? 'VERIFIED' : status === 'pending' ? 'UNDER REVIEW' : status === 'rejected' ? 'REJECTED' : 'REQUIRED'}
+                                {status === 'verified' ? 'VERIFIED' : status === 'pending' ? 'REVIEWING' : status === 'rejected' ? 'REJECTED' : 'REQUIRED'}
                               </Badge>
                             </div>
                             <p className="text-[11px] text-muted-foreground mt-0.5">{req.description}</p>
@@ -660,7 +521,7 @@ export const DocumentsPage: React.FC = () => {
                           </Button>
                         </div>
                         {ups.length > 0 && (
-                          <div className="border-t border-border/10 bg-muted/2">
+                          <div className="border-t border-border/10 bg-muted/3">
                             {ups.map((doc: ComplianceDocument) => {
                               const ex = doc.expiresAt ? getExpStatus(doc.expiresAt) : null;
                               return (
@@ -702,13 +563,13 @@ export const DocumentsPage: React.FC = () => {
 
                   {optionalDocs.length > 0 && (
                     <>
-                      <div className="flex items-center gap-3 pt-4"><div className="h-px flex-1 bg-border/15" /><span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Optional Documents</span><div className="h-px flex-1 bg-border/15" /></div>
+                      <div className="flex items-center gap-3 pt-4"><div className="h-px flex-1 bg-border/15" /><span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Optional</span><div className="h-px flex-1 bg-border/15" /></div>
                       {optionalDocs.map(req => {
                         const status = getDocStatus(req.type);
                         const ups = documents.filter((d: ComplianceDocument) => d.type === req.type);
                         return (
                           <div key={req.type} className={cn('rounded-xl border-2 p-4 flex items-center gap-3.5 transition-all',
-                            status === 'verified' ? 'border-emerald-500/20 bg-emerald-500/2' : status === 'pending' ? 'border-amber-500/20 bg-amber-500/2' : 'border-border/10')}>
+                            status === 'verified' ? 'border-emerald-500/20 bg-emerald-500/3' : status === 'pending' ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15')}>
                             <div className="size-9 rounded-lg bg-muted/20 flex items-center justify-center shrink-0"><FileText className="size-4 text-muted-foreground" /></div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2"><h3 className="text-sm font-bold">{req.label}</h3><Badge variant="outline" className="text-[9px] h-4">Optional</Badge></div>
@@ -738,110 +599,52 @@ export const DocumentsPage: React.FC = () => {
             )}
 
             {activeStep === 'agreement' && (
-              <Card className="border-border/15 shadow-lg overflow-hidden rounded-2xl">
-                <div className="h-0.75 w-full bg-linear-to-r from-amber-500 to-orange-500" />
+              <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
+                <div className="h-1 w-full bg-linear-to-r from-amber-500 to-orange-500" />
                 <div className="p-5 sm:p-6 border-b border-border/10">
                   <div className="flex items-center gap-4">
-                    <div className="size-12 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg"><Gavel className="size-6" /></div>
+                    <div className="size-12 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg"><Scale className="size-6" /></div>
                     <div className="flex-1">
-                      <h2 className="text-xl font-black">Driver Agreement</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">You must read and acknowledge each section to proceed</p>
+                      <h2 className="text-xl font-black">Verification Agreement</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">Review and accept to submit your profile for admin approval</p>
                     </div>
-                    {agreementDone && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 text-xs"><CheckCircle2 className="size-3" /> Signed</Badge>}
+                    {agreementDone && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 text-xs"><CheckCircle2 className="size-3" /> Accepted</Badge>}
                   </div>
                 </div>
-                <CardContent className="p-5 sm:p-6 space-y-4">
-                  <div className="rounded-xl border-2 border-red-500/15 bg-red-500/3 p-4 flex items-start gap-3">
-                    <ScrollText className="size-5 text-red-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold text-red-700 dark:text-red-400">Legally Binding Agreement</p>
-                      <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1 leading-relaxed">
-                        This is a legally binding contract between you and Action Auto Utah LLC. Read each section carefully.
-                        By checking each box, you acknowledge understanding and agreement. Fraudulent acknowledgment may result in
-                        legal action. You must check all {AGREEMENT_SECTIONS.length} sections before signing.
-                      </p>
+                <CardContent className="p-5 sm:p-6 space-y-5">
+                  <div className="rounded-xl border-2 border-border/15 bg-muted/5 p-5 space-y-4">
+                    <p className="text-sm font-bold">By signing this agreement, you acknowledge:</p>
+                    <div className="space-y-3">
+                      {[
+                        'All documents and information provided are authentic, accurate, and unaltered.',
+                        'Action Auto may verify documents with issuing agencies (DMV, FMCSA, insurance carriers).',
+                        'Fraudulent documents will result in immediate termination and potential law enforcement referral.',
+                        'You must notify Action Auto within 48 hours of any credential changes or revocations.',
+                        'Your credentials may be re-verified periodically as required by federal/state regulations.',
+                      ].map((t, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                          <CircleDot className="size-3.5 text-amber-500 shrink-0 mt-1" />
+                          <p className="text-xs text-muted-foreground leading-relaxed">{t}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
-                  {!agreementDone && (
-                    <div className="space-y-2">
-                      {AGREEMENT_SECTIONS.map((section, idx) => {
-                        const isExpanded = expandedAgreement === idx;
-                        const isChecked = agreementChecks[idx] || false;
-                        return (
-                          <div key={idx} className={cn('rounded-xl border-2 overflow-hidden transition-all',
-                            isChecked ? 'border-emerald-500/20 bg-emerald-500/2' : 'border-border/15')}>
-                            <button type="button" onClick={() => setExpandedAgreement(isExpanded ? null : idx)}
-                              className="w-full flex items-center gap-3 p-4 text-left">
-                              <div className={cn('size-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-black',
-                                isChecked ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted/30 text-muted-foreground')}>
-                                {isChecked ? <CheckCircle2 className="size-4" /> : idx + 1}
-                              </div>
-                              <span className="text-sm font-bold flex-1">{section.title}</span>
-                              {isExpanded ? <ChevronUp className="size-4 text-muted-foreground shrink-0" /> : <ChevronDown className="size-4 text-muted-foreground shrink-0" />}
-                            </button>
-                            <AnimatePresence>
-                              {isExpanded && (
-                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                                  <div className="px-4 pb-4 space-y-3">
-                                    <div className="rounded-lg bg-muted/10 p-3 space-y-2.5">
-                                      {section.items.map((item, iIdx) => (
-                                        <div key={iIdx} className="flex items-start gap-2.5">
-                                          <CircleDot className="size-3 text-amber-500 shrink-0 mt-1" />
-                                          <p className="text-xs text-muted-foreground leading-relaxed">{item}</p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                    <label className={cn('flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all',
-                                      isChecked ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border/20 hover:border-amber-500/30')}>
-                                      <input type="checkbox" checked={isChecked}
-                                        onChange={e => setAgreementChecks(prev => ({ ...prev, [idx]: e.target.checked }))}
-                                        className="size-4 rounded border-2 border-border accent-emerald-600" />
-                                      <span className="text-xs font-bold">I have read and understand this section</span>
-                                    </label>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {agreementDone ? (
+                  {!agreementDone ? (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2.5 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/15">
-                        <CheckCircle2 className="size-5 text-emerald-500" />
-                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Agreement signed — profile submitted for admin review</span>
-                      </div>
-                      <div className="flex justify-end"><Button onClick={() => setActiveStep('review')} className="gap-2 rounded-xl">View Status <ChevronRight className="size-4" /></Button></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 pt-2">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <div className="h-px flex-1 bg-border/15" />
-                        <span className="font-bold">{Object.values(agreementChecks).filter(Boolean).length} / {AGREEMENT_SECTIONS.length} sections acknowledged</span>
-                        <div className="h-px flex-1 bg-border/15" />
-                      </div>
-
                       <label className={cn('flex items-start gap-3.5 p-4 rounded-xl border-2 cursor-pointer transition-all',
-                        !allAgreementsChecked ? 'opacity-50 pointer-events-none border-border/10' :
-                          verificationAgreement ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border/20 hover:border-amber-500/30')}>
+                        verificationAgreement ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border/20 hover:border-border/50')}>
                         <input type="checkbox" checked={verificationAgreement} onChange={e => setVerificationAgreement(e.target.checked)}
-                          disabled={!allAgreementsChecked} className="mt-0.5 size-5 rounded border-2 border-border accent-emerald-600" />
-                        <div>
-                          <span className="text-sm font-bold">I have read, understood, and agree to all terms above</span>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">This constitutes a legally binding electronic signature</p>
-                        </div>
+                          className="mt-0.5 size-5 rounded border-2 border-border accent-emerald-600" />
+                        <div><span className="text-sm font-bold">I have read and accept the verification agreement</span>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">This is a legally binding acknowledgment</p></div>
                       </label>
-
                       <div className="flex items-center justify-between">
                         <Button variant="ghost" onClick={() => setActiveStep('documents')} className="gap-1.5 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
                         <Button onClick={handleSaveIdentity}
-                          disabled={savingIdentity || !verificationAgreement || !allAgreementsChecked || !identityDone || uploadedCount < requiredDocs.length}
+                          disabled={savingIdentity || !verificationAgreement || !identityDone || uploadedCount < requiredDocs.length}
                           className="gap-2 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-lg rounded-xl">
-                          {savingIdentity ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />} Sign & Submit
+                          {savingIdentity ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />} Submit for Verification
                         </Button>
                       </div>
                       {(!identityDone || uploadedCount < requiredDocs.length) && (
@@ -850,14 +653,22 @@ export const DocumentsPage: React.FC = () => {
                         </p>
                       )}
                     </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2.5 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/15">
+                        <CheckCircle2 className="size-5 text-emerald-500" />
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Agreement accepted — your profile is under admin review</span>
+                      </div>
+                      <div className="flex justify-end"><Button onClick={() => setActiveStep('review')} className="gap-2 rounded-xl">View Status <ChevronRight className="size-4" /></Button></div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
             )}
 
             {activeStep === 'review' && (
-              <Card className="border-border/15 shadow-lg overflow-hidden rounded-2xl">
-                <div className={cn('h-0.75 w-full bg-linear-to-r',
+              <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
+                <div className={cn('h-1 w-full bg-linear-to-r',
                   verificationStatus === 'verified' ? 'from-emerald-500 to-green-500' :
                     verificationStatus === 'under_review' ? 'from-amber-500 to-orange-500' : 'from-slate-500 to-zinc-500')} />
                 <div className="p-5 sm:p-6 border-b border-border/10">
@@ -875,7 +686,7 @@ export const DocumentsPage: React.FC = () => {
                       </h2>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {verificationStatus === 'verified' ? 'You are cleared for dispatch' :
-                          verificationStatus === 'under_review' ? 'Our compliance team reviews within 24 hours' : 'Complete all steps to submit for review'}
+                          verificationStatus === 'under_review' ? 'Typically reviewed within 24 hours' : 'Complete all steps to submit for review'}
                       </p>
                     </div>
                   </div>
@@ -887,11 +698,11 @@ export const DocumentsPage: React.FC = () => {
                       { label: 'Credentials', done: !!(licenseNumber && licenseExp), icon: CreditCard },
                       { label: `Documents (${uploadedCount}/${requiredDocs.length})`, done: uploadedCount === requiredDocs.length, icon: FileCheck },
                       { label: `Verified (${verifiedCount}/${requiredDocs.length})`, done: verifiedCount === requiredDocs.length, icon: BadgeCheck },
-                      { label: 'Agreement', done: agreementDone, icon: Gavel },
+                      { label: 'Agreement', done: agreementDone, icon: Scale },
                       { label: 'Approved', done: verificationStatus === 'verified', icon: ShieldCheck },
                     ].map(it => (
                       <div key={it.label} className={cn('flex items-center gap-2.5 p-3 rounded-xl border-2',
-                        it.done ? 'border-emerald-500/20 bg-emerald-500/2' : 'border-border/10')}>
+                        it.done ? 'border-emerald-500/20 bg-emerald-500/3' : 'border-border/15')}>
                         <div className={cn('size-8 rounded-lg flex items-center justify-center', it.done ? 'bg-emerald-500/10' : 'bg-muted/20')}>
                           {it.done ? <CheckCircle2 className="size-4 text-emerald-500" /> : <it.icon className="size-4 text-muted-foreground" />}
                         </div>
@@ -904,12 +715,12 @@ export const DocumentsPage: React.FC = () => {
                     <div className="flex items-start gap-3">
                       <Lock className="size-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-xs font-bold text-muted-foreground">Verification Process</p>
+                        <p className="text-xs font-bold text-muted-foreground">How it works</p>
                         <ol className="text-[11px] text-muted-foreground mt-2 space-y-1.5 list-decimal list-inside leading-relaxed">
-                          <li>Upload each required document — clear photos or high-quality PDF scans</li>
-                          <li>Our compliance team reviews each document individually (24 hours typical)</li>
-                          <li>You'll be notified if any document needs re-submission with specific feedback</li>
-                          <li>Once all documents pass verification, your account is cleared for load dispatch</li>
+                          <li>Upload each required document — clear photos or PDF scans</li>
+                          <li>Admin team reviews each document (typically within 24 hours)</li>
+                          <li>You will be notified upon approval or if re-submission is needed</li>
+                          <li>Once all documents are verified, you are cleared for dispatch</li>
                         </ol>
                       </div>
                     </div>
@@ -926,29 +737,29 @@ export const DocumentsPage: React.FC = () => {
       </motion.div>
 
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center"><Upload className="size-4 text-primary" /></div>
               Upload Document
             </DialogTitle>
-            <DialogDescription>All files encrypted in transit (TLS 1.3) and at rest (AES-256). Max 5MB.</DialogDescription>
+            <DialogDescription>All files are encrypted in transit and at rest. Max 5MB.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Document Type</Label>
               <Select value={uploadType} onValueChange={setUploadType}>
-                <SelectTrigger className="bg-background border-border/40 rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-muted/20"><SelectValue /></SelectTrigger>
                 <SelectContent>{documentTypeOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Label</Label>
-              <Input value={uploadLabel} onChange={e => setUploadLabel(e.target.value)} placeholder="e.g. CDL Front" maxLength={100} className="bg-background border-border/40 rounded-xl" />
+              <Input value={uploadLabel} onChange={e => setUploadLabel(e.target.value)} placeholder="e.g. CDL Front" maxLength={100} className="bg-muted/20" />
             </div>
             <div className="space-y-2">
               <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Expiration Date (if applicable)</Label>
-              <Input type="date" value={uploadExpiry} onChange={e => setUploadExpiry(e.target.value)} className="bg-background border-border/40 rounded-xl" />
+              <Input type="date" value={uploadExpiry} onChange={e => setUploadExpiry(e.target.value)} className="bg-muted/20" />
             </div>
             <div className="space-y-2">
               <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">File</Label>
@@ -973,15 +784,15 @@ export const DocumentsPage: React.FC = () => {
                   <>
                     <Camera className="size-8 text-muted-foreground/40" />
                     <p className="text-xs text-muted-foreground font-medium">Drop file here or click to browse</p>
-                    <p className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP, or PDF — max 5MB</p>
+                    <p className="text-[10px] text-muted-foreground/60">JPG, PNG, WebP, or PDF up to 5MB</p>
                   </>
                 )}
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUploadDialog(false)} className="rounded-xl">Cancel</Button>
-            <Button onClick={handleUpload} disabled={uploading || !uploadFile || !uploadLabel.trim()} className="gap-2 rounded-xl">
+            <Button variant="outline" onClick={() => setShowUploadDialog(false)}>Cancel</Button>
+            <Button onClick={handleUpload} disabled={uploading || !uploadFile || !uploadLabel.trim()} className="gap-2">
               {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Upload
             </Button>
           </DialogFooter>
@@ -989,15 +800,15 @@ export const DocumentsPage: React.FC = () => {
       </Dialog>
 
       <Dialog open={!!showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(null)}>
-        <DialogContent className="sm:max-w-sm rounded-2xl">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive"><Trash2 className="size-5" /> Delete Document</DialogTitle>
-            <DialogDescription>This will permanently remove the document. A replacement upload may be required for compliance.</DialogDescription>
+            <DialogDescription>This will permanently remove the document. You may need to re-upload.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(null)} className="rounded-xl">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
             <Button variant="destructive" onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)}
-              disabled={deletingId === showDeleteConfirm} className="gap-2 rounded-xl">
+              disabled={deletingId === showDeleteConfirm} className="gap-2">
               {deletingId === showDeleteConfirm ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
             </Button>
           </DialogFooter>

@@ -9,33 +9,40 @@ export const driverStatusOptions: { value: OnlineStatus; label: string; color: s
     { value: 'offline', label: 'Offline', color: 'bg-gray-500', description: 'Not working' },
 ];
 
-export const trailerTypeOptions: { value: TrailerType; label: string; description: string; capacity: string; category: string; emoji: string }[] = [
-    { value: 'open_3car_wedge', label: 'Open 3-Car Wedge', description: 'Standard open auto hauler with wedge design', capacity: '3 vehicles', category: 'open', emoji: '🚛' },
-    { value: 'open_2car', label: 'Open 2-Car', description: 'Compact open trailer for 2 vehicles', capacity: '2 vehicles', category: 'open', emoji: '🚚' },
-    { value: '5car_open', label: '5-Car Open', description: 'Mid-size open auto hauler', capacity: '5 vehicles', category: 'open', emoji: '🚛' },
-    { value: 'enclosed_2car', label: 'Enclosed 2-Car', description: 'Fully enclosed protection for premium vehicles', capacity: '2 vehicles', category: 'enclosed', emoji: '📦' },
-    { value: 'enclosed_3car', label: 'Enclosed 3-Car', description: 'Larger enclosed for high-value transport', capacity: '3 vehicles', category: 'enclosed', emoji: '📦' },
-    { value: 'flatbed', label: 'Flatbed', description: 'Open flat platform for heavy or oversized loads', capacity: '1-2 vehicles', category: 'flatbed', emoji: '🔲' },
-    { value: 'dually_flatbed', label: 'Dually Flatbed', description: 'Dually truck with flatbed configuration', capacity: '1-2 vehicles', category: 'flatbed', emoji: '🔲' },
-    { value: 'hotshot', label: 'Hotshot', description: 'Pickup truck with gooseneck for quick hauls', capacity: '1-3 vehicles', category: 'specialty', emoji: '⚡' },
-    { value: 'gooseneck', label: 'Gooseneck', description: 'Gooseneck hitch auto trailer', capacity: '2-4 vehicles', category: 'specialty', emoji: '🔗' },
-    { value: 'lowboy', label: 'Lowboy', description: 'Ultra-low profile for tall/heavy machinery', capacity: '1-2 vehicles', category: 'heavy', emoji: '⬇️' },
-    { value: 'step_deck', label: 'Step Deck', description: 'Two-level for height clearance flexibility', capacity: '1-3 vehicles', category: 'heavy', emoji: '📐' },
-    { value: 'rgn', label: 'RGN (Removable Gooseneck)', description: 'Detachable gooseneck for heavy/oversized loads', capacity: '1 vehicle', category: 'heavy', emoji: '🏗️' },
-    { value: 'double_drop', label: 'Double Drop', description: 'Extended low-deck for tall, heavy cargo', capacity: '1-2 vehicles', category: 'heavy', emoji: '⬇️' },
-    { value: '9car_stinger', label: '9-Car Stinger', description: 'Full-size commercial 9-car auto hauler', capacity: '9 vehicles', category: 'multi', emoji: '🏢' },
-    { value: '7car_stinger', label: '7-Car Stinger', description: 'Commercial 7-car hauler', capacity: '7 vehicles', category: 'multi', emoji: '🏢' },
-    { value: 'power_only', label: 'Power Only', description: 'Cab only — pull customer-provided trailer', capacity: 'Varies', category: 'specialty', emoji: '🔌' },
-    { value: 'other', label: 'Other', description: 'Custom or unlisted trailer configuration', capacity: 'Varies', category: 'specialty', emoji: '🔧' },
+export const hitchTypeOptions: { value: string; label: string; description: string }[] = [
+    { value: 'fifth_wheel', label: 'Fifth Wheel', description: 'Heavy-duty kingpin coupling for semi-trailers' },
+    { value: 'gooseneck', label: 'Gooseneck', description: 'Ball hitch mounted in truck bed' },
+    { value: 'bumper_pull', label: 'Bumper Pull', description: 'Standard ball hitch at rear bumper' },
+    { value: 'pintle', label: 'Pintle Hook', description: 'Heavy-duty hook and lunette ring' },
+];
+
+export const trailerTypeOptions: { value: TrailerType; label: string; description: string; capacity: string; category: string }[] = [
+    { value: 'open_3car_wedge', label: 'Open 3-Car Wedge', description: 'Standard open auto hauler with wedge design', capacity: '3 vehicles', category: 'open' },
+    { value: 'open_2car', label: 'Open 2-Car', description: 'Compact open trailer for 2 vehicles', capacity: '2 vehicles', category: 'open' },
+    { value: '5car_open', label: '5-Car Open', description: 'Mid-size open auto hauler', capacity: '5 vehicles', category: 'open' },
+    { value: 'enclosed_2car', label: 'Enclosed 2-Car', description: 'Fully enclosed protection for premium vehicles', capacity: '2 vehicles', category: 'enclosed' },
+    { value: 'enclosed_3car', label: 'Enclosed 3-Car', description: 'Larger enclosed for high-value transport', capacity: '3 vehicles', category: 'enclosed' },
+    { value: 'flatbed', label: 'Flatbed', description: 'Open flat platform for heavy or oversized loads', capacity: '1-2 vehicles', category: 'flatbed' },
+    { value: 'dually_flatbed', label: 'Dually Flatbed', description: 'Dually truck with flatbed configuration', capacity: '1-2 vehicles', category: 'flatbed' },
+    { value: 'hotshot', label: 'Hotshot', description: 'Pickup truck with gooseneck for quick hauls', capacity: '1-3 vehicles', category: 'specialty' },
+    { value: 'gooseneck', label: 'Gooseneck', description: 'Gooseneck hitch auto trailer', capacity: '2-4 vehicles', category: 'specialty' },
+    { value: 'lowboy', label: 'Lowboy', description: 'Ultra-low profile for tall/heavy machinery', capacity: '1-2 vehicles', category: 'heavy' },
+    { value: 'step_deck', label: 'Step Deck', description: 'Two-level for height clearance flexibility', capacity: '1-3 vehicles', category: 'heavy' },
+    { value: 'rgn', label: 'RGN (Removable Gooseneck)', description: 'Detachable gooseneck for heavy/oversized loads', capacity: '1 vehicle', category: 'heavy' },
+    { value: 'double_drop', label: 'Double Drop', description: 'Extended low-deck for tall, heavy cargo', capacity: '1-2 vehicles', category: 'heavy' },
+    { value: '9car_stinger', label: '9-Car Stinger', description: 'Full-size commercial 9-car auto hauler', capacity: '9 vehicles', category: 'multi' },
+    { value: '7car_stinger', label: '7-Car Stinger', description: 'Commercial 7-car hauler', capacity: '7 vehicles', category: 'multi' },
+    { value: 'power_only', label: 'Power Only', description: 'Cab only — pull customer-provided trailer', capacity: 'Varies', category: 'specialty' },
+    { value: 'other', label: 'Other', description: 'Custom or unlisted trailer configuration', capacity: 'Varies', category: 'specialty' },
 ];
 
 export const TRAILER_CATEGORIES = [
-    { id: 'open', label: 'Open Trailers', color: 'emerald', gradient: 'from-emerald-500/10 to-teal-500/10', border: 'border-emerald-500', icon: '🟢' },
-    { id: 'enclosed', label: 'Enclosed Trailers', color: 'blue', gradient: 'from-blue-500/10 to-indigo-500/10', border: 'border-blue-500', icon: '🔵' },
-    { id: 'flatbed', label: 'Flatbed', color: 'amber', gradient: 'from-amber-500/10 to-orange-500/10', border: 'border-amber-500', icon: '🟡' },
-    { id: 'heavy', label: 'Heavy Duty', color: 'red', gradient: 'from-red-500/10 to-rose-500/10', border: 'border-red-500', icon: '🔴' },
-    { id: 'multi', label: 'Multi-Car Haulers', color: 'purple', gradient: 'from-purple-500/10 to-violet-500/10', border: 'border-purple-500', icon: '🟣' },
-    { id: 'specialty', label: 'Specialty', color: 'cyan', gradient: 'from-cyan-500/10 to-sky-500/10', border: 'border-cyan-500', icon: '🔷' },
+    { id: 'open', label: 'Open', color: 'emerald' },
+    { id: 'enclosed', label: 'Enclosed', color: 'blue' },
+    { id: 'flatbed', label: 'Flatbed', color: 'amber' },
+    { id: 'heavy', label: 'Heavy Duty', color: 'red' },
+    { id: 'multi', label: 'Multi-Car', color: 'purple' },
+    { id: 'specialty', label: 'Specialty', color: 'cyan' },
 ];
 
 export const operationalStatusOptions: { value: OperationalStatus; label: string; color: string; description: string }[] = [
@@ -71,28 +78,28 @@ export const REQUIRED_DOCUMENTS: { type: ComplianceDocumentType; label: string; 
 ];
 
 export const specialFeatureOptions = [
-    { value: 'lift_gate', label: 'Lift Gate', icon: '⬆️' },
-    { value: 'winch', label: 'Winch', icon: '🔄' },
-    { value: 'enclosed', label: 'Enclosed', icon: '📦' },
-    { value: 'air_ride', label: 'Air Ride Suspension', icon: '💨' },
-    { value: 'gps_tracking', label: 'GPS Tracking', icon: '📡' },
-    { value: 'eld_equipped', label: 'ELD Equipped', icon: '📟' },
-    { value: 'hazmat_certified', label: 'HAZMAT Certified', icon: '☢️' },
-    { value: 'oversized_capable', label: 'Oversized Capable', icon: '📏' },
-    { value: 'inoperable_vehicle_capable', label: 'Inoperable Vehicle Capable', icon: '🔧' },
-    { value: 'tarping', label: 'Tarping Available', icon: '🏕️' },
-    { value: 'chains_straps', label: 'Chains & Straps', icon: '⛓️' },
-    { value: 'wheel_nets', label: 'Wheel Nets', icon: '🕸️' },
-    { value: 'ramps', label: 'Loading Ramps', icon: '📐' },
-    { value: 'dolly', label: 'Dolly / Go-Jack', icon: '🛞' },
+    { value: 'lift_gate', label: 'Lift Gate' },
+    { value: 'winch', label: 'Winch' },
+    { value: 'enclosed', label: 'Enclosed' },
+    { value: 'air_ride', label: 'Air Ride Suspension' },
+    { value: 'gps_tracking', label: 'GPS Tracking' },
+    { value: 'eld_equipped', label: 'ELD Equipped' },
+    { value: 'hazmat_certified', label: 'HAZMAT Certified' },
+    { value: 'oversized_capable', label: 'Oversized Capable' },
+    { value: 'inoperable_vehicle_capable', label: 'Inoperable Vehicle Capable' },
+    { value: 'tarping', label: 'Tarping Available' },
+    { value: 'chains_straps', label: 'Chains & Straps' },
+    { value: 'wheel_nets', label: 'Wheel Nets' },
+    { value: 'ramps', label: 'Loading Ramps' },
+    { value: 'dolly', label: 'Dolly / Go-Jack' },
 ];
 
 export const US_STATES = [
-    'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
-    'HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
-    'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
-    'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
-    'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC',
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC',
 ];
 
 export const AVAILABLE_DAYS = [
