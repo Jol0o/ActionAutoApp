@@ -275,14 +275,17 @@ export default function DriverDashboardPage() {
     }
   };
 
+  const buildPayload = (load: Shipment) =>
+    (load as any).__docType === "load" ? { loadId: load._id } : { shipmentId: load._id };
+
   const acceptLoad = React.useCallback(
-    async (shipmentId: string) => {
-      setAccepting(shipmentId);
+    async (load: Shipment) => {
+      setAccepting(load._id);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/accept-load",
-          { shipmentId },
+          buildPayload(load),
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load accepted");
@@ -299,13 +302,13 @@ export default function DriverDashboardPage() {
   );
 
   const dropLoad = React.useCallback(
-    async (shipmentId: string) => {
-      setDropping(shipmentId);
+    async (load: Shipment) => {
+      setDropping(load._id);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/drop-load",
-          { shipmentId },
+          buildPayload(load),
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load dropped successfully");
@@ -322,13 +325,13 @@ export default function DriverDashboardPage() {
   );
 
   const startRoute = React.useCallback(
-    async (shipmentId: string) => {
-      setStartingRoute(shipmentId);
+    async (load: Shipment) => {
+      setStartingRoute(load._id);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/start-route",
-          { shipmentId },
+          buildPayload(load),
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Route started — status updated to In-Route");
@@ -626,7 +629,7 @@ export default function DriverDashboardPage() {
                       size="sm"
                       className="w-full h-9 text-xs font-bold shadow-sm"
                       disabled={accepting === currentLoad._id}
-                      onClick={() => acceptLoad(currentLoad._id)}
+                      onClick={() => acceptLoad(currentLoad)}
                     >
                       {accepting === currentLoad._id ? (
                         <><Loader2 className="size-3.5 mr-2 animate-spin" />Accepting...</>
@@ -640,7 +643,7 @@ export default function DriverDashboardPage() {
                       size="sm"
                       className="w-full h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm"
                       disabled={startingRoute === currentLoad._id}
-                      onClick={() => startRoute(currentLoad._id)}
+                      onClick={() => startRoute(currentLoad)}
                     >
                       {startingRoute === currentLoad._id ? (
                         <><Loader2 className="size-3.5 mr-2 animate-spin" />Starting...</>
@@ -663,7 +666,7 @@ export default function DriverDashboardPage() {
                     variant="outline"
                     className="w-full h-8 text-xs font-semibold text-destructive border-destructive/20 hover:bg-destructive/10"
                     disabled={dropping === currentLoad._id}
-                    onClick={() => dropLoad(currentLoad._id)}
+                    onClick={() => dropLoad(currentLoad)}
                   >
                     {dropping === currentLoad._id ? (
                       <><Loader2 className="size-3.5 mr-2 animate-spin" />Dropping...</>
@@ -749,7 +752,7 @@ export default function DriverDashboardPage() {
                           variant="outline"
                           className="h-7 px-2 text-[10px] font-semibold"
                           disabled={accepting === load._id}
-                          onClick={() => acceptLoad(load._id)}
+                          onClick={() => acceptLoad(load)}
                         >
                           {accepting === load._id ? <Loader2 className="size-3 animate-spin" /> : "Accept"}
                         </Button>
@@ -759,7 +762,7 @@ export default function DriverDashboardPage() {
                         variant="outline"
                         className="h-7 px-2 text-[10px] font-semibold text-destructive border-destructive/20 hover:bg-destructive/10"
                         disabled={dropping === load._id}
-                        onClick={() => dropLoad(load._id)}
+                        onClick={() => dropLoad(load)}
                       >
                         {dropping === load._id ? <Loader2 className="size-3 animate-spin" /> : "Drop"}
                       </Button>

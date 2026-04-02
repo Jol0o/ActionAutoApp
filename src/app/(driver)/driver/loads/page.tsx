@@ -51,7 +51,9 @@ import { toast } from "sonner";
 const statusColors: Record<string, string> = {
   "Available for Pickup": "bg-blue-500/10 text-blue-600 border-blue-200",
   Dispatched: "bg-amber-500/10 text-amber-600 border-amber-200",
+  Assigned: "bg-amber-500/10 text-amber-600 border-amber-200",
   "In-Route": "bg-emerald-500/10 text-emerald-600 border-emerald-200",
+  "In-Transit": "bg-emerald-500/10 text-emerald-600 border-emerald-200",
   Delivered: "bg-green-500/10 text-green-700 border-green-200",
   Cancelled: "bg-red-500/10 text-red-600 border-red-200",
 };
@@ -64,9 +66,10 @@ const PROGRESS_STEPS = [
 ] as const;
 
 function getStepIndex(load: Shipment): number {
-  if (load.status === "Delivered") return 3;
-  if (load.status === "In-Route") return 2;
-  if (load.driverAcceptedAt) return 1;
+  const s = load.status as string;
+  if (s === "Delivered") return 3;
+  if (s === "In-Route" || s === "In-Transit") return 2;
+  if (load.driverAcceptedAt || s === "Dispatched") return 1;
   return 0;
 }
 
@@ -121,13 +124,18 @@ export default function DriverLoadsPage() {
     fetchLoads();
   };
 
-  const handleAccept = async (shipmentId: string) => {
-    setAcceptingId(shipmentId);
+  const buildPayload = (load: Shipment) =>
+    (load as any).__docType === "load" ? { loadId: load._id } : { shipmentId: load._id };
+
+  const handleAccept = async (id: string) => {
+    const load = loads.find((l) => l._id === id);
+    if (!load) return;
+    setAcceptingId(id);
     try {
       const token = await getToken();
       await apiClient.post(
         "/api/driver-tracking/accept-load",
-        { shipmentId },
+        buildPayload(load),
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Load accepted — you are now dispatched");
@@ -139,13 +147,15 @@ export default function DriverLoadsPage() {
     }
   };
 
-  const handleDrop = async (shipmentId: string) => {
-    setDroppingId(shipmentId);
+  const handleDrop = async (id: string) => {
+    const load = loads.find((l) => l._id === id) || dropTarget;
+    if (!load) return;
+    setDroppingId(id);
     try {
       const token = await getToken();
       await apiClient.post(
         "/api/driver-tracking/drop-load",
-        { shipmentId },
+        buildPayload(load),
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Load dropped successfully");
@@ -158,16 +168,18 @@ export default function DriverLoadsPage() {
     }
   };
 
-  const handleStartRoute = async (shipmentId: string) => {
-    setStartingRouteId(shipmentId);
+  const handleStartRoute = async (id: string) => {
+    const load = loads.find((l) => l._id === id);
+    if (!load) return;
+    setStartingRouteId(id);
     try {
       const token = await getToken();
       await apiClient.post(
         "/api/driver-tracking/start-route",
-        { shipmentId },
+        buildPayload(load),
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success("Route started — status updated to In-Route");
+      toast.success("Route started");
       await fetchLoads();
     } catch (err: any) {
       toast.error(extractError(err, "Failed to start route"));
@@ -399,15 +411,26 @@ function LoadCard({
   onSubmitProof: () => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
-  const isDispatched = load.status === "Dispatched" || load.status === "In-Route";
+  const status = load.status as string;
+  const isLoadType = (load as any).__docType === "load";
+  const isDispatched = status === "Dispatched" || status === "In-Route" || status === "Assigned" || status === "In-Transit";
   const isActive = load.status !== "Delivered" && load.status !== "Cancelled";
   const isPending = load.myRequestStatus === "pending";
   const isRejected = load.myRequestStatus === "rejected";
 
+  // Per-type button visibility helpers
+  const needsAccept = isLoadType ? status === "Assigned" : (!load.driverAcceptedAt && status !== "Delivered" && status !== "Cancelled");
+  const canStartRoute = isLoadType ? false : (!!load.driverAcceptedAt && status === "Dispatched");
+  const isOnRoute = status === "In-Route" || status === "In-Transit";
+  const canSubmitProof = (status === "In-Route" || status === "In-Transit" || status === "Dispatched") && !load.proofOfDelivery?.imageUrl;
+  const canDrop = isLoadType
+    ? (status === "Assigned" || status === "In-Transit")
+    : (!!load.driverAcceptedAt && status !== "Delivered" && status !== "Cancelled");
+
   return (
     <Card className={`overflow-hidden border-border/50 hover:shadow-md transition-all duration-200 ${isPending ? "border-amber-300/60 bg-amber-50/20 dark:bg-amber-950/10" :
         isRejected ? "border-red-300/40 opacity-75" :
-          load.status === "In-Route" ? "border-emerald-300/50 bg-emerald-50/10 dark:bg-emerald-950/5" : ""
+          isOnRoute ? "border-emerald-300/50 bg-emerald-50/10 dark:bg-emerald-950/5" : ""
       }`}>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-4">
@@ -474,7 +497,7 @@ function LoadCard({
 
           {!isRequest && (
             <div className="flex flex-col items-end gap-2 shrink-0">
-              {!load.driverAcceptedAt && load.status !== "Delivered" && load.status !== "Cancelled" && (
+              {needsAccept && (
                 <Button size="sm" onClick={() => onAccept(load._id)} disabled={acceptingId === load._id}>
                   {acceptingId === load._id ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -484,7 +507,7 @@ function LoadCard({
                 </Button>
               )}
 
-              {load.driverAcceptedAt && load.status === "Dispatched" && (
+              {canStartRoute && (
                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => onStartRoute(load._id)} disabled={startingRouteId === load._id}>
                   {startingRouteId === load._id ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -494,13 +517,13 @@ function LoadCard({
                 </Button>
               )}
 
-              {load.status === "In-Route" && (
+              {isOnRoute && (
                 <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 gap-1 animate-pulse">
                   <Navigation2 className="size-3" />In Route
                 </Badge>
               )}
 
-              {(load.status === "In-Route" || load.status === "Dispatched") && !load.proofOfDelivery?.imageUrl && (
+              {canSubmitProof && (
                 <Button size="sm" variant="outline" onClick={onSubmitProof}>
                   <Camera className="size-4 mr-1" />Submit Proof
                 </Button>
@@ -513,7 +536,7 @@ function LoadCard({
                 </Badge>
               )}
 
-              {load.status !== "Delivered" && load.status !== "Cancelled" && load.driverAcceptedAt && (
+              {canDrop && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -552,37 +575,68 @@ function LoadCard({
 
         {expanded && isDispatched && (
           <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-3">
-            {load.preDispatchNotes && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Dispatch Notes</p>
-                <p className="text-xs">{load.preDispatchNotes}</p>
+
+            {/* ── Full addresses (revealed post-dispatch) ── */}
+            {((load as any).pickupLocation?.street || (load as any).pickupLocation?.companyName) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><MapPin className="size-3 text-emerald-500" />Pick-Up Address</p>
+                  <p className="text-xs font-medium">{(load as any).pickupLocation?.companyName || ""}</p>
+                  <p className="text-xs text-muted-foreground">{(load as any).pickupLocation?.street}</p>
+                  <p className="text-xs text-muted-foreground">{(load as any).pickupLocation?.city}, {(load as any).pickupLocation?.state} {(load as any).pickupLocation?.zip}</p>
+                  {(load as any).pickupLocation?.contactName && (
+                    <p className="text-xs flex items-center gap-1 mt-1"><User2 className="size-3" />{(load as any).pickupLocation.contactName}</p>
+                  )}
+                  {(load as any).pickupLocation?.phone && (
+                    <a href={`tel:${(load as any).pickupLocation.phone}`} className="text-xs flex items-center gap-1 text-primary hover:underline"><Phone className="size-3" />{(load as any).pickupLocation.phone}</a>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><MapPin className="size-3 text-rose-500" />Delivery Address</p>
+                  <p className="text-xs font-medium">{(load as any).deliveryLocation?.companyName || ""}</p>
+                  <p className="text-xs text-muted-foreground">{(load as any).deliveryLocation?.street}</p>
+                  <p className="text-xs text-muted-foreground">{(load as any).deliveryLocation?.city}, {(load as any).deliveryLocation?.state} {(load as any).deliveryLocation?.zip}</p>
+                  {(load as any).deliveryLocation?.contactName && (
+                    <p className="text-xs flex items-center gap-1 mt-1"><User2 className="size-3" />{(load as any).deliveryLocation.contactName}</p>
+                  )}
+                  {(load as any).deliveryLocation?.phone && (
+                    <a href={`tel:${(load as any).deliveryLocation.phone}`} className="text-xs flex items-center gap-1 text-primary hover:underline"><Phone className="size-3" />{(load as any).deliveryLocation.phone}</a>
+                  )}
+                </div>
               </div>
             )}
-            {load.specialInstructions && (
+
+            {/* ── Vehicles list (Load model) ── */}
+            {(load as any).vehicles?.length > 0 && (
               <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Special Instructions</p>
-                <p className="text-xs">{load.specialInstructions}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Vehicles ({(load as any).vehicles.length})</p>
+                <div className="space-y-1.5">
+                  {(load as any).vehicles.map((v: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2 rounded-md bg-background/60 border border-border/40 px-2.5 py-1.5 text-xs">
+                      <Truck className="size-3 text-muted-foreground shrink-0" />
+                      <span className="font-semibold">{v.year} {v.make} {v.model}</span>
+                      {v.color && <span className="text-muted-foreground">· {v.color}</span>}
+                      {v.vin && <span className="font-mono text-muted-foreground text-[10px]">VIN: {v.vin}</span>}
+                      {v.condition === "Inoperable" && (
+                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-amber-500/10 text-amber-600 border-amber-200 ml-auto">Inoperable</Badge>
+                      )}
+                      {v.carrierNotes && (
+                        <span className="text-muted-foreground italic text-[10px]">· {v.carrierNotes}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-            {load.loadSpecificTerms && (
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Load Terms</p>
-                <p className="text-xs">{load.loadSpecificTerms}</p>
-              </div>
-            )}
+
+            {/* ── Shipment-style contacts ── */}
             {(load.originContact?.contactName || load.originContact?.phone) && (
               <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Pick-Up Contact</p>
                 <div className="flex flex-wrap gap-3 text-xs">
-                  {load.originContact.contactName && (
-                    <span className="flex items-center gap-1"><User2 className="size-3" />{load.originContact.contactName}</span>
-                  )}
-                  {load.originContact.phone && (
-                    <a href={`tel:${load.originContact.phone}`} className="flex items-center gap-1 text-primary hover:underline"><Phone className="size-3" />{load.originContact.phone}</a>
-                  )}
-                  {load.originContact.email && (
-                    <a href={`mailto:${load.originContact.email}`} className="flex items-center gap-1 text-primary hover:underline"><Mail className="size-3" />{load.originContact.email}</a>
-                  )}
+                  {load.originContact.contactName && <span className="flex items-center gap-1"><User2 className="size-3" />{load.originContact.contactName}</span>}
+                  {load.originContact.phone && <a href={`tel:${load.originContact.phone}`} className="flex items-center gap-1 text-primary hover:underline"><Phone className="size-3" />{load.originContact.phone}</a>}
+                  {load.originContact.email && <a href={`mailto:${load.originContact.email}`} className="flex items-center gap-1 text-primary hover:underline"><Mail className="size-3" />{load.originContact.email}</a>}
                 </div>
               </div>
             )}
@@ -590,34 +644,44 @@ function LoadCard({
               <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Delivery Contact</p>
                 <div className="flex flex-wrap gap-3 text-xs">
-                  {load.destinationContact.contactName && (
-                    <span className="flex items-center gap-1"><User2 className="size-3" />{load.destinationContact.contactName}</span>
-                  )}
-                  {load.destinationContact.phone && (
-                    <a href={`tel:${load.destinationContact.phone}`} className="flex items-center gap-1 text-primary hover:underline"><Phone className="size-3" />{load.destinationContact.phone}</a>
-                  )}
-                  {load.destinationContact.email && (
-                    <a href={`mailto:${load.destinationContact.email}`} className="flex items-center gap-1 text-primary hover:underline"><Mail className="size-3" />{load.destinationContact.email}</a>
-                  )}
+                  {load.destinationContact.contactName && <span className="flex items-center gap-1"><User2 className="size-3" />{load.destinationContact.contactName}</span>}
+                  {load.destinationContact.phone && <a href={`tel:${load.destinationContact.phone}`} className="flex items-center gap-1 text-primary hover:underline"><Phone className="size-3" />{load.destinationContact.phone}</a>}
+                  {load.destinationContact.email && <a href={`mailto:${load.destinationContact.email}`} className="flex items-center gap-1 text-primary hover:underline"><Mail className="size-3" />{load.destinationContact.email}</a>}
                 </div>
               </div>
             )}
-            {load.carrierPayAmount != null && load.carrierPayAmount > 0 && (
+
+            {/* ── Notes / Instructions ── */}
+            {(load.preDispatchNotes || (load as any).additionalInfo?.preDispatchNotes) && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Dispatch Notes</p>
+                <p className="text-xs">{load.preDispatchNotes || (load as any).additionalInfo?.preDispatchNotes}</p>
+              </div>
+            )}
+            {(load.specialInstructions || (load as any).additionalInfo?.specialInstructions) && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Special Instructions</p>
+                <p className="text-xs">{load.specialInstructions || (load as any).additionalInfo?.specialInstructions}</p>
+              </div>
+            )}
+
+            {/* ── Pricing ── */}
+            {(load.carrierPayAmount ?? (load as any).pricing?.carrierPayAmount) > 0 && (
               <div className="flex items-center gap-4 pt-1 border-t border-border/30">
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Carrier Pay</p>
-                  <p className="text-sm font-bold text-emerald-600">${load.carrierPayAmount.toLocaleString()}</p>
+                  <p className="text-sm font-bold text-emerald-600">${(load.carrierPayAmount ?? (load as any).pricing?.carrierPayAmount ?? 0).toLocaleString()}</p>
                 </div>
-                {load.copCodAmount != null && load.copCodAmount > 0 && (
+                {((load as any).pricing?.copCodAmount ?? load.copCodAmount) > 0 && (
                   <div>
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">COD</p>
-                    <p className="text-sm font-bold">${load.copCodAmount.toLocaleString()}</p>
+                    <p className="text-sm font-bold">${((load as any).pricing?.copCodAmount ?? load.copCodAmount ?? 0).toLocaleString()}</p>
                   </div>
                 )}
-                {load.balanceAmount != null && (
+                {((load as any).pricing?.balanceAmount ?? load.balanceAmount) != null && (
                   <div>
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Balance</p>
-                    <p className="text-sm font-bold">${load.balanceAmount.toLocaleString()}</p>
+                    <p className="text-sm font-bold">${((load as any).pricing?.balanceAmount ?? load.balanceAmount ?? 0).toLocaleString()}</p>
                   </div>
                 )}
               </div>
@@ -733,16 +797,17 @@ function SubmitProofModal({
       formData.append("proof", file);
       if (note.trim()) formData.append("note", note.trim());
 
-      await apiClient.post(
-        `/api/shipments/${shipment._id}/submit-proof`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const isLoadType = (shipment as any).__docType === "load";
+      const endpoint = isLoadType
+        ? `/api/loads/${shipment._id}/submit-proof`
+        : `/api/shipments/${shipment._id}/submit-proof`;
+
+      await apiClient.post(endpoint, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
       onSuccess();
     } catch (err: any) {
       setError(extractError(err, "Failed to submit proof. Please try again."));

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MapPin, Car, Calendar, DollarSign, Truck, AlertCircle, FileText, ScrollText } from "lucide-react"
+import { MapPin, Car, Calendar, DollarSign, Truck, AlertCircle, FileText, ScrollText, UserCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SectionCard } from "./SectionCard"
 import { LocationFields } from "./LocationFields"
@@ -10,8 +10,10 @@ import { DatesSection } from "./DatesSection"
 import { PricingSection } from "./PricingSection"
 import { AdditionalInfoSection } from "./AdditionalInfoSection"
 import { ContractSection } from "./ContractSection"
+import { DriverPickerSection } from "./DriverPickerSection"
 import { LocationBlock, LoadVehicle, LoadDates, LoadAdditionalInfo, LoadContract, MAX_VEHICLES } from "./types"
-import { createLoad } from "@/lib/api/loads"
+import { validateLoadForm } from "./validation"
+import { createLoad, assignDriverToLoad } from "@/lib/api/loads"
 
 export interface LoadFormProps {
   postType: "load-board" | "assign-carrier"
@@ -32,35 +34,6 @@ export interface LoadFormProps {
   submitLabel: string
 }
 
-function validateForm(
-  pickup: LocationBlock,
-  delivery: LocationBlock,
-  vehicles: LoadVehicle[],
-  dates: LoadDates,
-  contract: LoadContract
-): string[] {
-  const errors: string[] = []
-
-  if (!pickup.city.trim()) errors.push("Pickup city is required")
-  if (!pickup.state.trim()) errors.push("Pickup state is required")
-  if (!pickup.zip.trim()) errors.push("Pickup ZIP is required")
-
-  if (!delivery.city.trim()) errors.push("Delivery city is required")
-  if (!delivery.state.trim()) errors.push("Delivery state is required")
-  if (!delivery.zip.trim()) errors.push("Delivery ZIP is required")
-
-  const hasIncompleteVehicle = vehicles.some(
-    (v) => !v.trailerType || !v.year || !v.make || !v.model
-  )
-  if (hasIncompleteVehicle) errors.push("All vehicles must have trailer type, year, make, and model")
-
-  if (!dates.firstAvailable) errors.push("First available date is required")
-
-  if (!contract.agreedToTerms) errors.push("You must agree to the Terms & Conditions")
-  if (!contract.signatureName.trim()) errors.push("Digital signature is required")
-
-  return errors
-}
 
 export function LoadFormLayout({
   postType,
@@ -82,9 +55,12 @@ export function LoadFormLayout({
 }: LoadFormProps) {
   const [submitting, setSubmitting] = React.useState(false)
   const [errors, setErrors] = React.useState<string[]>([])
+  const [selectedDriverId, setSelectedDriverId] = React.useState<string | null>(null)
+
+  const isAssignCarrier = postType === "assign-carrier"
 
   const handleSubmit = async () => {
-    const validationErrors = validateForm(pickup, delivery, vehicles, dates, contract)
+    const validationErrors = validateLoadForm(postType, pickup, delivery, vehicles, dates, additionalInfo, contract, selectedDriverId)
     if (validationErrors.length > 0) {
       setErrors(validationErrors)
       return
@@ -93,6 +69,9 @@ export function LoadFormLayout({
     setSubmitting(true)
     try {
       const result = await createLoad({ postType, pickup, delivery, vehicles, dates, additionalInfo, contract })
+      if (isAssignCarrier && selectedDriverId) {
+        await assignDriverToLoad(result._id, selectedDriverId)
+      }
       onSuccess(result._id, result.loadNumber)
     } catch (err: unknown) {
       const msg =
@@ -134,6 +113,20 @@ export function LoadFormLayout({
           >
             <AdditionalInfoSection value={additionalInfo} onChange={setAdditionalInfo} />
           </SectionCard>
+
+          {isAssignCarrier && (
+            <SectionCard
+              icon={UserCheck}
+              title="Assign Driver"
+              description="Select an online driver to assign this load to immediately"
+              comingSoon={false}
+            >
+              <DriverPickerSection
+                selectedDriverId={selectedDriverId}
+                onSelect={setSelectedDriverId}
+              />
+            </SectionCard>
+          )}
         </div>
 
         {/* Col 2 */}

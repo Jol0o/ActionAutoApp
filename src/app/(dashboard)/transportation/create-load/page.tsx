@@ -156,7 +156,7 @@ export default function CreateLoadPage() {
               contract={acContract}               setContract={setAcContract}
               onCancel={handleBack}
               onSuccess={handleSuccess}
-              submitLabel="ASSIGN CARRIER"
+              submitLabel="ASSIGN"
             />
           </TabsContent>
         </Tabs>

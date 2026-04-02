@@ -138,3 +138,7 @@ export async function createLoad(payload: CreateLoadPayload): Promise<CreatedLoa
 export async function deleteLoad(loadId: string): Promise<void> {
   await apiClient.delete(`/api/loads/${loadId}`);
 }
+
+export async function assignDriverToLoad(loadId: string, driverId: string): Promise<void> {
+  await apiClient.post("/api/driver-tracking/assign-load", { loadId, driverId });
+}

@@ -50,6 +50,7 @@ export function ContractSection({ value, onChange }: ContractSectionProps) {
             placeholder="Type your full legal name to sign"
             value={value.signatureName}
             onChange={(e) => onChange({ ...value, signatureName: e.target.value })}
+            maxLength={50}
             className="h-9 text-sm font-medium italic"
             disabled={!value.agreedToTerms}
           />

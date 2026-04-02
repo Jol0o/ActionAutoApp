@@ -245,13 +245,23 @@ function VehicleForm({ value, onChange }: VehicleFormProps) {
       {/* Year / Make / Model */}
       <div className="grid grid-cols-3 gap-3">
         <Field label="Year" required>
-          <Input placeholder="2022" value={value.year} onChange={set("year")} maxLength={4} className="h-9 text-sm" />
+          <Input
+            placeholder="2022"
+            value={value.year}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "").slice(0, 4)
+              onChange({ ...value, year: digits })
+            }}
+            inputMode="numeric"
+            maxLength={4}
+            className="h-9 text-sm"
+          />
         </Field>
         <Field label="Make" required>
-          <Input placeholder="Toyota" value={value.make} onChange={set("make")} className="h-9 text-sm" />
+          <Input placeholder="Toyota" value={value.make} onChange={set("make")} maxLength={15} className="h-9 text-sm" />
         </Field>
         <Field label="Model" required>
-          <Input placeholder="Camry" value={value.model} onChange={set("model")} className="h-9 text-sm" />
+          <Input placeholder="Camry" value={value.model} onChange={set("model")} maxLength={15} className="h-9 text-sm" />
         </Field>
       </div>
 
@@ -259,7 +269,7 @@ function VehicleForm({ value, onChange }: VehicleFormProps) {
       <div className="grid grid-cols-2 gap-3">
         <VinPicker value={value} onChange={onChange} />
         <Field label="Color">
-          <Input placeholder="Silver" value={value.color} onChange={set("color")} className="h-9 text-sm" />
+          <Input placeholder="Silver" value={value.color} onChange={set("color")} maxLength={15} className="h-9 text-sm" />
         </Field>
       </div>
     </div>

@@ -47,13 +47,13 @@ export function LocationFields({ value, onChange }: LocationFieldsProps) {
         <Field label="Company Name" icon={Building2}>
           <Input placeholder="ABC Motors" value={value.companyName} onChange={set("companyName")} className="h-9 text-sm" />
         </Field>
-        <Field label="Contact Name" icon={User}>
-          <Input placeholder="John Smith" value={value.contactName} onChange={set("contactName")} className="h-9 text-sm" />
+        <Field label="Contact Name" required icon={User}>
+          <Input placeholder="John Smith" value={value.contactName} onChange={set("contactName")} maxLength={50} className="h-9 text-sm" />
         </Field>
       </FieldRow>
 
       <Field label="Street Address" required icon={MapPin}>
-        <Input placeholder="1234 Main St, Suite 100" value={value.street} onChange={set("street")} className="h-9 text-sm" />
+        <Input placeholder="1234 Main St, Suite 100" value={value.street} onChange={set("street")} maxLength={100} className="h-9 text-sm" />
       </Field>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -81,8 +81,19 @@ export function LocationFields({ value, onChange }: LocationFieldsProps) {
         <Field label="Country" className="col-span-1">
           <Input placeholder="US" value={value.country} onChange={set("country")} maxLength={3} className="h-9 text-sm uppercase" />
         </Field>
-        <Field label="Phone" icon={Phone} className="col-span-1">
-          <Input placeholder="(801) 555-0100" value={value.phone} onChange={set("phone")} type="tel" className="h-9 text-sm" />
+        <Field label="Phone" icon={Phone} required className="col-span-1">
+          <Input
+            placeholder="8015550100"
+            value={value.phone}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+              onChange({ ...value, phone: digits });
+            }}
+            type="tel"
+            inputMode="numeric"
+            maxLength={10}
+            className="h-9 text-sm"
+          />
         </Field>
         <Field label="Ext" icon={Hash} className="col-span-1">
           <Input placeholder="102" value={value.phoneExt} onChange={set("phoneExt")} maxLength={6} className="h-9 text-sm" />
