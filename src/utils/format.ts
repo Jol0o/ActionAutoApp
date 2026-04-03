@@ -27,3 +27,34 @@ export function formatDate(dateString: string): string {
         day: 'numeric',
     });
 }
+
+export function fmtDateUS(d?: string | null): string {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'America/Denver',
+    });
+}
+
+export function fmtDateTimeUS(d?: string | null): string {
+    if (!d) return '—';
+    return new Date(d).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'America/Denver',
+    });
+}
+
+export function fmtShortDateUS(d?: string | null): string {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'America/Denver',
+    });
+}

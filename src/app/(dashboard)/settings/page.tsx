@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { OrganizationMembersSettings } from "@/components/settings/org-members-settings"
 import { DriverRequestsSettings } from "@/components/settings/driver-requests-settings"
+import { DriverVerificationPanel } from "@/components/settings/driver-verification-panel"
 import { BulkInviteDialog } from "@/components/admin/BulkInviteDialog"
 import { Truck } from "lucide-react"
 
@@ -184,8 +185,10 @@ export default function UtilitiesPage() {
                             <CardTitle className="text-lg font-bold">Driver Management</CardTitle>
                             <CardDescription>Review and manage driver access requests.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-4 sm:p-6 min-h-[400px]">
+                        <CardContent className="p-4 sm:p-6 min-h-[400px] space-y-8">
                             <DriverRequestsSettings />
+                            <Separator />
+                            <DriverVerificationPanel />
                         </CardContent>
                     </Card>
                 </TabsContent>

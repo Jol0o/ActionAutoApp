@@ -12,9 +12,12 @@ import { QuoteResultModal } from "@/components/QuoteResultModal"
 import { TransportationSidebar } from "@/components/TransportationSidebar"
 import { ShipmentCard } from "@/components/ShipmentCard"
 import { QuoteCard } from "@/components/QuoteCard"
+import { useRouter } from "next/navigation"
 import { useTransportationData } from "@/hooks/useTransportationData"
+import { useLoadsData } from "@/hooks/useLoadsData"
 import { useAlert } from "@/components/AlertDialog"
 import { Quote } from "@/types/transportation"
+import { LoadCard } from "@/components/LoadCard"
 
 export default function TransportationPage() {
     return (
@@ -25,6 +28,7 @@ export default function TransportationPage() {
 }
 
 function TransportationPageInner() {
+    const router = useRouter()
     const searchParams = useSearchParams()
     const [activeTab, setActiveTab] = React.useState("shipments")
     const [searchQuery, setSearchQuery] = React.useState(searchParams.get("search") || "")
@@ -56,6 +60,21 @@ function TransportationPageInner() {
         handleUpdateQuote,
         handleUpdateShipment
     } = useTransportationData()
+
+    const {
+        loads,
+        pagination: loadsPagination,
+        stats: loadStats,
+        isLoading: isLoadsLoading,
+        error: loadsError,
+        fetchLoads,
+        loadMore,
+        handleDeleteLoad,
+        deletingId,
+    } = useLoadsData(
+        activeTab === "load-board" ? searchQuery : undefined,
+        activeTab === "load-board" ? selectedStatus : undefined,
+    )
 
     // Initial fetch is handled inside useTransportationData when auth is ready
 
@@ -169,6 +188,7 @@ function TransportationPageInner() {
         )
     }, [quotes, searchQuery])
 
+
     if (error && !isLoading && shipments.length === 0 && quotes.length === 0) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -244,6 +264,22 @@ function TransportationPageInner() {
                                 <span>QUOTES</span>
                             </Button>
                             <Button
+                                variant="outline"
+                                size="sm"
+                                className="hidden sm:flex gap-1 sm:gap-2 text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4 border-border"
+                                onClick={() => {
+                                    const params = new URLSearchParams()
+                                    if (searchQuery) params.set("search", searchQuery)
+                                    if (selectedStatus !== "all") params.set("status", selectedStatus)
+                                    if (activeTab !== "shipments") params.set("tab", activeTab)
+                                    const query = params.toString()
+                                    router.push(`/transportation/create-load${query ? `?${query}` : ""}`)
+                                }}
+                            >
+                                <Plus className="size-3.5 sm:size-4" />
+                                <span>CREATE LOAD</span>
+                            </Button>
+                            <Button
                                 size="sm"
                                 className="gap-1 sm:gap-2 bg-green-500 hover:bg-green-600 text-white text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4"
                                 onClick={() => setIsQuoteModalOpen(true)}
@@ -259,7 +295,11 @@ function TransportationPageInner() {
                         <div className="relative flex-1">
                             <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search by name, VIN, stock, or tracking number..."
+                                placeholder={
+                                    activeTab === "load-board"
+                                        ? "Search by load #, city, state, make, model, or VIN..."
+                                        : "Search by name, VIN, stock, or tracking number..."
+                                }
                                 className="pl-8 sm:pl-10 w-full text-sm h-8 sm:h-10 bg-background border-border text-foreground"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -314,13 +354,116 @@ function TransportationPageInner() {
                     selectedStatus={selectedStatus}
                     setSelectedStatus={setSelectedStatus}
                     stats={stats}
+                    loadStats={loadStats}
                     isSidebarOpen={isSidebarOpen}
                     setIsSidebarOpen={setIsSidebarOpen}
                 />
 
                 {/* Main Content */}
                 <div className="flex-1 p-3 sm:p-4 md:p-6 bg-background">
-                    {activeTab === "shipments" ? (
+                    {activeTab === "load-board" ? (
+                        loadsError && !isLoadsLoading && loads.length === 0 ? (
+                            <Card className="border-border">
+                                <CardContent className="p-6 sm:p-8 md:p-12 text-center">
+                                    <Truck className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
+                                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-destructive mb-2">
+                                        Failed to Load Loads
+                                    </h3>
+                                    <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 px-2 sm:px-4">
+                                        {loadsError}
+                                    </p>
+                                    <Button
+                                        className="bg-green-500 hover:bg-green-600 text-white text-xs sm:text-sm h-8 sm:h-9"
+                                        onClick={fetchLoads}
+                                    >
+                                        Retry
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : isLoadsLoading ? (
+                            <div className="space-y-3 sm:space-y-4">
+                                {[...Array(3)].map((_, i) => (
+                                    <Card key={i} className="border-border overflow-hidden">
+                                        <CardContent className="p-0">
+                                            <div className="h-1 w-full bg-muted" />
+                                            <div className="p-4 sm:p-5 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="space-y-2">
+                                                        <Skeleton className="h-4 w-32" />
+                                                        <Skeleton className="h-3 w-24" />
+                                                    </div>
+                                                    <Skeleton className="h-6 w-16 rounded-full" />
+                                                </div>
+                                                <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+                                                    <Skeleton className="h-16 rounded-lg" />
+                                                    <Skeleton className="h-4 w-8 rounded" />
+                                                    <Skeleton className="h-16 rounded-lg" />
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <Skeleton className="h-14 rounded-md" />
+                                                    <Skeleton className="h-14 rounded-md" />
+                                                    <Skeleton className="h-14 rounded-md" />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : loads.length === 0 ? (
+                            <Card className="border-border">
+                                <CardContent className="p-6 sm:p-8 md:p-12 text-center">
+                                    <Truck className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
+                                    <h3 className="text-sm sm:text-base md:text-lg font-medium text-foreground mb-2">
+                                        No Loads Found
+                                    </h3>
+                                    <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 px-2 sm:px-4">
+                                        {searchQuery
+                                            ? "No loads match your search criteria."
+                                            : "No loads have been posted yet. Create a load to get started."}
+                                    </p>
+                                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                                        <Button
+                                            className="bg-green-500 hover:bg-green-600 text-white text-xs sm:text-sm h-8 sm:h-9"
+                                            onClick={() => router.push("/transportation/create-load")}
+                                        >
+                                            Create Load
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="text-xs sm:text-sm h-8 sm:h-9"
+                                            onClick={fetchLoads}
+                                        >
+                                            Refresh
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="space-y-3 sm:space-y-4">
+                                {loads.map((load) => (
+                                    <LoadCard
+                                        key={load._id}
+                                        load={load}
+                                        onDelete={handleDeleteLoad}
+                                        isDeleting={deletingId === load._id}
+                                    />
+                                ))}
+                                {loadsPagination?.hasMore && (
+                                    <div className="flex justify-center pt-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs h-8"
+                                            onClick={loadMore}
+                                            disabled={isLoadsLoading}
+                                        >
+                                            {isLoadsLoading ? "Loading…" : `Load more (${loadsPagination.total - loads.length} remaining)`}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    ) : activeTab === "shipments" ? (
                         isLoading ? (
                             <div className="space-y-3 sm:space-y-4">
                                 {[...Array(3)].map((_, i) => (

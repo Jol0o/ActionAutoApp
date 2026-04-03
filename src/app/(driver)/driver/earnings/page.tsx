@@ -247,16 +247,15 @@ export default function DriverEarningsPage() {
                           </div>
                           <div className="text-right shrink-0 ml-4">
                             <p
-                              className={`font-bold ${
-                                p.status === "paid"
+                              className={`font-bold ${p.status === "paid"
                                   ? "text-emerald-700 dark:text-emerald-400"
                                   : "text-foreground"
-                              }`}
+                                }`}
                             >
                               {formatCurrency(p.amount)}
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {new Date(row.sortDate).toLocaleDateString()}
+                              {new Date(row.sortDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })}
                             </p>
                           </div>
                         </div>
@@ -298,8 +297,8 @@ export default function DriverEarningsPage() {
                           )}
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {l.delivered
-                              ? new Date(l.delivered).toLocaleDateString()
-                              : new Date(l.createdAt).toLocaleDateString()}
+                              ? new Date(l.delivered).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })
+                              : new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })}
                           </p>
                         </div>
                       </div>

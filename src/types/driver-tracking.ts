@@ -15,6 +15,15 @@ export interface DriverTrackingItem {
     email: string;
     avatar?: string | null;
   } | null;
+  equipment?: {
+    trailerType?: string;
+    maxVehicleCapacity?: number;
+    operationalStatus?: string;
+    truckMake?: string;
+    truckModel?: string;
+    isComplianceExpired?: boolean;
+    profileCompletionScore?: number;
+  } | null;
   shipments: {
     id: string;
     trackingNumber?: string;

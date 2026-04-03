@@ -11,6 +11,10 @@ import {
   User,
   Settings,
   ChevronRight,
+  Package,
+  Wrench,
+  FileText,
+  MapPin,
 } from "lucide-react";
 
 import {
@@ -39,12 +43,16 @@ import { useOrg } from "@/hooks/useOrg";
 const navItems = [
   { title: "Dashboard", url: "/driver", icon: LayoutDashboard },
   { title: "My Loads", url: "/driver/loads", icon: Truck },
+  { title: "Available Loads", url: "/driver/available-loads", icon: Package },
+  { title: "Equipment", url: "/driver/equipment", icon: Wrench },
   { title: "Schedule", url: "/driver/schedule", icon: Calendar },
   { title: "Earnings", url: "/driver/earnings", icon: DollarSign },
 ];
 
 const accountItems = [
   { title: "Profile", url: "/driver/profile", icon: User },
+  { title: "Documents", url: "/driver/documents", icon: FileText },
+  { title: "Logistics", url: "/driver/logistics", icon: MapPin },
   { title: "Settings", url: "/driver/settings", icon: Settings },
 ];
 
