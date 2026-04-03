@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Search, ChevronDown, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useUser, useAuthActions } from "@/providers/AuthProvider"
+import { useUser, useAuthActions, useAuth } from "@/providers/AuthProvider"
 import { NotificationBell } from "@/components/notifications"
 import { NotificationProvider } from "@/context/NotificationContext"
 
@@ -81,6 +81,9 @@ function DashboardLayoutContent({
         }
 
     }, [isLoaded, organization, isSuperAdmin, isDriver, router, isImpersonating, userRole]);
+
+    const { isSignedIn } = useAuth();
+    if (isLoaded && !isSignedIn) return null;
 
     const isCustomer = userRole === 'customer';
     const isEmployee = userRole === 'employee';

@@ -8,12 +8,16 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { NotificationBell } from "@/components/notifications";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { adminNav } from "@/components/layout/mobile-nav-config";
+import { useAuth } from "@/providers/AuthProvider";
 
 function AdminLayoutContent({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const { isLoaded, isSignedIn } = useAuth();
+    if (isLoaded && !isSignedIn) return null;
+
     return (
         <SidebarProvider>
             <AdminSidebar />

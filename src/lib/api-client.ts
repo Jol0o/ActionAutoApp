@@ -20,6 +20,7 @@ function processQueue(error: any, token: string | null = null) {
 
 class ApiClient {
     private client: AxiosInstance;
+    private onAuthFailure?: () => void;
 
     constructor() {
         this.client = axios.create({
@@ -139,6 +140,12 @@ class ApiClient {
                         processQueue(refreshError, null);
                         (window as any).__AUTH_TOKEN__ = null;
                         console.error('[apiClient] Token refresh failed. User may need to re-login.');
+                        
+                        // Trigger global logout if listener is registered
+                        if (this.onAuthFailure) {
+                            this.onAuthFailure();
+                        }
+                        
                         return Promise.reject(refreshError);
                     } finally {
                         isRefreshing = false;
@@ -273,6 +280,10 @@ class ApiClient {
 
     async completeOnboarding(role: string, config?: AxiosRequestConfig) {
         return this.post('/api/auth/complete-onboarding', { role }, config);
+    }
+
+    setOnAuthFailure(callback: () => void) {
+        this.onAuthFailure = callback;
     }
 }
 

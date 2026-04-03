@@ -73,6 +73,9 @@ function DriverLayoutContent({
     checkApproval();
   }, [isLoaded, isDriver, userRole, router, getToken]);
 
+  const { isSignedIn } = useAuth();
+  if (isLoaded && !isSignedIn) return null;
+
   // Show loading while guard is checking
   if (!guardPassed) {
     return (
