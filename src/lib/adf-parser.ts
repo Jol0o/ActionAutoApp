@@ -57,30 +57,40 @@ export const parseAdf = async (raw: string): Promise<ParsedAdfLead> => {
 
     if (!prospect) return {}
 
+    // Helper to flatten xml2js objects with { _, $ }
+    const f = (node: any): string => {
+      if (!node) return ''
+      if (typeof node === 'string') return node
+      if (node._ !== undefined) return String(node._)
+      // If it's an object but not a flattened one, we try to stringify if it's simple or just return empty
+      if (typeof node === 'object' && Object.keys(node).length === 0) return ''
+      return String(node)
+    }
+
     const v = prospect.vehicle
     const c = prospect.customer
 
     return {
       vehicle: {
-        year: v?.year,
-        make: v?.make,
-        model: v?.model,
-        trim: v?.trim,
-        style: v?.bodystyle || v?.['body-style'],
-        vin: v?.vin,
-        stock: v?.stock,
-        odometer: v?.odometer?._ || v?.odometer,
-        interest: v?.$?.interest,
-        status: v?.$?.status,
+        year: f(v?.year),
+        make: f(v?.make),
+        model: f(v?.model),
+        trim: f(v?.trim),
+        style: f(v?.bodystyle || v?.['body-style']),
+        vin: f(v?.vin),
+        stock: f(v?.stock),
+        odometer: f(v?.odometer),
+        interest: f(v?.$?.interest),
+        status: f(v?.$?.status),
       },
       customer: {
-        name: Array.isArray(c?.contact?.name) ? c.contact.name[0]?._ : (c?.contact?.name?._ || c?.contact?.name),
-        email: c?.contact?.email,
-        phone: c?.contact?.phone?._ || c?.contact?.phone,
+        name: Array.isArray(c?.contact?.name) ? f(c.contact.name[0]) : f(c?.contact?.name),
+        email: f(c?.contact?.email),
+        phone: f(c?.contact?.phone),
       },
-      comments: prospect.comments,
-      source: prospect.id?.$?.source,
-      requestDate: prospect.requestdate,
+      comments: f(prospect.comments),
+      source: f(prospect.id?.$?.source),
+      requestDate: f(prospect.requestdate),
     }
   } catch (err) {
     console.error('ADF Parsing Error:', err)
