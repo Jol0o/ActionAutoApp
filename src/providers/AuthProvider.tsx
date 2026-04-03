@@ -139,7 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // CASE 1: NOT SIGNED IN
         if (!user) {
-            if (!isPublic && path !== '/') {
+            // FORCE REDIRECT for all non-public routes, including the root path
+            if (!isPublic) {
                 router.push('/sign-in' + search);
             }
             return;
@@ -198,9 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [isLoaded, user, router]);
 
-    useEffect(() => {
-        refreshUser();
-    }, [refreshUser]);
+    // Redundant useEffect removed.
 
     // Removed redundant useEffect because setAccessToken handles this now.
 
@@ -279,6 +278,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUpState,
         setSignUpState
     }), [user, accessToken, isLoaded, getToken, signOut, refreshUser, signUpState, setSignUpState]);
+
+    useEffect(() => {
+        refreshUser();
+
+        // Register API failure listener
+        apiClient.setOnAuthFailure(() => {
+            signOut();
+        });
+    }, [refreshUser, signOut]);
 
     return (
         <AuthContext.Provider value={value}>
