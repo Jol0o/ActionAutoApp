@@ -39,17 +39,29 @@ export const isAdfBody = (raw: string): boolean => {
 }
 
 export const parseAdf = async (raw: string): Promise<ParsedAdfLead> => {
-  const decoded = raw
+  // Extract just the ADF block if it exists, to avoid interference from surrounding HTML
+  let decoded = raw
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/&#\d+;/g, ' ')
-    .replace(/<!--\?xml[^>]*-->/gi, '')
-    .replace(/<!--\?ADF[^>]*-->/gi, '')
-    .replace(/<\?xml[^>]*\?>/gi, '')
-    .replace(/<\?ADF[^>]*\?>/gi, '')
-    .replace(/<html[^>]*>|<\/html>/gi, '')
-    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
-    .replace(/<body[^>]*>|<\/body>/gi, '')
+
+  // Try to find <adf> and </adf> or <prospect> and </prospect>
+  const adfMatch = decoded.match(/<adf[\s\S]*?<\/adf>/i)
+  const prospectMatch = decoded.match(/<prospect[\s\S]*?<\/prospect>/i)
+  
+  if (adfMatch) {
+    decoded = adfMatch[0]
+  } else if (prospectMatch) {
+    decoded = prospectMatch[0]
+  } else {
+    // If no clear block is found, try to clean up the whole thing but carefully
+    decoded = decoded
+      .replace(/<!--[\s\S]*?-->/g, '') // Remove comments entirely
+      .replace(/<\?[\s\S]*?\?>/g, '')  // Remove processing instructions
+      .replace(/<html[^>]*>|<\/html>/gi, '')
+      .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+      .replace(/<body[^>]*>|<\/body>/gi, '')
+  }
 
   try {
     const result = await parseStringPromise(decoded, { explicitArray: false, ignoreAttrs: false })
