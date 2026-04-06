@@ -115,19 +115,22 @@ export default function CreateLoadPage() {
       {/* ── Tabs ──────────────────────────────────────────────────────────── */}
       <div className="px-3 sm:px-4 md:px-6 pt-4 pb-2">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-9 bg-muted border border-border">
+          <TabsList className="h-9 w-full bg-muted border border-border">
             <TabsTrigger
               value="load-board"
-              className="text-[11px] sm:text-xs data-[state=active]:bg-green-500 data-[state=active]:text-white"
+              className="flex-1 text-[11px] sm:text-xs data-[state=active]:bg-green-500 data-[state=active]:text-white"
             >
-              Post to Load Board
+              <span className="hidden xs:inline">Post to Load Board</span>
+              <span className="xs:hidden">Load Board</span>
             </TabsTrigger>
             <TabsTrigger
               value="assign-carrier"
-              className="text-[11px] sm:text-xs data-[state=active]:bg-green-500 data-[state=active]:text-white"
+              className="flex-1 text-[11px] sm:text-xs data-[state=active]:bg-green-500 data-[state=active]:text-white"
             >
-              Assign to a Carrier
+              <span className="hidden xs:inline">Assign to a Carrier</span>
+              <span className="xs:hidden">Assign Carrier</span>
             </TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="load-board" className="mt-4 outline-none">

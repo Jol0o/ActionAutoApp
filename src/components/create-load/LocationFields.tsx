@@ -77,7 +77,7 @@ export function LocationFields({ value, onChange }: LocationFieldsProps) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Field label="Country" className="col-span-1">
           <Input placeholder="US" value={value.country} onChange={set("country")} maxLength={3} className="h-9 text-sm uppercase" />
         </Field>
@@ -95,7 +95,7 @@ export function LocationFields({ value, onChange }: LocationFieldsProps) {
             className="h-9 text-sm"
           />
         </Field>
-        <Field label="Ext" icon={Hash} className="col-span-1">
+        <Field label="Ext" icon={Hash} className="col-span-2 sm:col-span-1">
           <Input placeholder="102" value={value.phoneExt} onChange={set("phoneExt")} maxLength={6} className="h-9 text-sm" />
         </Field>
       </div>
