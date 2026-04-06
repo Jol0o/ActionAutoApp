@@ -30,8 +30,8 @@ const STATE_COLORS: Record<LeoState, { primary: string; secondary: string; glow:
 export function drawLionFace(
   canvas: HTMLCanvasElement,
   state: LeoState,
-  activityAmt: number,   // 0–1: speaking/activity level (was jawAmt)
-  pulseFrac: number,     // 0–1: pulse animation fraction (was blinkFrac)
+  activityAmt: number,
+  pulseFrac: number,
   dark: boolean,
 ) {
   const ctx = canvas.getContext('2d')!
@@ -43,30 +43,34 @@ export function drawLionFace(
   const col = STATE_COLORS[state]
   const isActive = state !== 'idle' && state !== 'error'
 
-  // ── Clip to circle ────────────────────────────────────────────────────────
   ctx.save()
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.clip()
 
-  // ── Background: deep cockpit gradient ─────────────────────────────────────
+  // Background – dark vs light
   const bgG = ctx.createRadialGradient(cx, cy * 0.5, 0, cx, cy, r * 1.1)
-  bgG.addColorStop(0, '#0C1829')
-  bgG.addColorStop(0.55, '#070F1C')
-  bgG.addColorStop(1, '#030810')
+  if (dark) {
+    bgG.addColorStop(0, '#0C1829')
+    bgG.addColorStop(0.55, '#070F1C')
+    bgG.addColorStop(1, '#030810')
+  } else {
+    bgG.addColorStop(0, '#EFF6FF')
+    bgG.addColorStop(0.55, '#DBEAFE')
+    bgG.addColorStop(1, '#BFDBFE')
+  }
   ctx.fillStyle = bgG
   ctx.fillRect(0, 0, W, H)
 
-  // ── HUD grid lines ────────────────────────────────────────────────────────
+  // HUD grid lines
   ctx.save()
-  ctx.globalAlpha = 0.06
-  ctx.strokeStyle = '#4AABF0'
+  ctx.globalAlpha = dark ? 0.06 : 0.08
+  ctx.strokeStyle = dark ? '#4AABF0' : '#3B82F6'
   ctx.lineWidth = 0.4
   const gs = r * 0.22
   for (let x = cx % gs; x < W; x += gs) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
   for (let y = cy % gs; y < H; y += gs) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
-  // Perspective horizontal lines (bottom)
-  ctx.globalAlpha = 0.08
+  ctx.globalAlpha = dark ? 0.08 : 0.1
   for (let i = 0; i < 5; i++) {
     const ly = cy + r * (0.45 + i * 0.12)
     if (ly > H) break
@@ -85,19 +89,19 @@ export function drawLionFace(
   }
   ctx.restore()
 
-  // ── Ambient state glow ─────────────────────────────────────────────────────
+  // Ambient state glow
   if (isActive) {
     const glowG = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r)
     glowG.addColorStop(0, 'transparent')
     glowG.addColorStop(0.6, 'transparent')
-    glowG.addColorStop(1, col.glow.replace('0.4', '0.15'))
+    glowG.addColorStop(1, col.glow.replace('0.4', dark ? '0.15' : '0.2'))
     ctx.beginPath()
     ctx.arc(cx, cy, r, 0, Math.PI * 2)
     ctx.fillStyle = glowG
     ctx.fill()
   }
 
-  // ── Pulse rings ───────────────────────────────────────────────────────────
+  // Pulse rings
   if (isActive && pulseFrac > 0) {
     for (let ring = 0; ring < 2; ring++) {
       const ringR = r * (0.52 + ring * 0.15 + pulseFrac * 0.08)
@@ -110,18 +114,17 @@ export function drawLionFace(
     }
   }
 
-  // ── LED DRL headlight strips ───────────────────────────────────────────────
+  // LED DRL headlight strips
   const drlTopY = cy - r * 0.285
   const drlBotY = cy - r * 0.185
   const drlInner = r * 0.08
   const drlOuter = r * 0.44
-  const drlBright = isActive ? 0.9 : 0.55
+  const drlBright = isActive ? 0.9 : (dark ? 0.55 : 0.7)
 
   const drawDRL = (side: 1 | -1) => {
     const sx = cx + side * drlInner
     const ex = cx + side * drlOuter
 
-    // Primary strip
     ctx.save()
     ctx.shadowColor = col.primary
     ctx.shadowBlur = r * 0.12
@@ -142,7 +145,6 @@ export function drawLionFace(
     ctx.lineCap = 'round'
     ctx.stroke()
 
-    // Secondary thinner strip
     ctx.globalAlpha = 0.5
     ctx.shadowBlur = r * 0.06
     ctx.beginPath()
@@ -152,7 +154,6 @@ export function drawLionFace(
     ctx.stroke()
     ctx.restore()
 
-    // Connecting corner (L-shape)
     ctx.save()
     ctx.globalAlpha = drlBright * 0.6
     ctx.shadowColor = col.primary
@@ -167,37 +168,40 @@ export function drawLionFace(
     ctx.restore()
   }
 
-  drawDRL(1)   // right side
-  drawDRL(-1)  // left side
+  drawDRL(1)
+  drawDRL(-1)
 
-  // ── Central emblem ────────────────────────────────────────────────────────
+  // Central emblem
   const embR = r * 0.28
   const embY = cy + r * 0.06
 
-  // Emblem outer ring shadow/glow
   ctx.save()
   if (isActive) {
     ctx.shadowColor = col.primary
     ctx.shadowBlur = r * 0.18 * pulseFrac
   }
 
-  // Emblem plate
   const embG = ctx.createRadialGradient(cx, embY - embR * 0.2, 0, cx, embY, embR)
-  embG.addColorStop(0, '#1A2E4A')
-  embG.addColorStop(0.6, '#101D30')
-  embG.addColorStop(1, '#080F1E')
+  if (dark) {
+    embG.addColorStop(0, '#1A2E4A')
+    embG.addColorStop(0.6, '#101D30')
+    embG.addColorStop(1, '#080F1E')
+  } else {
+    embG.addColorStop(0, '#EFF6FF')
+    embG.addColorStop(0.6, '#DBEAFE')
+    embG.addColorStop(1, '#BFDBFE')
+  }
   ctx.beginPath()
   ctx.arc(cx, embY, embR, 0, Math.PI * 2)
   ctx.fillStyle = embG
   ctx.fill()
 
-  // Emblem border ring (metallic gradient)
   const borderG = ctx.createLinearGradient(cx - embR, embY - embR, cx + embR, embY + embR)
-  borderG.addColorStop(0, 'rgba(160,200,240,0.7)')
+  borderG.addColorStop(0, dark ? 'rgba(160,200,240,0.7)' : 'rgba(59,130,246,0.8)')
   borderG.addColorStop(0.25, col.primary)
-  borderG.addColorStop(0.5, 'rgba(80,130,190,0.5)')
+  borderG.addColorStop(0.5, dark ? 'rgba(80,130,190,0.5)' : 'rgba(37,99,235,0.6)')
   borderG.addColorStop(0.75, col.secondary)
-  borderG.addColorStop(1, 'rgba(160,200,240,0.6)')
+  borderG.addColorStop(1, dark ? 'rgba(160,200,240,0.6)' : 'rgba(59,130,246,0.7)')
   ctx.beginPath()
   ctx.arc(cx, embY, embR, 0, Math.PI * 2)
   ctx.strokeStyle = borderG
@@ -205,7 +209,6 @@ export function drawLionFace(
   ctx.stroke()
   ctx.restore()
 
-  // Activity/speedometer arc (speaking activity meter)
   if (activityAmt > 0.02) {
     ctx.save()
     ctx.shadowColor = col.primary
@@ -224,26 +227,29 @@ export function drawLionFace(
     ctx.restore()
   }
 
-  // "A" monogram / Autrix emblem
   ctx.save()
   const fontSize = embR * 0.82
   ctx.font = `700 ${fontSize}px "Rajdhani", "DM Sans", sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  // Glow effect
   if (isActive) {
     ctx.shadowColor = col.primary
     ctx.shadowBlur = r * 0.12
   }
   const textG = ctx.createLinearGradient(cx, embY - embR * 0.4, cx, embY + embR * 0.4)
-  textG.addColorStop(0, 'rgba(200,225,255,0.95)')
-  textG.addColorStop(0.4, col.primary)
-  textG.addColorStop(1, col.secondary)
+  if (dark) {
+    textG.addColorStop(0, 'rgba(200,225,255,0.95)')
+    textG.addColorStop(0.4, col.primary)
+    textG.addColorStop(1, col.secondary)
+  } else {
+    textG.addColorStop(0, col.primary)
+    textG.addColorStop(0.4, col.secondary)
+    textG.addColorStop(1, '#1D4ED8')
+  }
   ctx.fillStyle = textG
   ctx.fillText('A', cx, embY + fontSize * 0.03)
   ctx.restore()
 
-  // Small dot above "A" (accent mark)
   ctx.save()
   ctx.globalAlpha = isActive ? 0.9 : 0.5
   ctx.shadowColor = col.primary
@@ -254,11 +260,11 @@ export function drawLionFace(
   ctx.fill()
   ctx.restore()
 
-  // ── Car silhouette (bottom) ────────────────────────────────────────────────
+  // Car silhouette
   const carY = cy + r * 0.72
   const cW = r * 0.62
   ctx.save()
-  ctx.globalAlpha = isActive ? 0.22 : 0.12
+  ctx.globalAlpha = isActive ? 0.22 : (dark ? 0.12 : 0.18)
   const carG = ctx.createLinearGradient(cx - cW, carY, cx + cW, carY)
   carG.addColorStop(0, 'transparent')
   carG.addColorStop(0.2, col.primary)
@@ -266,7 +272,6 @@ export function drawLionFace(
   carG.addColorStop(1, 'transparent')
   ctx.fillStyle = carG
 
-  // Sports car profile
   ctx.beginPath()
   ctx.moveTo(cx - cW * 0.52, carY)
   ctx.lineTo(cx - cW * 0.42, carY - r * 0.055)
@@ -278,7 +283,7 @@ export function drawLionFace(
   ctx.fill()
   ctx.restore()
 
-  // ── Motion lines ──────────────────────────────────────────────────────────
+  // Motion lines
   ctx.save()
   for (let i = 0; i < 3; i++) {
     const ly = carY + r * (0.04 + i * 0.055)
@@ -301,13 +306,21 @@ export function drawLionFace(
 
   ctx.restore() // end clip
 
-  // ── Outer metallic ring ───────────────────────────────────────────────────
+  // Outer metallic ring
   const outerG = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r)
-  outerG.addColorStop(0, 'rgba(160,200,240,0.5)')
-  outerG.addColorStop(0.2, `${col.primary}55`)
-  outerG.addColorStop(0.5, 'rgba(60,100,160,0.2)')
-  outerG.addColorStop(0.8, `${col.secondary}44`)
-  outerG.addColorStop(1, 'rgba(160,200,240,0.45)')
+  if (dark) {
+    outerG.addColorStop(0, 'rgba(160,200,240,0.5)')
+    outerG.addColorStop(0.2, `${col.primary}55`)
+    outerG.addColorStop(0.5, 'rgba(60,100,160,0.2)')
+    outerG.addColorStop(0.8, `${col.secondary}44`)
+    outerG.addColorStop(1, 'rgba(160,200,240,0.45)')
+  } else {
+    outerG.addColorStop(0, 'rgba(59,130,246,0.6)')
+    outerG.addColorStop(0.2, `${col.primary}88`)
+    outerG.addColorStop(0.5, 'rgba(37,99,235,0.4)')
+    outerG.addColorStop(0.8, `${col.secondary}66`)
+    outerG.addColorStop(1, 'rgba(59,130,246,0.55)')
+  }
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.strokeStyle = outerG
@@ -333,24 +346,38 @@ export function SupraLeoAvatar({
   const activityRef = useRef(0)
   const rafRef = useRef<number>(0)
   const tRef = useRef(0)
+  const darkRef = useRef(
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : true
+  )
 
   const render = useCallback(() => {
     if (!canvasRef.current) return
-    const dark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    drawLionFace(canvasRef.current, state, activityRef.current, pulseRef.current, dark)
+    drawLionFace(canvasRef.current, state, activityRef.current, pulseRef.current, darkRef.current)
   }, [state])
+
+  // Listen for system colour scheme changes and re-render
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => {
+      darkRef.current = e.matches
+      render()
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [render])
 
   useEffect(() => {
     if (!animate) { render(); return }
     const loop = () => {
       tRef.current += 0.016
 
-      // Pulse wave
       pulseRef.current += pulseDirRef.current * 0.025
       if (pulseRef.current >= 1) { pulseRef.current = 1; pulseDirRef.current = -1 }
       if (pulseRef.current <= 0) { pulseRef.current = 0; pulseDirRef.current = 1 }
 
-      // Activity level (speaking animation)
       activityRef.current = state === 'speaking'
         ? (Math.sin(tRef.current * 9) * 0.4 + 0.6) * 0.85
         : state === 'thinking' || state === 'reading'

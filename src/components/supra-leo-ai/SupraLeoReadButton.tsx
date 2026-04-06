@@ -17,9 +17,25 @@ interface Props {
   className?: string
 }
 
+function usePrefersDark() {
+  const [dark, setDark] = React.useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : true
+  )
+  React.useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const h = (e: MediaQueryListEvent) => setDark(e.matches)
+    mq.addEventListener('change', h)
+    return () => mq.removeEventListener('change', h)
+  }, [])
+  return dark
+}
+
 export function SupraLeoReadButton({ lead, leadId, size = 'sm', className = '' }: Props) {
   const [active, setActive] = React.useState(false)
   const [hovered, setHovered] = React.useState(false)
+  const dark = usePrefersDark()
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -46,6 +62,28 @@ export function SupraLeoReadButton({ lead, leadId, size = 'sm', className = '' }
   const iconSz = size === 'sm' ? 13 : 16
   const isOn = active || hovered
 
+  // Color tokens that adapt to light/dark
+  const accentBase  = dark ? 'rgba(59,130,246,' : 'rgba(37,99,235,'
+  const accentSolid = dark ? '#60A5FA' : '#2563EB'
+  const borderColor = active
+    ? `${accentBase}0.6)`
+    : isOn
+      ? `${accentBase}0.4)`
+      : `${accentBase}0.18)`
+  const bgColor = active
+    ? `${accentBase}0.16)`
+    : isOn
+      ? `${accentBase}0.08)`
+      : `${accentBase}0.04)`
+  const strokeMain = active
+    ? `${accentBase}0.9)`
+    : isOn
+      ? `${accentBase}0.75)`
+      : `${accentBase}0.55)`
+  const strokeFaint = active
+    ? `${accentBase}0.6)`
+    : `${accentBase}0.35)`
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -61,82 +99,45 @@ export function SupraLeoReadButton({ lead, leadId, size = 'sm', className = '' }
             justifyContent: 'center',
             width: dim,
             height: dim,
-            border: `1px solid ${active ? 'rgba(59,130,246,0.6)' : isOn ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.18)'}`,
+            border: `1px solid ${borderColor}`,
             borderRadius: 6,
-            background: active ? 'rgba(59,130,246,0.16)' : isOn ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.04)',
+            background: bgColor,
             cursor: 'pointer',
             padding: 0,
             transition: 'background 0.15s, border-color 0.15s, transform 0.10s, box-shadow 0.15s',
             transform: active ? 'scale(0.91)' : 'scale(1)',
-            boxShadow: active ? '0 0 8px rgba(59,130,246,0.3)' : isOn ? '0 0 4px rgba(59,130,246,0.12)' : 'none',
+            boxShadow: active
+              ? `0 0 8px ${accentBase}0.3)`
+              : isOn
+                ? `0 0 4px ${accentBase}0.12)`
+                : 'none',
             flexShrink: 0,
           }}
         >
-          {/* Automotive AI icon - stylized car front with headlights */}
           <svg width={iconSz} height={iconSz} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Outer circle - emblem ring */}
-            <circle
-              cx="8" cy="7.5" r="5.2"
-              stroke={active ? 'rgba(96,165,250,0.9)' : isOn ? 'rgba(59,130,246,0.75)' : 'rgba(59,130,246,0.55)'}
-              strokeWidth="0.8"
-            />
-
-            {/* Left DRL headlight strip */}
-            <line
-              x1="2.8" y1="6.2" x2="6.0" y2="6.2"
-              stroke={active ? '#60A5FA' : isOn ? 'rgba(59,130,246,0.85)' : 'rgba(59,130,246,0.55)'}
-              strokeWidth="1.1"
-              strokeLinecap="round"
-            />
-            <line
-              x1="3.2" y1="7.1" x2="5.5" y2="7.1"
-              stroke={active ? 'rgba(96,165,250,0.6)' : 'rgba(59,130,246,0.35)'}
-              strokeWidth="0.65"
-              strokeLinecap="round"
-            />
-
-            {/* Right DRL headlight strip */}
-            <line
-              x1="10.0" y1="6.2" x2="13.2" y2="6.2"
-              stroke={active ? '#60A5FA' : isOn ? 'rgba(59,130,246,0.85)' : 'rgba(59,130,246,0.55)'}
-              strokeWidth="1.1"
-              strokeLinecap="round"
-            />
-            <line
-              x1="10.5" y1="7.1" x2="12.8" y2="7.1"
-              stroke={active ? 'rgba(96,165,250,0.6)' : 'rgba(59,130,246,0.35)'}
-              strokeWidth="0.65"
-              strokeLinecap="round"
-            />
-
-            {/* Central "A" emblem */}
-            <text
-              x="8"
-              y="9.2"
-              textAnchor="middle"
-              fontSize="5.5"
-              fontWeight="700"
+            <circle cx="8" cy="7.5" r="5.2"
+              stroke={strokeMain}
+              strokeWidth="0.8" />
+            <line x1="2.8" y1="6.2" x2="6.0" y2="6.2"
+              stroke={active ? accentSolid : strokeMain}
+              strokeWidth="1.1" strokeLinecap="round" />
+            <line x1="3.2" y1="7.1" x2="5.5" y2="7.1"
+              stroke={strokeFaint}
+              strokeWidth="0.65" strokeLinecap="round" />
+            <line x1="10.0" y1="6.2" x2="13.2" y2="6.2"
+              stroke={active ? accentSolid : strokeMain}
+              strokeWidth="1.1" strokeLinecap="round" />
+            <line x1="10.5" y1="7.1" x2="12.8" y2="7.1"
+              stroke={strokeFaint}
+              strokeWidth="0.65" strokeLinecap="round" />
+            <text x="8" y="9.2" textAnchor="middle" fontSize="5.5" fontWeight="700"
               fontFamily="'Rajdhani', 'DM Sans', sans-serif"
-              fill={active ? '#60A5FA' : isOn ? 'rgba(59,130,246,0.9)' : 'rgba(59,130,246,0.65)'}
-              style={{ letterSpacing: '.05em' }}
-            >
-              A
-            </text>
-
-            {/* Car silhouette bottom */}
-            <path
-              d="M5.2 11.4 L5.8 10.6 C6.1 10.35 6.5 10.2 7 10.2 L9 10.2 C9.5 10.2 9.9 10.35 10.2 10.6 L10.8 11.4"
-              stroke={active ? 'rgba(96,165,250,0.5)' : 'rgba(59,130,246,0.28)'}
-              strokeWidth="0.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-
-            {/* Active pulse dot */}
-            {active && (
-              <circle cx="8" cy="7.5" r="1.5" fill="rgba(96,165,250,0.3)" />
-            )}
+              fill={active ? accentSolid : strokeMain}
+              style={{ letterSpacing: '.05em' }}>A</text>
+            <path d="M5.2 11.4 L5.8 10.6 C6.1 10.35 6.5 10.2 7 10.2 L9 10.2 C9.5 10.2 9.9 10.35 10.2 10.6 L10.8 11.4"
+              stroke={strokeFaint}
+              strokeWidth="0.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            {active && <circle cx="8" cy="7.5" r="1.5" fill={`${accentBase}0.3)`} />}
           </svg>
         </button>
       </TooltipTrigger>

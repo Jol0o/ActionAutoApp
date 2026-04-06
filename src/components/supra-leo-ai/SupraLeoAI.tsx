@@ -9,7 +9,6 @@ const BADGE_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@300;400&display=swap');
 
 [data-ax] {
-  /* Dark mode tokens */
   --ax-bg:       #060D1A;
   --ax-bg2:      #0A1628;
   --ax-surface:  #0F1E35;
@@ -39,17 +38,17 @@ const BADGE_CSS = `
     --ax-bg2:      #E2ECF8;
     --ax-surface:  #FFFFFF;
     --ax-surface2: #F4F8FE;
-    --ax-border:   rgba(37,99,235,0.12);
-    --ax-border2:  rgba(0,0,0,0.07);
+    --ax-border:   rgba(37,99,235,0.14);
+    --ax-border2:  rgba(0,0,0,0.08);
     --ax-accent:   #2563EB;
     --ax-accent2:  #3B82F6;
     --ax-silver:   #6B8BAE;
-    --ax-text1:    #081A30;
-    --ax-text2:    rgba(10,50,100,0.65);
-    --ax-text3:    rgba(10,50,100,0.38);
-    --ax-sh:       0 2px 12px rgba(0,0,0,0.08), 0 6px 24px rgba(37,99,235,0.06);
-    --ax-shlg:     0 4px 20px rgba(37,99,235,0.14), 0 10px 40px rgba(0,0,0,0.10);
-    --ax-glass:    rgba(255,255,255,0.90);
+    --ax-text1:    #0B1F3A;
+    --ax-text2:    rgba(10,50,100,0.70);
+    --ax-text3:    rgba(10,50,100,0.40);
+    --ax-sh:       0 2px 12px rgba(0,0,0,0.08), 0 6px 24px rgba(37,99,235,0.08);
+    --ax-shlg:     0 4px 20px rgba(37,99,235,0.18), 0 10px 40px rgba(0,0,0,0.10);
+    --ax-glass:    rgba(255,255,255,0.92);
   }
 }
 
@@ -69,6 +68,24 @@ const BADGE_CSS = `
   --ax-sh:       0 2px 12px rgba(0,0,0,0.55), 0 8px 32px rgba(0,0,0,0.40);
   --ax-shlg:     0 4px 24px rgba(59,130,246,0.15), 0 12px 48px rgba(0,0,0,0.55);
   --ax-glass:    rgba(15,30,53,0.85);
+}
+
+/* Class-based light override */
+.light [data-ax] {
+  --ax-bg:       #F0F5FB;
+  --ax-bg2:      #E2ECF8;
+  --ax-surface:  #FFFFFF;
+  --ax-surface2: #F4F8FE;
+  --ax-border:   rgba(37,99,235,0.14);
+  --ax-border2:  rgba(0,0,0,0.08);
+  --ax-accent:   #2563EB;
+  --ax-accent2:  #3B82F6;
+  --ax-text1:    #0B1F3A;
+  --ax-text2:    rgba(10,50,100,0.70);
+  --ax-text3:    rgba(10,50,100,0.40);
+  --ax-sh:       0 2px 12px rgba(0,0,0,0.08), 0 6px 24px rgba(37,99,235,0.08);
+  --ax-shlg:     0 4px 20px rgba(37,99,235,0.18), 0 10px 40px rgba(0,0,0,0.10);
+  --ax-glass:    rgba(255,255,255,0.92);
 }
 
 /* ── Keyframes ── */

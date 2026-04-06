@@ -1,5 +1,4 @@
 "use client"
-
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -43,12 +42,10 @@ import {
 } from "@/components/ui/tooltip"
 import { apiClient } from "@/lib/api-client"
 import { SupraLeoAI } from "@/components/supra-leo-ai/SupraLeoAI"
-
-// ─── NEW import ───────────────────────────────────────────────────────────────
 import { DashboardNotifications } from "@/components/crm/DashboardNotifications"
+import { AutrixWelcomeGate } from "@/components/supra-leo-ai/AutrixWelcomeSystem"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
 interface CrmUserData {
   _id: string
   fullName: string
@@ -64,31 +61,26 @@ interface CrmUserData {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function getGreeting(name: string) {
   const h = new Date().getHours()
   if (h >= 5 && h < 12) return { text: `Good Morning, ${name}`, icon: <Sun className="h-4 w-4 text-amber-400" /> }
   if (h >= 12 && h < 18) return { text: `Good Afternoon, ${name}`, icon: <Sunset className="h-4 w-4 text-orange-400" /> }
   return { text: `Good Evening, ${name}`, icon: <Moon className="h-4 w-4 text-indigo-400" /> }
 }
-
 function ini(n: string) {
   return n.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
 }
-
 function fmt(d: Date) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
 // ─── Live Clock ──────────────────────────────────────────────────────────────
-
 function LiveClock() {
   const [now, setNow] = React.useState(new Date())
   React.useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
   }, [])
-
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -112,37 +104,30 @@ function LiveClock() {
 }
 
 // ─── Shift Timer ─────────────────────────────────────────────────────────────
-
 interface ShiftTimerProps {
   startTime: string
   breakAccumulatedMs: number
   breakStartedAt: number | null
 }
-
 function ShiftTimer({ startTime, breakAccumulatedMs, breakStartedAt }: ShiftTimerProps) {
   const [, forceUpdate] = React.useReducer((x) => x + 1, 0)
-
   React.useEffect(() => {
     const id = setInterval(forceUpdate, 1000)
     return () => clearInterval(id)
   }, [])
-
   const now = Date.now()
   const totalElapsedMs = now - new Date(startTime).getTime()
   const currentBreakMs = breakAccumulatedMs + (breakStartedAt ? now - breakStartedAt : 0)
   const workedMs = Math.max(0, totalElapsedMs - currentBreakMs)
-
   const pad = (n: number) => n.toString().padStart(2, "0")
   const toHMS = (ms: number) => ({
     h: Math.floor(ms / 3600000),
     m: Math.floor((ms % 3600000) / 60000),
     s: Math.floor((ms % 60000) / 1000),
   })
-
   const worked = toHMS(workedMs)
   const breakTime = toHMS(currentBreakMs)
   const isOnBreak = breakStartedAt !== null
-
   return (
     <div className="w-full space-y-5">
       <div className="flex items-end justify-center gap-1">
@@ -160,7 +145,6 @@ function ShiftTimer({ startTime, breakAccumulatedMs, breakStartedAt }: ShiftTime
           </React.Fragment>
         ))}
       </div>
-
       {isOnBreak && (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2">
           <Coffee className="h-3.5 w-3.5 text-amber-500/70" />
@@ -170,7 +154,6 @@ function ShiftTimer({ startTime, breakAccumulatedMs, breakStartedAt }: ShiftTime
           </span>
         </div>
       )}
-
       {!isOnBreak && currentBreakMs > 0 && (
         <div className="flex items-center justify-center gap-2">
           <Coffee className="h-3 w-3 text-muted-foreground/25" />
@@ -179,7 +162,6 @@ function ShiftTimer({ startTime, breakAccumulatedMs, breakStartedAt }: ShiftTime
           </span>
         </div>
       )}
-
       {!isOnBreak && currentBreakMs === 0 && (
         <div className="flex justify-center">
           <span className="text-[10px] text-muted-foreground/30 tabular-nums">
@@ -192,7 +174,6 @@ function ShiftTimer({ startTime, breakAccumulatedMs, breakStartedAt }: ShiftTime
 }
 
 // ─── Quick Action Button ──────────────────────────────────────────────────────
-
 function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <button
@@ -208,7 +189,6 @@ function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: s
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
-
 export default function CrmDashboardPage() {
   const router = useRouter()
   const [user, setUser] = React.useState<CrmUserData | null>(null)
@@ -331,7 +311,6 @@ export default function CrmDashboardPage() {
   return (
     <TooltipProvider>
       <div className="min-h-screen w-full bg-background">
-
         {/* ── Topbar ── */}
         <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/90 backdrop-blur-xl">
           <div className="flex items-center justify-between h-14 px-6">
@@ -344,7 +323,6 @@ export default function CrmDashboardPage() {
                 <p className="text-[9px] uppercase tracking-[0.25em] text-emerald-600 mt-0.5 font-bold">Workspace</p>
               </div>
             </div>
-
             <div className="flex items-center gap-3">
               <LiveClock />
               <DropdownMenu>
@@ -394,7 +372,6 @@ export default function CrmDashboardPage() {
 
         {/* ── Page content ── */}
         <main className="max-w-screen-xl mx-auto px-6 py-8 space-y-6">
-
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               {greeting.icon}
@@ -407,7 +384,6 @@ export default function CrmDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
             {/* ─── Time Clock ─── */}
             <div className="lg:col-span-5 rounded-2xl border border-border/40 bg-card flex flex-col">
               <div className="flex items-center justify-between px-6 py-4 border-b border-border/30">
@@ -422,7 +398,6 @@ export default function CrmDashboardPage() {
                   </span>
                 </div>
               </div>
-
               <div className="flex-1 flex items-center justify-center px-8 py-10 min-h-[200px]">
                 {isActive && timeIn && (
                   <ShiftTimer
@@ -447,7 +422,6 @@ export default function CrmDashboardPage() {
                   </div>
                 )}
               </div>
-
               <div className="px-6 py-5 border-t border-border/30 space-y-4 bg-muted/[0.015]">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -463,7 +437,6 @@ export default function CrmDashboardPage() {
                     </p>
                   </div>
                 </div>
-
                 {!hasClockedIn && (
                   <Button
                     onClick={() => handleClock("time-in")}
@@ -502,7 +475,6 @@ export default function CrmDashboardPage() {
                     </Button>
                   </div>
                 )}
-
                 {clockMsg && (
                   <p className="text-xs text-center text-emerald-500/60 font-medium">{clockMsg}</p>
                 )}
@@ -511,7 +483,6 @@ export default function CrmDashboardPage() {
 
             {/* ─── Right column ─── */}
             <div className="lg:col-span-7 flex flex-col gap-6">
-
               <div className="rounded-2xl border border-border/40 bg-card p-6">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">My Profile</p>
                 <div className="flex items-center gap-4 pb-5 border-b border-border/30">
@@ -552,22 +523,20 @@ export default function CrmDashboardPage() {
                   <QuickAction icon={<Rss className="h-5 w-5 text-emerald-500" />} label="Feeds" onClick={() => router.push("/crm/feeds")} />
                 </div>
               </div>
-
             </div>
           </div>
         </main>
       </div>
 
-      {/* ── Supra Leo AI badge (unchanged) ── */}
+      {/* ── Floating overlays — all inside TooltipProvider ── */}
       <SupraLeoAI />
-
-      {/* ── Dashboard Notifications — renders after full auth ── */}
       <DashboardNotifications
         user={user}
         token={token}
         hasClockedIn={hasClockedIn}
       />
-
+      {/* ✅ Fix: isReady guards against firing before auth is fully confirmed */}
+      <AutrixWelcomeGate userName={user.fullName} isReady={!isLoading && !!user} />
     </TooltipProvider>
   )
 }
