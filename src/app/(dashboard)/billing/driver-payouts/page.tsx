@@ -174,8 +174,8 @@ export default function DriverPayoutsPage() {
           {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginBottom: 24 }}>
             {[
-              { label: "Total Paid Out", val: formatCurrency(payoutStats?.totalPaidOut ?? 0), color: "#4ade80" },
-              { label: "Pending Payouts", val: formatCurrency(payoutStats?.pendingAmount ?? 0), color: "#facc15" },
+              { label: "Total Paid Out", val: formatCurrency(payoutStats?.totalPaid ?? 0), color: "#4ade80" },
+              { label: "Pending Payouts", val: formatCurrency(payoutStats?.totalPending ?? 0), color: "#facc15" },
               { label: "Deliverable Jobs", val: String(deliverable.length), color: ORANGE },
               { label: "All Payouts", val: String(payouts.length), color: "#60a5fa" },
             ].map(({ label, val, color }) => (
