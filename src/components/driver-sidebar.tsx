@@ -52,7 +52,6 @@ const navItems = [
 const accountItems = [
   { title: "Profile", url: "/driver/profile", icon: User },
   { title: "Documents", url: "/driver/documents", icon: FileText },
-  { title: "Logistics", url: "/driver/logistics", icon: MapPin },
   { title: "Settings", url: "/driver/settings", icon: Settings },
 ];
 
