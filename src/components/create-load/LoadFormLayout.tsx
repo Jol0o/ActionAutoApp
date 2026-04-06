@@ -34,7 +34,6 @@ export interface LoadFormProps {
   submitLabel: string
 }
 
-
 export function LoadFormLayout({
   postType,
   pickup,
@@ -63,6 +62,7 @@ export function LoadFormLayout({
     const validationErrors = validateLoadForm(postType, pickup, delivery, vehicles, dates, additionalInfo, contract, selectedDriverId)
     if (validationErrors.length > 0) {
       setErrors(validationErrors)
+      window.scrollTo({ top: 0, behavior: "smooth" })
       return
     }
     setErrors([])
@@ -74,121 +74,145 @@ export function LoadFormLayout({
       }
       onSuccess(result._id, result.loadNumber)
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to create load. Please try again."
+      const msg = err instanceof Error ? err.message : "Failed to create load. Please try again."
       setErrors([msg])
+      window.scrollTo({ top: 0, behavior: "smooth" })
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <>
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Col 1 */}
-        <div className="space-y-4">
-          <SectionCard
-            icon={MapPin}
-            title="Pick-Up Location"
-            description="Origin address, city, state, ZIP, and contact info"
-            comingSoon={false}
-          >
-            <LocationFields value={pickup} onChange={setPickup} />
-          </SectionCard>
+    <div className="max-w-5xl mx-auto">
 
-          <SectionCard
-            icon={Car}
-            title="Vehicle Information"
-            description={`Add up to ${MAX_VEHICLES} vehicles — trailer type, make, model, year, VIN, condition`}
-            comingSoon={false}
-          >
-            <VehicleSection vehicles={vehicles} onChange={setVehicles} />
-          </SectionCard>
-
-          <SectionCard
-            icon={FileText}
-            title="Additional Info"
-            description="Load notes, carrier instructions, and load board visibility"
-            comingSoon={false}
-          >
-            <AdditionalInfoSection value={additionalInfo} onChange={setAdditionalInfo} />
-          </SectionCard>
-
-          {isAssignCarrier && (
-            <SectionCard
-              icon={UserCheck}
-              title="Assign Driver"
-              description="Select an online driver to assign this load to immediately"
-              comingSoon={false}
-            >
-              <DriverPickerSection
-                selectedDriverId={selectedDriverId}
-                onSelect={setSelectedDriverId}
-              />
-            </SectionCard>
-          )}
-        </div>
-
-        {/* Col 2 */}
-        <div className="space-y-4">
-          <SectionCard
-            icon={MapPin}
-            title="Delivery Location"
-            description="Destination address, city, state, ZIP, and contact info"
-            comingSoon={false}
-          >
-            <LocationFields value={delivery} onChange={setDelivery} />
-          </SectionCard>
-
-          <SectionCard
-            icon={Calendar}
-            title="Dates & Deadlines"
-            description="First available, pickup deadline, and delivery deadline"
-            comingSoon={false}
-          >
-            <DatesSection value={dates} onChange={setDates} />
-          </SectionCard>
-
-          <SectionCard
-            icon={DollarSign}
-            title="Pricing & Payment"
-            description="Auto-calculated from distance and vehicle type via SupraPay"
-            comingSoon={false}
-          >
-            <PricingSection
-              pickupZip={pickup.zip}
-              deliveryZip={delivery.zip}
-              vehicles={vehicles}
-            />
-          </SectionCard>
-
-          <SectionCard
-            icon={ScrollText}
-            title="Terms & Contract"
-            description="Review terms, agree, and sign digitally before posting"
-            comingSoon={false}
-          >
-            <ContractSection value={contract} onChange={setContract} />
-          </SectionCard>
-        </div>
-      </div>
-
+      {/* ── Validation errors ────────────────────────────────────────────── */}
       {errors.length > 0 && (
-        <div className="mt-4 rounded-md border border-destructive/50 bg-destructive/5 p-3 space-y-1">
+        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 p-3.5 space-y-1.5">
+          <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+            <AlertCircle className="size-3.5 shrink-0" />
+            Please fix the following before submitting:
+          </p>
           {errors.map((e, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs text-destructive">
-              <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
-              {e}
-            </div>
+            <p key={i} className="text-xs text-destructive pl-5">• {e}</p>
           ))}
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-2 mt-4 pb-8">
+      {/* ── Route (Pickup → Delivery) side by side on lg ─────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <SectionCard
+          step={1}
+          icon={MapPin}
+          title="Pick-Up Location"
+          description="Origin address, contact, and access details"
+          comingSoon={false}
+        >
+          <LocationFields value={pickup} onChange={setPickup} />
+        </SectionCard>
+
+        <SectionCard
+          step={2}
+          icon={MapPin}
+          title="Delivery Location"
+          description="Destination address, contact, and access details"
+          comingSoon={false}
+        >
+          <LocationFields value={delivery} onChange={setDelivery} />
+        </SectionCard>
+      </div>
+
+      {/* ── Vehicles ─────────────────────────────────────────────────────── */}
+      <div className="mb-4">
+        <SectionCard
+          step={3}
+          icon={Car}
+          title="Vehicle Information"
+          description={`Up to ${MAX_VEHICLES} vehicles — trailer type, make, model, year, VIN, condition`}
+          comingSoon={false}
+        >
+          <VehicleSection vehicles={vehicles} onChange={setVehicles} />
+        </SectionCard>
+      </div>
+
+      {/* ── Dates + Pricing side by side on lg ───────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <SectionCard
+          step={4}
+          icon={Calendar}
+          title="Dates & Deadlines"
+          description="First available, pickup deadline, delivery deadline"
+          comingSoon={false}
+        >
+          <DatesSection value={dates} onChange={setDates} />
+        </SectionCard>
+
+        <SectionCard
+          step={5}
+          icon={DollarSign}
+          title="Rate Estimate"
+          description="Auto-calculated from distance, vehicle count, and trailer type"
+          comingSoon={false}
+          badge={pickup.zip.length >= 5 && delivery.zip.length >= 5 ? "Live" : undefined}
+          badgeVariant="success"
+        >
+          <PricingSection
+            pickupZip={pickup.zip}
+            deliveryZip={delivery.zip}
+            vehicles={vehicles}
+          />
+        </SectionCard>
+      </div>
+
+      {/* ── Additional Info ───────────────────────────────────────────────── */}
+      <div className="mb-4">
+        <SectionCard
+          step={6}
+          icon={FileText}
+          title="Additional Info"
+          description="Load notes, carrier instructions, and load board visibility"
+          comingSoon={false}
+        >
+          <AdditionalInfoSection value={additionalInfo} onChange={setAdditionalInfo} />
+        </SectionCard>
+      </div>
+
+      {/* ── Driver Picker (assign-carrier only) ──────────────────────────── */}
+      {isAssignCarrier && (
+        <div className="mb-4">
+          <SectionCard
+            step={7}
+            icon={UserCheck}
+            title="Assign Driver"
+            description="Select an online driver to assign this load to immediately"
+            comingSoon={false}
+          >
+            <DriverPickerSection
+              selectedDriverId={selectedDriverId}
+              onSelect={setSelectedDriverId}
+            />
+          </SectionCard>
+        </div>
+      )}
+
+      {/* ── Contract ─────────────────────────────────────────────────────── */}
+      <div className="mb-4">
+        <SectionCard
+          step={isAssignCarrier ? 8 : 7}
+          icon={ScrollText}
+          title="Terms & Contract"
+          description="Review terms, agree, and sign digitally before posting"
+          comingSoon={false}
+        >
+          <ContractSection value={contract} onChange={setContract} />
+        </SectionCard>
+      </div>
+
+      {/* ── Submit ───────────────────────────────────────────────────────── */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pb-8">
         <Button
           variant="outline"
           size="sm"
-          className="text-xs h-9 px-4 border-border"
+          className="w-full sm:w-auto text-xs h-9 px-5 border-border"
           onClick={onCancel}
           disabled={submitting}
         >
@@ -198,7 +222,7 @@ export function LoadFormLayout({
           size="sm"
           onClick={handleSubmit}
           disabled={submitting}
-          className="gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs h-9 px-6 disabled:opacity-75"
+          className="w-full sm:w-auto gap-2 bg-green-500 hover:bg-green-600 text-white text-xs h-9 px-6 disabled:opacity-75"
         >
           {submitting ? (
             <>
@@ -213,6 +237,6 @@ export function LoadFormLayout({
           )}
         </Button>
       </div>
-    </>
+    </div>
   )
 }

@@ -258,15 +258,7 @@ function TransportationPageInner() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="hidden xs:flex gap-1 sm:gap-2 text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4 border-border"
-                                onClick={() => setActiveTab("drafts")}
-                            >
-                                <span>QUOTES</span>
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="hidden sm:flex gap-1 sm:gap-2 text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4 border-border"
+                                className="flex gap-1 sm:gap-2 text-[10px] sm:text-xs h-7 sm:h-9 px-2 sm:px-4 border-border"
                                 onClick={() => {
                                     const params = new URLSearchParams()
                                     if (searchQuery) params.set("search", searchQuery)
@@ -277,7 +269,7 @@ function TransportationPageInner() {
                                 }}
                             >
                                 <Plus className="size-3.5 sm:size-4" />
-                                <span>CREATE LOAD</span>
+                                <span className="hidden sm:inline">CREATE LOAD</span>
                             </Button>
                             <Button
                                 size="sm"
@@ -336,6 +328,29 @@ function TransportationPageInner() {
                             Refresh
                         </Button>
                     </div>
+                </div>
+            </div>
+
+            {/* ── Mobile Tab Bar (always visible on small screens) ── */}
+            <div className="lg:hidden border-b border-border bg-card px-3">
+                <div className="flex">
+                    {([
+                        { key: "shipments",  label: "SHIPS" },
+                        { key: "drafts",     label: "DRAFTS" },
+                        { key: "load-board", label: "LOADS" },
+                    ] as const).map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => setActiveTab(t.key)}
+                            className={`flex-1 py-2.5 text-[11px] font-semibold tracking-wide transition-colors border-b-2 ${
+                                activeTab === t.key
+                                    ? "border-green-500 text-green-600 dark:text-green-400"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 

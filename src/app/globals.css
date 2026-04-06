@@ -4,6 +4,12 @@
 @import "tw-animate-css";
 @import "mapbox-gl/dist/mapbox-gl.css";
 @custom-variant dark (&:is(.dark *));
+
+/* ── Custom breakpoints ──────────────────────────────── */
+@theme {
+  --breakpoint-xxs: 360px;
+  --breakpoint-xs: 475px;
+}
 @import "mapbox-gl/dist/mapbox-gl.css";
 
 
