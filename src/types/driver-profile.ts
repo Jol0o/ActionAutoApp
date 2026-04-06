@@ -114,9 +114,16 @@ export interface DriverLogistics {
   availableDays: string[];
 }
 
+export interface PopulatedUser {
+  _id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
 export interface DriverProfile {
   _id: string;
-  userId: string;
+  userId: string | PopulatedUser;
   organizationId: string;
   trailerType: TrailerType;
   maxVehicleCapacity: number;
