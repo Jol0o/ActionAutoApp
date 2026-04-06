@@ -9,12 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Loader2, Truck, Save, Hash, CheckCircle2, ArrowLeft, Plus, X,
   Gauge, Ruler, Shield, Star, Settings2, ChevronRight, Wrench, Circle,
-  Box, ChevronsUpDown, Sparkles, AlertTriangle,
+  Zap, Box, ChevronsUpDown, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,15 +42,6 @@ const INIT: EquipmentForm = {
   specialFeatures: [],
 };
 
-const REQ: { key: keyof EquipmentForm; label: string }[] = [
-  { key: 'truckMake', label: 'Truck Make' }, { key: 'truckModel', label: 'Truck Model' },
-  { key: 'truckYear', label: 'Truck Year' }, { key: 'trailerType', label: 'Trailer Type' },
-  { key: 'maxVehicleCapacity', label: 'Vehicle Capacity' }, { key: 'dotNumber', label: 'DOT Number' },
-  { key: 'mcNumber', label: 'MC Number' },
-];
-
-const isFilled = (v: any) => v !== undefined && v !== null && v !== '' && v !== 0;
-
 const TH: Record<string, { bg: string; text: string; fill: string; grad: string; ring: string; glow: string }> = {
   open: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', fill: 'fill-emerald-500', grad: 'from-emerald-600 to-teal-500', ring: 'ring-emerald-500/30', glow: 'shadow-emerald-500/20' },
   enclosed: { bg: 'bg-blue-500/10', text: 'text-blue-500', fill: 'fill-blue-500', grad: 'from-blue-600 to-indigo-500', ring: 'ring-blue-500/30', glow: 'shadow-blue-500/20' },
@@ -63,12 +53,68 @@ const TH: Record<string, { bg: string; text: string; fill: string; grad: string;
 
 const TSvg = ({ cat, className }: { cat: string; className?: string }) => {
   const c = cn('stroke-current', TH[cat]?.text || TH.open.text, className);
-  if (cat === 'enclosed') return (<svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}><path d="M8 56V32c0-3 2-5 5-5h14l6 12h2v17" strokeLinecap="round" strokeLinejoin="round" /><rect x="14" y="30" width="10" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" /><rect x="39" y="20" width="97" height="36" rx="3" /><path d="M128 20v36" opacity=".3" strokeWidth="1.5" /><circle cx="20" cy="62" r="6" strokeWidth="2.5" /><circle cx="107" cy="62" r="6" strokeWidth="2.5" /><circle cx="127" cy="62" r="6" strokeWidth="2.5" /></svg>);
-  if (cat === 'flatbed') return (<svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}><path d="M8 56V32c0-3 2-5 5-5h14l6 12h2v17" strokeLinecap="round" strokeLinejoin="round" /><rect x="14" y="30" width="10" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" /><rect x="39" y="47" width="100" height="5" rx="1.5" /><path d="M47 47V37M77 47V37M107 47V37M135 47V37" opacity=".35" strokeWidth="2" strokeLinecap="round" /><circle cx="20" cy="62" r="6" strokeWidth="2.5" /><circle cx="107" cy="62" r="6" strokeWidth="2.5" /><circle cx="127" cy="62" r="6" strokeWidth="2.5" /></svg>);
-  if (cat === 'heavy') return (<svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}><path d="M8 56V32c0-3 2-5 5-5h14l6 12h2v17" strokeLinecap="round" strokeLinejoin="round" /><rect x="14" y="30" width="10" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" /><path d="M37 52l10-16h4" strokeLinecap="round" strokeLinejoin="round" /><rect x="51" y="52" width="85" height="4" rx="1.5" /><rect x="65" y="36" width="38" height="16" rx="3" className={cn(TH.heavy.fill)} opacity=".15" /><circle cx="20" cy="62" r="6" strokeWidth="2.5" /><circle cx="107" cy="62" r="6" strokeWidth="2.5" /><circle cx="127" cy="62" r="6" strokeWidth="2.5" /></svg>);
-  if (cat === 'multi') return (<svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}><path d="M4 56V27c0-3 2-5 5-5h14l6 10h2v24" strokeLinecap="round" strokeLinejoin="round" /><rect x="10" y="25" width="10" height="6" rx="1.5" strokeWidth="1.5" opacity=".5" /><path d="M33 24h118M33 52h118" strokeLinecap="round" /><path d="M40 24v28M90 24v28M145 24v28" strokeWidth="2" strokeLinecap="round" />{[48,65,98,115].map(x=><rect key={`u${x}`} x={x} y="17" width="13" height="7" rx="2" className={cn(TH.multi.fill)} opacity=".18"/>)}{[48,65,98,115].map(x=><rect key={`l${x}`} x={x} y="45" width="13" height="7" rx="2" className={cn(TH.multi.fill)} opacity=".18"/>)}<circle cx="16" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="58" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="73" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="128" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="143" cy="62" r="5.5" strokeWidth="2.5" /></svg>);
-  if (cat === 'specialty') return (<svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}><path d="M8 56V30c0-3 2-5 5-5h18l6 8h18v23" strokeLinecap="round" strokeLinejoin="round" /><rect x="14" y="27" width="16" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" /><rect x="47" y="37" width="12" height="15" rx="1.5" /><path d="M60 50h8" strokeLinecap="round" /><rect x="68" y="42" width="68" height="10" rx="1.5" /><rect x="78" y="32" width="22" height="10" rx="3" className={cn(TH.specialty.fill)} opacity=".15" /><circle cx="18" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="48" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="98" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="128" cy="62" r="5.5" strokeWidth="2.5" /></svg>);
-  return (<svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}><path d="M8 56V32c0-3 2-5 5-5h14l6 12h2v17" strokeLinecap="round" strokeLinejoin="round" /><rect x="14" y="30" width="10" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" /><path d="M37 52h100M37 56h100" strokeLinecap="round" /><path d="M42 32h90" strokeLinecap="round" /><path d="M47 32v20M127 32v20" strokeWidth="2" strokeLinecap="round" /><path d="M132 32l14 10" strokeLinecap="round" opacity=".6" /><rect x="57" y="24" width="22" height="8" rx="3" className={cn(TH.open.fill)} opacity=".2" /><rect x="87" y="24" width="22" height="8" rx="3" className={cn(TH.open.fill)} opacity=".2" /><circle cx="20" cy="62" r="6" strokeWidth="2.5" /><circle cx="107" cy="62" r="6" strokeWidth="2.5" /><circle cx="127" cy="62" r="6" strokeWidth="2.5" /></svg>);
+  if (cat === 'enclosed') return (
+    <svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}>
+      <path d="M8 56V32c0-3 2-5 5-5h14l6 12h2v17" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="14" y="30" width="10" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" />
+      <rect x="39" y="20" width="97" height="36" rx="3" /><path d="M128 20v36" opacity=".3" strokeWidth="1.5" />
+      <circle cx="20" cy="62" r="6" strokeWidth="2.5" /><circle cx="107" cy="62" r="6" strokeWidth="2.5" /><circle cx="127" cy="62" r="6" strokeWidth="2.5" />
+    </svg>
+  );
+  if (cat === 'flatbed') return (
+    <svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}>
+      <path d="M8 56V32c0-3 2-5 5-5h14l6 12h2v17" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="14" y="30" width="10" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" />
+      <rect x="39" y="47" width="100" height="5" rx="1.5" />
+      <path d="M47 47V37M77 47V37M107 47V37M135 47V37" opacity=".35" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="20" cy="62" r="6" strokeWidth="2.5" /><circle cx="107" cy="62" r="6" strokeWidth="2.5" /><circle cx="127" cy="62" r="6" strokeWidth="2.5" />
+    </svg>
+  );
+  if (cat === 'heavy') return (
+    <svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}>
+      <path d="M8 56V32c0-3 2-5 5-5h14l6 12h2v17" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="14" y="30" width="10" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" />
+      <path d="M37 52l10-16h4" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="51" y="52" width="85" height="4" rx="1.5" />
+      <rect x="65" y="36" width="38" height="16" rx="3" className={cn(TH.heavy.fill)} opacity=".15" />
+      <circle cx="20" cy="62" r="6" strokeWidth="2.5" /><circle cx="107" cy="62" r="6" strokeWidth="2.5" /><circle cx="127" cy="62" r="6" strokeWidth="2.5" />
+    </svg>
+  );
+  if (cat === 'multi') return (
+    <svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}>
+      <path d="M4 56V27c0-3 2-5 5-5h14l6 10h2v24" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="10" y="25" width="10" height="6" rx="1.5" strokeWidth="1.5" opacity=".5" />
+      <path d="M33 24h118M33 52h118" strokeLinecap="round" />
+      <path d="M40 24v28M90 24v28M145 24v28" strokeWidth="2" strokeLinecap="round" />
+      {[48, 65, 98, 115].map(x => <rect key={`u${x}`} x={x} y="17" width="13" height="7" rx="2" className={cn(TH.multi.fill)} opacity=".18" />)}
+      {[48, 65, 98, 115].map(x => <rect key={`l${x}`} x={x} y="45" width="13" height="7" rx="2" className={cn(TH.multi.fill)} opacity=".18" />)}
+      <circle cx="16" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="58" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="73" cy="62" r="5.5" strokeWidth="2.5" />
+      <circle cx="128" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="143" cy="62" r="5.5" strokeWidth="2.5" />
+    </svg>
+  );
+  if (cat === 'specialty') return (
+    <svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}>
+      <path d="M8 56V30c0-3 2-5 5-5h18l6 8h18v23" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="14" y="27" width="16" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" />
+      <rect x="47" y="37" width="12" height="15" rx="1.5" /><path d="M60 50h8" strokeLinecap="round" />
+      <rect x="68" y="42" width="68" height="10" rx="1.5" />
+      <rect x="78" y="32" width="22" height="10" rx="3" className={cn(TH.specialty.fill)} opacity=".15" />
+      <circle cx="18" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="48" cy="62" r="5.5" strokeWidth="2.5" />
+      <circle cx="98" cy="62" r="5.5" strokeWidth="2.5" /><circle cx="128" cy="62" r="5.5" strokeWidth="2.5" />
+    </svg>
+  );
+  return (
+    <svg viewBox="0 0 160 80" fill="none" strokeWidth="2.5" className={c}>
+      <path d="M8 56V32c0-3 2-5 5-5h14l6 12h2v17" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="14" y="30" width="10" height="7" rx="1.5" strokeWidth="1.5" opacity=".5" />
+      <path d="M37 52h100M37 56h100" strokeLinecap="round" /><path d="M42 32h90" strokeLinecap="round" />
+      <path d="M47 32v20M127 32v20" strokeWidth="2" strokeLinecap="round" />
+      <path d="M132 32l14 10" strokeLinecap="round" opacity=".6" />
+      <rect x="57" y="24" width="22" height="8" rx="3" className={cn(TH.open.fill)} opacity=".2" />
+      <rect x="87" y="24" width="22" height="8" rx="3" className={cn(TH.open.fill)} opacity=".2" />
+      <circle cx="20" cy="62" r="6" strokeWidth="2.5" /><circle cx="107" cy="62" r="6" strokeWidth="2.5" /><circle cx="127" cy="62" r="6" strokeWidth="2.5" />
+    </svg>
+  );
 };
 
 type Nav = 'rig' | 'trailer' | 'specs' | 'features';
@@ -79,11 +125,28 @@ const NAVS: { id: Nav; label: string; icon: React.ElementType; color: string }[]
   { id: 'features', label: 'Features', icon: Star, color: 'from-violet-600 to-purple-500' },
 ];
 
-const Fld = ({ label, req, children }: { label: string; req?: boolean; children: React.ReactNode }) => (
+const Counter = ({
+  value, onChange, min, max, label, color, lg,
+}: {
+  value: number; onChange: (v: number) => void; min: number; max: number;
+  label: string; color: string; lg?: boolean;
+}) => (
+  <div className="flex items-center gap-5 justify-center">
+    <button type="button" onClick={() => onChange(Math.max(min, value - 1))}
+      className={cn('rounded-2xl border-2 border-border/30 flex items-center justify-center font-bold transition-all active:scale-90 hover:border-primary/40', lg ? 'size-14 text-2xl' : 'size-11 text-xl')}>−</button>
+    <div className="text-center min-w-20">
+      <motion.span key={value} initial={{ scale: 1.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className={cn('font-black tabular-nums block', color, lg ? 'text-7xl' : 'text-5xl')}>{value}</motion.span>
+      <p className="text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-widest">{label}</p>
+    </div>
+    <button type="button" onClick={() => onChange(Math.min(max, value + 1))}
+      className={cn('rounded-2xl border-2 border-border/30 flex items-center justify-center font-bold transition-all active:scale-90 hover:border-primary/40', lg ? 'size-14 text-2xl' : 'size-11 text-xl')}>+</button>
+  </div>
+);
+
+const Fld = ({ label, children, icon }: { label: string; children: React.ReactNode; icon?: React.ReactNode }) => (
   <div className="space-y-1.5">
-    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-      {label}{req && <span className="text-red-500 text-xs">*</span>}
-    </Label>
+    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">{icon}{label}</Label>
     {children}
   </div>
 );
@@ -124,11 +187,6 @@ export const EquipmentPage: React.FC = () => {
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   const handleSave = async () => {
-    const missing = REQ.filter(f => !isFilled(form[f.key]));
-    if (missing.length > 0) {
-      toast.error(`Required: ${missing.map(m => m.label).join(', ')}`);
-      return;
-    }
     setSaving(true);
     try {
       const token = await getToken();
@@ -163,20 +221,20 @@ export const EquipmentPage: React.FC = () => {
   const cat = sel?.category || 'open';
   const th = TH[cat] || TH.open;
 
-  const { reqFilled, reqTotal, pct } = useMemo(() => {
-    const rf = REQ.filter(f => isFilled(form[f.key])).length;
-    const rt = REQ.length;
-    const opts: (keyof EquipmentForm)[] = ['truckColor', 'engineType', 'gvwr', 'vin', 'plateNumber', 'trailerMake', 'trailerModel', 'trailerYear', 'hitchType', 'trailerLength', 'trailerGvwr'];
-    const of_ = opts.filter(k => isFilled(form[k])).length;
-    const feat = form.specialFeatures.length > 0 ? 1 : 0;
-    return { reqFilled: rf, reqTotal: rt, pct: Math.round(((rf + of_ + feat) / (rt + opts.length + 1)) * 100) };
+  const pct = useMemo(() => {
+    let f = 0, t = 0;
+    const c = (v: string | number | undefined | null) => { t++; if (v && String(v).trim()) f++; };
+    c(form.truckMake); c(form.truckModel); c(form.truckYear); c(form.truckColor);
+    c(form.engineType); c(form.gvwr); c(form.vin); c(form.plateNumber);
+    c(form.dotNumber); c(form.mcNumber); c(form.trailerMake); c(form.trailerModel);
+    c(form.trailerYear); c(form.hitchType); c(form.trailerLength); c(form.trailerGvwr);
+    t++; if (form.specialFeatures.length > 0) f++;
+    return t > 0 ? Math.round((f / t) * 100) : 0;
   }, [form]);
-
-  const isComplete = reqFilled === reqTotal;
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="relative"><div className="size-16 rounded-full border-4 border-primary/20 animate-pulse" /><Loader2 className="size-8 animate-spin text-primary absolute inset-0 m-auto" /></div>
+      <Loader2 className="size-10 animate-spin text-primary" />
       <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs animate-pulse">Loading Equipment</p>
     </div>
   );
@@ -203,7 +261,7 @@ export const EquipmentPage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2.5">
                     <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Equipment & Rig</h1>
-                    {sel && <Badge className={cn('text-[10px] font-black px-2.5 h-5 bg-linear-to-r text-white border-0 shadow-lg', th.grad, th.glow)}>{sel.capacity}</Badge>}
+                    <Badge className={cn('text-[10px] font-black px-2.5 h-5 bg-linear-to-r text-white border-0 shadow-lg', th.grad, th.glow)}>{sel?.capacity || '—'}</Badge>
                   </div>
                   <p className="text-sm text-white/40 mt-0.5">Configure your truck, trailer, and capabilities</p>
                 </div>
@@ -219,17 +277,9 @@ export const EquipmentPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-5">
+            <div className="mt-6">
               <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
-                <motion.div className={cn('h-full rounded-full bg-linear-to-r', isComplete ? 'from-emerald-400 to-teal-400' : 'from-amber-400 to-orange-400')} initial={false} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }} />
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                {isComplete ? (
-                  <Badge className="text-[10px] bg-emerald-500/15 text-emerald-400 border-emerald-500/20 gap-1"><CheckCircle2 className="size-3" />All Required Filled</Badge>
-                ) : (
-                  <Badge className="text-[10px] bg-amber-500/15 text-amber-400 border-amber-500/20 gap-1"><AlertTriangle className="size-3" />{reqTotal - reqFilled} required left</Badge>
-                )}
-                <span className="text-[10px] text-white/25 font-semibold">{reqFilled}/{reqTotal} required</span>
+                <motion.div className="h-full rounded-full bg-linear-to-r from-emerald-400 to-teal-400" initial={false} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }} />
               </div>
             </div>
 
@@ -238,9 +288,11 @@ export const EquipmentPage: React.FC = () => {
                 const active = nav === n.id;
                 return (
                   <button key={n.id} type="button" onClick={() => setNav(n.id)}
-                    className={cn('flex-1 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2.5 p-3 sm:p-3.5 rounded-xl transition-all border relative overflow-hidden',
-                      active ? 'bg-white/10 border-white/20 shadow-lg' : 'bg-white/3 border-white/5 hover:bg-white/6')}>
-                    {active && <motion.div layoutId="equip-nav" className={cn('absolute inset-x-0 top-0 h-0.5 bg-linear-to-r', n.color)} transition={{ type: 'spring', stiffness: 400, damping: 35 }} />}
+                    className={cn(
+                      'flex-1 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2.5 p-3 sm:p-3.5 rounded-xl transition-all border relative overflow-hidden',
+                      active ? 'bg-white/10 border-white/20 shadow-lg' : 'bg-white/3 border-white/5 hover:bg-white/6'
+                    )}>
+                    {active && <motion.div layoutId="nav-glow" className={cn('absolute inset-x-0 top-0 h-0.5 bg-linear-to-r', n.color)} transition={{ type: 'spring', stiffness: 400, damping: 35 }} />}
                     <div className={cn('size-8 rounded-lg flex items-center justify-center shrink-0', active ? 'bg-white/10' : 'bg-white/5')}>
                       <n.icon className={cn('size-4', active ? 'text-white' : 'text-white/30')} />
                     </div>
@@ -252,23 +304,6 @@ export const EquipmentPage: React.FC = () => {
           </div>
         </div>
 
-        {!isComplete && (
-          <Card className="border-amber-500/20 rounded-2xl overflow-hidden bg-amber-500/3">
-            <CardContent className="p-4 flex items-start gap-3">
-              <div className="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0"><AlertTriangle className="size-5 text-amber-500" /></div>
-              <div>
-                <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Complete required fields to access Load Board</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Fill all required fields marked with * to browse and accept loads.</p>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {REQ.filter(f => !isFilled(form[f.key])).map(f => (
-                    <Badge key={f.key} variant="outline" className="text-[10px] border-amber-500/30 text-amber-600 dark:text-amber-400">{f.label}</Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <AnimatePresence mode="wait">
           <motion.div key={nav} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
 
@@ -278,14 +313,13 @@ export const EquipmentPage: React.FC = () => {
                   <div className="h-1 w-full bg-linear-to-r from-blue-600 to-indigo-500" />
                   <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
                     <div className="size-11 rounded-xl bg-linear-to-br from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg"><Truck className="size-5" /></div>
-                    <div className="flex-1"><h3 className="text-lg font-black">Truck Details</h3><p className="text-xs text-muted-foreground">Primary vehicle information</p></div>
-                    <Badge className="text-[10px] text-red-500 bg-red-500/8 border-red-500/20">Required</Badge>
+                    <div><h3 className="text-lg font-black">Truck Details</h3><p className="text-xs text-muted-foreground">Primary vehicle information</p></div>
                   </div>
                   <CardContent className="p-5 sm:p-6 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <Fld label="Make" req><Input value={form.truckMake} onChange={e => patch({ truckMake: e.target.value })} placeholder="e.g. Peterbilt" className={inp} /></Fld>
-                      <Fld label="Model" req><Input value={form.truckModel} onChange={e => patch({ truckModel: e.target.value })} placeholder="e.g. 389" className={inp} /></Fld>
-                      <Fld label="Year" req><Input type="number" min={1990} max={2030} value={form.truckYear || ''} onChange={e => patch({ truckYear: parseInt(e.target.value) || undefined })} placeholder="2024" className={inp} /></Fld>
+                      <Fld label="Make"><Input value={form.truckMake} onChange={e => patch({ truckMake: e.target.value })} placeholder="e.g. Peterbilt" className={inp} /></Fld>
+                      <Fld label="Model"><Input value={form.truckModel} onChange={e => patch({ truckModel: e.target.value })} placeholder="e.g. 389" className={inp} /></Fld>
+                      <Fld label="Year"><Input type="number" min={1990} max={2030} value={form.truckYear || ''} onChange={e => patch({ truckYear: parseInt(e.target.value) || undefined })} placeholder="2024" className={inp} /></Fld>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <Fld label="Color"><Input value={form.truckColor} onChange={e => patch({ truckColor: e.target.value })} placeholder="e.g. White" className={inp} /></Fld>
@@ -299,17 +333,16 @@ export const EquipmentPage: React.FC = () => {
                   <div className="h-1 w-full bg-linear-to-r from-slate-600 to-zinc-500" />
                   <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
                     <div className="size-11 rounded-xl bg-linear-to-br from-slate-600 to-zinc-500 flex items-center justify-center text-white shadow-lg"><Shield className="size-5" /></div>
-                    <div className="flex-1"><h3 className="text-lg font-black">Operating Authority</h3><p className="text-xs text-muted-foreground">Identification and registration</p></div>
-                    <Badge className="text-[10px] text-red-500 bg-red-500/8 border-red-500/20">Required</Badge>
+                    <div><h3 className="text-lg font-black">Operating Authority</h3><p className="text-xs text-muted-foreground">Identification and registration</p></div>
                   </div>
                   <CardContent className="p-5 sm:p-6 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Fld label="DOT Number" req><Input value={form.dotNumber} onChange={e => patch({ dotNumber: e.target.value })} placeholder="e.g. 1234567" className={mono} /></Fld>
-                      <Fld label="MC Number" req><Input value={form.mcNumber} onChange={e => patch({ mcNumber: e.target.value })} placeholder="e.g. MC-123456" className={mono} /></Fld>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Fld label="VIN"><Input value={form.vin} onChange={e => patch({ vin: e.target.value.toUpperCase() })} placeholder="e.g. 1HGCM82633A004352" maxLength={17} className={mono} /></Fld>
                       <Fld label="License Plate"><Input value={form.plateNumber} onChange={e => patch({ plateNumber: e.target.value.toUpperCase() })} placeholder="e.g. ABC-1234" maxLength={15} className={mono} /></Fld>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Fld label="DOT Number" icon={<Shield className="size-3" />}><Input value={form.dotNumber} onChange={e => patch({ dotNumber: e.target.value })} placeholder="e.g. 1234567" className={mono} /></Fld>
+                      <Fld label="MC Number" icon={<Shield className="size-3" />}><Input value={form.mcNumber} onChange={e => patch({ mcNumber: e.target.value })} placeholder="e.g. MC-123456" className={mono} /></Fld>
                     </div>
                   </CardContent>
                 </Card>
@@ -394,82 +427,69 @@ export const EquipmentPage: React.FC = () => {
 
             {nav === 'specs' && (
               <div className="space-y-5">
-                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                  <div className="h-1 w-full bg-linear-to-r from-amber-500 to-orange-500" />
-                  <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
-                    <div className="size-11 rounded-xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg"><Gauge className="size-5" /></div>
-                    <div className="flex-1"><h3 className="text-lg font-black">Vehicle Capacity</h3><p className="text-xs text-muted-foreground">{sel?.capacity || 'Select trailer first'}</p></div>
-                    <Badge className="text-[10px] text-red-500 bg-red-500/8 border-red-500/20">Required</Badge>
-                  </div>
-                  <CardContent className="p-5 sm:p-6">
-                    <div className="flex items-center gap-5 justify-center mb-4">
-                      <button type="button" onClick={() => patch({ maxVehicleCapacity: Math.max(1, form.maxVehicleCapacity - 1) })}
-                        className="size-14 rounded-2xl border-2 border-border/30 flex items-center justify-center font-bold text-2xl transition-all active:scale-90 hover:border-primary/40">−</button>
-                      <div className="text-center min-w-20">
-                        <motion.span key={form.maxVehicleCapacity} initial={{ scale: 1.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                          className="text-7xl font-black tabular-nums text-amber-500 block">{form.maxVehicleCapacity}</motion.span>
-                        <p className="text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-widest">Vehicles</p>
-                      </div>
-                      <button type="button" onClick={() => patch({ maxVehicleCapacity: Math.min(12, form.maxVehicleCapacity + 1) })}
-                        className="size-14 rounded-2xl border-2 border-border/30 flex items-center justify-center font-bold text-2xl transition-all active:scale-90 hover:border-primary/40">+</button>
-                    </div>
-                    <div className="flex justify-center gap-1.5">
-                      {Array.from({ length: 12 }, (_, i) => (
-                        <motion.div key={i} initial={false}
-                          animate={{ scale: i < form.maxVehicleCapacity ? 1 : 0.6, opacity: i < form.maxVehicleCapacity ? 1 : 0.2 }}
-                          className={cn('size-3 rounded-full', i < form.maxVehicleCapacity ? 'bg-amber-500 shadow-sm shadow-amber-500/30' : 'bg-border')} />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
+                    <div className="h-1 w-full bg-linear-to-r from-amber-500 to-orange-500" />
+                    <CardContent className="p-5 sm:p-6">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="size-11 rounded-xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg"><Gauge className="size-5" /></div>
+                        <div><p className="text-base font-black">Max Vehicle Capacity</p><p className="text-xs text-muted-foreground">{sel?.capacity || 'Select trailer'}</p></div>
+                      </div>
+                      <Counter value={form.maxVehicleCapacity} onChange={v => patch({ maxVehicleCapacity: v })} min={1} max={12} label="Vehicles" color="text-amber-500" lg />
+                      <div className="mt-5 flex justify-center">
+                        <div className="flex gap-1.5">
+                          {Array.from({ length: 12 }, (_, i) => (
+                            <motion.div key={i} initial={false}
+                              animate={{ scale: i < form.maxVehicleCapacity ? 1 : 0.6, opacity: i < form.maxVehicleCapacity ? 1 : 0.2 }}
+                              className={cn('size-3 rounded-full', i < form.maxVehicleCapacity ? 'bg-amber-500 shadow-sm shadow-amber-500/30' : 'bg-border')} />
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
                     <div className="h-1 w-full bg-linear-to-r from-violet-500 to-purple-500" />
                     <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-center gap-3 mb-5">
-                        <div className="size-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-lg"><Ruler className="size-4.5" /></div>
-                        <div><p className="text-sm font-black">Trailer Length</p><p className="text-[10px] text-muted-foreground">Overall length in feet</p></div>
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="size-11 rounded-xl bg-linear-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-lg"><Ruler className="size-5" /></div>
+                        <div><p className="text-base font-black">Trailer Length</p><p className="text-xs text-muted-foreground">Overall length in feet</p></div>
                       </div>
-                      <div className="text-center mb-5">
-                        <motion.span key={form.trailerLength || 0} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                          className="text-5xl font-black tabular-nums text-violet-500">{form.trailerLength || 0}</motion.span>
-                        <span className="text-lg text-muted-foreground font-bold ml-1">ft</span>
+                      <Counter value={form.trailerLength || 0} onChange={v => patch({ trailerLength: v || undefined })} min={0} max={80} label="Feet" color="text-violet-500" lg />
+                      <div className="mt-5">
+                        <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
+                          <motion.div className="h-full rounded-full bg-linear-to-r from-violet-500 to-purple-500" initial={false}
+                            animate={{ width: `${((form.trailerLength || 0) / 80) * 100}%` }} transition={{ duration: 0.3, ease: 'easeOut' }} />
+                        </div>
+                        <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground font-semibold"><span>0 ft</span><span>80 ft</span></div>
                       </div>
-                      <Slider value={[form.trailerLength || 0]} onValueChange={([v]) => patch({ trailerLength: v || undefined })} min={0} max={80} step={1} className="w-full" />
-                      <div className="flex justify-between mt-2 text-[10px] text-muted-foreground font-semibold"><span>0 ft</span><span>80 ft</span></div>
                     </CardContent>
                   </Card>
 
                   <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
                     <div className="h-1 w-full bg-linear-to-r from-rose-500 to-pink-500" />
                     <CardContent className="p-5 sm:p-6">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="size-11 rounded-xl bg-linear-to-br from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-lg"><Settings2 className="size-5" /></div>
+                        <div><p className="text-base font-black">Axle Count</p><p className="text-xs text-muted-foreground">Number of trailer axles</p></div>
+                      </div>
+                      <Counter value={form.trailerAxles} onChange={v => patch({ trailerAxles: v })} min={1} max={10} label="Axles" color="text-rose-500" />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
+                    <div className="h-1 w-full bg-linear-to-r from-orange-500 to-red-500" />
+                    <CardContent className="p-5 sm:p-6">
                       <div className="flex items-center gap-3 mb-5">
-                        <div className="size-10 rounded-xl bg-linear-to-br from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-lg"><Settings2 className="size-4.5" /></div>
-                        <div><p className="text-sm font-black">Axle Count</p><p className="text-[10px] text-muted-foreground">Number of trailer axles</p></div>
+                        <div className="size-11 rounded-xl bg-linear-to-br from-orange-500 to-red-500 flex items-center justify-center text-white shadow-lg"><Gauge className="size-5" /></div>
+                        <div><p className="text-base font-black">Trailer GVWR</p><p className="text-xs text-muted-foreground">Gross Vehicle Weight Rating</p></div>
                       </div>
-                      <div className="text-center mb-5">
-                        <motion.span key={form.trailerAxles} initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                          className="text-5xl font-black tabular-nums text-rose-500">{form.trailerAxles}</motion.span>
-                        <span className="text-lg text-muted-foreground font-bold ml-1">axles</span>
-                      </div>
-                      <Slider value={[form.trailerAxles]} onValueChange={([v]) => patch({ trailerAxles: v })} min={1} max={10} step={1} className="w-full" />
-                      <div className="flex justify-between mt-2 text-[10px] text-muted-foreground font-semibold"><span>1</span><span>10</span></div>
+                      <Input type="number" min={0} max={100000} value={form.trailerGvwr || ''} onChange={e => patch({ trailerGvwr: parseInt(e.target.value) || undefined })}
+                        placeholder="e.g. 14000" className="h-14 text-2xl font-bold text-center bg-muted/20 border-border/20 rounded-xl" />
+                      <p className="text-xs text-muted-foreground text-center mt-2 font-medium">Weight in pounds (lbs)</p>
                     </CardContent>
                   </Card>
                 </div>
-
-                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                  <div className="h-1 w-full bg-linear-to-r from-orange-500 to-red-500" />
-                  <CardContent className="p-5 sm:p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="size-10 rounded-xl bg-linear-to-br from-orange-500 to-red-500 flex items-center justify-center text-white shadow-lg"><Gauge className="size-4.5" /></div>
-                      <div><p className="text-sm font-black">Trailer GVWR</p><p className="text-[10px] text-muted-foreground">Gross Vehicle Weight Rating in pounds</p></div>
-                    </div>
-                    <Input type="number" min={0} max={100000} value={form.trailerGvwr || ''} onChange={e => patch({ trailerGvwr: parseInt(e.target.value) || undefined })}
-                      placeholder="e.g. 14000" className="h-14 text-2xl font-bold text-center bg-muted/20 border-border/20 rounded-xl max-w-xs mx-auto block" />
-                  </CardContent>
-                </Card>
 
                 <div className="flex items-center justify-between">
                   <Button variant="ghost" onClick={() => setNav('trailer')} className="gap-1.5 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
@@ -485,7 +505,7 @@ export const EquipmentPage: React.FC = () => {
                   <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
                     <div className="size-11 rounded-xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg"><Star className="size-5" /></div>
                     <div className="flex-1"><h3 className="text-lg font-black">Special Features</h3><p className="text-xs text-muted-foreground">Capabilities on your rig</p></div>
-                    <Badge className="text-xs font-bold bg-linear-to-r from-violet-600 to-purple-500 text-white border-0">{form.specialFeatures.length}</Badge>
+                    <Badge className="text-xs font-bold bg-linear-to-r from-violet-600 to-purple-500 text-white border-0">{form.specialFeatures.length} selected</Badge>
                   </div>
                   <CardContent className="p-5 sm:p-6 space-y-5">
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
@@ -503,7 +523,7 @@ export const EquipmentPage: React.FC = () => {
 
                     {form.specialFeatures.filter(f => !specialFeatureOptions.find(o => o.value === f)).length > 0 && (
                       <div className="pt-3 border-t border-border/10">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Custom</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Custom Features</p>
                         <div className="flex flex-wrap gap-2">
                           {form.specialFeatures.filter(f => !specialFeatureOptions.find(o => o.value === f)).map(f => (
                             <Badge key={f} variant="outline" className="gap-1.5 pr-1.5 text-xs capitalize border-violet-500/30 bg-violet-500/5">
@@ -517,15 +537,20 @@ export const EquipmentPage: React.FC = () => {
 
                     <div className="space-y-2.5 pt-2">
                       <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Add Custom</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Add Custom Features</p>
                         <Button type="button" variant="ghost" size="sm" onClick={() => setCustomInputs(p => [...p, ''])} disabled={form.specialFeatures.length >= 20}
-                          className="gap-1.5 text-xs h-7 text-primary hover:text-primary"><Plus className="size-3.5" /> Add</Button>
+                          className="gap-1.5 text-xs h-7 text-primary hover:text-primary"><Plus className="size-3.5" /> Add Another</Button>
                       </div>
                       {customInputs.map((v, idx) => (
                         <div key={idx} className="flex gap-2">
                           <Input value={v} onChange={e => setCustomInputs(p => p.map((x, i) => i === idx ? e.target.value : x))}
                             placeholder="e.g. Satellite GPS" className={cn(inp, 'flex-1')}
-                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (addCustomFeature(customInputs[idx])) setCustomInputs(p => p.length === 1 ? [''] : p.filter((_, i) => i !== idx)); } }} />
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (addCustomFeature(customInputs[idx])) setCustomInputs(p => p.length === 1 ? [''] : p.filter((_, i) => i !== idx));
+                              }
+                            }} />
                           <Button type="button" variant="outline" size="icon" className="size-11 shrink-0 rounded-xl"
                             onClick={() => { if (addCustomFeature(customInputs[idx])) setCustomInputs(p => p.length === 1 ? [''] : p.filter((_, i) => i !== idx)); }}
                             disabled={!v.trim()}><Plus className="size-4" /></Button>
@@ -537,7 +562,7 @@ export const EquipmentPage: React.FC = () => {
 
                 <div className="flex items-center justify-between">
                   <Button variant="ghost" onClick={() => setNav('specs')} className="gap-1.5 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
-                  <Button onClick={handleSave} disabled={saving} className="gap-2 bg-linear-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-xl rounded-xl font-extrabold">
+                  <Button onClick={handleSave} disabled={saving} className="gap-2 bg-linear-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-xl rounded-xl">
                     {saving ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Save Equipment
                   </Button>
                 </div>
