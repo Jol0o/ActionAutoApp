@@ -228,3 +228,4 @@ export const emptyContract = (): LoadContract => ({
   agreedToTerms: false,
   signatureName: "",
 });
+

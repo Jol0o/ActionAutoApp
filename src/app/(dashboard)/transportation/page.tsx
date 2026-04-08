@@ -13,11 +13,105 @@ import { TransportationSidebar } from "@/components/TransportationSidebar"
 import { ShipmentCard } from "@/components/ShipmentCard"
 import { QuoteCard } from "@/components/QuoteCard"
 import { useRouter } from "next/navigation"
-import { useTransportationData } from "@/hooks/useTransportationData"
+import { useTransportationData, PER_PAGE_OPTIONS, PerPageOption } from "@/hooks/useTransportationData"
 import { useLoadsData } from "@/hooks/useLoadsData"
 import { useAlert } from "@/components/AlertDialog"
 import { Quote } from "@/types/transportation"
 import { LoadCard } from "@/components/LoadCard"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+
+// ── Pagination UI ──────────────────────────────────────────────────────────────
+
+function getPageNumbers(current: number, total: number): (number | "…")[] {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+    const pages: (number | "…")[] = [1]
+    if (current > 3) pages.push("…")
+    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i)
+    if (current < total - 2) pages.push("…")
+    if (total > 1) pages.push(total)
+    return pages
+}
+
+// Per-page selector shown at the top of each list
+function PerPageSelector({
+    limit,
+    total,
+    onLimitChange,
+}: {
+    limit: PerPageOption
+    total: number
+    onLimitChange: (l: PerPageOption) => void
+}) {
+    return (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Per page:</span>
+            <select
+                value={limit}
+                onChange={(e) => onLimitChange(Number(e.target.value) as PerPageOption)}
+                className="h-7 rounded border border-border bg-background text-xs text-foreground px-2 pr-6 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-500"
+            >
+                {PER_PAGE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                ))}
+            </select>
+            {total > 0 && (
+                <span className="text-muted-foreground/60">({total} total)</span>
+            )}
+        </div>
+    )
+}
+
+// Centered page-number navigation shown at the bottom of each list
+function PaginationBar({
+    page,
+    pagination,
+    onPageChange,
+}: {
+    page: number
+    pagination: { page: number; limit: number; total: number; totalPages: number; hasMore: boolean } | null
+    onPageChange: (p: number) => void
+}) {
+    if (!pagination || pagination.totalPages <= 1) return null
+    const totalPages = pagination.totalPages
+
+    return (
+        <div className="flex justify-center pt-2">
+            <div className="flex items-center gap-1">
+                <button
+                    onClick={() => onPageChange(page - 1)}
+                    disabled={page <= 1}
+                    className="h-7 w-7 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    <ChevronLeft className="size-3.5" />
+                </button>
+                {getPageNumbers(page, totalPages).map((p, i) =>
+                    p === "…" ? (
+                        <span key={`ellipsis-${i}`} className="w-7 text-center text-xs text-muted-foreground">…</span>
+                    ) : (
+                        <button
+                            key={p}
+                            onClick={() => onPageChange(p as number)}
+                            className={`h-7 w-7 rounded text-xs font-medium transition-colors ${
+                                page === p
+                                    ? "bg-green-500 text-white"
+                                    : "border border-border text-muted-foreground hover:bg-muted"
+                            }`}
+                        >
+                            {p}
+                        </button>
+                    )
+                )}
+                <button
+                    onClick={() => onPageChange(page + 1)}
+                    disabled={page >= totalPages}
+                    className="h-7 w-7 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    <ChevronRight className="size-3.5" />
+                </button>
+            </div>
+        </div>
+    )
+}
 
 export default function TransportationPage() {
     return (
@@ -46,7 +140,17 @@ function TransportationPageInner() {
         isSilentRefreshing,
         error,
         shipments,
+        shipmentsPagination,
+        shipmentsPage,
+        shipmentsLimit,
+        changeShipmentsPage,
+        changeShipmentsLimit,
         quotes,
+        quotesPagination,
+        quotesPage,
+        quotesLimit,
+        changeQuotesPage,
+        changeQuotesLimit,
         vehicles,
         stats,
         lastUpdated,
@@ -64,11 +168,14 @@ function TransportationPageInner() {
     const {
         loads,
         pagination: loadsPagination,
+        page: loadsPage,
+        limit: loadsLimit,
+        changePage: changeLoadsPage,
+        changeLimit: changeLoadsLimit,
         stats: loadStats,
         isLoading: isLoadsLoading,
         error: loadsError,
         fetchLoads,
-        loadMore,
         handleDeleteLoad,
         deletingId,
     } = useLoadsData(
@@ -455,6 +562,11 @@ function TransportationPageInner() {
                             </Card>
                         ) : (
                             <div className="space-y-3 sm:space-y-4">
+                                <PerPageSelector
+                                    limit={loadsLimit}
+                                    total={loadsPagination?.total ?? 0}
+                                    onLimitChange={changeLoadsLimit}
+                                />
                                 {loads.map((load) => (
                                     <LoadCard
                                         key={load._id}
@@ -463,19 +575,11 @@ function TransportationPageInner() {
                                         isDeleting={deletingId === load._id}
                                     />
                                 ))}
-                                {loadsPagination?.hasMore && (
-                                    <div className="flex justify-center pt-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-xs h-8"
-                                            onClick={loadMore}
-                                            disabled={isLoadsLoading}
-                                        >
-                                            {isLoadsLoading ? "Loading…" : `Load more (${loadsPagination.total - loads.length} remaining)`}
-                                        </Button>
-                                    </div>
-                                )}
+                                <PaginationBar
+                                    page={loadsPage}
+                                    pagination={loadsPagination}
+                                    onPageChange={changeLoadsPage}
+                                />
                             </div>
                         )
                     ) : activeTab === "shipments" ? (
@@ -528,6 +632,11 @@ function TransportationPageInner() {
                             </Card>
                         ) : (
                             <div className="space-y-3 sm:space-y-4">
+                                <PerPageSelector
+                                    limit={shipmentsLimit}
+                                    total={shipmentsPagination?.total ?? 0}
+                                    onLimitChange={changeShipmentsLimit}
+                                />
                                 {filteredShipments.map((shipment) => (
                                     <ShipmentCard
                                         key={shipment._id}
@@ -536,6 +645,11 @@ function TransportationPageInner() {
                                         onUpdate={handleUpdateShipment}
                                     />
                                 ))}
+                                <PaginationBar
+                                    page={shipmentsPage}
+                                    pagination={shipmentsPagination}
+                                    onPageChange={changeShipmentsPage}
+                                />
                             </div>
                         )
                     ) : (
@@ -588,6 +702,11 @@ function TransportationPageInner() {
                             </Card>
                         ) : (
                             <div className="space-y-3 sm:space-y-4">
+                                <PerPageSelector
+                                    limit={quotesLimit}
+                                    total={quotesPagination?.total ?? 0}
+                                    onLimitChange={changeQuotesLimit}
+                                />
                                 {filteredQuotes.map((quote) => (
                                     <QuoteCard
                                         key={quote._id}
@@ -597,6 +716,11 @@ function TransportationPageInner() {
                                         onUpdate={handleUpdateQuote}
                                     />
                                 ))}
+                                <PaginationBar
+                                    page={quotesPage}
+                                    pagination={quotesPagination}
+                                    onPageChange={changeQuotesPage}
+                                />
                             </div>
                         )
                     )}

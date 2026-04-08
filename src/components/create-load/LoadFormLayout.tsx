@@ -27,6 +27,7 @@ export interface LoadFormProps {
   setDates: (v: LoadDates) => void
   additionalInfo: LoadAdditionalInfo
   setAdditionalInfo: (v: LoadAdditionalInfo) => void
+
   contract: LoadContract
   setContract: (v: LoadContract) => void
   onCancel: () => void
@@ -149,8 +150,8 @@ export function LoadFormLayout({
         <SectionCard
           step={5}
           icon={DollarSign}
-          title="Rate Estimate"
-          description="Auto-calculated from distance, vehicle count, and trailer type"
+          title="Pricing"
+          description="Auto-calculated rate based on distance and vehicle details"
           comingSoon={false}
           badge={pickup.zip.length >= 5 && delivery.zip.length >= 5 ? "Live" : undefined}
           badgeVariant="success"
