@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import {
     FileText,
     Settings as SettingsIcon,
@@ -32,6 +33,9 @@ import { BulkInviteDialog } from "@/components/admin/BulkInviteDialog"
 import { Truck } from "lucide-react"
 
 export default function UtilitiesPage() {
+    const searchParams = useSearchParams();
+    const defaultTab = searchParams.get('tab') || 'reports';
+
     return (
         <div className="p-4 md:p-6 space-y-6 bg-background min-h-screen">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -49,7 +53,7 @@ export default function UtilitiesPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="reports" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
                 <TabsList className="bg-card border p-1 rounded-lg h-11 w-fit mb-6">
                     <TabsTrigger value="reports" className="gap-2 text-[11px] font-bold uppercase tracking-wider px-2 md:px-6 data-[state=active]:bg-secondary shadow-none">
                         <FileText className="size-4 hidden md:block" /> Reports
