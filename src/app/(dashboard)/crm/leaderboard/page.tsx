@@ -45,6 +45,18 @@ interface LeaderboardEntry {
   periodType: string
 }
 
+interface OrgUser {
+  _id: string
+  fullName: string
+  username: string
+  email: string
+  avatar?: string
+  role: string
+  isActive: boolean
+  lastLoginAt?: string
+  createdAt: string
+}
+
 interface AnalyticsOverview {
   totals: {
     totalLeadsCreated: number
@@ -83,31 +95,31 @@ function ini(n: string) {
 }
 
 const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  lead_created:          { label: "Lead Created",           icon: <Star className="h-3 w-3" />,        color: "text-emerald-500" },
-  lead_contacted:        { label: "Lead Contacted",         icon: <Phone className="h-3 w-3" />,        color: "text-blue-500" },
-  lead_converted:        { label: "Lead Converted",         icon: <CheckCircle2 className="h-3 w-3" />, color: "text-emerald-600" },
-  lead_replied:          { label: "Replied to Lead",        icon: <MessageSquare className="h-3 w-3" />, color: "text-indigo-500" },
-  appointment_completed: { label: "Appointment Done",       icon: <Calendar className="h-3 w-3" />,     color: "text-purple-500" },
-  appointment_created:   { label: "Appointment Set",        icon: <Calendar className="h-3 w-3" />,     color: "text-violet-500" },
-  call_made:             { label: "Call Made",              icon: <Phone className="h-3 w-3" />,        color: "text-cyan-500" },
-  message_sent:          { label: "Message Sent",           icon: <MessageSquare className="h-3 w-3" />, color: "text-sky-500" },
-  follow_up_sent:        { label: "Follow-up Sent",         icon: <RefreshCw className="h-3 w-3" />,    color: "text-amber-500" },
-  transaction_completed: { label: "Transaction Closed",     icon: <Zap className="h-3 w-3" />,          color: "text-yellow-500" },
-  onboarding_completed:  { label: "Onboarding Complete",    icon: <UserCheck className="h-3 w-3" />,    color: "text-teal-500" },
-  time_in:               { label: "Clocked In",             icon: <Clock className="h-3 w-3" />,        color: "text-muted-foreground" },
-  time_out:              { label: "Clocked Out",            icon: <Clock className="h-3 w-3" />,        color: "text-muted-foreground" },
+  lead_created:          { label: "Lead Created",        icon: <Star className="h-3 w-3" />,         color: "text-emerald-500" },
+  lead_contacted:        { label: "Lead Contacted",      icon: <Phone className="h-3 w-3" />,         color: "text-blue-500" },
+  lead_converted:        { label: "Lead Converted",      icon: <CheckCircle2 className="h-3 w-3" />,  color: "text-emerald-600" },
+  lead_replied:          { label: "Replied to Lead",     icon: <MessageSquare className="h-3 w-3" />, color: "text-indigo-500" },
+  appointment_completed: { label: "Appointment Done",    icon: <Calendar className="h-3 w-3" />,      color: "text-purple-500" },
+  appointment_created:   { label: "Appointment Set",     icon: <Calendar className="h-3 w-3" />,      color: "text-violet-500" },
+  call_made:             { label: "Call Made",           icon: <Phone className="h-3 w-3" />,         color: "text-cyan-500" },
+  message_sent:          { label: "Message Sent",        icon: <MessageSquare className="h-3 w-3" />, color: "text-sky-500" },
+  follow_up_sent:        { label: "Follow-up Sent",      icon: <RefreshCw className="h-3 w-3" />,     color: "text-amber-500" },
+  transaction_completed: { label: "Transaction Closed",  icon: <Zap className="h-3 w-3" />,           color: "text-yellow-500" },
+  onboarding_completed:  { label: "Onboarding Complete", icon: <UserCheck className="h-3 w-3" />,     color: "text-teal-500" },
+  time_in:               { label: "Clocked In",          icon: <Clock className="h-3 w-3" />,         color: "text-muted-foreground" },
+  time_out:              { label: "Clocked Out",         icon: <Clock className="h-3 w-3" />,         color: "text-muted-foreground" },
 }
 
 const BADGE_META: Record<string, { name: string; icon: string; color: string }> = {
-  first_lead:        { name: "First Contact",      icon: "🌱", color: "from-emerald-500/20 to-green-500/10 border-emerald-500/30" },
-  lead_machine:      { name: "Lead Machine",       icon: "⚡", color: "from-yellow-500/20 to-amber-500/10 border-yellow-500/30" },
-  converter:         { name: "The Converter",      icon: "🎯", color: "from-orange-500/20 to-red-500/10 border-orange-500/30" },
-  speed_demon:       { name: "Speed Demon",        icon: "🚀", color: "from-blue-500/20 to-cyan-500/10 border-blue-500/30" },
-  onboarding_hero:   { name: "Onboarding Hero",    icon: "🏆", color: "from-amber-500/20 to-yellow-500/10 border-amber-500/30" },
-  appointment_setter:{ name: "Appt. Setter",       icon: "📅", color: "from-purple-500/20 to-violet-500/10 border-purple-500/30" },
-  top_weekly:        { name: "Weekly Champion",    icon: "👑", color: "from-rose-500/20 to-pink-500/10 border-rose-500/30" },
-  follow_up_king:    { name: "Follow-Up King",     icon: "📞", color: "from-teal-500/20 to-emerald-500/10 border-teal-500/30" },
-  transaction_titan: { name: "Transaction Titan",  icon: "💰", color: "from-green-500/20 to-emerald-500/10 border-green-500/30" },
+  first_lead:         { name: "First Contact",     icon: "🌱", color: "from-emerald-500/20 to-green-500/10 border-emerald-500/30" },
+  lead_machine:       { name: "Lead Machine",      icon: "⚡", color: "from-yellow-500/20 to-amber-500/10 border-yellow-500/30" },
+  converter:          { name: "The Converter",     icon: "🎯", color: "from-orange-500/20 to-red-500/10 border-orange-500/30" },
+  speed_demon:        { name: "Speed Demon",       icon: "🚀", color: "from-blue-500/20 to-cyan-500/10 border-blue-500/30" },
+  onboarding_hero:    { name: "Onboarding Hero",   icon: "🏆", color: "from-amber-500/20 to-yellow-500/10 border-amber-500/30" },
+  appointment_setter: { name: "Appt. Setter",      icon: "📅", color: "from-purple-500/20 to-violet-500/10 border-purple-500/30" },
+  top_weekly:         { name: "Weekly Champion",   icon: "👑", color: "from-rose-500/20 to-pink-500/10 border-rose-500/30" },
+  follow_up_king:     { name: "Follow-Up King",    icon: "📞", color: "from-teal-500/20 to-emerald-500/10 border-teal-500/30" },
+  transaction_titan:  { name: "Transaction Titan", icon: "💰", color: "from-green-500/20 to-emerald-500/10 border-green-500/30" },
 }
 
 const RANK_ICONS = [
@@ -129,19 +141,6 @@ function RankChange({ change }: { change?: number | null }) {
       <TrendingDown className="h-3 w-3" />
       <span className="text-[10px] font-bold">{change}</span>
     </span>
-  )
-}
-
-function MiniSparkline({ data }: { data: number[] }) {
-  if (!data || data.length < 2) return null
-  const max = Math.max(...data, 1)
-  const h = 28, w = 80
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(' ')
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-20 h-7" preserveAspectRatio="none">
-      <polyline fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-        className="text-emerald-500/60" points={pts} />
-    </svg>
   )
 }
 
@@ -186,12 +185,11 @@ function KpiBar({ label, value, max, color = "bg-emerald-500" }: {
   )
 }
 
-// ─── Leaderboard Row ────────────────────────────────────────────────────────
+// ─── Leaderboard Row (ranked) ───────────────────────────────────────────────
 function LeaderboardRow({ entry, onClick, isMe }: {
   entry: LeaderboardEntry; onClick: () => void; isMe: boolean
 }) {
   const isTop3 = entry.rank <= 3
-  const hasBadges = entry.badges.length > 0
 
   return (
     <div
@@ -260,6 +258,81 @@ function LeaderboardRow({ entry, onClick, isMe }: {
   )
 }
 
+// ─── Member Row (unranked — alphabetical) ──────────────────────────────────
+function MemberRow({ orgUser, badges, isMe }: {
+  orgUser: OrgUser; badges: string[]; isMe: boolean
+}) {
+  return (
+    <div
+      className={`flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-200 ${
+        isMe ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/40 bg-card"
+      }`}
+    >
+      {/* Rank placeholder — keeps alignment with LeaderboardRow */}
+      <div className="w-10 flex items-center justify-center shrink-0">
+        <span className="text-lg text-muted-foreground/10 font-bold select-none">—</span>
+      </div>
+
+      {/* Avatar */}
+      <Avatar className={`h-10 w-10 ring-2 shrink-0 ${isMe ? "ring-emerald-500/50" : "ring-border/40"}`}>
+        <AvatarImage src={orgUser.avatar} />
+        <AvatarFallback className="bg-emerald-600 text-white text-xs font-bold">{ini(orgUser.fullName)}</AvatarFallback>
+      </Avatar>
+
+      {/* Name + role + badges */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-bold truncate">{orgUser.fullName}</p>
+          {isMe && <Badge className="text-[9px] h-4 px-1.5 bg-emerald-500/15 text-emerald-600 border-0">You</Badge>}
+          <span className="text-[10px] text-muted-foreground/30 font-mono">{orgUser.username}</span>
+          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full capitalize
+            ${orgUser.role === "admin"   ? "bg-rose-500/10 text-rose-500" :
+              orgUser.role === "manager" ? "bg-blue-500/10 text-blue-500" :
+              "bg-muted/50 text-muted-foreground/40"}`}
+          >
+            {orgUser.role}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+          {badges.length === 0 ? (
+            <span className="text-[10px] text-muted-foreground/20 italic">No badges yet</span>
+          ) : (
+            <>
+              {badges.slice(0, 5).map(b => {
+                const meta = BADGE_META[b]
+                return meta ? (
+                  <span key={b} className="text-sm leading-none" title={meta.name}>{meta.icon}</span>
+                ) : null
+              })}
+              {badges.length > 5 && (
+                <span className="text-[9px] text-muted-foreground/30 font-semibold">+{badges.length - 5}</span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* KPI columns — dimmed, not open yet */}
+      <div className="hidden md:flex items-center gap-5 text-center shrink-0">
+        {["Leads", "Conv%", "Appts", "Txns"].map(label => (
+          <div key={label} className="w-12">
+            <p className="text-base font-bold tabular-nums text-muted-foreground/15">—</p>
+            <p className="text-[9px] text-muted-foreground/20 uppercase tracking-wider font-semibold">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Score — not open yet */}
+      <div className="text-right shrink-0 ml-2">
+        <p className="text-[10px] font-semibold text-muted-foreground/20 uppercase tracking-wider">Soon</p>
+      </div>
+
+      {/* Spacer to match LeaderboardRow chevron width */}
+      <div className="w-4 shrink-0" />
+    </div>
+  )
+}
+
 // ─── Activity Feed Item ────────────────────────────────────────────────────
 function ActivityItem({ log }: { log: ActivityLogEntry }) {
   const meta = ACTION_LABELS[log.actionType] || { label: log.actionType, icon: <Activity className="h-3 w-3" />, color: "text-muted-foreground" }
@@ -298,8 +371,10 @@ export default function LeaderboardPage() {
   const [user, setUser] = React.useState<any>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState("leaderboard")
-  const [periodType, setPeriodType] = React.useState<"daily"|"weekly"|"monthly">("weekly")
+  const [periodType, setPeriodType] = React.useState<"daily" | "weekly" | "monthly">("weekly")
   const [leaderboard, setLeaderboard] = React.useState<LeaderboardEntry[]>([])
+  const [orgUsers, setOrgUsers] = React.useState<OrgUser[]>([])
+  const [orgUserBadges, setOrgUserBadges] = React.useState<Record<string, string[]>>({})
   const [overview, setOverview] = React.useState<AnalyticsOverview | null>(null)
   const [myStats, setMyStats] = React.useState<MyStats | null>(null)
   const [activityFeed, setActivityFeed] = React.useState<ActivityLogEntry[]>([])
@@ -307,7 +382,7 @@ export default function LeaderboardPage() {
   const [isFetching, setIsFetching] = React.useState(false)
   const [lastRefresh, setLastRefresh] = React.useState<Date>(new Date())
 
-  // Auth
+  // ── Auth ─────────────────────────────────────────────────────────────────
   React.useEffect(() => {
     const t = localStorage.getItem("crm_token")
     if (!t) { router.replace("/crm"); return }
@@ -320,7 +395,39 @@ export default function LeaderboardPage() {
 
   const authHeaders = React.useMemo(() => ({ Authorization: `Bearer ${token}` }), [token])
 
-  // Fetch leaderboard
+  // ── Fetch all org users alphabetically ───────────────────────────────────
+  const fetchOrgUsers = React.useCallback(async () => {
+    if (!token) return
+    try {
+      const res = await apiClient.get("/api/crm/users", { headers: authHeaders })
+      const data: OrgUser[] = res.data?.data?.users || res.data?.users || []
+      const sorted = [...data].sort((a, b) => a.fullName.localeCompare(b.fullName))
+      setOrgUsers(sorted)
+
+      // Fetch badges for each user in parallel — non-blocking
+      const results = await Promise.allSettled(
+        sorted.map(u =>
+          apiClient
+            .get(`/api/analytics/users/${u._id}/stats`, { headers: authHeaders })
+            .then(r => ({
+              userId: u._id,
+              badges: (r.data?.data?.badges || []).map((b: any) => b.badgeId) as string[],
+            }))
+            .catch(() => ({ userId: u._id, badges: [] as string[] }))
+        )
+      )
+
+      const map: Record<string, string[]> = {}
+      for (const r of results) {
+        if (r.status === "fulfilled") map[r.value.userId] = r.value.badges
+      }
+      setOrgUserBadges(map)
+    } catch (err) {
+      console.error("Failed to fetch org users:", err)
+    }
+  }, [token, authHeaders])
+
+  // ── Fetch leaderboard ────────────────────────────────────────────────────
   const fetchLeaderboard = React.useCallback(async () => {
     if (!token) return
     setIsFetching(true)
@@ -335,7 +442,7 @@ export default function LeaderboardPage() {
     }
   }, [token, periodType, authHeaders])
 
-  // Fetch analytics overview
+  // ── Fetch analytics overview ─────────────────────────────────────────────
   const fetchOverview = React.useCallback(async () => {
     if (!token || user?.role === "employee") return
     try {
@@ -344,7 +451,7 @@ export default function LeaderboardPage() {
     } catch {}
   }, [token, periodType, authHeaders, user?.role])
 
-  // Fetch my stats
+  // ── Fetch my stats ───────────────────────────────────────────────────────
   const fetchMyStats = React.useCallback(async () => {
     if (!token) return
     try {
@@ -353,7 +460,7 @@ export default function LeaderboardPage() {
     } catch {}
   }, [token, authHeaders])
 
-  // Fetch activity feed
+  // ── Fetch activity feed ──────────────────────────────────────────────────
   const fetchActivityFeed = React.useCallback(async () => {
     if (!token) return
     try {
@@ -365,13 +472,14 @@ export default function LeaderboardPage() {
   React.useEffect(() => {
     if (token && user) {
       fetchLeaderboard()
+      fetchOrgUsers()
       fetchMyStats()
       if (activeTab === "overview") fetchOverview()
       if (activeTab === "activity") fetchActivityFeed()
     }
   }, [token, user, periodType, activeTab])
 
-  // Polling (30s)
+  // ── Polling (30s) ────────────────────────────────────────────────────────
   React.useEffect(() => {
     const id = setInterval(() => {
       if (document.visibilityState === "visible") {
@@ -389,7 +497,7 @@ export default function LeaderboardPage() {
       const blob = new Blob([res.data], { type: "text/csv" })
       const link = document.createElement("a")
       link.href = URL.createObjectURL(blob)
-      link.download = `leaderboard_${periodType}_${new Date().toISOString().slice(0,10)}.csv`
+      link.download = `leaderboard_${periodType}_${new Date().toISOString().slice(0, 10)}.csv`
       link.click()
     } catch { console.error("Export failed") }
   }
@@ -406,10 +514,12 @@ export default function LeaderboardPage() {
   )
 
   const statPeriod = myStats?.[periodType]
+  const hasRankings = leaderboard.length > 0
 
   return (
     <div className="min-h-screen w-full bg-background">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/90 backdrop-blur-xl">
         <div className="flex items-center justify-between h-14 px-6">
           <div className="flex items-center gap-3">
@@ -438,7 +548,7 @@ export default function LeaderboardPage() {
             <Button
               variant="ghost" size="sm"
               className="h-8 w-8 p-0 rounded-xl"
-              onClick={fetchLeaderboard}
+              onClick={() => { fetchLeaderboard(); fetchOrgUsers() }}
               disabled={isFetching}
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
@@ -454,7 +564,7 @@ export default function LeaderboardPage() {
 
       <main className="max-w-screen-xl mx-auto px-6 py-6 space-y-6">
 
-        {/* My Stats Strip */}
+        {/* ── My Stats Strip ── */}
         {statPeriod && (
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] px-6 py-4">
             <p className="text-[10px] uppercase tracking-widest text-emerald-500/60 font-bold mb-3 flex items-center gap-1.5">
@@ -480,13 +590,17 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); if (v === "overview") fetchOverview(); if (v === "activity") fetchActivityFeed() }}>
+        <Tabs value={activeTab} onValueChange={v => {
+          setActiveTab(v)
+          if (v === "overview") fetchOverview()
+          if (v === "activity") fetchActivityFeed()
+        }}>
           <TabsList className="rounded-2xl border border-border/40 bg-muted/20 p-1 h-auto gap-1">
             {[
-              { value: "leaderboard", label: "Leaderboard",  icon: <Trophy className="h-3.5 w-3.5" /> },
-              { value: "overview",    label: "Analytics",    icon: <BarChart3 className="h-3.5 w-3.5" />, adminOnly: true },
+              { value: "leaderboard", label: "Leaderboard",   icon: <Trophy className="h-3.5 w-3.5" /> },
+              { value: "overview",    label: "Analytics",     icon: <BarChart3 className="h-3.5 w-3.5" />, adminOnly: true },
               { value: "activity",    label: "Activity Feed", icon: <Activity className="h-3.5 w-3.5" /> },
-              { value: "badges",      label: "Badges",       icon: <Award className="h-3.5 w-3.5" /> },
+              { value: "badges",      label: "Badges",        icon: <Award className="h-3.5 w-3.5" /> },
             ]
               .filter(t => !t.adminOnly || user?.role !== "employee")
               .map(t => (
@@ -504,30 +618,55 @@ export default function LeaderboardPage() {
           {/* ─ LEADERBOARD TAB ─────────────────────────────────────────── */}
           <TabsContent value="leaderboard" className="mt-4">
             <div className="space-y-2">
-              {isFetching && leaderboard.length === 0 && (
+
+              {/* Loading */}
+              {isFetching && orgUsers.length === 0 && (
                 <div className="flex justify-center py-16">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/30" />
                 </div>
               )}
-              {!isFetching && leaderboard.length === 0 && (
-                <div className="rounded-2xl border border-border/40 bg-card py-16 text-center">
-                  <Trophy className="h-10 w-10 text-muted-foreground/15 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground/40">No rankings yet for this period</p>
-                  <p className="text-xs text-muted-foreground/25 mt-1">Start logging activity to appear on the leaderboard</p>
-                </div>
+
+              {/* No rankings yet — show all org users A–Z */}
+              {!hasRankings && orgUsers.length > 0 && (
+                <>
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-3 flex items-center gap-3">
+                    <Crown className="h-4 w-4 text-amber-500 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">Rankings Coming Soon</p>
+                      <p className="text-[11px] text-muted-foreground/40 mt-0.5">
+                        Full performance rankings are on the way. Here's your team in the meantime.
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/30 uppercase tracking-widest font-semibold pt-1 pb-1">
+                    {orgUsers.length} member{orgUsers.length !== 1 ? "s" : ""} · sorted A–Z
+                  </p>
+                  {orgUsers.map(u => (
+                    <MemberRow
+                      key={u._id}
+                      orgUser={u}
+                      badges={orgUserBadges[u._id] || []}
+                      isMe={u._id === user?._id}
+                    />
+                  ))}
+                </>
               )}
-              {leaderboard.map(entry => (
-                <LeaderboardRow
-                  key={entry.user._id || entry.rank}
-                  entry={entry}
-                  isMe={entry.user._id === user?._id}
-                  onClick={() => setSelectedEntry(entry)}
-                />
-              ))}
-              {leaderboard.length > 0 && (
-                <p className="text-center text-[10px] text-muted-foreground/25 pt-2">
-                  Last updated: {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · Auto-refreshes every 30s
-                </p>
+
+              {/* Rankings are live */}
+              {hasRankings && (
+                <>
+                  {leaderboard.map(entry => (
+                    <LeaderboardRow
+                      key={entry.user._id || entry.rank}
+                      entry={entry}
+                      isMe={entry.user._id === user?._id}
+                      onClick={() => setSelectedEntry(entry)}
+                    />
+                  ))}
+                  <p className="text-center text-[10px] text-muted-foreground/25 pt-2">
+                    Last updated: {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · Auto-refreshes every 30s
+                  </p>
+                </>
               )}
             </div>
           </TabsContent>
@@ -539,7 +678,7 @@ export default function LeaderboardPage() {
             ) : (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  <StatCard label="Active Users"    value={overview.totals.activeUsers     || 0} icon={<Users className="h-4 w-4 text-blue-500" />} />
+                  <StatCard label="Active Users"    value={overview.totals.activeUsers          || 0} icon={<Users className="h-4 w-4 text-blue-500" />} />
                   <StatCard label="Leads Created"   value={overview.totals.totalLeadsCreated    || 0} icon={<Star className="h-4 w-4 text-emerald-500" />} />
                   <StatCard label="Leads Converted" value={overview.totals.totalLeadsConverted  || 0} icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} />
                   <StatCard label="Appointments"    value={overview.totals.totalAppointments    || 0} icon={<Calendar className="h-4 w-4 text-purple-500" />} />
@@ -551,7 +690,6 @@ export default function LeaderboardPage() {
                   <StatCard label="Avg Response"    value={`${Math.round(overview.totals.avgResponseTime || 0)}m`} icon={<Clock className="h-4 w-4 text-amber-500" />} sub="minutes" />
                 </div>
 
-                {/* Trend chart */}
                 {overview.trend.length > 0 && (
                   <div className="rounded-2xl border border-border/40 bg-card p-6">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">Activity Trend (Last 30 Days)</p>
@@ -577,7 +715,6 @@ export default function LeaderboardPage() {
                   </div>
                 )}
 
-                {/* By action breakdown */}
                 {overview.byAction.length > 0 && (
                   <div className="rounded-2xl border border-border/40 bg-card p-6">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">Activity Breakdown</p>
@@ -633,9 +770,13 @@ export default function LeaderboardPage() {
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">All Badges & Achievements</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {Object.entries(BADGE_META).map(([id, meta]) => {
-                    const allUserBadges = leaderboard.flatMap(e => e.badges)
-                    const isEarned = leaderboard.find(e => e.user._id === user?._id)?.badges.includes(id)
-                    const earnedCount = allUserBadges.filter(b => b === id).length
+                    const rankedBadges   = leaderboard.flatMap(e => e.badges)
+                    const unrankedBadges = Object.values(orgUserBadges).flat()
+                    const allBadges      = [...rankedBadges, ...unrankedBadges]
+                    const isEarned       =
+                      leaderboard.find(e => e.user._id === user?._id)?.badges.includes(id) ||
+                      (orgUserBadges[user?._id] || []).includes(id)
+                    const earnedCount    = allBadges.filter(b => b === id).length
 
                     return (
                       <div
@@ -675,7 +816,6 @@ export default function LeaderboardPage() {
             className="w-full max-w-md rounded-2xl border border-border/40 bg-background p-6 space-y-5 max-h-[85vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
-            {/* User header */}
             <div className="flex items-center gap-4">
               {selectedEntry.rank <= 3 ? RANK_ICONS[selectedEntry.rank - 1] : (
                 <span className="text-sm font-bold text-muted-foreground/40">#{selectedEntry.rank}</span>
@@ -694,25 +834,23 @@ export default function LeaderboardPage() {
               </div>
             </div>
 
-            {/* KPI breakdown */}
             <div className="space-y-2.5">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 font-bold">KPI Breakdown</p>
               {[
-                { label: "Leads Created",           value: selectedEntry.kpis.leadsCreated,          max: 30 },
-                { label: "Leads Converted",         value: selectedEntry.kpis.leadsConverted,         max: 15 },
-                { label: "Conversion Rate",         value: selectedEntry.kpis.conversionRate,         max: 100 },
-                { label: "Appointments Completed",  value: selectedEntry.kpis.appointmentsCompleted,  max: 30 },
-                { label: "Calls Made",              value: selectedEntry.kpis.callsMade,              max: 100 },
-                { label: "Messages Sent",           value: selectedEntry.kpis.messagesSent,           max: 200 },
-                { label: "Follow-ups",              value: selectedEntry.kpis.followUpsSent,          max: 50 },
-                { label: "Transactions",            value: selectedEntry.kpis.transactionsCompleted,  max: 10 },
-                { label: "Onboardings",             value: selectedEntry.kpis.onboardingsCompleted,   max: 15 },
+                { label: "Leads Created",          value: selectedEntry.kpis.leadsCreated,          max: 30 },
+                { label: "Leads Converted",        value: selectedEntry.kpis.leadsConverted,         max: 15 },
+                { label: "Conversion Rate",        value: selectedEntry.kpis.conversionRate,         max: 100 },
+                { label: "Appointments Completed", value: selectedEntry.kpis.appointmentsCompleted,  max: 30 },
+                { label: "Calls Made",             value: selectedEntry.kpis.callsMade,              max: 100 },
+                { label: "Messages Sent",          value: selectedEntry.kpis.messagesSent,           max: 200 },
+                { label: "Follow-ups",             value: selectedEntry.kpis.followUpsSent,          max: 50 },
+                { label: "Transactions",           value: selectedEntry.kpis.transactionsCompleted,  max: 10 },
+                { label: "Onboardings",            value: selectedEntry.kpis.onboardingsCompleted,   max: 15 },
               ].map(item => (
                 <KpiBar key={item.label} label={item.label} value={item.value} max={item.max} />
               ))}
             </div>
 
-            {/* Badges */}
             {selectedEntry.badges.length > 0 && (
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 font-bold mb-3">Badges</p>
