@@ -23,6 +23,7 @@ import {
   Play,
   MessageSquare,
   Rss,
+  Trophy,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -515,12 +516,13 @@ export default function CrmDashboardPage() {
 
               <div className="rounded-2xl border border-border/40 bg-card p-6 flex-1">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">Quick Actions</p>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  <QuickAction icon={<CalendarCheck className="h-5 w-5 text-emerald-500" />} label="Appointments" onClick={() => router.push("/crm/appointments")} />
-                  <QuickAction icon={<CalendarDays className="h-5 w-5 text-emerald-500" />} label="Timeproof" onClick={() => router.push("/crm/timeproof")} />
-                  <QuickAction icon={<MessageSquare className="h-5 w-5 text-emerald-500" />} label="Supra Space" onClick={() => router.push("/crm/supra-space")} />
-                  <QuickAction icon={<Fingerprint className="h-5 w-5 text-emerald-500" />} label="Biometrics" onClick={() => router.push("/crm/biometrics")} />
-                  <QuickAction icon={<Rss className="h-5 w-5 text-emerald-500" />} label="Feeds" onClick={() => router.push("/crm/feeds")} />
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <QuickAction icon={<CalendarCheck className="h-5 w-5 text-emerald-500" />}  label="Appointments" onClick={() => router.push("/crm/appointments")} />
+                  <QuickAction icon={<CalendarDays className="h-5 w-5 text-emerald-500" />}   label="Timeproof"    onClick={() => router.push("/crm/timeproof")} />
+                  <QuickAction icon={<MessageSquare className="h-5 w-5 text-emerald-500" />}  label="Supra Space"  onClick={() => router.push("/crm/supra-space")} />
+                  <QuickAction icon={<Fingerprint className="h-5 w-5 text-emerald-500" />}    label="Biometrics"   onClick={() => router.push("/crm/biometrics")} />
+                  <QuickAction icon={<Rss className="h-5 w-5 text-emerald-500" />}            label="Feeds"        onClick={() => router.push("/crm/feeds")} />
+                  <QuickAction icon={<Trophy className="h-5 w-5 text-amber-500" />}           label="Leaderboard"  onClick={() => router.push("/crm/leaderboard")} />
                 </div>
               </div>
             </div>
