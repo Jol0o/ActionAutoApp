@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { REQUIRED_DOCUMENTS, trailerTypeOptions, specialFeatureOptions, hitchTypeOptions } from '@/components/driver-profile/driver-profile-constants';
-import { cn } from '@/lib/utils';
+import { cn, resolveImageUrl } from '@/lib/utils';
 import Link from 'next/link';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Denver' }) : '—';
@@ -555,7 +555,7 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
                                                                         </div>
                                                                         {isImg && doc.fileUrl && (
                                                                             <div className="rounded-xl overflow-hidden border border-border/20 bg-muted/10 cursor-pointer" onClick={() => setPreviewDoc(doc)}>
-                                                                                <img src={doc.fileUrl} alt={doc.label || doc.fileName} className="w-full max-h-48 object-contain" loading="lazy" />
+                                                                                <img src={resolveImageUrl(doc.fileUrl)} alt={doc.label || doc.fileName} className="w-full max-h-48 object-contain" loading="lazy" />
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -746,14 +746,14 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
                     </DialogHeader>
                     <div className="flex-1 overflow-auto px-5 pb-5">
                         {previewDoc?.fileUrl && isImageUrl(previewDoc.fileUrl) ? (
-                            <img src={previewDoc.fileUrl} alt={previewDoc.label || previewDoc.fileName} className="w-full rounded-xl border border-border/20" />
+                            <img src={resolveImageUrl(previewDoc.fileUrl)} alt={previewDoc.label || previewDoc.fileName} className="w-full rounded-xl border border-border/20" />
                         ) : previewDoc?.fileUrl && previewDoc.mimeType === 'application/pdf' ? (
-                            <iframe src={previewDoc.fileUrl} className="w-full h-[60vh] rounded-xl border border-border/20" title={previewDoc.label} />
+                            <iframe src={resolveImageUrl(previewDoc.fileUrl)} className="w-full h-[60vh] rounded-xl border border-border/20" title={previewDoc.label} />
                         ) : previewDoc?.fileUrl ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-4">
                                 <FileText className="size-16 text-muted-foreground/20" />
                                 <p className="text-sm text-muted-foreground">Preview not available for this file type</p>
-                                <Button asChild variant="outline" className="gap-2"><a href={previewDoc.fileUrl} target="_blank" rel="noopener noreferrer"><Download className="size-4" /> Download File</a></Button>
+                                <Button asChild variant="outline" className="gap-2"><a href={resolveImageUrl(previewDoc.fileUrl)} target="_blank" rel="noopener noreferrer"><Download className="size-4" /> Download File</a></Button>
                             </div>
                         ) : null}
                     </div>

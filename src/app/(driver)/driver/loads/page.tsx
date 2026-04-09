@@ -23,7 +23,7 @@ import { useDriverGate } from '@/hooks/useEquipmentGate';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { initializeSocket, getSocket } from '@/lib/socket.client';
-import { cn } from '@/lib/utils';
+import { cn, resolveImageUrl } from '@/lib/utils';
 import Link from 'next/link';
 
 const STATUS_THEME: Record<string, string> = {
@@ -540,7 +540,7 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="rounded-xl overflow-hidden border border-border"><img src={preview} alt="Proof preview" className="w-full max-h-60 object-contain bg-muted" /></div>
+              <div className="rounded-xl overflow-hidden border border-border"><img src={resolveImageUrl(preview)} alt="Proof preview" className="w-full max-h-60 object-contain bg-muted" /></div>
               <div className="flex gap-2">
                 <button type="button" onClick={() => camRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><Camera className="size-3.5" />Retake</button>
                 <button type="button" onClick={() => galRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><ImageIcon className="size-3.5" />Change Photo</button>

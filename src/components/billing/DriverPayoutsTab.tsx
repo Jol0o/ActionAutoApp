@@ -8,6 +8,7 @@ import {
 import { DriverPayout, DeliverableShipment, DriverPayoutStats } from "@/types/driver-payout";
 import { formatCurrency } from "@/utils/format";
 import { StatCard, PayoutStatusBadge } from "@/components/billing/StatusBadges";
+import { resolveImageUrl } from "@/lib/utils";
 
 const DISPLAY = "'Rajdhani', var(--font-sans), sans-serif";
 const MONO = "'Share Tech Mono', 'Roboto Mono', monospace";
@@ -295,7 +296,7 @@ export function DriverPayoutsTab({
                     ))
                     : pendingConf.map(s => {
                       const imgSrc = s.proofOfDelivery?.imageUrl
-                        ? `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"}${s.proofOfDelivery.imageUrl}`
+                        ? resolveImageUrl(s.proofOfDelivery?.imageUrl)
                         : null;
                       return (
                         <tr key={s._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", transition: "background 0.12s" }}
