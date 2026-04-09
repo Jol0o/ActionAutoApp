@@ -2,6 +2,7 @@ import * as React from "react"
 import { getLoads, getLoadStats, deleteLoad, LoadStats, LoadsPagination } from "@/lib/api/loads"
 import { Load } from "@/types/load"
 import { useAuth } from "@/providers/AuthProvider"
+import { initializeSocket } from "@/lib/socket.client"
 import { PER_PAGE_OPTIONS, PerPageOption } from "./useTransportationData"
 
 export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
@@ -14,9 +15,15 @@ export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
   const [error, setError] = React.useState<string | null>(null)
   const [page, setPage] = React.useState(1)
   const [limit, setLimit] = React.useState<PerPageOption>(5)
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn, getToken } = useAuth()
 
-  const fetchLoads = React.useCallback(async (p = 1, l = limit) => {
+  // Refs so socket handler always sees the latest page/limit
+  const pageRef = React.useRef(page)
+  const limitRef = React.useRef(limit)
+  React.useEffect(() => { pageRef.current = page }, [page])
+  React.useEffect(() => { limitRef.current = limit }, [limit])
+
+  const fetchLoads = React.useCallback(async (p = 1, l = limitRef.current) => {
     setIsLoading(true)
     setError(null)
     try {
@@ -35,20 +42,43 @@ export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
     } finally {
       setIsLoading(false)
     }
-  }, [searchQuery, selectedStatus, limit])
+  }, [searchQuery, selectedStatus])
 
   // Debounced re-fetch when search/status changes — reset to page 1
   React.useEffect(() => {
     if (!isLoaded || !isSignedIn) return
-    const t = setTimeout(() => fetchLoads(1, limit), searchQuery ? 400 : 0)
+    const t = setTimeout(() => fetchLoads(1, limitRef.current), searchQuery ? 400 : 0)
     return () => clearTimeout(t)
-  }, [isLoaded, isSignedIn, fetchLoads, searchQuery, limit])
+  }, [isLoaded, isSignedIn, fetchLoads, searchQuery])
+
+  // Socket.IO — realtime load:change events
+  React.useEffect(() => {
+    if (!isLoaded || !isSignedIn) return
+    let cleanup: (() => void) | undefined
+
+    getToken().then((token) => {
+      if (!token) return
+      const socket = initializeSocket(token)
+
+      const handleLoadChange = () => {
+        fetchLoads(pageRef.current, limitRef.current)
+        getLoadStats().then(setStats).catch(() => {})
+      }
+
+      socket.on("load:change", handleLoadChange)
+      cleanup = () => { socket.off("load:change", handleLoadChange) }
+    })
+
+    return () => { cleanup?.() }
+  }, [isLoaded, isSignedIn, getToken, fetchLoads])
 
   const changePage = React.useCallback((p: number) => {
-    fetchLoads(p, limit)
-  }, [fetchLoads, limit])
+    pageRef.current = p
+    fetchLoads(p, limitRef.current)
+  }, [fetchLoads])
 
   const changeLimit = React.useCallback((l: PerPageOption) => {
+    limitRef.current = l
     setLimit(l)
     fetchLoads(1, l)
   }, [fetchLoads])
@@ -76,7 +106,7 @@ export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
     stats,
     isLoading,
     error,
-    fetchLoads: () => fetchLoads(1, limit),
+    fetchLoads: () => fetchLoads(1, limitRef.current),
     handleDeleteLoad,
     deletingId,
   }
