@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, resolveImageUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { trailerTypeOptions } from '@/components/driver-profile/driver-profile-constants';
@@ -301,7 +301,7 @@ export default function LoadDetailPage() {
               </div>
               <CardContent className="p-4">
                 <div className="rounded-xl overflow-hidden border border-border/15">
-                  <img src={data.proofOfDelivery.imageUrl} alt="Proof of delivery" className="w-full max-h-72 object-contain bg-muted/20" />
+                  <img src={resolveImageUrl(data.proofOfDelivery.imageUrl)} alt="Proof of delivery" className="w-full max-h-72 object-contain bg-muted/20" />
                 </div>
                 <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
                   {data.proofOfDelivery.submittedAt && <span>Submitted: {fmtDateTime(data.proofOfDelivery.submittedAt)}</span>}

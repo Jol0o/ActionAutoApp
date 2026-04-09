@@ -1,4 +1,4 @@
-import { IUser } from "./types";
+import { UserProfile } from "@/types/user";
 
 export interface SystemHealthStats {
     performance: {
@@ -33,7 +33,7 @@ export interface AuditLogEntry {
     entityId: string;
     action: 'CREATE' | 'UPDATE' | 'DELETE' | 'OTHER';
     reason?: string;
-    performedBy?: IUser | string | null;
+    performedBy?: UserProfile | string | null;
     changes?: Record<string, any>;
     timestamp: string;
 }
@@ -46,7 +46,7 @@ export interface AuditLogStats {
 
 export interface UserActivityEntry {
     _id: string;
-    userId: IUser | string;
+    userId: UserProfile | string;
     organizationId?: string;
     type: string;
     title: string;
