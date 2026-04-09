@@ -131,7 +131,6 @@ function TransportationPageInner() {
     const [isQuoteModalOpen, setIsQuoteModalOpen] = React.useState(false)
     const [isQuoteResultModalOpen, setIsQuoteResultModalOpen] = React.useState(false)
     const [calculatedQuote, setCalculatedQuote] = React.useState<Quote | null>(null)
-    const [secondsAgo, setSecondsAgo] = React.useState<number | null>(null)
 
     const { showAlert, AlertComponent } = useAlert()
 
@@ -153,7 +152,6 @@ function TransportationPageInner() {
         changeQuotesLimit,
         vehicles,
         stats,
-        lastUpdated,
         hasNewEntries,
         dismissNewEntries,
         fetchData,
@@ -185,17 +183,6 @@ function TransportationPageInner() {
 
     // Initial fetch is handled inside useTransportationData when auth is ready
 
-    // Update "X seconds ago" every second
-    React.useEffect(() => {
-        if (!lastUpdated) return
-        const update = () => {
-            setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000))
-        }
-        update()
-        const interval = setInterval(update, 1000)
-        return () => clearInterval(interval)
-    }, [lastUpdated])
-
     // Auto-dismiss new entries banner after 8 seconds
     React.useEffect(() => {
         if (!hasNewEntries) return
@@ -203,15 +190,7 @@ function TransportationPageInner() {
         return () => clearTimeout(timer)
     }, [hasNewEntries, dismissNewEntries])
 
-    const getLastUpdatedLabel = () => {
-        if (secondsAgo === null) return ""
-        if (secondsAgo < 10) return "just now"
-        if (secondsAgo < 60) return `${secondsAgo}s ago`
-        const mins = Math.floor(secondsAgo / 60)
-        return `${mins}m ago`
-    }
-
-    const handleCalculateQuoteWrapper = async (formData: any) => {
+const handleCalculateQuoteWrapper = async (formData: any) => {
         try {
             const quote = await handleCalculateQuote(formData)
             setCalculatedQuote(quote)
@@ -413,11 +392,6 @@ function TransportationPageInner() {
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                                 Live
                             </span>
-                            {lastUpdated && (
-                                <span className="text-muted-foreground">
-                                    · Updated {getLastUpdatedLabel()}
-                                </span>
-                            )}
                             {isSilentRefreshing && (
                                 <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
                                     · <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Refreshing

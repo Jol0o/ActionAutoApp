@@ -205,21 +205,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Token Management
     const getToken = useCallback(async () => {
+        // Helper: decode JWT and check if it's expired (with a 30-second buffer)
+        const isExpired = (token: string): boolean => {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return typeof payload.exp === 'number' && Date.now() >= (payload.exp * 1000) - 30_000;
+            } catch {
+                return true;
+            }
+        };
+
         // Synchronization: Check if background refresh (via api-client interceptor)
         // has updated the global window variable.
         if (typeof window !== 'undefined' && (window as any).__AUTH_TOKEN__) {
             const globalToken = (window as any).__AUTH_TOKEN__;
-            if (globalToken !== accessToken) {
-                console.log('[AuthProvider] Syncing stale accessToken with window.__AUTH_TOKEN__');
-                setAccessTokenState(globalToken);
+            // Only use it if it's still valid
+            if (!isExpired(globalToken)) {
+                if (globalToken !== accessToken) {
+                    setAccessTokenState(globalToken);
+                }
                 return globalToken;
             }
+            // Token is expired — clear it and fall through to refresh
+            (window as any).__AUTH_TOKEN__ = null;
         }
 
-        // If we have a token in memory and it's not expired
-        if (accessToken) return accessToken;
+        // If in-memory token is still valid, use it
+        if (accessToken && !isExpired(accessToken)) return accessToken;
 
-        // Otherwise, try to refresh
+        // Otherwise, proactively refresh before any API call sees a 401
         if (globalRefreshPromise) {
             return globalRefreshPromise;
         }
@@ -247,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.warn('[AuthProvider] Failed to refresh token');
         }
         return null;
-    }, [accessToken]);
+    }, [accessToken, setAccessToken]);
 
     // 3. Sign Out
     const signOut = useCallback(async (options?: { redirectUrl?: string }) => {
