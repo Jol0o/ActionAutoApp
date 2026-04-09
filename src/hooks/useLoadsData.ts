@@ -2,6 +2,7 @@ import * as React from "react"
 import { getLoads, getLoadStats, deleteLoad, LoadStats, LoadsPagination } from "@/lib/api/loads"
 import { Load } from "@/types/load"
 import { useAuth } from "@/providers/AuthProvider"
+import { PER_PAGE_OPTIONS, PerPageOption } from "./useTransportationData"
 
 export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
   const [loads, setLoads] = React.useState<Load[]>([])
@@ -12,16 +13,17 @@ export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState<PerPageOption>(5)
   const { isLoaded, isSignedIn } = useAuth()
 
-  const fetchLoads = React.useCallback(async (p = 1) => {
+  const fetchLoads = React.useCallback(async (p = 1, l = limit) => {
     setIsLoading(true)
     setError(null)
     try {
       const status = selectedStatus && selectedStatus !== "all" ? selectedStatus : undefined
       const q      = searchQuery?.trim() || undefined
       const [result, statsData] = await Promise.all([
-        getLoads({ status, q, page: p, limit: 20 }),
+        getLoads({ status, q, page: p, limit: l }),
         getLoadStats(),
       ])
       setLoads(result.loads)
@@ -33,18 +35,23 @@ export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
     } finally {
       setIsLoading(false)
     }
-  }, [searchQuery, selectedStatus])
+  }, [searchQuery, selectedStatus, limit])
 
-  // Debounced re-fetch when search/status changes
+  // Debounced re-fetch when search/status changes — reset to page 1
   React.useEffect(() => {
     if (!isLoaded || !isSignedIn) return
-    const t = setTimeout(() => fetchLoads(1), searchQuery ? 400 : 0)
+    const t = setTimeout(() => fetchLoads(1, limit), searchQuery ? 400 : 0)
     return () => clearTimeout(t)
-  }, [isLoaded, isSignedIn, fetchLoads, searchQuery])
+  }, [isLoaded, isSignedIn, fetchLoads, searchQuery, limit])
 
-  const loadMore = React.useCallback(() => {
-    if (pagination?.hasMore) fetchLoads(page + 1)
-  }, [pagination, page, fetchLoads])
+  const changePage = React.useCallback((p: number) => {
+    fetchLoads(p, limit)
+  }, [fetchLoads, limit])
+
+  const changeLimit = React.useCallback((l: PerPageOption) => {
+    setLimit(l)
+    fetchLoads(1, l)
+  }, [fetchLoads])
 
   const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
@@ -59,5 +66,18 @@ export function useLoadsData(searchQuery?: string, selectedStatus?: string) {
     }
   }, [])
 
-  return { loads, pagination, stats, isLoading, error, fetchLoads: () => fetchLoads(1), loadMore, handleDeleteLoad, deletingId }
+  return {
+    loads,
+    pagination,
+    page,
+    limit,
+    changePage,
+    changeLimit,
+    stats,
+    isLoading,
+    error,
+    fetchLoads: () => fetchLoads(1, limit),
+    handleDeleteLoad,
+    deletingId,
+  }
 }
