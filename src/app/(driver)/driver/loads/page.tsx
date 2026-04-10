@@ -17,9 +17,8 @@ import {
   Truck, Package, Search, CheckCircle2, Clock, Loader2, ArrowRight,
   Camera, AlertCircle, ImageIcon, DollarSign, Timer, XCircle, Phone, Mail,
   FileText, User2, ChevronDown, ChevronUp, Ban, RefreshCw, CircleDot,
-  Navigation2, AlertTriangle, ArrowLeft, Zap, Wrench,
+  Navigation2, AlertTriangle, ArrowLeft, Zap,
 } from 'lucide-react';
-import { useDriverGate } from '@/hooks/useEquipmentGate';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { initializeSocket, getSocket } from '@/lib/socket.client';
@@ -55,7 +54,6 @@ type Tab = 'active' | 'requests' | 'completed' | 'all';
 
 export default function DriverLoadsPage() {
   const { getToken } = useAuth();
-  const { checking: equipCheck, equipmentComplete, documentsComplete } = useDriverGate();
   const [loads, setLoads] = React.useState<Shipment[]>([]);
   const [requests, setRequests] = React.useState<Shipment[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -103,11 +101,12 @@ export default function DriverLoadsPage() {
 
   const handleRefresh = () => { setRefreshing(true); fetchLoads(); };
 
-  const handleAccept = async (id: string) => {
+  const handleAccept = async (id: string, load: Shipment) => {
     setAcceptingId(id);
     try {
       const token = await getToken();
-      await apiClient.post('/api/driver-tracking/accept-load', { shipmentId: id }, { headers: { Authorization: `Bearer ${token}` } });
+      const body = (load as any).__docType === 'load' ? { loadId: id } : { shipmentId: id };
+      await apiClient.post('/api/driver-tracking/accept-load', body, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Load accepted — you are now dispatched');
       await fetchLoads();
     } catch (err: any) { toast.error(extractErr(err, 'Failed to accept load')); }
@@ -118,7 +117,9 @@ export default function DriverLoadsPage() {
     setDroppingId(id);
     try {
       const token = await getToken();
-      await apiClient.post('/api/driver-tracking/drop-load', { shipmentId: id }, { headers: { Authorization: `Bearer ${token}` } });
+      const target = loads.find(l => l._id === id);
+      const body = (target as any)?.__docType === 'load' ? { loadId: id } : { shipmentId: id };
+      await apiClient.post('/api/driver-tracking/drop-load', body, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Load dropped successfully');
       setDropTarget(null);
       await fetchLoads();
@@ -130,7 +131,9 @@ export default function DriverLoadsPage() {
     setStartingId(id);
     try {
       const token = await getToken();
-      await apiClient.post('/api/driver-tracking/start-route', { shipmentId: id }, { headers: { Authorization: `Bearer ${token}` } });
+      const target = loads.find(l => l._id === id);
+      const body = (target as any)?.__docType === 'load' ? { loadId: id } : { shipmentId: id };
+      await apiClient.post('/api/driver-tracking/start-route', body, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Route started — status updated to In-Route');
       await fetchLoads();
     } catch (err: any) { toast.error(extractErr(err, 'Failed to start route')); }
@@ -161,47 +164,6 @@ export default function DriverLoadsPage() {
     { key: 'completed', label: 'Completed', count: completedCount || undefined, icon: CheckCircle2 },
     { key: 'all', label: 'All', count: loads.length || undefined, icon: Package },
   ];
-
-  if (equipCheck) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="relative"><div className="size-16 rounded-full border-4 border-primary/20 animate-pulse" /><Loader2 className="size-8 animate-spin text-primary absolute inset-0 m-auto" /></div>
-      <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Verifying Profile</p>
-    </div>
-  );
-
-  if (!equipmentComplete || !documentsComplete) return (
-    <div className="max-w-lg mx-auto px-4 py-16">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-        <div className="text-center space-y-3">
-          <div className="mx-auto size-20 rounded-2xl bg-amber-500/10 flex items-center justify-center"><AlertTriangle className="size-10 text-amber-500" /></div>
-          <h2 className="text-2xl font-black">Profile Incomplete</h2>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">Complete all required steps before viewing your loads.</p>
-        </div>
-        <div className="space-y-3">
-          <div className={cn('flex items-center gap-4 p-4 rounded-2xl border-2 transition-all', equipmentComplete ? 'border-emerald-500/20 bg-emerald-500/3' : 'border-amber-500/20 bg-amber-500/3')}>
-            <div className={cn('size-12 rounded-xl flex items-center justify-center', equipmentComplete ? 'bg-emerald-500/10' : 'bg-amber-500/10')}>
-              {equipmentComplete ? <CheckCircle2 className="size-6 text-emerald-500" /> : <Wrench className="size-6 text-amber-500" />}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold">{equipmentComplete ? 'Equipment Complete' : 'Equipment Setup Required'}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{equipmentComplete ? 'Truck, trailer, and authority configured' : 'Fill in truck details, trailer type, DOT/MC numbers'}</p>
-            </div>
-            {!equipmentComplete && <Link href="/driver/equipment"><Button size="sm" className="gap-1.5 bg-linear-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold shrink-0"><Wrench className="size-3.5" /> Setup</Button></Link>}
-          </div>
-          <div className={cn('flex items-center gap-4 p-4 rounded-2xl border-2 transition-all', documentsComplete ? 'border-emerald-500/20 bg-emerald-500/3' : 'border-amber-500/20 bg-amber-500/3')}>
-            <div className={cn('size-12 rounded-xl flex items-center justify-center', documentsComplete ? 'bg-emerald-500/10' : 'bg-amber-500/10')}>
-              {documentsComplete ? <CheckCircle2 className="size-6 text-emerald-500" /> : <FileText className="size-6 text-amber-500" />}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold">{documentsComplete ? 'Documents Complete' : 'Driver Verification Required'}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{documentsComplete ? 'Identity, credentials, and documents verified' : 'Upload documents, verify identity, accept agreement'}</p>
-            </div>
-            {!documentsComplete && <Link href="/driver/documents"><Button size="sm" className="gap-1.5 bg-linear-to-r from-violet-500 to-purple-500 text-white rounded-xl font-bold shrink-0"><FileText className="size-3.5" /> Verify</Button></Link>}
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
@@ -275,7 +237,7 @@ export default function DriverLoadsPage() {
               {filtered.map((load, i) => (
                 <motion.div key={load._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i * 0.03 }}>
                   <LoadCard load={load} isRequest={tab === 'requests'} acceptingId={acceptingId} droppingId={droppingId} startingId={startingId}
-                    onAccept={handleAccept} onDrop={l => setDropTarget(l)} onStartRoute={handleStartRoute} onSubmitProof={() => setProofTarget(load)} />
+                    onAccept={(id, l) => handleAccept(id, l)} onDrop={l => setDropTarget(l)} onStartRoute={handleStartRoute} onSubmitProof={() => setProofTarget(load)} />
                 </motion.div>
               ))}
             </div>
@@ -314,7 +276,7 @@ function StatusTimeline({ load }: { load: Shipment }) {
 
 function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAccept, onDrop, onStartRoute, onSubmitProof }: {
   load: Shipment; isRequest: boolean; acceptingId: string | null; droppingId: string | null; startingId: string | null;
-  onAccept: (id: string) => void; onDrop: (l: Shipment) => void; onStartRoute: (id: string) => void; onSubmitProof: () => void;
+  onAccept: (id: string, load: Shipment) => void; onDrop: (l: Shipment) => void; onStartRoute: (id: string) => void; onSubmitProof: () => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const isDispatched = load.status === 'Dispatched' || load.status === 'In-Route';
@@ -370,7 +332,7 @@ function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAcce
               {!isRequest && (
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   {!load.driverAcceptedAt && isActive && (
-                    <Button size="sm" onClick={() => onAccept(load._id)} disabled={acceptingId === load._id} className="rounded-lg gap-1.5">
+                    <Button size="sm" onClick={() => onAccept(load._id, load)} disabled={acceptingId === load._id} className="rounded-lg gap-1.5">
                       {acceptingId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><CheckCircle2 className="size-4" />Accept</>}
                     </Button>
                   )}

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Minus, LocateFixed, Satellite } from "lucide-react";
+import { Plus, Minus, LocateFixed, Satellite, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -11,6 +11,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+type MapFilter = "all" | "sharing" | "on-route" | "with-loads";
+
+const MAP_FILTERS: { key: MapFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "sharing", label: "Sharing" },
+  { key: "on-route", label: "On Route" },
+  { key: "with-loads", label: "With Loads" },
+];
+
 interface DriverTrackerMapProps {
   mapboxToken?: string;
   mapRef: React.RefObject<HTMLDivElement | null>;
@@ -19,6 +28,8 @@ interface DriverTrackerMapProps {
   onCenter: () => void;
   mapNotice?: string | null;
   activeCount?: number;
+  mapFilter?: MapFilter;
+  onMapFilterChange?: (filter: MapFilter) => void;
 }
 
 export function DriverTrackerMap({
@@ -29,6 +40,8 @@ export function DriverTrackerMap({
   onCenter,
   mapNotice,
   activeCount = 0,
+  mapFilter = "all",
+  onMapFilterChange,
 }: DriverTrackerMapProps) {
   return (
     <Card className="border-border/50 shadow-sm overflow-hidden bg-card p-0 gap-0">
@@ -52,6 +65,24 @@ export function DriverTrackerMap({
               <div className="rounded-xl bg-background/80 backdrop-blur-sm border border-border/50 px-6 py-3 shadow-lg">
                 <p className="text-xs text-muted-foreground font-medium">{mapNotice}</p>
               </div>
+            </div>
+          )}
+
+          {onMapFilterChange && (
+            <div className="absolute top-4 left-4 rounded-xl bg-background/90 backdrop-blur-sm border border-border/50 shadow-lg p-1.5 flex items-center gap-1">
+              <Filter className="size-3.5 text-muted-foreground ml-2 mr-1" />
+              {MAP_FILTERS.map((f) => (
+                <Button
+                  key={f.key}
+                  size="sm"
+                  variant={mapFilter === f.key ? "default" : "ghost"}
+                  className={`h-7 px-2.5 text-[10px] font-bold rounded-lg ${mapFilter === f.key ? "shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  onClick={() => onMapFilterChange(f.key)}
+                >
+                  {f.label}
+                </Button>
+              ))}
             </div>
           )}
 
@@ -90,13 +121,14 @@ export function DriverTrackerMap({
                 { color: "bg-blue-500", pulse: false, label: "Waiting" },
                 { color: "bg-slate-500", pulse: false, label: "On Break" },
                 { color: "bg-slate-400", pulse: false, label: "Offline" },
+                { color: "bg-orange-500", pulse: false, label: "Load Location", shape: "square" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2.5">
                   <span className="relative flex size-2.5">
                     {item.pulse && (
                       <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${item.color} opacity-40`} />
                     )}
-                    <span className={`relative inline-flex size-2.5 rounded-full ${item.color}`} />
+                    <span className={`relative inline-flex size-2.5 ${"shape" in item ? "rounded-sm" : "rounded-full"} ${item.color}`} />
                   </span>
                   <span className="text-foreground/80 font-medium">{item.label}</span>
                 </div>

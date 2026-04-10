@@ -308,322 +308,504 @@ export const EquipmentPage: React.FC = () => {
           <motion.div key={nav} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
 
             {nav === 'rig' && (
-              <div className="space-y-5">
-                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                  <div className="h-1 w-full bg-linear-to-r from-blue-600 to-indigo-500" />
-                  <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
-                    <div className="size-11 rounded-xl bg-linear-to-br from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg"><Truck className="size-5" /></div>
-                    <div><h3 className="text-lg font-black">Truck Details</h3><p className="text-xs text-muted-foreground">Primary vehicle information</p></div>
-                  </div>
-                  <CardContent className="p-5 sm:p-6 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <Fld label="Make"><Input value={form.truckMake} onChange={e => patch({ truckMake: e.target.value })} placeholder="e.g. Peterbilt" className={inp} /></Fld>
-                      <Fld label="Model"><Input value={form.truckModel} onChange={e => patch({ truckModel: e.target.value })} placeholder="e.g. 389" className={inp} /></Fld>
-                      <Fld label="Year"><Input type="number" min={1990} max={2030} value={form.truckYear || ''} onChange={e => patch({ truckYear: parseInt(e.target.value) || undefined })} placeholder="2024" className={inp} /></Fld>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+                <div className="relative overflow-hidden rounded-3xl border border-border/30 bg-linear-to-br from-background via-background to-background/50 backdrop-blur-sm shadow-xl">
+                  <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 via-transparent to-indigo-500/5" />
+                  <div className="relative p-6 sm:p-8 space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="size-14 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30"><Truck className="size-7" /></div>
+                      <div className="flex-1">
+                        <h2 className="text-2xl sm:text-3xl font-black">Truck & Engine</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Primary vehicle specifications and details</p>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <Fld label="Color"><Input value={form.truckColor} onChange={e => patch({ truckColor: e.target.value })} placeholder="e.g. White" className={inp} /></Fld>
-                      <Fld label="Engine Type"><Input value={form.engineType} onChange={e => patch({ engineType: e.target.value })} placeholder="e.g. Cummins X15" className={inp} /></Fld>
-                      <Fld label="Truck GVWR (lbs)"><Input type="number" min={0} max={100000} value={form.gvwr || ''} onChange={e => patch({ gvwr: parseInt(e.target.value) || undefined })} placeholder="e.g. 26000" className={inp} /></Fld>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                  <div className="h-1 w-full bg-linear-to-r from-slate-600 to-zinc-500" />
-                  <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
-                    <div className="size-11 rounded-xl bg-linear-to-br from-slate-600 to-zinc-500 flex items-center justify-center text-white shadow-lg"><Shield className="size-5" /></div>
-                    <div><h3 className="text-lg font-black">Operating Authority</h3><p className="text-xs text-muted-foreground">Identification and registration</p></div>
-                  </div>
-                  <CardContent className="p-5 sm:p-6 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Fld label="VIN"><Input value={form.vin} onChange={e => patch({ vin: e.target.value.toUpperCase() })} placeholder="e.g. 1HGCM82633A004352" maxLength={17} className={mono} /></Fld>
-                      <Fld label="License Plate"><Input value={form.plateNumber} onChange={e => patch({ plateNumber: e.target.value.toUpperCase() })} placeholder="e.g. ABC-1234" maxLength={15} className={mono} /></Fld>
+                    <div className="rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Truck Details</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Make</Label>
+                            <Input value={form.truckMake} onChange={e => patch({ truckMake: e.target.value })} placeholder="e.g. Peterbilt" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Model</Label>
+                            <Input value={form.truckModel} onChange={e => patch({ truckModel: e.target.value })} placeholder="e.g. 389" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Year</Label>
+                            <Input type="number" min={1990} max={2030} value={form.truckYear || ''} onChange={e => patch({ truckYear: parseInt(e.target.value) || undefined })} placeholder="2024" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Color</Label>
+                            <Input value={form.truckColor} onChange={e => patch({ truckColor: e.target.value })} placeholder="e.g. White" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Engine Type</Label>
+                            <Input value={form.engineType} onChange={e => patch({ engineType: e.target.value })} placeholder="e.g. Cummins X15" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Truck GVWR (lbs)</Label>
+                            <Input type="number" min={0} max={100000} value={form.gvwr || ''} onChange={e => patch({ gvwr: parseInt(e.target.value) || undefined })} placeholder="e.g. 26000" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Fld label="DOT Number" icon={<Shield className="size-3" />}><Input value={form.dotNumber} onChange={e => patch({ dotNumber: e.target.value })} placeholder="e.g. 1234567" className={mono} /></Fld>
-                      <Fld label="MC Number" icon={<Shield className="size-3" />}><Input value={form.mcNumber} onChange={e => patch({ mcNumber: e.target.value })} placeholder="e.g. MC-123456" className={mono} /></Fld>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                <div className="flex justify-end">
-                  <Button onClick={() => setNav('trailer')} className="gap-2 rounded-xl">Next: Trailer <ChevronRight className="size-4" /></Button>
+                    <div className="rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Operating Authority</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">VIN</Label>
+                            <Input value={form.vin} onChange={e => patch({ vin: e.target.value.toUpperCase() })} placeholder="e.g. 1HGCM82633A004352" maxLength={17} className="h-11 font-mono uppercase bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">License Plate</Label>
+                            <Input value={form.plateNumber} onChange={e => patch({ plateNumber: e.target.value.toUpperCase() })} placeholder="e.g. ABC-1234" maxLength={15} className="h-11 font-mono uppercase bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.45 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">DOT Number</Label>
+                            <Input value={form.dotNumber} onChange={e => patch({ dotNumber: e.target.value })} placeholder="e.g. 1234567" className="h-11 font-mono bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">MC Number</Label>
+                            <Input value={form.mcNumber} onChange={e => patch({ mcNumber: e.target.value })} placeholder="e.g. MC-123456" className="h-11 font-mono bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                      </div>
+                    </div>
+
+                    <motion.div layout className="flex items-center justify-between border-t border-border/20 pt-6">
+                      <Button variant="ghost" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="gap-2 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
+                      <Button onClick={() => setNav('trailer')} className="gap-2 rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/20">
+                        Next: Trailer <ChevronRight className="size-4" />
+                      </Button>
+                    </motion.div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {nav === 'trailer' && (
-              <div className="space-y-5">
-                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                  <div className={cn('h-1 w-full bg-linear-to-r', th.grad)} />
-                  <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
-                    <div className={cn('size-11 rounded-xl bg-linear-to-br flex items-center justify-center text-white shadow-lg', th.grad)}>
-                      <ChevronsUpDown className="size-5" />
-                    </div>
-                    <div className="flex-1"><h3 className="text-lg font-black">Trailer Type</h3><p className="text-xs text-muted-foreground">Determines which loads match you</p></div>
-                    {sel && <Badge className={cn('text-xs font-bold px-3 py-1 bg-linear-to-r text-white border-0', th.grad)}>{sel.capacity}</Badge>}
-                  </div>
-                  <CardContent className="p-5 sm:p-6">
-                    <button type="button" onClick={() => setTypeDialogOpen(true)}
-                      className={cn('w-full flex items-center gap-4 sm:gap-5 p-4 sm:p-5 rounded-2xl border-2 transition-all text-left group relative overflow-hidden', 'border-border/20 hover:border-primary/30 hover:shadow-xl')}>
-                      <div className={cn('absolute inset-0 opacity-[0.03] bg-linear-to-r', th.grad)} />
-                      <div className={cn('w-24 sm:w-32 h-16 sm:h-20 rounded-xl flex items-center justify-center shrink-0 relative', th.bg)}>
-                        <TSvg cat={cat} className="w-full h-full p-2" />
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+                <div className="relative overflow-hidden rounded-3xl border border-border/30 bg-linear-to-br from-background via-background to-background/50 backdrop-blur-sm shadow-xl">
+                  <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-teal-500/5" />
+                  <div className="relative p-6 sm:p-8 space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="size-14 rounded-2xl bg-linear-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30"><Box className="size-7" /></div>
+                      <div className="flex-1">
+                        <h2 className="text-2xl sm:text-3xl font-black">Trailer Configuration</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Trailer type, details and hitch configuration</p>
                       </div>
-                      <div className="flex-1 min-w-0 relative">
-                        <p className="text-base sm:text-lg font-black">{sel?.label || 'Select Type'}</p>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{sel?.description}</p>
-                        <div className="flex items-center gap-2 mt-2.5">
-                          <Badge variant="outline" className="text-[10px] gap-1 h-5"><Hash className="size-2.5" />{sel?.capacity}</Badge>
-                          <Badge className={cn('text-[10px] capitalize h-5 border-0 text-white bg-linear-to-r', th.grad)}>{cat}</Badge>
+                      {sel && <Badge className={cn('text-xs font-bold px-3 py-1.5 bg-linear-to-r text-white border-0 shadow-lg', th.grad)}>{sel.capacity}</Badge>}
+                    </div>
+
+                    <div className="rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Trailer Type *</h3>
+                      <motion.button type="button" onClick={() => setTypeDialogOpen(true)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full relative overflow-hidden rounded-2xl border-2 border-border/40 bg-linear-to-br from-background to-muted/30 p-4 text-left transition-all hover:border-primary/50 hover:shadow-md group">
+                        <div className="flex items-center gap-4">
+                          <div className={cn('w-20 h-14 rounded-xl flex items-center justify-center shrink-0', th.bg)}>
+                            <TSvg cat={cat} className="w-full h-full p-2" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-base">{sel?.label || 'Select Trailer Type'}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{sel?.description || 'Click to select your trailer configuration'}</p>
+                          </div>
+                          <ChevronRight className="size-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </motion.button>
+                    </div>
+
+                    <div className="rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Trailer Details</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Make</Label>
+                            <Input value={form.trailerMake} onChange={e => patch({ trailerMake: e.target.value })} placeholder="e.g. Kaufman" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Model</Label>
+                            <Input value={form.trailerModel} onChange={e => patch({ trailerModel: e.target.value })} placeholder="e.g. Deluxe" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold text-muted-foreground">Year</Label>
+                            <Input type="number" min={1990} max={2030} value={form.trailerYear || ''} onChange={e => patch({ trailerYear: parseInt(e.target.value) || undefined })} placeholder="2024" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          </div>
+                        </motion.div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Hitch Type</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {hitchTypeOptions.map((opt, idx) => {
+                            const a = form.hitchType === opt.value;
+                            return (
+                              <motion.button key={opt.value} type="button" onClick={() => patch({ hitchType: a ? '' : opt.value })} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.05 }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                className={cn('flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-center',
+                                  a ? 'border-emerald-500 bg-emerald-500/10 shadow-md ring-1 ring-emerald-500/30' : 'border-border/30 hover:border-border/50')}>
+                                <span className={cn('text-xs font-bold', a && 'text-emerald-600 dark:text-emerald-400')}>{opt.label}</span>
+                                {a && <CheckCircle2 className="size-4 text-emerald-500" />}
+                              </motion.button>
+                            );
+                          })}
                         </div>
                       </div>
-                      <div className="relative flex items-center gap-1 text-muted-foreground group-hover:text-primary transition-colors">
-                        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:block">Change</span>
-                        <ChevronRight className="size-5" />
-                      </div>
-                    </button>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                  <div className="h-1 w-full bg-linear-to-r from-cyan-600 to-sky-500" />
-                  <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
-                    <div className="size-11 rounded-xl bg-linear-to-br from-cyan-600 to-sky-500 flex items-center justify-center text-white shadow-lg"><Wrench className="size-5" /></div>
-                    <div><h3 className="text-lg font-black">Trailer Details</h3><p className="text-xs text-muted-foreground">Make, model, and hitch configuration</p></div>
-                  </div>
-                  <CardContent className="p-5 sm:p-6 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <Fld label="Trailer Make"><Input value={form.trailerMake} onChange={e => patch({ trailerMake: e.target.value })} placeholder="e.g. Kaufman" className={inp} /></Fld>
-                      <Fld label="Trailer Model"><Input value={form.trailerModel} onChange={e => patch({ trailerModel: e.target.value })} placeholder="e.g. Deluxe" className={inp} /></Fld>
-                      <Fld label="Trailer Year"><Input type="number" min={1990} max={2030} value={form.trailerYear || ''} onChange={e => patch({ trailerYear: parseInt(e.target.value) || undefined })} placeholder="2024" className={inp} /></Fld>
                     </div>
-                    <div>
-                      <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3 block">Hitch Type</Label>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                        {hitchTypeOptions.map(opt => {
-                          const a = form.hitchType === opt.value;
+
+                    <motion.div layout className="flex items-center justify-between border-t border-border/20 pt-6">
+                      <Button variant="ghost" onClick={() => setNav('rig')} className="gap-2 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
+                      <Button onClick={() => setNav('specs')} className="gap-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/20">
+                        Next: Specs <ChevronRight className="size-4" />
+                      </Button>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {nav === 'specs' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+                <div className="relative overflow-hidden rounded-3xl border border-border/30 bg-linear-to-br from-background via-background to-background/50 backdrop-blur-sm shadow-xl">
+                  <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-teal-500/5" />
+                  <div className="relative p-6 sm:p-8 space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="size-14 rounded-2xl bg-linear-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30"><Gauge className="size-7" /></div>
+                      <div className="flex-1">
+                        <h2 className="text-2xl sm:text-3xl font-black">Trailer Specifications</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Capacity, dimensions, and weight specifications</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0 }} className="relative overflow-hidden rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4 h-full">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/30">
+                            <Gauge className="size-5" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-black">Max Vehicles</h4>
+                            <p className="text-xs text-muted-foreground">{form.maxVehicleCapacity} vehicles</p>
+                          </div>
+                        </div>
+                        <input type="range" min={1} max={12} value={form.maxVehicleCapacity} onChange={e => patch({ maxVehicleCapacity: parseInt(e.target.value) })}
+                          className="w-full h-4 bg-muted/30 rounded-full appearance-none cursor-pointer accent-amber-500" />
+                        <div className="flex items-center justify-between text-base text-muted-foreground font-bold">
+                          <span>1</span>
+                          <span className="text-amber-600 text-lg font-black">{form.maxVehicleCapacity}</span>
+                          <span>12</span>
+                        </div>
+                        <div className="pt-1 flex justify-center">
+                          <div className="flex gap-1.5">
+                            {Array.from({ length: 12 }, (_, i) => (
+                              <motion.div key={i} initial={false}
+                                animate={{ scale: i < form.maxVehicleCapacity ? 1 : 0.6, opacity: i < form.maxVehicleCapacity ? 1 : 0.2 }}
+                                className={cn('size-3 rounded-full', i < form.maxVehicleCapacity ? 'bg-amber-500 shadow-sm shadow-amber-500/30' : 'bg-border')} />
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
+
+                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }} className="relative overflow-hidden rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4 h-full">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-violet-500/30">
+                            <Ruler className="size-5" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-black">Trailer Length</h4>
+                            <p className="text-xs text-muted-foreground">{form.trailerLength || 0} feet</p>
+                          </div>
+                        </div>
+                        <input type="range" min={0} max={80} value={form.trailerLength || 0} onChange={e => patch({ trailerLength: parseInt(e.target.value) || undefined })}
+                          className="w-full h-4 bg-muted/30 rounded-full appearance-none cursor-pointer accent-violet-500" />
+                        <div className="flex items-center justify-between text-base text-muted-foreground font-bold">
+                          <span>0 ft</span>
+                          <span className="text-violet-600 text-lg font-black">{form.trailerLength || 0} ft</span>
+                          <span>80 ft</span>
+                        </div>
+                        <div className="pt-1">
+                          <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
+                            <motion.div className="h-full rounded-full bg-linear-to-r from-violet-500 to-purple-500 shadow-lg shadow-violet-500/30" initial={false}
+                              animate={{ width: `${((form.trailerLength || 0) / 80) * 100}%` }} transition={{ duration: 0.3, ease: 'easeOut' }} />
+                          </div>
+                        </div>
+                      </motion.div>
+
+                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} className="relative overflow-hidden rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-xl bg-linear-to-br from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/30">
+                            <Settings2 className="size-5" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-black">Axle Count</h4>
+                            <p className="text-xs text-muted-foreground">{form.trailerAxles} axles</p>
+                          </div>
+                        </div>
+                        <input type="range" min={1} max={10} value={form.trailerAxles} onChange={e => patch({ trailerAxles: parseInt(e.target.value) })}
+                          className="w-full h-4 bg-muted/30 rounded-full appearance-none cursor-pointer accent-rose-500" />
+                        <div className="flex items-center justify-between text-base text-muted-foreground font-bold">
+                          <span>1</span>
+                          <span className="text-rose-600 text-lg font-black">{form.trailerAxles}</span>
+                          <span>10</span>
+                        </div>
+                      </motion.div>
+
+                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="relative overflow-hidden rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="size-10 rounded-xl bg-linear-to-br from-orange-500 to-red-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                            <Gauge className="size-5" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-black">Trailer GVWR</h4>
+                            <p className="text-xs text-muted-foreground">Gross Vehicle Weight Rating</p>
+                          </div>
+                        </div>
+                        <Input type="number" min={0} max={100000} value={form.trailerGvwr || ''} onChange={e => patch({ trailerGvwr: parseInt(e.target.value) || undefined })}
+                          placeholder="e.g. 14000" className="h-12 text-lg font-bold text-center bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                        <p className="text-xs text-muted-foreground text-center font-medium">Weight in pounds (lbs)</p>
+                      </motion.div>
+                    </div>
+
+                    <motion.div layout className="flex items-center justify-between border-t border-border/20 pt-6">
+                      <Button variant="ghost" onClick={() => setNav('trailer')} className="gap-2 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
+                      <Button onClick={() => setNav('features')} className="gap-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/20">
+                        Next: Features <ChevronRight className="size-4" />
+                      </Button>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {nav === 'features' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+                <div className="relative overflow-hidden rounded-3xl border border-border/30 bg-linear-to-br from-background via-background to-background/50 backdrop-blur-sm shadow-xl">
+                  <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-teal-500/5" />
+                  <div className="relative p-6 sm:p-8 space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="size-14 rounded-2xl bg-linear-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30"><Star className="size-7" /></div>
+                      <div className="flex-1">
+                        <h2 className="text-2xl sm:text-3xl font-black">Special Features</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Capabilities and special features on your rig</p>
+                      </div>
+                      <Badge className="text-xs font-bold bg-linear-to-r from-emerald-600 to-teal-600 text-white border-0 shadow-lg">{form.specialFeatures.length} selected</Badge>
+                    </div>
+
+                    <div className="rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Available Features</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {specialFeatureOptions.map((opt, idx) => {
+                          const a = form.specialFeatures.includes(opt.value);
                           return (
-                            <button key={opt.value} type="button" onClick={() => patch({ hitchType: a ? '' : opt.value })}
-                              className={cn('flex flex-col items-center gap-1 p-3.5 rounded-xl border-2 transition-all', a ? 'border-cyan-500 bg-cyan-500/5 shadow-md ring-1 ring-cyan-500/20' : 'border-border/20 hover:border-border/50')}>
-                              <span className={cn('text-sm font-bold', a && 'text-cyan-600 dark:text-cyan-400')}>{opt.label}</span>
-                              <span className="text-[10px] text-muted-foreground text-center leading-tight">{opt.description}</span>
-                              {a && <CheckCircle2 className="size-4 text-cyan-500 mt-0.5" />}
-                            </button>
+                            <motion.button key={opt.value} type="button" onClick={() => toggleFeature(opt.value)}
+                              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.03 }}
+                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                              className={cn('relative flex items-center justify-between gap-2 p-3 rounded-xl border-2 transition-all text-left',
+                                a ? 'border-emerald-500 bg-emerald-500/10 shadow-md ring-1 ring-emerald-500/30' : 'border-border/30 hover:border-border/50 hover:shadow-md')}>
+                              <span className={cn('text-xs font-bold truncate flex-1', a && 'text-emerald-600 dark:text-emerald-400')}>{opt.label}</span>
+                              {a ? <CheckCircle2 className="size-5 text-emerald-500 shrink-0" /> : <Circle className="size-4 text-border shrink-0" />}
+                            </motion.button>
                           );
                         })}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <div className="flex items-center justify-between">
-                  <Button variant="ghost" onClick={() => setNav('rig')} className="gap-1.5 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
-                  <Button onClick={() => setNav('specs')} className="gap-2 rounded-xl">Next: Specs <ChevronRight className="size-4" /></Button>
-                </div>
-              </div>
-            )}
-
-            {nav === 'specs' && (
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                    <div className="h-1 w-full bg-linear-to-r from-amber-500 to-orange-500" />
-                    <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="size-11 rounded-xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg"><Gauge className="size-5" /></div>
-                        <div><p className="text-base font-black">Max Vehicle Capacity</p><p className="text-xs text-muted-foreground">{sel?.capacity || 'Select trailer'}</p></div>
-                      </div>
-                      <Counter value={form.maxVehicleCapacity} onChange={v => patch({ maxVehicleCapacity: v })} min={1} max={12} label="Vehicles" color="text-amber-500" lg />
-                      <div className="mt-5 flex justify-center">
-                        <div className="flex gap-1.5">
-                          {Array.from({ length: 12 }, (_, i) => (
-                            <motion.div key={i} initial={false}
-                              animate={{ scale: i < form.maxVehicleCapacity ? 1 : 0.6, opacity: i < form.maxVehicleCapacity ? 1 : 0.2 }}
-                              className={cn('size-3 rounded-full', i < form.maxVehicleCapacity ? 'bg-amber-500 shadow-sm shadow-amber-500/30' : 'bg-border')} />
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                    <div className="h-1 w-full bg-linear-to-r from-violet-500 to-purple-500" />
-                    <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="size-11 rounded-xl bg-linear-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-lg"><Ruler className="size-5" /></div>
-                        <div><p className="text-base font-black">Trailer Length</p><p className="text-xs text-muted-foreground">Overall length in feet</p></div>
-                      </div>
-                      <Counter value={form.trailerLength || 0} onChange={v => patch({ trailerLength: v || undefined })} min={0} max={80} label="Feet" color="text-violet-500" lg />
-                      <div className="mt-5">
-                        <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
-                          <motion.div className="h-full rounded-full bg-linear-to-r from-violet-500 to-purple-500" initial={false}
-                            animate={{ width: `${((form.trailerLength || 0) / 80) * 100}%` }} transition={{ duration: 0.3, ease: 'easeOut' }} />
-                        </div>
-                        <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground font-semibold"><span>0 ft</span><span>80 ft</span></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                    <div className="h-1 w-full bg-linear-to-r from-rose-500 to-pink-500" />
-                    <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="size-11 rounded-xl bg-linear-to-br from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-lg"><Settings2 className="size-5" /></div>
-                        <div><p className="text-base font-black">Axle Count</p><p className="text-xs text-muted-foreground">Number of trailer axles</p></div>
-                      </div>
-                      <Counter value={form.trailerAxles} onChange={v => patch({ trailerAxles: v })} min={1} max={10} label="Axles" color="text-rose-500" />
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                    <div className="h-1 w-full bg-linear-to-r from-orange-500 to-red-500" />
-                    <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-center gap-3 mb-5">
-                        <div className="size-11 rounded-xl bg-linear-to-br from-orange-500 to-red-500 flex items-center justify-center text-white shadow-lg"><Gauge className="size-5" /></div>
-                        <div><p className="text-base font-black">Trailer GVWR</p><p className="text-xs text-muted-foreground">Gross Vehicle Weight Rating</p></div>
-                      </div>
-                      <Input type="number" min={0} max={100000} value={form.trailerGvwr || ''} onChange={e => patch({ trailerGvwr: parseInt(e.target.value) || undefined })}
-                        placeholder="e.g. 14000" className="h-14 text-2xl font-bold text-center bg-muted/20 border-border/20 rounded-xl" />
-                      <p className="text-xs text-muted-foreground text-center mt-2 font-medium">Weight in pounds (lbs)</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Button variant="ghost" onClick={() => setNav('trailer')} className="gap-1.5 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
-                  <Button onClick={() => setNav('features')} className="gap-2 rounded-xl">Next: Features <ChevronRight className="size-4" /></Button>
-                </div>
-              </div>
-            )}
-
-            {nav === 'features' && (
-              <div className="space-y-5">
-                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                  <div className="h-1 w-full bg-linear-to-r from-violet-600 to-purple-500" />
-                  <div className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3.5 border-b border-border/10">
-                    <div className="size-11 rounded-xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg"><Star className="size-5" /></div>
-                    <div className="flex-1"><h3 className="text-lg font-black">Special Features</h3><p className="text-xs text-muted-foreground">Capabilities on your rig</p></div>
-                    <Badge className="text-xs font-bold bg-linear-to-r from-violet-600 to-purple-500 text-white border-0">{form.specialFeatures.length} selected</Badge>
-                  </div>
-                  <CardContent className="p-5 sm:p-6 space-y-5">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                      {specialFeatureOptions.map(opt => {
-                        const a = form.specialFeatures.includes(opt.value);
-                        return (
-                          <button key={opt.value} type="button" onClick={() => toggleFeature(opt.value)}
-                            className={cn('flex items-center justify-between gap-2 p-3 rounded-xl border-2 transition-all text-left', a ? 'border-violet-500 bg-violet-500/10 shadow-md ring-1 ring-violet-500/20' : 'border-border/20 hover:border-border/50')}>
-                            <span className={cn('text-xs font-bold truncate', a && 'text-violet-600 dark:text-violet-400')}>{opt.label}</span>
-                            {a ? <CheckCircle2 className="size-4 text-violet-500 shrink-0" /> : <Circle className="size-3.5 text-border shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </div>
 
                     {form.specialFeatures.filter(f => !specialFeatureOptions.find(o => o.value === f)).length > 0 && (
-                      <div className="pt-3 border-t border-border/10">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Custom Features</p>
+                      <div className="rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-3">
+                        <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Custom Features</h3>
                         <div className="flex flex-wrap gap-2">
-                          {form.specialFeatures.filter(f => !specialFeatureOptions.find(o => o.value === f)).map(f => (
-                            <Badge key={f} variant="outline" className="gap-1.5 pr-1.5 text-xs capitalize border-violet-500/30 bg-violet-500/5">
-                              {f.replace(/_/g, ' ')}
-                              <button type="button" onClick={() => patch({ specialFeatures: form.specialFeatures.filter(x => x !== f) })} className="hover:text-destructive transition-colors"><X className="size-3" /></button>
-                            </Badge>
+                          {form.specialFeatures.filter(f => !specialFeatureOptions.find(o => o.value === f)).map((f, idx) => (
+                            <motion.div key={f} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.05 }}>
+                              <Badge className="gap-1.5 pr-1.5 text-xs capitalize border-emerald-500/30 bg-emerald-500/10 border">
+                                {f.replace(/_/g, ' ')}
+                                <button type="button" onClick={() => patch({ specialFeatures: form.specialFeatures.filter(x => x !== f) })} className="hover:text-destructive transition-colors">
+                                  <X className="size-3.5" />
+                                </button>
+                              </Badge>
+                            </motion.div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    <div className="space-y-2.5 pt-2">
+                    <div className="rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
                       <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Add Custom Features</p>
+                        <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">Add Custom Features</h3>
                         <Button type="button" variant="ghost" size="sm" onClick={() => setCustomInputs(p => [...p, ''])} disabled={form.specialFeatures.length >= 20}
-                          className="gap-1.5 text-xs h-7 text-primary hover:text-primary"><Plus className="size-3.5" /> Add Another</Button>
+                          className="gap-1.5 text-xs h-7 text-primary hover:text-primary hover:bg-primary/10 rounded-lg">
+                          <Plus className="size-3.5" /> Add
+                        </Button>
                       </div>
-                      {customInputs.map((v, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <Input value={v} onChange={e => setCustomInputs(p => p.map((x, i) => i === idx ? e.target.value : x))}
-                            placeholder="e.g. Satellite GPS" className={cn(inp, 'flex-1')}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                if (addCustomFeature(customInputs[idx])) setCustomInputs(p => p.length === 1 ? [''] : p.filter((_, i) => i !== idx));
-                              }
-                            }} />
-                          <Button type="button" variant="outline" size="icon" className="size-11 shrink-0 rounded-xl"
-                            onClick={() => { if (addCustomFeature(customInputs[idx])) setCustomInputs(p => p.length === 1 ? [''] : p.filter((_, i) => i !== idx)); }}
-                            disabled={!v.trim()}><Plus className="size-4" /></Button>
-                        </div>
-                      ))}
+                      <div className="space-y-2">
+                        {customInputs.map((v, idx) => (
+                          <motion.div key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} className="flex gap-2">
+                            <Input value={v} onChange={e => setCustomInputs(p => p.map((x, i) => i === idx ? e.target.value : x))}
+                              placeholder="e.g. Satellite GPS" className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm flex-1"
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (addCustomFeature(customInputs[idx])) setCustomInputs(p => p.length === 1 ? [''] : p.filter((_, i) => i !== idx));
+                                }
+                              }} />
+                            <Button type="button" variant="outline" size="icon" className="size-11 shrink-0 rounded-xl hover:bg-emerald-500/10"
+                              onClick={() => { if (addCustomFeature(customInputs[idx])) setCustomInputs(p => p.length === 1 ? [''] : p.filter((_, i) => i !== idx)); }}
+                              disabled={!v.trim()}>
+                              <Plus className="size-4" />
+                            </Button>
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
 
-                <div className="flex items-center justify-between">
-                  <Button variant="ghost" onClick={() => setNav('specs')} className="gap-1.5 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
-                  <Button onClick={handleSave} disabled={saving} className="gap-2 bg-linear-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-xl rounded-xl">
-                    {saving ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Save Equipment
-                  </Button>
+                    <motion.div layout className="flex items-center justify-between border-t border-border/20 pt-6">
+                      <Button variant="ghost" onClick={() => setNav('specs')} className="gap-2 text-muted-foreground rounded-xl"><ArrowLeft className="size-4" /> Back</Button>
+                      <Button onClick={handleSave} disabled={saving} className="gap-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/20">
+                        {saving ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Save Equipment
+                      </Button>
+                    </motion.div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
           </motion.div>
         </AnimatePresence>
 
         <Dialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen}>
-          <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0 gap-0">
-            <DialogHeader className="p-5 pb-3 shrink-0">
-              <DialogTitle className="text-xl font-black">Select Trailer Type</DialogTitle>
-              <p className="text-xs text-muted-foreground">Choose the trailer that matches your rig</p>
-            </DialogHeader>
-            <div className="overflow-x-auto border-b border-border/20 shrink-0" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <div className="flex px-5 min-w-max">
-                {TRAILER_CATEGORIES.map(c => {
-                  const ct = TH[c.id] || TH.open;
+          <DialogContent className="max-w-5xl h-[85vh] p-0 gap-0 rounded-3xl overflow-hidden shadow-2xl border border-border/30 flex flex-col bg-background">
+            {/* Header - Fixed */}
+            <div className="shrink-0 bg-background border-b border-border/20 p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className={cn('size-14 rounded-xl bg-linear-to-br flex items-center justify-center text-white shadow-lg', th.grad, th.glow)}>
+                    <Box className="size-7" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black">Select Trailer Type</h2>
+                    <p className="text-xs text-muted-foreground">Choose the right configuration for your needs</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setTypeDialogOpen(false)} className="rounded-xl h-10 w-10">
+                  <X className="size-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Category Tabs - Fixed, Horizontal Scroll */}
+            <div className="shrink-0 border-b border-border/20 bg-muted/5 px-6 py-4 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+              <div className="flex gap-3 min-w-max">
+                {TRAILER_CATEGORIES.map((c) => {
                   const a = dialogCategory === c.id;
+                  const count = trailerTypeOptions.filter(t => t.category === c.id).length;
                   return (
-                    <button key={c.id} type="button" onClick={() => setDialogCategory(c.id)}
-                      className={cn('flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wide whitespace-nowrap border-b-2 transition-all',
-                        a ? cn('border-current bg-primary/5', ct.text) : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40')}>
-                      {c.label}
-                      <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', a ? 'bg-primary/15' : 'bg-muted')}>
-                        {trailerTypeOptions.filter(t => t.category === c.id).length}
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setDialogCategory(c.id)}
+                      className={cn(
+                        'px-5 py-2 rounded-lg border-2 whitespace-nowrap transition-all font-semibold text-sm flex items-center gap-2',
+                        a
+                          ? `border-foreground text-foreground bg-foreground/5`
+                          : 'border-border/40 text-muted-foreground hover:border-border/60 hover:bg-muted/10'
+                      )}>
+                      <span>{c.label}</span>
+                      <span className={cn('text-xs px-2 py-0.5 rounded-md font-bold', a ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground')}>
+                        {count}
                       </span>
                     </button>
                   );
                 })}
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
+
+            {/* Content Grid - Scrollable */}
+            <div className="flex-1 overflow-y-auto px-8 py-8 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
               <AnimatePresence mode="wait">
-                <motion.div key={dialogCategory} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-4">
-                  {trailerTypeOptions.filter(t => t.category === dialogCategory).map(opt => {
+                <motion.div
+                  key={dialogCategory}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                  className="grid grid-cols-1 gap-5">
+                  {trailerTypeOptions.filter(t => t.category === dialogCategory).map((opt, idx) => {
                     const s = form.trailerType === opt.value;
                     const ct = TH[opt.category] || TH.open;
                     return (
-                      <button key={opt.value} type="button" onClick={() => { patch({ trailerType: opt.value }); setTypeDialogOpen(false); }}
-                        className={cn('flex flex-col rounded-2xl border-2 transition-all text-left overflow-hidden group',
-                          s ? cn('shadow-lg ring-2', ct.ring, ct.text, 'border-current') : 'border-border/20 hover:border-border/50 hover:shadow-md')}>
-                        <div className={cn('w-full h-24 flex items-center justify-center relative', ct.bg)}>
-                          {s && <div className={cn('absolute inset-0 opacity-10 bg-linear-to-r', ct.grad)} />}
-                          <TSvg cat={opt.category} className="w-full h-full p-3 relative" />
+                      <motion.button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { patch({ trailerType: opt.value }); setTypeDialogOpen(false); }}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.08, duration: 0.3 }}
+                        whileHover={{ scale: 1.02, x: 8 }}
+                        whileTap={{ scale: 0.98 }}
+                        className={cn(
+                          'relative flex flex-row rounded-2xl border-2 transition-all overflow-hidden group cursor-pointer h-44',
+                          s
+                            ? cn('shadow-xl ring-2 border-current', ct.ring, ct.glow, 'bg-muted/50')
+                            : 'border-border/40 hover:border-border/70 hover:shadow-lg hover:bg-muted/20 bg-muted/5'
+                        )}>
+                        {/* Image Area - Left Side */}
+                        <div className={cn('shrink-0 w-44 h-full flex items-center justify-center relative overflow-hidden bg-linear-to-br', ct.bg)}>
+                          <div className={cn('absolute inset-0 opacity-10 bg-linear-to-r', ct.grad)} />
+                          <TSvg cat={opt.category} className="w-2/3 h-2/3 relative drop-shadow-sm" />
+                          {s && <motion.div className={cn('absolute inset-0 rounded-2xl pointer-events-none border-2', ct.ring)} />}
                         </div>
-                        <div className="p-3.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-black">{opt.label}</span>
-                            {s && <CheckCircle2 className={cn('size-5 shrink-0', ct.text)} />}
+
+                        {/* Text Content - Right Side */}
+                        <div className="flex-1 p-5 flex flex-col justify-between">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <h3 className="font-bold text-base leading-tight">{opt.label}</h3>
+                              <p className="text-xs text-muted-foreground mt-1">{opt.description}</p>
+                            </div>
+                            {s && <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 500 }} className="shrink-0">
+                              <CheckCircle2 className={cn('size-6', ct.text)} />
+                            </motion.div>}
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{opt.description}</p>
-                          <Badge variant="outline" className="mt-2 text-[10px] gap-1 font-semibold h-5"><Hash className="size-2.5" />{opt.capacity}</Badge>
+                          <div className={cn('text-xs font-bold px-3 py-1.5 rounded-lg w-fit bg-linear-to-r text-white', ct.grad)}>
+                            {opt.capacity}
+                          </div>
                         </div>
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </motion.div>
               </AnimatePresence>
+            </div>
+
+            {/* Footer - Simple */}
+            <div className="shrink-0 border-t border-border/20 px-8 py-4 bg-muted/5 text-center">
+              <p className="text-xs font-semibold text-muted-foreground">
+                {trailerTypeOptions.filter(t => t.category === dialogCategory).length} trailer types in <span className="text-foreground font-bold">{TRAILER_CATEGORIES.find(c => c.id === dialogCategory)?.label}</span>
+              </p>
             </div>
           </DialogContent>
         </Dialog>

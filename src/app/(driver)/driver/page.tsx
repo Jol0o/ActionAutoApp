@@ -975,13 +975,13 @@ export default function DriverDashboardPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Input value={logCity} onChange={(e) => setLogCity(e.target.value)} placeholder="City" className="h-9 text-xs" />
-              <Select value={logState} onValueChange={setLogState}>
+              <Select value={logState || ""} onValueChange={setLogState}>
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="State" />
                 </SelectTrigger>
                 <SelectContent>
                   {US_STATES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                    <SelectItem key={s} value={String(s)}>{s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

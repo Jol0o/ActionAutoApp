@@ -14,12 +14,11 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
-  Truck, Package, Search, Loader2, ArrowRight, AlertTriangle, RefreshCw,
-  Filter, ChevronDown, DollarSign, Clock, Map as MapIcon, List, XCircle,
-  Timer, ArrowUpDown, TrendingUp, CalendarClock, MapPin, Calendar,
-  ArrowLeft, Zap, Car, ChevronRight, Navigation, Eye, Wrench, CheckCircle2,
+  Truck, Package, Search, Loader2, AlertTriangle, RefreshCw,
+  Filter, ChevronDown, DollarSign, Clock, MapPin, Map as MapIcon, XCircle,
+  Timer, ArrowUpDown, TrendingUp, CalendarClock, Calendar,
+  ArrowLeft, Zap, Car, ChevronRight, Navigation,
 } from 'lucide-react';
-import { useDriverGate } from '@/hooks/useEquipmentGate';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trailerTypeOptions } from '@/components/driver-profile/driver-profile-constants';
@@ -57,30 +56,10 @@ const timeAgo = (d: string) => { const m = Math.floor((Date.now() - new Date(d).
 const extractErr = (e: any, fb: string) => e?.response?.data?.message || e?.message || fb;
 const getPay = (l: AvailableLoad) => l.carrierPayAmount || l.preservedQuoteData?.rate || 0;
 
-type ViewMode = 'list' | 'map';
 type SortMode = 'newest' | 'pay-high' | 'pay-low' | 'pickup-soon';
-
-const geocodeCache = new Map<string, [number, number] | null>();
-
-async function geocodeLocation(query: string, token: string): Promise<[number, number] | null> {
-  if (geocodeCache.has(query)) return geocodeCache.get(query)!;
-  try {
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&limit=1&country=US`
-    );
-    const data = await res.json();
-    const coords = data.features?.[0]?.center as [number, number] | undefined;
-    geocodeCache.set(query, coords || null);
-    return coords || null;
-  } catch {
-    geocodeCache.set(query, null);
-    return null;
-  }
-}
 
 export default function AvailableLoadsPage() {
   const { getToken } = useAuth();
-  const { checking: equipCheck, equipmentComplete, documentsComplete } = useDriverGate();
   const [loads, setLoads] = React.useState<AvailableLoad[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -89,11 +68,6 @@ export default function AvailableLoadsPage() {
   const [requestTarget, setRequestTarget] = React.useState<AvailableLoad | null>(null);
   const [requesting, setRequesting] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
-  const [view, setView] = React.useState<ViewMode>('list');
-  const mapRef = React.useRef<HTMLDivElement>(null);
-  const mapInst = React.useRef<any>(null);
-  const markersRef = React.useRef<any[]>([]);
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   const fetchLoads = React.useCallback(async () => {
     try {
@@ -119,100 +93,11 @@ export default function AvailableLoadsPage() {
       const refresh = () => { if (mounted) fetchLoads(); };
       sock.on('driver:loads_updated', refresh);
       sock.on('driver:load_requested', refresh);
+      sock.on('driver:load_request_updated', refresh);
     };
     setup();
-    return () => { mounted = false; const s = getSocket(); if (s) { s.off('driver:loads_updated'); s.off('driver:load_requested'); } };
+    return () => { mounted = false; const s = getSocket(); if (s) { s.off('driver:loads_updated'); s.off('driver:load_requested'); s.off('driver:load_request_updated'); } };
   }, [getToken, fetchLoads]);
-
-  React.useEffect(() => {
-    if (view !== 'map' || !mapboxToken || !mapRef.current) return;
-    let cancelled = false;
-    const init = async () => {
-      const mapboxgl = (await import('mapbox-gl')).default;
-      // @ts-ignore
-      await import('mapbox-gl/dist/mapbox-gl.css');
-      if (cancelled || mapInst.current) return;
-      const map = new mapboxgl.Map({
-        container: mapRef.current!,
-        style: 'mapbox://styles/mapbox/dark-v11',
-        center: [-98.58, 39.83],
-        zoom: 3.5,
-        accessToken: mapboxToken,
-      });
-      mapInst.current = map;
-      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          if (cancelled) return;
-          const el = document.createElement('div');
-          el.className = 'driver-marker-pulse';
-          el.innerHTML = `<div style="width:20px;height:20px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 0 12px rgba(59,130,246,0.6);"></div>`;
-          new mapboxgl.Marker({ element: el })
-            .setLngLat([pos.coords.longitude, pos.coords.latitude])
-            .setPopup(new mapboxgl.Popup({ offset: 12 }).setHTML('<div style="padding:4px 8px;font-weight:700;font-size:12px;">Your Location</div>'))
-            .addTo(map);
-        }, () => { }, { enableHighAccuracy: false, timeout: 5000 });
-      }
-    };
-    init();
-    return () => { cancelled = true; mapInst.current?.remove(); mapInst.current = null; markersRef.current = []; };
-  }, [view, mapboxToken]);
-
-  React.useEffect(() => {
-    if (!mapInst.current || !mapboxToken || view !== 'map') return;
-    let cancelled = false;
-    const plotMarkers = async () => {
-      const mapboxgl = (await import('mapbox-gl')).default;
-      markersRef.current.forEach(m => m.remove());
-      markersRef.current = [];
-      const bounds = new mapboxgl.LngLatBounds();
-      let hasPoints = false;
-
-      for (const load of loads) {
-        if (cancelled) return;
-        const originCoords = await geocodeLocation(load.origin, mapboxToken);
-        if (!originCoords) continue;
-        hasPoints = true;
-        bounds.extend(originCoords);
-
-        const destCoords = await geocodeLocation(load.destination, mapboxToken);
-        if (destCoords) bounds.extend(destCoords);
-
-        const pay = getPay(load);
-        const color = load.myRequestStatus === 'pending' ? '#f59e0b' : pay >= 2000 ? '#10b981' : pay >= 1000 ? '#3b82f6' : '#8b5cf6';
-        const vehicleName = load.preservedQuoteData?.vehicleName || (load.vehicles?.[0] ? `${load.vehicles[0].year} ${load.vehicles[0].make} ${load.vehicles[0].model}`.trim() : '');
-
-        const el = document.createElement('div');
-        el.style.cssText = `width:14px;height:14px;background:${color};border:2px solid white;border-radius:50%;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.35);transition:transform 0.15s;`;
-        el.onmouseenter = () => { el.style.transform = 'scale(1.4)'; };
-        el.onmouseleave = () => { el.style.transform = 'scale(1)'; };
-
-        const popup = new mapboxgl.Popup({ offset: 12, maxWidth: '260px' }).setHTML(
-          `<div style="font-family:system-ui;padding:6px 2px;">
-            <div style="font-size:11px;color:#888;font-weight:600;">${load.trackingNumber || load._id.slice(-8)}</div>
-            ${vehicleName ? `<div style="font-size:13px;font-weight:700;margin:2px 0;">${vehicleName}</div>` : ''}
-            <div style="font-size:12px;margin:4px 0;"><span style="color:#10b981;">●</span> ${load.origin}</div>
-            <div style="font-size:12px;"><span style="color:#ef4444;">●</span> ${load.destination}</div>
-            ${pay > 0 ? `<div style="font-size:15px;font-weight:800;color:#10b981;margin-top:6px;">$${pay.toLocaleString()}</div>` : ''}
-            <a href="/driver/available-loads/${load._id}" style="display:inline-block;margin-top:6px;font-size:11px;font-weight:600;color:#3b82f6;text-decoration:none;">View Details →</a>
-          </div>`
-        );
-
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat(originCoords)
-          .setPopup(popup)
-          .addTo(mapInst.current!);
-        markersRef.current.push(marker);
-      }
-
-      if (hasPoints && !cancelled) {
-        mapInst.current!.fitBounds(bounds, { padding: 60, maxZoom: 10, duration: 800 });
-      }
-    };
-    plotMarkers();
-    return () => { cancelled = true; };
-  }, [loads, view, mapboxToken]);
 
   const handleRefresh = () => { setRefreshing(true); fetchLoads(); };
 
@@ -261,47 +146,6 @@ export default function AvailableLoadsPage() {
     { key: 'pickup-soon', label: 'Pickup Soonest', icon: CalendarClock },
   ];
 
-  if (equipCheck) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="relative"><div className="size-16 rounded-full border-4 border-primary/20 animate-pulse" /><Loader2 className="size-8 animate-spin text-primary absolute inset-0 m-auto" /></div>
-      <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Verifying Profile</p>
-    </div>
-  );
-
-  if (!equipmentComplete || !documentsComplete) return (
-    <div className="max-w-lg mx-auto px-4 py-16">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-        <div className="text-center space-y-3">
-          <div className="mx-auto size-20 rounded-2xl bg-amber-500/10 flex items-center justify-center"><AlertTriangle className="size-10 text-amber-500" /></div>
-          <h2 className="text-2xl font-black">Profile Incomplete</h2>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">Complete all required steps before accessing the Load Board.</p>
-        </div>
-        <div className="space-y-3">
-          <div className={cn('flex items-center gap-4 p-4 rounded-2xl border-2 transition-all', equipmentComplete ? 'border-emerald-500/20 bg-emerald-500/3' : 'border-amber-500/20 bg-amber-500/3')}>
-            <div className={cn('size-12 rounded-xl flex items-center justify-center', equipmentComplete ? 'bg-emerald-500/10' : 'bg-amber-500/10')}>
-              {equipmentComplete ? <CheckCircle2 className="size-6 text-emerald-500" /> : <Wrench className="size-6 text-amber-500" />}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold">{equipmentComplete ? 'Equipment Complete' : 'Equipment Setup Required'}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{equipmentComplete ? 'Truck, trailer, and authority configured' : 'Fill in truck details, trailer type, DOT/MC numbers'}</p>
-            </div>
-            {!equipmentComplete && <Link href="/driver/equipment"><Button size="sm" className="gap-1.5 bg-linear-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold shrink-0"><Wrench className="size-3.5" /> Setup</Button></Link>}
-          </div>
-          <div className={cn('flex items-center gap-4 p-4 rounded-2xl border-2 transition-all', documentsComplete ? 'border-emerald-500/20 bg-emerald-500/3' : 'border-amber-500/20 bg-amber-500/3')}>
-            <div className={cn('size-12 rounded-xl flex items-center justify-center', documentsComplete ? 'bg-emerald-500/10' : 'bg-amber-500/10')}>
-              {documentsComplete ? <CheckCircle2 className="size-6 text-emerald-500" /> : <Filter className="size-6 text-amber-500" />}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold">{documentsComplete ? 'Documents Complete' : 'Driver Verification Required'}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{documentsComplete ? 'Identity, credentials, and documents verified' : 'Upload documents, verify identity, accept agreement'}</p>
-            </div>
-            {!documentsComplete && <Link href="/driver/documents"><Button size="sm" className="gap-1.5 bg-linear-to-r from-violet-500 to-purple-500 text-white rounded-xl font-bold shrink-0"><Filter className="size-3.5" /> Verify</Button></Link>}
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-5">
@@ -329,12 +173,10 @@ export default function AvailableLoadsPage() {
                   <Zap className="size-3 text-emerald-400" /><span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Live</span>
                 </div>
                 <div className="flex rounded-lg border border-white/10 p-0.5 bg-white/5">
-                  <button onClick={() => setView('list')} className={cn('px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors', view === 'list' ? 'bg-white/15 text-white shadow-sm' : 'text-white/40 hover:text-white/70')}>
-                    <List className="size-3.5 inline mr-1" />List
-                  </button>
-                  <button onClick={() => setView('map')} className={cn('px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors', view === 'map' ? 'bg-white/15 text-white shadow-sm' : 'text-white/40 hover:text-white/70')}>
+                  <div className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white/15 text-white shadow-sm">
                     <MapIcon className="size-3.5 inline mr-1" />Map
-                  </button>
+                    <span className="ml-1 text-[9px] text-amber-400 font-bold uppercase">Soon</span>
+                  </div>
                 </div>
                 <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} className="gap-1.5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10">
                   <RefreshCw className={cn('size-3.5', refreshing && 'animate-spin')} />
@@ -394,18 +236,6 @@ export default function AvailableLoadsPage() {
             )}
           </div>
         </div>
-
-        {view === 'map' && (
-          <Card className="overflow-hidden border-border/20 rounded-2xl shadow-xl">
-            <CardContent className="p-0">
-              {mapboxToken ? <div ref={mapRef} className="h-110 w-full" /> : (
-                <div className="h-110 flex items-center justify-center bg-muted/30">
-                  <div className="text-center space-y-2"><MapIcon className="size-10 text-muted-foreground/30 mx-auto" /><p className="text-xs text-muted-foreground">Map requires NEXT_PUBLIC_MAPBOX_TOKEN</p></div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
