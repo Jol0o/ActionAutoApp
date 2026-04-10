@@ -342,7 +342,7 @@ function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAcce
                     </Button>
                   )}
                   {load.status === 'In-Route' && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 animate-pulse"><Navigation2 className="size-3" />In Route</Badge>}
-                  {(load.status === 'In-Route' || load.status === 'Dispatched') && !load.proofOfDelivery?.imageUrl && (
+                  {load.status === 'In-Route' && !load.proofOfDelivery?.imageUrl && (
                     <Button size="sm" variant="outline" onClick={onSubmitProof} className="rounded-lg gap-1.5"><Camera className="size-4" />Submit Proof</Button>
                   )}
                   {load.proofOfDelivery?.imageUrl && (
@@ -456,7 +456,9 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
   const camRef = React.useRef<HTMLInputElement>(null);
   const galRef = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => { if (!shipment) { setFile(null); if (preview) URL.revokeObjectURL(preview); setPreview(null); setNote(''); setError(null); } }, [shipment]);
+  React.useEffect(() => {
+    if (!shipment) { setFile(null); if (preview) URL.revokeObjectURL(preview); setPreview(null); setNote(''); setError(null); return; }
+  }, [shipment]);
   React.useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -472,7 +474,10 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
       const fd = new FormData();
       fd.append('proof', file);
       if (note.trim()) fd.append('note', note.trim());
-      await apiClient.post(`/api/shipments/${shipment._id}/submit-proof`, fd, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
+      const proofEndpoint = (shipment as any)._type === 'load'
+        ? `/api/loads/${shipment._id}/submit-proof`
+        : `/api/shipments/${shipment._id}/submit-proof`;
+      await apiClient.post(proofEndpoint, fd, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
       onSuccess();
     } catch (err: any) { setError(extractErr(err, 'Failed to submit proof.')); }
     finally { setSubmitting(false); }
@@ -487,8 +492,8 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
           <DialogDescription>Photo proof for <span className="font-mono font-medium">{shipment.trackingNumber || 'this shipment'}</span>.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
-          <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFileChange} />
-          <input ref={galRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden" onChange={onFileChange} />
+          <input ref={camRef} type="file" accept="image/jpeg,image/jpg,image/png" capture="environment" className="hidden" onChange={onFileChange} />
+          <input ref={galRef} type="file" accept="image/jpeg,image/jpg,image/png,.img" className="hidden" onChange={onFileChange} />
           {!preview ? (
             <div className="space-y-3">
               <button type="button" onClick={() => camRef.current?.click()}
@@ -496,16 +501,16 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
                 <div className="p-4 rounded-full bg-primary/10"><Camera className="size-8 text-primary" /></div>
                 <div className="text-center"><p className="text-sm font-semibold">Take a Photo</p><p className="text-xs text-muted-foreground">Opens your camera</p></div>
               </button>
-              <button type="button" onClick={() => galRef.current?.click()} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted">
+              <button type="button" onClick={() => galRef.current?.click()} className="w-full flex items-center justify-center gap-2 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted">
                 <ImageIcon className="size-4" />Choose from gallery
               </button>
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="rounded-xl overflow-hidden border border-border"><img src={resolveImageUrl(preview)} alt="Proof preview" className="w-full max-h-60 object-contain bg-muted" /></div>
+              <div className="rounded-xl overflow-hidden border border-border"><img src={preview} alt="Proof preview" className="w-full max-h-60 object-contain bg-muted" /></div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => camRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><Camera className="size-3.5" />Retake</button>
-                <button type="button" onClick={() => galRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><ImageIcon className="size-3.5" />Change Photo</button>
+                <button type="button" onClick={() => camRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><Camera className="size-3.5" />Retake</button>
+                <button type="button" onClick={() => galRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><ImageIcon className="size-3.5" />Change Photo</button>
               </div>
             </div>
           )}
