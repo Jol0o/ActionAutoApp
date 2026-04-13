@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/lib/api-client';
 import { DriverProfile, ComplianceDocument, PopulatedUser } from '@/types/driver-profile';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,10 +13,10 @@ import {
 } from '@/components/ui/dialog';
 import {
     Loader2, ArrowLeft, Truck, Shield, FileText, FileCheck, CreditCard,
-    CheckCircle2, XCircle, Clock, Eye, Ban, Hash, Gauge, Ruler,
-    Settings2, Star, MapPin, Calendar, Fingerprint, Lock, Scale,
-    BadgeCheck, ShieldAlert, AlertTriangle, UserCheck, ChevronRight,
-    Download, Phone, Mail, Globe, Wrench, Building2, X, ImageIcon,
+    CheckCircle2, XCircle, Clock, Eye, Ban, Hash, Gauge,
+    Star, MapPin, Calendar, Fingerprint, Lock, Scale,
+    BadgeCheck, ShieldAlert, AlertTriangle, UserCheck,
+    Download, Mail, Globe, Wrench, Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -53,16 +52,31 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'compliance', label: 'Compliance', icon: Shield },
 ];
 
-const Stat = ({ label, value, color }: { label: string; value: string | number; color?: string }) => (
-    <div className="text-center p-3 rounded-xl bg-muted/20 border border-border/10">
-        <p className={cn('text-2xl font-black tabular-nums', color || 'text-foreground')}>{value}</p>
-        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{label}</p>
-    </div>
+const DOC_ICONS: Record<string, React.ElementType> = {
+    drivers_license: CreditCard, medical_card: FileText, insurance_certificate: Shield,
+    vehicle_registration: FileText, operating_authority: Building2, w9_form: FileText,
+    dot_inspection: FileCheck, cargo_insurance: Shield, liability_insurance: Shield, other: FileText,
+};
+
+const Stat = ({ label, value, color, icon: Icon, gradient }: { label: string; value: string | number; color?: string; icon?: React.ElementType; gradient?: string }) => (
+    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }}
+        className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 p-4">
+        {gradient && <div className={cn('absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r', gradient)} />}
+        <div className="flex items-center gap-3">
+            {Icon && <div className={cn('size-10 rounded-xl flex items-center justify-center bg-muted/20', color)}><Icon className="size-5" /></div>}
+            <div>
+                <p className={cn('text-2xl font-black tabular-nums', color || 'text-foreground')}>{value}</p>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{label}</p>
+            </div>
+        </div>
+    </motion.div>
 );
 
-const Field = ({ label, value, mono }: { label: string; value?: string | number | null; mono?: boolean }) => (
-    <div className="space-y-1">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+const Field = ({ label, value, mono, icon: Icon }: { label: string; value?: string | number | null; mono?: boolean; icon?: React.ElementType }) => (
+    <div className="space-y-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            {Icon && <Icon className="size-3 text-muted-foreground/60" />}{label}
+        </p>
         <p className={cn('text-sm font-semibold', !value && 'text-muted-foreground italic', mono && 'font-mono tracking-wide')}>
             {value || 'Not provided'}
         </p>
@@ -84,6 +98,8 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
     const [rejectDocId, setRejectDocId] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const [previewDoc, setPreviewDoc] = useState<ComplianceDocument | null>(null);
+    const [showApproveDialog, setShowApproveDialog] = useState(false);
+    const [approving, setApproving] = useState(false);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -105,12 +121,12 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
         setActionLoading(docId);
         try {
             const token = await getToken();
-            const res = await apiClient.patch(
+            await apiClient.patch(
                 `/api/driver-profile/org/${driverId}/documents/${docId}/verify`,
                 { verified: true },
                 { headers: { Authorization: `Bearer ${token}` } },
             );
-            if (res.data?.data) setProfile(res.data.data);
+            await fetchProfile();
             toast.success('Document verified');
         } catch {
             toast.error('Failed to verify document');
@@ -127,12 +143,12 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
         setActionLoading(docId);
         try {
             const token = await getToken();
-            const res = await apiClient.patch(
+            await apiClient.patch(
                 `/api/driver-profile/org/${driverId}/documents/${docId}/reject`,
                 { reason: rejectReason.trim() },
                 { headers: { Authorization: `Bearer ${token}` } },
             );
-            if (res.data?.data) setProfile(res.data.data);
+            await fetchProfile();
             toast.success('Document rejected');
             setRejectDocId(null);
             setRejectReason('');
@@ -143,10 +159,35 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
         }
     };
 
+    const handleApproveDriver = async () => {
+        setApproving(true);
+        try {
+            const token = await getToken();
+            await apiClient.patch(
+                `/api/driver-profile/org/${driverId}/approve`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            await fetchProfile();
+            toast.success('Driver profile approved successfully');
+            setShowApproveDialog(false);
+        } catch {
+            toast.error('Failed to approve driver profile');
+        } finally {
+            setApproving(false);
+        }
+    };
+
     const user = profile ? getUser(profile.userId) : null;
     const documents = profile?.documents || [];
     const requiredDocs = REQUIRED_DOCUMENTS.filter(d => d.required);
     const optionalDocs = REQUIRED_DOCUMENTS.filter(d => !d.required);
+
+    const missingDocs = useMemo(() => {
+        if (!profile) return [];
+        const uploadedTypes = new Set(documents.map((d: ComplianceDocument) => d.type));
+        return requiredDocs.filter(r => !uploadedTypes.has(r.type));
+    }, [profile, documents, requiredDocs]);
 
     const stats = useMemo(() => {
         if (!profile) return null;
@@ -215,11 +256,34 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
                                     </div>
                                 </div>
                             </div>
-                            <div className="hidden sm:block text-right shrink-0">
-                                <span className="text-5xl font-black tabular-nums text-white">{profile.profileCompletionScore || 0}%</span>
-                                <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Profile Score</p>
+                            <div className="hidden sm:flex items-center gap-4 shrink-0">
+                                <div className="text-right">
+                                    <span className="text-5xl font-black tabular-nums text-white">{profile.profileCompletionScore || 0}%</span>
+                                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Profile Score</p>
+                                </div>
+                                {profile.verificationStatus !== 'verified' && (
+                                    <Button onClick={() => setShowApproveDialog(true)}
+                                        className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-lg shadow-emerald-500/20 h-11 px-5 rounded-xl font-bold">
+                                        <BadgeCheck className="size-4.5" /> Approve Driver
+                                    </Button>
+                                )}
+                                {profile.verificationStatus === 'verified' && (
+                                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/25">
+                                        <BadgeCheck className="size-5 text-emerald-400" />
+                                        <span className="text-sm font-bold text-emerald-400">Approved</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
+
+                        {profile.verificationStatus !== 'verified' && (
+                            <div className="sm:hidden mb-5">
+                                <Button onClick={() => setShowApproveDialog(true)}
+                                    className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-lg shadow-emerald-500/20 h-11 rounded-xl font-bold">
+                                    <BadgeCheck className="size-4.5" /> Approve Driver
+                                </Button>
+                            </div>
+                        )}
 
                         <div className="h-1.5 rounded-full bg-white/8 overflow-hidden mb-5">
                             <motion.div className={cn('h-full rounded-full bg-linear-to-r',
@@ -251,130 +315,142 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
                 </div>
 
                 <AnimatePresence mode="wait">
-                    <motion.div key={tab} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+                    <motion.div key={tab} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
 
                         {tab === 'overview' && (
-                            <div className="space-y-5">
+                            <div className="space-y-6">
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                    <Stat label="Documents" value={stats?.total || 0} />
-                                    <Stat label="Verified" value={stats?.verified || 0} color="text-emerald-500" />
-                                    <Stat label="Pending" value={stats?.pending || 0} color="text-amber-500" />
-                                    <Stat label="Capacity" value={`${profile.maxVehicleCapacity || 0} veh`} color="text-blue-500" />
+                                    <Stat label="Documents" value={stats?.total || 0} icon={FileText} gradient="from-blue-500 to-indigo-500" />
+                                    <Stat label="Verified" value={stats?.verified || 0} color="text-emerald-500" icon={CheckCircle2} gradient="from-emerald-500 to-teal-500" />
+                                    <Stat label="Pending" value={stats?.pending || 0} color="text-amber-500" icon={Clock} gradient="from-amber-500 to-orange-500" />
+                                    <Stat label="Capacity" value={`${profile.maxVehicleCapacity || 0} veh`} color="text-blue-500" icon={Truck} gradient="from-violet-500 to-purple-500" />
                                 </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                                    <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                        <div className="h-1 w-full bg-linear-to-r from-blue-600 to-indigo-500" />
-                                        <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                            <div className="size-10 rounded-xl bg-linear-to-br from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg"><Truck className="size-5" /></div>
-                                            <div><h3 className="text-sm font-black">Equipment Summary</h3><p className="text-[10px] text-muted-foreground">Truck & Trailer</p></div>
-                                        </div>
-                                        <CardContent className="p-5 space-y-3">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <Field label="Truck" value={profile.truckMake && profile.truckModel ? `${profile.truckMake} ${profile.truckModel}` : undefined} />
-                                                <Field label="Year" value={profile.truckYear} />
-                                                <Field label="Trailer Type" value={trailerInfo?.label} />
-                                                <Field label="Capacity" value={profile.maxVehicleCapacity ? `${profile.maxVehicleCapacity} vehicles` : undefined} />
-                                                <Field label="DOT #" value={profile.dotNumber} mono />
-                                                <Field label="MC #" value={profile.mcNumber} mono />
+                                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}>
+                                        <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                            <div className="absolute inset-0 bg-linear-to-br from-blue-500/3 via-transparent to-indigo-500/3" />
+                                            <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-blue-600 to-indigo-500" />
+                                            <div className="relative p-6">
+                                                <div className="flex items-center gap-3 mb-5">
+                                                    <div className="size-11 rounded-xl bg-linear-to-br from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25"><Truck className="size-5" /></div>
+                                                    <div><h3 className="text-sm font-black">Equipment Summary</h3><p className="text-[10px] text-muted-foreground">Truck & Trailer Configuration</p></div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <Field label="Truck" value={profile.truckMake && profile.truckModel ? `${profile.truckMake} ${profile.truckModel}` : undefined} icon={Truck} />
+                                                    <Field label="Year" value={profile.truckYear} icon={Calendar} />
+                                                    <Field label="Trailer Type" value={trailerInfo?.label} icon={Wrench} />
+                                                    <Field label="Capacity" value={profile.maxVehicleCapacity ? `${profile.maxVehicleCapacity} vehicles` : undefined} icon={Gauge} />
+                                                    <Field label="DOT #" value={profile.dotNumber} mono icon={Hash} />
+                                                    <Field label="MC #" value={profile.mcNumber} mono icon={Hash} />
+                                                </div>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                        <div className="h-1 w-full bg-linear-to-r from-violet-600 to-purple-500" />
-                                        <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                            <div className="size-10 rounded-xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg"><Fingerprint className="size-5" /></div>
-                                            <div><h3 className="text-sm font-black">Identity & Verification</h3><p className="text-[10px] text-muted-foreground">Security Status</p></div>
                                         </div>
-                                        <CardContent className="p-5 space-y-3">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <Field label="SSN" value={profile.ssnLast4 ? `••••${profile.ssnLast4}` : undefined} mono />
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Background Check</p>
-                                                    <div className="flex items-center gap-1.5">
-                                                        {profile.backgroundCheckConsent ?
-                                                            <><CheckCircle2 className="size-4 text-emerald-500" /><span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Authorized</span></> :
-                                                            <><XCircle className="size-4 text-muted-foreground" /><span className="text-sm font-semibold text-muted-foreground">Not authorized</span></>}
+                                    </motion.div>
+
+                                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                                        <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                            <div className="absolute inset-0 bg-linear-to-br from-violet-500/3 via-transparent to-purple-500/3" />
+                                            <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-violet-600 to-purple-500" />
+                                            <div className="relative p-6">
+                                                <div className="flex items-center gap-3 mb-5">
+                                                    <div className="size-11 rounded-xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-violet-500/25"><Fingerprint className="size-5" /></div>
+                                                    <div><h3 className="text-sm font-black">Identity & Verification</h3><p className="text-[10px] text-muted-foreground">Security Status</p></div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <Field label="SSN" value={profile.ssnLast4 ? `••••${profile.ssnLast4}` : undefined} mono icon={Lock} />
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Shield className="size-3 text-muted-foreground/60" />Background Check</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {profile.backgroundCheckConsent ?
+                                                                <><CheckCircle2 className="size-4 text-emerald-500" /><span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Authorized</span></> :
+                                                                <><XCircle className="size-4 text-muted-foreground" /><span className="text-sm font-semibold text-muted-foreground">Not authorized</span></>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Scale className="size-3 text-muted-foreground/60" />Agreement</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {profile.verificationAgreement ?
+                                                                <><CheckCircle2 className="size-4 text-emerald-500" /><span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Accepted</span></> :
+                                                                <><XCircle className="size-4 text-muted-foreground" /><span className="text-sm font-semibold text-muted-foreground">Not accepted</span></>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><BadgeCheck className="size-3 text-muted-foreground/60" />Verification</p>
+                                                        <Badge className={cn('text-[10px] capitalize font-bold',
+                                                            profile.verificationStatus === 'verified' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                                                                profile.verificationStatus === 'under_review' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                                    'bg-muted/20 text-muted-foreground border-border/20')}>
+                                                            {(profile.verificationStatus || 'not_started').replace(/_/g, ' ')}
+                                                        </Badge>
                                                     </div>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Agreement</p>
-                                                    <div className="flex items-center gap-1.5">
-                                                        {profile.verificationAgreement ?
-                                                            <><CheckCircle2 className="size-4 text-emerald-500" /><span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Accepted</span></> :
-                                                            <><XCircle className="size-4 text-muted-foreground" /><span className="text-sm font-semibold text-muted-foreground">Not accepted</span></>}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+                                        <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                            <div className="absolute inset-0 bg-linear-to-br from-emerald-500/3 via-transparent to-teal-500/3" />
+                                            <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-emerald-600 to-teal-500" />
+                                            <div className="relative p-6">
+                                                <div className="flex items-center gap-3 mb-5">
+                                                    <div className="size-11 rounded-xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25"><CreditCard className="size-5" /></div>
+                                                    <div><h3 className="text-sm font-black">Credentials</h3><p className="text-[10px] text-muted-foreground">License & Insurance</p></div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <Field label="CDL Number" value={profile.driversLicenseNumber} mono />
+                                                    <Field label="License State" value={profile.licenseState} />
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CDL Expiration</p>
+                                                        <p className={cn('text-sm font-semibold', getExpStatus(profile.licenseExpirationDate).c)}>
+                                                            {profile.licenseExpirationDate ? `${fmtDate(profile.licenseExpirationDate)} (${getExpStatus(profile.licenseExpirationDate).l})` : 'Not set'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Medical Expiration</p>
+                                                        <p className={cn('text-sm font-semibold', getExpStatus(profile.medicalCardExpirationDate).c)}>
+                                                            {profile.medicalCardExpirationDate ? `${fmtDate(profile.medicalCardExpirationDate)} (${getExpStatus(profile.medicalCardExpirationDate).l})` : 'Not set'}
+                                                        </p>
+                                                    </div>
+                                                    <Field label="Insurance Provider" value={profile.insuranceProvider} />
+                                                    <Field label="Policy Number" value={profile.insurancePolicyNumber} mono />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                                        <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                            <div className="absolute inset-0 bg-linear-to-br from-amber-500/3 via-transparent to-orange-500/3" />
+                                            <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-amber-500 to-orange-500" />
+                                            <div className="relative p-6">
+                                                <div className="flex items-center gap-3 mb-5">
+                                                    <div className="size-11 rounded-xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/25"><MapPin className="size-5" /></div>
+                                                    <div><h3 className="text-sm font-black">Logistics</h3><p className="text-[10px] text-muted-foreground">Location & Availability</p></div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <Field label="Home Base" value={profile.homeBase?.address || (profile.homeBase?.city && profile.homeBase?.state ? `${profile.homeBase.city}, ${profile.homeBase.state}` : undefined)} icon={MapPin} />
+                                                    <Field label="Service Radius" value={profile.serviceRadius ? `${profile.serviceRadius} mi` : undefined} icon={Globe} />
+                                                    <div className="col-span-2 space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preferred Routes</p>
+                                                        {profile.preferredRoutes?.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-1.5">{profile.preferredRoutes.map(r => <Badge key={r} variant="outline" className="text-[10px] font-semibold">{r}</Badge>)}</div>
+                                                        ) : <p className="text-sm font-semibold text-muted-foreground italic">Not provided</p>}
+                                                    </div>
+                                                    <div className="col-span-2 space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Available Days</p>
+                                                        {profile.availableDays?.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-1.5">{profile.availableDays.map(d => <Badge key={d} variant="outline" className="text-[10px] capitalize font-semibold">{d}</Badge>)}</div>
+                                                        ) : <p className="text-sm font-semibold text-muted-foreground italic">Not provided</p>}
                                                     </div>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Verification</p>
-                                                    <Badge className={cn('text-[10px] capitalize',
-                                                        profile.verificationStatus === 'verified' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                                                            profile.verificationStatus === 'under_review' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                                                                'bg-muted/20 text-muted-foreground border-border/20')}>
-                                                        {(profile.verificationStatus || 'not_started').replace(/_/g, ' ')}
-                                                    </Badge>
-                                                </div>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                        <div className="h-1 w-full bg-linear-to-r from-emerald-600 to-teal-500" />
-                                        <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                            <div className="size-10 rounded-xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg"><CreditCard className="size-5" /></div>
-                                            <div><h3 className="text-sm font-black">Credentials</h3><p className="text-[10px] text-muted-foreground">License & Insurance</p></div>
                                         </div>
-                                        <CardContent className="p-5 space-y-3">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <Field label="CDL Number" value={profile.driversLicenseNumber} mono />
-                                                <Field label="License State" value={profile.licenseState} />
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CDL Expiration</p>
-                                                    <p className={cn('text-sm font-semibold', getExpStatus(profile.licenseExpirationDate).c)}>
-                                                        {profile.licenseExpirationDate ? `${fmtDate(profile.licenseExpirationDate)} (${getExpStatus(profile.licenseExpirationDate).l})` : 'Not set'}
-                                                    </p>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Medical Expiration</p>
-                                                    <p className={cn('text-sm font-semibold', getExpStatus(profile.medicalCardExpirationDate).c)}>
-                                                        {profile.medicalCardExpirationDate ? `${fmtDate(profile.medicalCardExpirationDate)} (${getExpStatus(profile.medicalCardExpirationDate).l})` : 'Not set'}
-                                                    </p>
-                                                </div>
-                                                <Field label="Insurance Provider" value={profile.insuranceProvider} />
-                                                <Field label="Policy Number" value={profile.insurancePolicyNumber} mono />
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                        <div className="h-1 w-full bg-linear-to-r from-amber-500 to-orange-500" />
-                                        <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                            <div className="size-10 rounded-xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg"><MapPin className="size-5" /></div>
-                                            <div><h3 className="text-sm font-black">Logistics</h3><p className="text-[10px] text-muted-foreground">Location & Availability</p></div>
-                                        </div>
-                                        <CardContent className="p-5 space-y-3">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <Field label="Home Base" value={profile.homeBase?.address || (profile.homeBase?.city && profile.homeBase?.state ? `${profile.homeBase.city}, ${profile.homeBase.state}` : undefined)} />
-                                                <Field label="Service Radius" value={profile.serviceRadius ? `${profile.serviceRadius} mi` : undefined} />
-                                                <div className="col-span-2 space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preferred Routes</p>
-                                                    {profile.preferredRoutes?.length > 0 ? (
-                                                        <div className="flex flex-wrap gap-1.5">{profile.preferredRoutes.map(r => <Badge key={r} variant="outline" className="text-[10px]">{r}</Badge>)}</div>
-                                                    ) : <p className="text-sm font-semibold text-muted-foreground italic">Not provided</p>}
-                                                </div>
-                                                <div className="col-span-2 space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Available Days</p>
-                                                    {profile.availableDays?.length > 0 ? (
-                                                        <div className="flex flex-wrap gap-1.5">{profile.availableDays.map(d => <Badge key={d} variant="outline" className="text-[10px] capitalize">{d}</Badge>)}</div>
-                                                    ) : <p className="text-sm font-semibold text-muted-foreground italic">Not provided</p>}
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                    </motion.div>
                                 </div>
 
-                                <div className="flex items-center gap-3 text-[10px] text-muted-foreground/50">
+                                <div className="flex items-center gap-3 text-[10px] text-muted-foreground/50 px-1">
                                     <span>Profile created {fmtDate(profile.createdAt)}</span>
                                     <span>·</span>
                                     <span>Last updated {fmtDate(profile.updatedAt)}</span>
@@ -383,342 +459,434 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
                         )}
 
                         {tab === 'equipment' && (
-                            <div className="space-y-5">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                                    <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                        <div className="h-1 w-full bg-linear-to-r from-blue-600 to-indigo-500" />
-                                        <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                            <div className="size-10 rounded-xl bg-linear-to-br from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg"><Truck className="size-5" /></div>
-                                            <div><h3 className="text-sm font-black">Truck Details</h3></div>
-                                        </div>
-                                        <CardContent className="p-5">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <Field label="Make" value={profile.truckMake} />
-                                                <Field label="Model" value={profile.truckModel} />
-                                                <Field label="Year" value={profile.truckYear} />
+                            <div className="space-y-6">
+                                {/* Truck Details */}
+                                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                                    <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                        <div className="absolute inset-0 bg-linear-to-br from-blue-500/3 via-transparent to-indigo-500/3" />
+                                        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-blue-600 to-indigo-500" />
+                                        <div className="relative p-6">
+                                            <div className="flex items-center gap-3 mb-5">
+                                                <div className="size-11 rounded-xl bg-linear-to-br from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25"><Truck className="size-5" /></div>
+                                                <div><h3 className="text-sm font-black">Truck Details</h3><p className="text-[10px] text-muted-foreground">Primary Vehicle Information</p></div>
+                                                {profile.truckColor && (
+                                                    <div className="ml-auto flex items-center gap-2">
+                                                        <div className="size-5 rounded-full border-2 border-white/20 shadow-sm" style={{ backgroundColor: profile.truckColor?.toLowerCase() || '#888' }} />
+                                                        <span className="text-xs font-semibold capitalize text-muted-foreground">{profile.truckColor}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                                <Field label="Make" value={profile.truckMake} icon={Truck} />
+                                                <Field label="Model" value={profile.truckModel} icon={Wrench} />
+                                                <Field label="Year" value={profile.truckYear} icon={Calendar} />
+                                                <Field label="Engine Type" value={profile.engineType} icon={Gauge} />
+                                                <Field label="GVWR" value={profile.gvwr ? `${profile.gvwr.toLocaleString()} lbs` : undefined} icon={Gauge} />
+                                                <Field label="VIN" value={profile.vin} mono icon={Hash} />
+                                                <Field label="License Plate" value={profile.plateNumber} mono icon={CreditCard} />
                                                 <Field label="Color" value={profile.truckColor} />
-                                                <Field label="Engine Type" value={profile.engineType} />
-                                                <Field label="GVWR" value={profile.gvwr ? `${profile.gvwr.toLocaleString()} lbs` : undefined} />
-                                                <Field label="VIN" value={profile.vin} mono />
-                                                <Field label="License Plate" value={profile.plateNumber} mono />
                                             </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                        <div className="h-1 w-full bg-linear-to-r from-slate-600 to-zinc-500" />
-                                        <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                            <div className="size-10 rounded-xl bg-linear-to-br from-slate-600 to-zinc-500 flex items-center justify-center text-white shadow-lg"><Shield className="size-5" /></div>
-                                            <div><h3 className="text-sm font-black">Operating Authority</h3></div>
                                         </div>
-                                        <CardContent className="p-5">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <Field label="DOT Number" value={profile.dotNumber} mono />
-                                                <Field label="MC Number" value={profile.mcNumber} mono />
+                                    </div>
+                                </motion.div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                                    {/* Operating Authority */}
+                                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                                        <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl h-full">
+                                            <div className="absolute inset-0 bg-linear-to-br from-slate-500/3 via-transparent to-zinc-500/3" />
+                                            <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-slate-600 to-zinc-500" />
+                                            <div className="relative p-6">
+                                                <div className="flex items-center gap-3 mb-5">
+                                                    <div className="size-11 rounded-xl bg-linear-to-br from-slate-600 to-zinc-500 flex items-center justify-center text-white shadow-lg shadow-slate-500/25"><Building2 className="size-5" /></div>
+                                                    <div><h3 className="text-sm font-black">Operating Authority</h3><p className="text-[10px] text-muted-foreground">Federal Numbers</p></div>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-border/15 bg-muted/5">
+                                                        <div className="size-10 rounded-lg bg-blue-500/10 flex items-center justify-center"><Hash className="size-5 text-blue-500" /></div>
+                                                        <div><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">DOT Number</p><p className="text-lg font-mono font-black">{profile.dotNumber || '—'}</p></div>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-border/15 bg-muted/5">
+                                                        <div className="size-10 rounded-lg bg-violet-500/10 flex items-center justify-center"><Hash className="size-5 text-violet-500" /></div>
+                                                        <div><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">MC Number</p><p className="text-lg font-mono font-black">{profile.mcNumber || '—'}</p></div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                        <div className="h-1 w-full bg-linear-to-r from-emerald-600 to-teal-500" />
-                                        <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                            <div className="size-10 rounded-xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg"><Wrench className="size-5" /></div>
-                                            <div><h3 className="text-sm font-black">Trailer Details</h3></div>
                                         </div>
-                                        <CardContent className="p-5">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <Field label="Type" value={trailerInfo?.label} />
-                                                <Field label="Category" value={trailerInfo?.category} />
+                                    </motion.div>
+
+                                    {/* Special Features */}
+                                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+                                        <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl h-full">
+                                            <div className="absolute inset-0 bg-linear-to-br from-violet-500/3 via-transparent to-purple-500/3" />
+                                            <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-violet-600 to-purple-500" />
+                                            <div className="relative p-6">
+                                                <div className="flex items-center gap-3 mb-5">
+                                                    <div className="size-11 rounded-xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-violet-500/25"><Star className="size-5" /></div>
+                                                    <div><h3 className="text-sm font-black">Special Features</h3><p className="text-[10px] text-muted-foreground">Equipment Capabilities</p></div>
+                                                    <Badge className="ml-auto text-xs font-bold bg-linear-to-r from-violet-600 to-purple-500 text-white border-0 shadow-lg shadow-violet-500/25">{profile.specialFeatures?.length || 0}</Badge>
+                                                </div>
+                                                {profile.specialFeatures?.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {profile.specialFeatures.map((f, idx) => {
+                                                            const opt = specialFeatureOptions.find(o => o.value === f);
+                                                            return (
+                                                                <motion.div key={f} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.03 }}>
+                                                                    <Badge variant="outline" className="text-xs capitalize font-semibold px-3 py-1.5 rounded-lg bg-violet-500/5 border-violet-500/20 text-violet-700 dark:text-violet-300">
+                                                                        <CheckCircle2 className="size-3 mr-1.5 text-violet-500" />{opt?.label || f.replace(/_/g, ' ')}
+                                                                    </Badge>
+                                                                </motion.div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : <p className="text-sm text-muted-foreground italic">No features configured</p>}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                </div>
+
+                                {/* Trailer Details */}
+                                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                    <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                        <div className="absolute inset-0 bg-linear-to-br from-emerald-500/3 via-transparent to-teal-500/3" />
+                                        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-emerald-600 to-teal-500" />
+                                        <div className="relative p-6">
+                                            <div className="flex items-center gap-3 mb-5">
+                                                <div className="size-11 rounded-xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25"><Wrench className="size-5" /></div>
+                                                <div><h3 className="text-sm font-black">Trailer Details</h3><p className="text-[10px] text-muted-foreground">Trailer Configuration & Specs</p></div>
+                                                {trailerInfo && (
+                                                    <Badge className="ml-auto text-[10px] font-bold capitalize bg-emerald-500/10 text-emerald-600 border-emerald-500/20">{trailerInfo.category}</Badge>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                                                <Field label="Type" value={trailerInfo?.label} icon={Wrench} />
                                                 <Field label="Make" value={profile.trailerMake} />
                                                 <Field label="Model" value={profile.trailerModel} />
-                                                <Field label="Year" value={profile.trailerYear} />
-                                                <Field label="Hitch Type" value={hitchInfo?.label} />
-                                                <Field label="Capacity" value={trailerInfo?.capacity} />
+                                                <Field label="Year" value={profile.trailerYear} icon={Calendar} />
+                                                <Field label="Hitch" value={hitchInfo?.label} />
+                                                <Field label="Capacity" value={trailerInfo?.capacity} icon={Gauge} />
                                                 <Field label="Length" value={profile.trailerLength ? `${profile.trailerLength} ft` : undefined} />
                                                 <Field label="Axles" value={profile.trailerAxles} />
-                                                <Field label="GVWR" value={profile.trailerGvwr ? `${profile.trailerGvwr.toLocaleString()} lbs` : undefined} />
+                                                <Field label="GVWR" value={profile.trailerGvwr ? `${profile.trailerGvwr.toLocaleString()} lbs` : undefined} icon={Gauge} />
+                                                <Field label="Max Vehicles" value={profile.maxVehicleCapacity} />
                                             </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                        <div className="h-1 w-full bg-linear-to-r from-violet-600 to-purple-500" />
-                                        <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                            <div className="size-10 rounded-xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg"><Star className="size-5" /></div>
-                                            <div><h3 className="text-sm font-black">Special Features</h3></div>
-                                            <Badge className="ml-auto text-xs font-bold bg-linear-to-r from-violet-600 to-purple-500 text-white border-0">{profile.specialFeatures?.length || 0}</Badge>
                                         </div>
-                                        <CardContent className="p-5">
-                                            {profile.specialFeatures?.length > 0 ? (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {profile.specialFeatures.map(f => {
-                                                        const opt = specialFeatureOptions.find(o => o.value === f);
-                                                        return <Badge key={f} variant="outline" className="text-xs capitalize">{opt?.label || f.replace(/_/g, ' ')}</Badge>;
-                                                    })}
-                                                </div>
-                                            ) : <p className="text-sm text-muted-foreground italic">No features configured</p>}
-                                        </CardContent>
-                                    </Card>
-                                </div>
+                                    </div>
+                                </motion.div>
                             </div>
                         )}
 
                         {tab === 'documents' && (
-                            <div className="space-y-5">
-                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                    <Stat label="Total" value={stats?.total || 0} />
-                                    <Stat label="Verified" value={stats?.verified || 0} color="text-emerald-500" />
-                                    <Stat label="Pending" value={stats?.pending || 0} color="text-amber-500" />
-                                    <Stat label="Rejected" value={stats?.rejected || 0} color="text-red-500" />
+                            <div className="space-y-6">
+                                {/* Stats row */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <Stat label="Total" value={stats?.total || 0} icon={FileText} gradient="from-blue-500 to-indigo-500" />
+                                    <Stat label="Verified" value={stats?.verified || 0} color="text-emerald-500" icon={CheckCircle2} gradient="from-emerald-500 to-teal-500" />
+                                    <Stat label="Pending" value={stats?.pending || 0} color="text-amber-500" icon={Clock} gradient="from-amber-500 to-orange-500" />
+                                    <Stat label="Rejected" value={stats?.rejected || 0} color="text-red-500" icon={XCircle} gradient="from-red-500 to-rose-500" />
                                 </div>
 
-                                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                    <div className="h-1 w-full bg-linear-to-r from-emerald-600 to-teal-500" />
-                                    <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                        <div className="size-10 rounded-xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg"><FileCheck className="size-5" /></div>
-                                        <div className="flex-1"><h3 className="text-sm font-black">Required Documents</h3></div>
+                                {/* Progress bar */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="font-bold text-muted-foreground">Document Completion</span>
+                                        <span className="font-black text-foreground">{stats?.verified || 0}/{requiredDocs.length} required</span>
                                     </div>
-                                    <CardContent className="p-5 space-y-3">
-                                        {requiredDocs.map(req => {
-                                            const ups = documents.filter((d: ComplianceDocument) => d.type === req.type);
-                                            const status = ups.length === 0 ? 'missing' : ups.some((d: ComplianceDocument) => d.verified) ? 'verified' : ups.some((d: ComplianceDocument) => d.reviewStatus === 'rejected') ? 'rejected' : 'pending';
-                                            return (
-                                                <div key={req.type} className={cn('rounded-xl border-2 overflow-hidden transition-all',
-                                                    status === 'verified' ? 'border-emerald-500/20 bg-emerald-500/3' :
-                                                        status === 'rejected' ? 'border-red-500/20 bg-red-500/3' :
-                                                            status === 'pending' ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/20')}>
-                                                    <div className="flex items-center gap-3 p-4">
-                                                        <div className={cn('size-10 rounded-xl flex items-center justify-center shrink-0',
-                                                            status === 'verified' ? 'bg-emerald-500/10' : status === 'rejected' ? 'bg-red-500/10' :
-                                                                status === 'pending' ? 'bg-amber-500/10' : 'bg-muted/30')}>
-                                                            {status === 'verified' ? <CheckCircle2 className="size-5 text-emerald-500" /> :
-                                                                status === 'rejected' ? <Ban className="size-5 text-red-500" /> :
-                                                                    status === 'pending' ? <Clock className="size-5 text-amber-500" /> :
-                                                                        <FileText className="size-5 text-muted-foreground" />}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2">
-                                                                <h3 className="text-sm font-bold">{req.label}</h3>
-                                                                <Badge className={cn('text-[9px] h-4 px-1.5 border',
-                                                                    status === 'verified' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                                                                        status === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                                                                            status === 'rejected' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
-                                                                                'bg-destructive/10 text-destructive border-destructive/20')}>
-                                                                    {status === 'verified' ? 'VERIFIED' : status === 'pending' ? 'REVIEWING' : status === 'rejected' ? 'REJECTED' : 'MISSING'}
-                                                                </Badge>
-                                                            </div>
-                                                            <p className="text-[11px] text-muted-foreground mt-0.5">{req.description}</p>
-                                                        </div>
-                                                    </div>
-                                                    {ups.length > 0 && (
-                                                        <div className="border-t border-border/10 divide-y divide-border/5">
-                                                            {ups.map((doc: ComplianceDocument) => {
-                                                                const isImg = isImageUrl(doc.fileUrl);
-                                                                const ex = doc.expiresAt ? getExpStatus(doc.expiresAt) : null;
-                                                                return (
-                                                                    <div key={doc._id} className="p-4 space-y-3">
-                                                                        <div className="flex items-start gap-3">
-                                                                            <FileText className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <p className="text-xs font-bold truncate">{doc.label || doc.fileName}</p>
-                                                                                <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[10px] text-muted-foreground">
-                                                                                    <span>{fmtSize(doc.fileSize)}</span>
-                                                                                    {doc.uploadedAt && <span>Uploaded {fmtDate(doc.uploadedAt)}</span>}
-                                                                                    {doc.verifiedAt && <span className="text-emerald-500 font-semibold">Verified {fmtDate(doc.verifiedAt)}</span>}
-                                                                                    {ex && <span className={cn('font-semibold', ex.c)}>{ex.l}</span>}
-                                                                                </div>
-                                                                                {doc.reviewStatus === 'rejected' && doc.rejectionReason && (
-                                                                                    <p className="text-[10px] text-red-500 mt-1 italic">Reason: {doc.rejectionReason}</p>
-                                                                                )}
-                                                                            </div>
-                                                                            <div className="flex items-center gap-1 shrink-0">
-                                                                                {doc.fileUrl && (
-                                                                                    <Button size="icon" variant="ghost" className="size-7" onClick={() => setPreviewDoc(doc)}>
-                                                                                        <Eye className="size-3.5" />
-                                                                                    </Button>
-                                                                                )}
-                                                                                {!doc.verified && doc.reviewStatus !== 'rejected' && (
-                                                                                    <>
-                                                                                        <Button size="icon" variant="ghost"
-                                                                                            className="size-7 text-emerald-500 hover:bg-emerald-500/10"
-                                                                                            onClick={() => handleVerify(doc._id)} disabled={actionLoading === doc._id}>
-                                                                                            {actionLoading === doc._id ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
-                                                                                        </Button>
-                                                                                        <Button size="icon" variant="ghost"
-                                                                                            className="size-7 text-red-500 hover:bg-red-500/10"
-                                                                                            onClick={() => { setRejectDocId(doc._id); setRejectReason(''); }} disabled={actionLoading === doc._id}>
-                                                                                            <XCircle className="size-3.5" />
-                                                                                        </Button>
-                                                                                    </>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                        {isImg && doc.fileUrl && (
-                                                                            <div className="rounded-xl overflow-hidden border border-border/20 bg-muted/10 cursor-pointer" onClick={() => setPreviewDoc(doc)}>
-                                                                                <img src={resolveImageUrl(doc.fileUrl)} alt={doc.label || doc.fileName} className="w-full max-h-48 object-contain" loading="lazy" />
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="h-2 w-full rounded-full bg-muted/20 border border-border/10 overflow-hidden">
+                                        <motion.div initial={{ width: 0 }} animate={{ width: `${requiredDocs.length > 0 ? ((stats?.verified || 0) / requiredDocs.length) * 100 : 0}%` }}
+                                            transition={{ duration: 0.8, ease: 'easeOut' }}
+                                            className="h-full rounded-full bg-linear-to-r from-emerald-500 to-teal-500" />
+                                    </div>
+                                </div>
 
-                                        {optionalDocs.length > 0 && (
-                                            <>
-                                                <div className="flex items-center gap-3 pt-4"><div className="h-px flex-1 bg-border/15" /><span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Optional</span><div className="h-px flex-1 bg-border/15" /></div>
-                                                {optionalDocs.map(req => {
+                                {/* Required documents */}
+                                <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                    <div className="absolute inset-0 bg-linear-to-br from-emerald-500/3 via-transparent to-teal-500/3" />
+                                    <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-emerald-600 to-teal-500" />
+                                    <div className="relative p-6">
+                                        <div className="flex items-center gap-3 mb-5">
+                                            <div className="size-11 rounded-xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25"><FileCheck className="size-5" /></div>
+                                            <div className="flex-1"><h3 className="text-sm font-black">Required Documents</h3><p className="text-[10px] text-muted-foreground">All required compliance documents</p></div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {requiredDocs.map((req, idx) => {
+                                                const ups = documents.filter((d: ComplianceDocument) => d.type === req.type);
+                                                const status = ups.length === 0 ? 'missing' : ups.some((d: ComplianceDocument) => d.verified) ? 'verified' : ups.some((d: ComplianceDocument) => d.reviewStatus === 'rejected') ? 'rejected' : 'pending';
+                                                const DocIcon = DOC_ICONS[req.type] || FileText;
+                                                return (
+                                                    <motion.div key={req.type} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.04 }}
+                                                        className={cn('rounded-xl border-2 overflow-hidden transition-all',
+                                                            status === 'verified' ? 'border-emerald-500/20 bg-emerald-500/3' :
+                                                                status === 'rejected' ? 'border-red-500/20 bg-red-500/3' :
+                                                                    status === 'pending' ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15 bg-muted/3')}>
+                                                        <div className="flex items-center gap-3 p-4">
+                                                            <div className={cn('size-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm',
+                                                                status === 'verified' ? 'bg-emerald-500/10 ring-1 ring-emerald-500/20' :
+                                                                    status === 'rejected' ? 'bg-red-500/10 ring-1 ring-red-500/20' :
+                                                                        status === 'pending' ? 'bg-amber-500/10 ring-1 ring-amber-500/20' : 'bg-muted/20')}>
+                                                                <DocIcon className={cn('size-5',
+                                                                    status === 'verified' ? 'text-emerald-500' :
+                                                                        status === 'rejected' ? 'text-red-500' :
+                                                                            status === 'pending' ? 'text-amber-500' : 'text-muted-foreground')} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <h3 className="text-sm font-bold">{req.label}</h3>
+                                                                    <Badge className={cn('text-[9px] h-4 px-1.5 border font-bold',
+                                                                        status === 'verified' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                                                                            status === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                                                status === 'rejected' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
+                                                                                    'bg-destructive/10 text-destructive border-destructive/20')}>
+                                                                        {status === 'verified' ? 'VERIFIED' : status === 'pending' ? 'REVIEWING' : status === 'rejected' ? 'REJECTED' : 'MISSING'}
+                                                                    </Badge>
+                                                                </div>
+                                                                <p className="text-[11px] text-muted-foreground mt-0.5">{req.description}</p>
+                                                            </div>
+                                                        </div>
+                                                        {ups.length > 0 && (
+                                                            <div className="border-t border-border/10 divide-y divide-border/5">
+                                                                {ups.map((doc: ComplianceDocument) => {
+                                                                    const isImg = isImageUrl(doc.fileUrl);
+                                                                    const ex = doc.expiresAt ? getExpStatus(doc.expiresAt) : null;
+                                                                    return (
+                                                                        <div key={doc._id} className="p-4 space-y-3 group">
+                                                                            <div className="flex items-start gap-3">
+                                                                                <div className="size-8 rounded-lg bg-muted/20 flex items-center justify-center shrink-0 mt-0.5">
+                                                                                    <DocIcon className="size-4 text-muted-foreground" />
+                                                                                </div>
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <p className="text-xs font-bold truncate">{doc.label || doc.fileName}</p>
+                                                                                    <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px] text-muted-foreground">
+                                                                                        <span className="font-semibold">{fmtSize(doc.fileSize)}</span>
+                                                                                        {doc.uploadedAt && <><span className="text-muted-foreground/30">·</span><span>Uploaded {fmtDate(doc.uploadedAt)}</span></>}
+                                                                                        {doc.verifiedAt && <><span className="text-muted-foreground/30">·</span><span className="text-emerald-500 font-bold">Verified {fmtDate(doc.verifiedAt)}</span></>}
+                                                                                        {ex && <><span className="text-muted-foreground/30">·</span><span className={cn('font-bold', ex.c)}>{ex.l}</span></>}
+                                                                                    </div>
+                                                                                    {doc.reviewStatus === 'rejected' && doc.rejectionReason && (
+                                                                                        <div className="mt-2 p-2 rounded-lg bg-red-500/5 border border-red-500/15">
+                                                                                            <p className="text-[10px] text-red-500 italic flex items-center gap-1"><Ban className="size-3" /> {doc.rejectionReason}</p>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                                                    {doc.fileUrl && (
+                                                                                        <Button size="icon" variant="ghost" className="size-8 rounded-lg" onClick={() => setPreviewDoc(doc)}>
+                                                                                            <Eye className="size-4" />
+                                                                                        </Button>
+                                                                                    )}
+                                                                                    {!doc.verified && doc.reviewStatus !== 'rejected' && (
+                                                                                        <>
+                                                                                            <Button size="icon" variant="ghost"
+                                                                                                className="size-8 rounded-lg text-emerald-500 hover:bg-emerald-500/10"
+                                                                                                onClick={() => handleVerify(doc._id)} disabled={actionLoading === doc._id}>
+                                                                                                {actionLoading === doc._id ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-4" />}
+                                                                                            </Button>
+                                                                                            <Button size="icon" variant="ghost"
+                                                                                                className="size-8 rounded-lg text-red-500 hover:bg-red-500/10"
+                                                                                                onClick={() => { setRejectDocId(doc._id); setRejectReason(''); }} disabled={actionLoading === doc._id}>
+                                                                                                <XCircle className="size-4" />
+                                                                                            </Button>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                            {isImg && doc.fileUrl && (
+                                                                                <div className="rounded-xl overflow-hidden border-2 border-border/10 bg-muted/5 cursor-pointer hover:border-border/30 transition-colors" onClick={() => setPreviewDoc(doc)}>
+                                                                                    <img src={resolveImageUrl(doc.fileUrl)} alt={doc.label || doc.fileName} className="w-full max-h-48 object-contain" loading="lazy" />
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Optional documents */}
+                                {optionalDocs.length > 0 && (
+                                    <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                        <div className="absolute inset-0 bg-linear-to-br from-slate-500/3 via-transparent to-zinc-500/3" />
+                                        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-slate-500 to-zinc-400" />
+                                        <div className="relative p-6">
+                                            <div className="flex items-center gap-3 mb-5">
+                                                <div className="size-11 rounded-xl bg-linear-to-br from-slate-500 to-zinc-500 flex items-center justify-center text-white shadow-lg shadow-slate-500/25"><FileText className="size-5" /></div>
+                                                <div className="flex-1"><h3 className="text-sm font-black">Optional Documents</h3><p className="text-[10px] text-muted-foreground">Additional compliance documents</p></div>
+                                            </div>
+                                            <div className="space-y-2.5">
+                                                {optionalDocs.map((req, idx) => {
                                                     const ups = documents.filter((d: ComplianceDocument) => d.type === req.type);
                                                     const status = ups.length === 0 ? 'missing' : ups.some((d: ComplianceDocument) => d.verified) ? 'verified' : 'pending';
+                                                    const DocIcon = DOC_ICONS[req.type] || FileText;
                                                     return (
-                                                        <div key={req.type} className={cn('rounded-xl border-2 p-4 flex items-center gap-3 transition-all',
-                                                            status === 'verified' ? 'border-emerald-500/20 bg-emerald-500/3' : status === 'pending' ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15')}>
-                                                            <div className="size-9 rounded-lg bg-muted/20 flex items-center justify-center shrink-0"><FileText className="size-4 text-muted-foreground" /></div>
+                                                        <motion.div key={req.type} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.04 }}
+                                                            className={cn('rounded-xl border-2 p-4 flex items-center gap-3 transition-all',
+                                                                status === 'verified' ? 'border-emerald-500/20 bg-emerald-500/3' : status === 'pending' ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15')}>
+                                                            <div className={cn('size-9 rounded-lg flex items-center justify-center shrink-0',
+                                                                status === 'verified' ? 'bg-emerald-500/10' : status === 'pending' ? 'bg-amber-500/10' : 'bg-muted/20')}>
+                                                                <DocIcon className={cn('size-4', status === 'verified' ? 'text-emerald-500' : status === 'pending' ? 'text-amber-500' : 'text-muted-foreground')} />
+                                                            </div>
                                                             <div className="flex-1 min-w-0">
-                                                                <div className="flex items-center gap-2"><h3 className="text-sm font-bold">{req.label}</h3><Badge variant="outline" className="text-[9px] h-4">Optional</Badge></div>
+                                                                <div className="flex items-center gap-2"><h3 className="text-sm font-bold">{req.label}</h3><Badge variant="outline" className="text-[9px] h-4 font-semibold">Optional</Badge></div>
                                                                 {ups.length > 0 && <div className="flex flex-wrap gap-1.5 mt-1.5">
                                                                     {ups.map((doc: ComplianceDocument) => (
-                                                                        <Badge key={doc._id} variant="outline" className="gap-1 text-[10px] cursor-pointer hover:bg-muted/30" onClick={() => setPreviewDoc(doc)}>
-                                                                            {doc.fileName} {doc.verified && <CheckCircle2 className="size-2.5 text-emerald-500" />}
+                                                                        <Badge key={doc._id} variant="outline" className="gap-1 text-[10px] font-semibold cursor-pointer hover:bg-muted/30 rounded-lg transition-colors" onClick={() => setPreviewDoc(doc)}>
+                                                                            <Eye className="size-2.5" /> {doc.fileName} {doc.verified && <CheckCircle2 className="size-2.5 text-emerald-500" />}
                                                                         </Badge>
                                                                     ))}
                                                                 </div>}
                                                             </div>
-                                                        </div>
+                                                        </motion.div>
                                                     );
                                                 })}
-                                            </>
-                                        )}
-                                    </CardContent>
-                                </Card>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {tab === 'compliance' && (
-                            <div className="space-y-5">
-                                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                    <div className="h-1 w-full bg-linear-to-r from-emerald-600 to-teal-500" />
-                                    <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                        <div className="size-10 rounded-xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg"><CreditCard className="size-5" /></div>
-                                        <div className="flex-1"><h3 className="text-sm font-black">License & Insurance Details</h3></div>
-                                        {profile.isComplianceExpired && <Badge variant="destructive" className="gap-1 text-xs"><AlertTriangle className="size-3" /> Expired Items</Badge>}
-                                    </div>
-                                    <CardContent className="p-5">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                                            <div className="space-y-3 p-4 rounded-xl border border-border/15 bg-muted/5">
-                                                <div className="flex items-center gap-2 mb-2"><CreditCard className="size-4 text-blue-500" /><p className="text-xs font-black">Commercial Driver License</p></div>
-                                                <Field label="License Number" value={profile.driversLicenseNumber} mono />
-                                                <Field label="Issuing State" value={profile.licenseState} />
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expiration</p>
-                                                    <p className={cn('text-sm font-semibold', getExpStatus(profile.licenseExpirationDate).c)}>
-                                                        {profile.licenseExpirationDate ? fmtDate(profile.licenseExpirationDate) : 'Not set'}
-                                                    </p>
-                                                    {profile.licenseExpirationDate && <p className={cn('text-[10px] font-bold', getExpStatus(profile.licenseExpirationDate).c)}>{getExpStatus(profile.licenseExpirationDate).l}</p>}
-                                                </div>
+                            <div className="space-y-6">
+                                {/* License & Insurance */}
+                                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                                    <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                        <div className="absolute inset-0 bg-linear-to-br from-emerald-500/3 via-transparent to-teal-500/3" />
+                                        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-emerald-600 to-teal-500" />
+                                        <div className="relative p-6">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="size-11 rounded-xl bg-linear-to-br from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25"><CreditCard className="size-5" /></div>
+                                                <div className="flex-1"><h3 className="text-sm font-black">License & Insurance Details</h3><p className="text-[10px] text-muted-foreground">Compliance expiration tracking</p></div>
+                                                {profile.isComplianceExpired && <Badge variant="destructive" className="gap-1 text-xs font-bold"><AlertTriangle className="size-3" /> Expired Items</Badge>}
                                             </div>
-
-                                            <div className="space-y-3 p-4 rounded-xl border border-border/15 bg-muted/5">
-                                                <div className="flex items-center gap-2 mb-2"><FileText className="size-4 text-violet-500" /><p className="text-xs font-black">DOT Medical Card</p></div>
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expiration</p>
-                                                    <p className={cn('text-sm font-semibold', getExpStatus(profile.medicalCardExpirationDate).c)}>
-                                                        {profile.medicalCardExpirationDate ? fmtDate(profile.medicalCardExpirationDate) : 'Not set'}
-                                                    </p>
-                                                    {profile.medicalCardExpirationDate && <p className={cn('text-[10px] font-bold', getExpStatus(profile.medicalCardExpirationDate).c)}>{getExpStatus(profile.medicalCardExpirationDate).l}</p>}
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                {/* CDL */}
+                                                <div className={cn('p-4 rounded-xl border-2 space-y-3 transition-all',
+                                                    getExpStatus(profile.licenseExpirationDate).c.includes('red') ? 'border-red-500/20 bg-red-500/3' :
+                                                        getExpStatus(profile.licenseExpirationDate).c.includes('amber') ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15')}>
+                                                    <div className="flex items-center gap-2"><CreditCard className="size-4 text-blue-500" /><p className="text-xs font-black">Commercial Driver License</p></div>
+                                                    <Field label="License Number" value={profile.driversLicenseNumber} mono />
+                                                    <Field label="Issuing State" value={profile.licenseState} />
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expiration</p>
+                                                        <p className={cn('text-sm font-bold', getExpStatus(profile.licenseExpirationDate).c)}>
+                                                            {profile.licenseExpirationDate ? fmtDate(profile.licenseExpirationDate) : 'Not set'}
+                                                        </p>
+                                                        {profile.licenseExpirationDate && (
+                                                            <Badge className={cn('text-[9px] font-bold',
+                                                                getExpStatus(profile.licenseExpirationDate).c.includes('red') ? 'bg-red-500/10 text-red-600 border-red-500/20' :
+                                                                    getExpStatus(profile.licenseExpirationDate).c.includes('amber') ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                                        'bg-emerald-500/10 text-emerald-600 border-emerald-500/20')}>
+                                                                {getExpStatus(profile.licenseExpirationDate).l}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            <div className="space-y-3 p-4 rounded-xl border border-border/15 bg-muted/5">
-                                                <div className="flex items-center gap-2 mb-2"><Shield className="size-4 text-emerald-500" /><p className="text-xs font-black">Insurance</p></div>
-                                                <Field label="Provider" value={profile.insuranceProvider} />
-                                                <Field label="Policy Number" value={profile.insurancePolicyNumber} mono />
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expiration</p>
-                                                    <p className={cn('text-sm font-semibold', getExpStatus(profile.insuranceExpirationDate).c)}>
-                                                        {profile.insuranceExpirationDate ? fmtDate(profile.insuranceExpirationDate) : 'Not set'}
-                                                    </p>
-                                                    {profile.insuranceExpirationDate && <p className={cn('text-[10px] font-bold', getExpStatus(profile.insuranceExpirationDate).c)}>{getExpStatus(profile.insuranceExpirationDate).l}</p>}
+                                                {/* Medical Card */}
+                                                <div className={cn('p-4 rounded-xl border-2 space-y-3 transition-all',
+                                                    getExpStatus(profile.medicalCardExpirationDate).c.includes('red') ? 'border-red-500/20 bg-red-500/3' :
+                                                        getExpStatus(profile.medicalCardExpirationDate).c.includes('amber') ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15')}>
+                                                    <div className="flex items-center gap-2"><FileText className="size-4 text-violet-500" /><p className="text-xs font-black">DOT Medical Card</p></div>
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expiration</p>
+                                                        <p className={cn('text-sm font-bold', getExpStatus(profile.medicalCardExpirationDate).c)}>
+                                                            {profile.medicalCardExpirationDate ? fmtDate(profile.medicalCardExpirationDate) : 'Not set'}
+                                                        </p>
+                                                        {profile.medicalCardExpirationDate && (
+                                                            <Badge className={cn('text-[9px] font-bold',
+                                                                getExpStatus(profile.medicalCardExpirationDate).c.includes('red') ? 'bg-red-500/10 text-red-600 border-red-500/20' :
+                                                                    getExpStatus(profile.medicalCardExpirationDate).c.includes('amber') ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                                        'bg-emerald-500/10 text-emerald-600 border-emerald-500/20')}>
+                                                                {getExpStatus(profile.medicalCardExpirationDate).l}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Insurance */}
+                                                <div className={cn('p-4 rounded-xl border-2 space-y-3 transition-all',
+                                                    getExpStatus(profile.insuranceExpirationDate).c.includes('red') ? 'border-red-500/20 bg-red-500/3' :
+                                                        getExpStatus(profile.insuranceExpirationDate).c.includes('amber') ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15')}>
+                                                    <div className="flex items-center gap-2"><Shield className="size-4 text-emerald-500" /><p className="text-xs font-black">Insurance</p></div>
+                                                    <Field label="Provider" value={profile.insuranceProvider} />
+                                                    <Field label="Policy Number" value={profile.insurancePolicyNumber} mono />
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expiration</p>
+                                                        <p className={cn('text-sm font-bold', getExpStatus(profile.insuranceExpirationDate).c)}>
+                                                            {profile.insuranceExpirationDate ? fmtDate(profile.insuranceExpirationDate) : 'Not set'}
+                                                        </p>
+                                                        {profile.insuranceExpirationDate && (
+                                                            <Badge className={cn('text-[9px] font-bold',
+                                                                getExpStatus(profile.insuranceExpirationDate).c.includes('red') ? 'bg-red-500/10 text-red-600 border-red-500/20' :
+                                                                    getExpStatus(profile.insuranceExpirationDate).c.includes('amber') ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                                        'bg-emerald-500/10 text-emerald-600 border-emerald-500/20')}>
+                                                                {getExpStatus(profile.insuranceExpirationDate).l}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-border/20 shadow-xl overflow-hidden rounded-2xl">
-                                    <div className="h-1 w-full bg-linear-to-r from-violet-600 to-purple-500" />
-                                    <div className="px-5 pt-5 pb-3 flex items-center gap-3 border-b border-border/10">
-                                        <div className="size-10 rounded-xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg"><Fingerprint className="size-5" /></div>
-                                        <div className="flex-1"><h3 className="text-sm font-black">Identity Verification</h3></div>
                                     </div>
-                                    <CardContent className="p-5">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div className={cn('flex items-center gap-3 p-4 rounded-xl border-2',
-                                                profile.ssnLast4 ? 'border-emerald-500/20 bg-emerald-500/3' : 'border-border/15')}>
-                                                <div className={cn('size-10 rounded-xl flex items-center justify-center', profile.ssnLast4 ? 'bg-emerald-500/10' : 'bg-muted/20')}>
-                                                    {profile.ssnLast4 ? <CheckCircle2 className="size-5 text-emerald-500" /> : <Lock className="size-5 text-muted-foreground" />}
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold">SSN (Last 4)</p>
-                                                    <p className="text-sm font-mono font-bold">{profile.ssnLast4 ? `••••${profile.ssnLast4}` : '—'}</p>
-                                                </div>
-                                            </div>
+                                </motion.div>
 
-                                            <div className={cn('flex items-center gap-3 p-4 rounded-xl border-2',
-                                                profile.backgroundCheckConsent ? 'border-emerald-500/20 bg-emerald-500/3' : 'border-border/15')}>
-                                                <div className={cn('size-10 rounded-xl flex items-center justify-center', profile.backgroundCheckConsent ? 'bg-emerald-500/10' : 'bg-muted/20')}>
-                                                    {profile.backgroundCheckConsent ? <CheckCircle2 className="size-5 text-emerald-500" /> : <XCircle className="size-5 text-muted-foreground" />}
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold">Background Check</p>
-                                                    <p className="text-sm font-semibold">{profile.backgroundCheckConsent ? 'Authorized' : 'Not authorized'}</p>
-                                                    {profile.backgroundCheckConsentDate && <p className="text-[10px] text-muted-foreground">{fmtDate(profile.backgroundCheckConsentDate)}</p>}
-                                                </div>
+                                {/* Identity Verification */}
+                                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                                    <div className="relative overflow-hidden rounded-2xl border-2 border-border/15 bg-linear-to-br from-background via-background to-background/50 shadow-xl">
+                                        <div className="absolute inset-0 bg-linear-to-br from-violet-500/3 via-transparent to-purple-500/3" />
+                                        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-violet-600 to-purple-500" />
+                                        <div className="relative p-6">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="size-11 rounded-xl bg-linear-to-br from-violet-600 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-violet-500/25"><Fingerprint className="size-5" /></div>
+                                                <div><h3 className="text-sm font-black">Identity Verification</h3><p className="text-[10px] text-muted-foreground">Security & compliance checks</p></div>
                                             </div>
-
-                                            <div className={cn('flex items-center gap-3 p-4 rounded-xl border-2',
-                                                profile.verificationAgreement ? 'border-emerald-500/20 bg-emerald-500/3' : 'border-border/15')}>
-                                                <div className={cn('size-10 rounded-xl flex items-center justify-center', profile.verificationAgreement ? 'bg-emerald-500/10' : 'bg-muted/20')}>
-                                                    {profile.verificationAgreement ? <CheckCircle2 className="size-5 text-emerald-500" /> : <Scale className="size-5 text-muted-foreground" />}
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold">Agreement</p>
-                                                    <p className="text-sm font-semibold">{profile.verificationAgreement ? 'Accepted' : 'Not accepted'}</p>
-                                                    {profile.verificationAgreementDate && <p className="text-[10px] text-muted-foreground">{fmtDate(profile.verificationAgreementDate)}</p>}
-                                                </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                {[
+                                                    { ok: !!profile.ssnLast4, label: 'SSN (Last 4)', value: profile.ssnLast4 ? `••••${profile.ssnLast4}` : '—', mono: true, iconOk: CheckCircle2, iconNo: Lock },
+                                                    { ok: !!profile.backgroundCheckConsent, label: 'Background Check', value: profile.backgroundCheckConsent ? 'Authorized' : 'Not authorized', sub: profile.backgroundCheckConsentDate ? fmtDate(profile.backgroundCheckConsentDate) : undefined, iconOk: CheckCircle2, iconNo: XCircle },
+                                                    { ok: !!profile.verificationAgreement, label: 'Agreement', value: profile.verificationAgreement ? 'Accepted' : 'Not accepted', sub: profile.verificationAgreementDate ? fmtDate(profile.verificationAgreementDate) : undefined, iconOk: CheckCircle2, iconNo: Scale },
+                                                    { ok: profile.verificationStatus === 'verified', pending: profile.verificationStatus === 'under_review', label: 'Status', value: (profile.verificationStatus || 'not_started').replace(/_/g, ' '), iconOk: BadgeCheck, iconNo: ShieldAlert, iconPending: Clock },
+                                                ].map((item, idx) => {
+                                                    const isPending = 'pending' in item && item.pending;
+                                                    const StatusIcon = isPending ? (item as { iconPending: React.ElementType }).iconPending : item.ok ? item.iconOk : item.iconNo;
+                                                    return (
+                                                        <motion.div key={item.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 + idx * 0.05 }}
+                                                            className={cn('flex items-center gap-3 p-4 rounded-xl border-2 transition-all',
+                                                                item.ok ? 'border-emerald-500/20 bg-emerald-500/3' :
+                                                                    isPending ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15')}>
+                                                            <div className={cn('size-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm',
+                                                                item.ok ? 'bg-emerald-500/10 ring-1 ring-emerald-500/20' :
+                                                                    isPending ? 'bg-amber-500/10 ring-1 ring-amber-500/20' : 'bg-muted/20')}>
+                                                                <StatusIcon className={cn('size-5',
+                                                                    item.ok ? 'text-emerald-500' : isPending ? 'text-amber-500' : 'text-muted-foreground')} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-bold">{item.label}</p>
+                                                                <p className={cn('text-sm font-semibold capitalize',
+                                                                    item.ok ? 'text-emerald-600 dark:text-emerald-400' :
+                                                                        isPending ? 'text-amber-600 dark:text-amber-400' : '')}>
+                                                                    {item.value}
+                                                                </p>
+                                                                {'sub' in item && item.sub && <p className="text-[10px] text-muted-foreground">{item.sub}</p>}
+                                                            </div>
+                                                        </motion.div>
+                                                    );
+                                                })}
                                             </div>
-
-                                            <div className={cn('flex items-center gap-3 p-4 rounded-xl border-2',
-                                                profile.verificationStatus === 'verified' ? 'border-emerald-500/20 bg-emerald-500/3' :
-                                                    profile.verificationStatus === 'under_review' ? 'border-amber-500/20 bg-amber-500/3' : 'border-border/15')}>
-                                                <div className={cn('size-10 rounded-xl flex items-center justify-center',
-                                                    profile.verificationStatus === 'verified' ? 'bg-emerald-500/10' :
-                                                        profile.verificationStatus === 'under_review' ? 'bg-amber-500/10' : 'bg-muted/20')}>
-                                                    {profile.verificationStatus === 'verified' ? <BadgeCheck className="size-5 text-emerald-500" /> :
-                                                        profile.verificationStatus === 'under_review' ? <Clock className="size-5 text-amber-500" /> :
-                                                            <ShieldAlert className="size-5 text-muted-foreground" />}
+                                            {profile.verificationNotes && (
+                                                <div className="mt-5 p-4 rounded-xl border-2 border-border/15 bg-muted/5">
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5"><FileText className="size-3" />Admin Notes</p>
+                                                    <p className="text-xs text-muted-foreground leading-relaxed">{profile.verificationNotes}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs font-bold">Status</p>
-                                                    <p className={cn('text-sm font-semibold capitalize',
-                                                        profile.verificationStatus === 'verified' ? 'text-emerald-600 dark:text-emerald-400' :
-                                                            profile.verificationStatus === 'under_review' ? 'text-amber-600 dark:text-amber-400' : '')}>
-                                                        {(profile.verificationStatus || 'not_started').replace(/_/g, ' ')}
-                                                    </p>
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
-                                        {profile.verificationNotes && (
-                                            <div className="mt-4 p-3 rounded-xl border border-border/15 bg-muted/5">
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Admin Notes</p>
-                                                <p className="text-xs text-muted-foreground leading-relaxed">{profile.verificationNotes}</p>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
+                                    </div>
+                                </motion.div>
                             </div>
                         )}
 
@@ -789,6 +957,60 @@ export function DriverDetailView({ driverId }: { driverId: string }) {
                         <Button variant="destructive" onClick={() => rejectDocId && handleReject(rejectDocId)}
                             disabled={!rejectReason.trim() || rejectReason.trim().length < 3 || !!actionLoading} className="gap-2">
                             {actionLoading ? <Loader2 className="size-4 animate-spin" /> : <Ban className="size-4" />} Reject
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <BadgeCheck className="size-5 text-emerald-500" /> Approve Driver Profile
+                        </DialogTitle>
+                        <DialogDescription>
+                            {missingDocs.length > 0
+                                ? 'This driver has missing documents. Are you sure you want to approve?'
+                                : `Approve ${user?.name || 'this driver'}'s profile and set verification status to verified.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    {missingDocs.length > 0 && (
+                        <div className="rounded-xl border-2 border-amber-500/25 bg-amber-500/5 p-4 space-y-3">
+                            <div className="flex items-start gap-2">
+                                <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                                        {missingDocs.length} missing document{missingDocs.length > 1 ? 's' : ''}
+                                    </p>
+                                    <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-0.5">
+                                        The following required documents have not been uploaded:
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="space-y-1.5 pl-7">
+                                {missingDocs.map(d => (
+                                    <div key={d.type} className="flex items-center gap-2 text-xs">
+                                        <XCircle className="size-3.5 text-amber-500 shrink-0" />
+                                        <span className="font-semibold text-amber-700 dark:text-amber-300">{d.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {stats && stats.pending > 0 && (
+                        <div className="rounded-xl border border-border/20 bg-muted/10 p-3 flex items-center gap-2">
+                            <Clock className="size-4 text-amber-500 shrink-0" />
+                            <p className="text-xs text-muted-foreground">
+                                <span className="font-bold">{stats.pending}</span> document{stats.pending > 1 ? 's' : ''} still pending review
+                            </p>
+                        </div>
+                    )}
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancel</Button>
+                        <Button onClick={handleApproveDriver} disabled={approving}
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white">
+                            {approving ? <Loader2 className="size-4 animate-spin" /> : <BadgeCheck className="size-4" />}
+                            {missingDocs.length > 0 ? 'Approve Anyway' : 'Approve Driver'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -88,7 +88,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden border border-gray-100 dark:border-gray-700">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 text-white p-6 flex items-center justify-between">
+                <div className="bg-linear-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 text-white p-6 flex items-center justify-between">
                     <h2 className="text-2xl font-bold">Edit Shipment</h2>
                     <button
                         onClick={onClose}
@@ -122,7 +122,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                                         Tracking Number
                                         <Lock className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                                     </label>
@@ -190,7 +190,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="requestedPickupDate"
                                         value={formData.requestedPickupDate}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:scheme-dark"
                                     />
                                 </div>
                                 <div>
@@ -202,7 +202,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="scheduledPickup"
                                         value={formData.scheduledPickup}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:scheme-dark"
                                     />
                                 </div>
                                 <div>
@@ -214,7 +214,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="pickedUp"
                                         value={formData.pickedUp}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:scheme-dark"
                                     />
                                 </div>
                                 <div>
@@ -226,7 +226,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="scheduledDelivery"
                                         value={formData.scheduledDelivery}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:scheme-dark"
                                     />
                                 </div>
                                 <div className="md:col-span-2">
@@ -238,7 +238,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="delivered"
                                         value={formData.delivered}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:scheme-dark"
                                     />
                                 </div>
                             </div>
@@ -375,7 +375,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                                         name="desiredDeliveryDate"
                                         value={formData.desiredDeliveryDate}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:scheme-dark"
                                     />
                                 </div>
                                 <div>
@@ -514,7 +514,7 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
                         <Button
                             type="submit"
                             disabled={isSaving}
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                            className="bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
                         >
                             {isSaving ? 'Saving...' : 'Save Changes'}
                         </Button>

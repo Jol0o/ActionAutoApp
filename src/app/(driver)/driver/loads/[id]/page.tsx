@@ -156,7 +156,7 @@ export default function LoadDetailPage() {
                       </div>
                       <span className={cn('text-[10px] font-semibold whitespace-nowrap', i <= stepIdx ? 'text-emerald-400' : 'text-white/20')}>{step.label}</span>
                     </div>
-                    {i < STEPS.length - 1 && <div className={cn('flex-1 h-0.5 mt-[-10px] mx-1 rounded-full', i < stepIdx ? 'bg-emerald-400' : 'bg-white/10')} />}
+                    {i < STEPS.length - 1 && <div className={cn('flex-1 h-0.5 -mt-2.5 mx-1 rounded-full', i < stepIdx ? 'bg-emerald-400' : 'bg-white/10')} />}
                   </React.Fragment>
                 ))}
               </div>

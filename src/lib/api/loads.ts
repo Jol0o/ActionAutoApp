@@ -140,5 +140,5 @@ export async function deleteLoad(loadId: string): Promise<void> {
 }
 
 export async function assignDriverToLoad(loadId: string, driverId: string): Promise<void> {
-  await apiClient.post("/api/driver-tracking/assign-load", { loadId, driverId });
+  await apiClient.post("/api/driver-tracking/assign-load", { shipmentId: loadId, driverId });
 }
