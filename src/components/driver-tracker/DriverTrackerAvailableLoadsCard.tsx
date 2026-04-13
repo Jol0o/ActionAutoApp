@@ -13,18 +13,31 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Shipment } from "@/types/transportation";
 import { DriverTrackingItem } from "@/types/driver-tracking";
 import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
 
 const trailerLabel = (val?: string) =>
   trailerTypeOptions.find((t) => t.value === val)?.label || val || "";
 
+interface AvailableItem {
+  _id: string;
+  __docType: "shipment" | "load";
+  trackingNumber?: string;
+  origin?: string;
+  destination?: string;
+  status: string;
+  trailerTypeRequired?: string;
+  vehicleCount?: number;
+  carrierPayAmount?: number;
+  requestedPickupDate?: string;
+  isPostedToBoard?: boolean;
+}
+
 interface DriverTrackerAvailableLoadsCardProps {
-  shipments: Shipment[];
+  shipments: AvailableItem[];
   isLoading: boolean;
   activeDrivers: DriverTrackingItem[];
-  onAssign: (shipmentId: string, driverId: string) => Promise<void>;
+  onAssign: (item: AvailableItem, driverId: string) => Promise<void>;
 }
 
 export function DriverTrackerAvailableLoadsCard({
@@ -34,13 +47,13 @@ export function DriverTrackerAvailableLoadsCard({
   onAssign,
 }: DriverTrackerAvailableLoadsCardProps) {
   const [assigning, setAssigning] = React.useState<string | null>(null);
-  const [assignShipment, setAssignShipment] = React.useState<Shipment | null>(null);
+  const [assignShipment, setAssignShipment] = React.useState<AvailableItem | null>(null);
   const [driverSearch, setDriverSearch] = React.useState("");
 
-  const handleAssign = async (shipmentId: string, driverId: string) => {
-    setAssigning(shipmentId);
+  const handleAssign = async (item: AvailableItem, driverId: string) => {
+    setAssigning(item._id);
     try {
-      await onAssign(shipmentId, driverId);
+      await onAssign(item, driverId);
       setAssignShipment(null);
     } finally {
       setAssigning(null);
@@ -94,7 +107,12 @@ export function DriverTrackerAvailableLoadsCard({
                       {shipment.trackingNumber || shipment._id.slice(-8)}
                     </p>
                     <div className="flex gap-1 flex-wrap">
-                      {shipment.isPostedToBoard && (
+                      {shipment.__docType === "load" && (
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-5 border-green-300 text-green-600 gap-0.5">
+                          <Truck className="size-2.5" />TMS Load
+                        </Badge>
+                      )}
+                      {shipment.__docType === "shipment" && shipment.isPostedToBoard && (
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-5 border-blue-300 text-blue-600 gap-0.5">
                           <Megaphone className="size-2.5" />Board
                         </Badge>
@@ -274,7 +292,7 @@ export function DriverTrackerAvailableLoadsCard({
                     size="sm"
                     className="h-8 px-3 text-xs font-bold shrink-0 shadow-sm"
                     disabled={assigning !== null}
-                    onClick={() => driver.driver?.id && assignShipment && handleAssign(assignShipment._id, driver.driver.id)}
+                    onClick={() => driver.driver?.id && assignShipment && handleAssign(assignShipment, driver.driver.id)}
                   >
                     {assigning === assignShipment?._id ? (
                       <Loader2 className="size-3.5 animate-spin" />

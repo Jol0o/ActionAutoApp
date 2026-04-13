@@ -16,6 +16,20 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useUser } from "@/providers/AuthProvider";
 import { DriverTrackingItem, DriverStatus } from "@/types/driver-tracking";
 import { Shipment } from "@/types/transportation";
+
+export interface AvailableItem {
+  _id: string;
+  __docType: "shipment" | "load";
+  trackingNumber?: string;
+  origin?: string;
+  destination?: string;
+  status: string;
+  trailerTypeRequired?: string;
+  vehicleCount?: number;
+  carrierPayAmount?: number;
+  requestedPickupDate?: string;
+  isPostedToBoard?: boolean;
+}
 import { DriverTrackerMap } from "@/components/driver-tracker/DriverTrackerMap";
 import { DriverTrackerShareCard } from "@/components/driver-tracker/DriverTrackerShareCard";
 import { DriverTrackerLoadsCard } from "@/components/driver-tracker/DriverTrackerLoadsCard";
@@ -73,7 +87,7 @@ export default function DriverTrackerPage() {
   const [shareError, setShareError] = React.useState<string | null>(null);
   const [lastShareAt, setLastShareAt] = React.useState<string | null>(null);
   const [mapNotice, setMapNotice] = React.useState<string | null>(null);
-  const [availableShipments, setAvailableShipments] = React.useState<Shipment[]>([]);
+  const [availableShipments, setAvailableShipments] = React.useState<AvailableItem[]>([]);
   const [shipmentsLoading, setShipmentsLoading] = React.useState(false);
   const [assignModalOpen, setAssignModalOpen] = React.useState(false);
   const [assigningTo, setAssigningTo] = React.useState<DriverTrackingItem | null>(null);
@@ -147,13 +161,47 @@ export default function DriverTrackerPage() {
     setShipmentsLoading(true);
     try {
       const token = await getToken();
-      const response = await apiClient.get("/api/shipments", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const all: Shipment[] = response.data?.data || response.data || [];
-      setAvailableShipments(
-        all.filter((s) => s.status === "Available for Pickup" && !s.assignedDriverId),
-      );
+      const headers = { Authorization: `Bearer ${token}` };
+      const [shipmentsRes, loadsRes] = await Promise.all([
+        apiClient.get("/api/shipments", { headers }),
+        apiClient.get("/api/loads", { headers, params: { status: "Posted", limit: 50 } }),
+      ]);
+      const allShipments: Shipment[] = shipmentsRes.data?.data?.shipments || [];
+      const allLoads: any[] = loadsRes.data?.data?.loads || [];
+
+      const mappedShipments: AvailableItem[] = allShipments
+        .filter((s) => s.status === "Available for Pickup" && !s.assignedDriverId)
+        .map((s) => ({
+          _id: s._id,
+          __docType: "shipment" as const,
+          trackingNumber: s.trackingNumber,
+          origin: s.origin,
+          destination: s.destination,
+          status: s.status,
+          trailerTypeRequired: s.trailerTypeRequired,
+          vehicleCount: s.vehicleCount,
+          carrierPayAmount: s.carrierPayAmount,
+          requestedPickupDate: s.requestedPickupDate,
+          isPostedToBoard: s.isPostedToBoard,
+        }));
+
+      const mappedLoads: AvailableItem[] = allLoads
+        .filter((l) => l.status === "Posted" && !l.assignedDriverId)
+        .map((l) => ({
+          _id: l._id,
+          __docType: "load" as const,
+          trackingNumber: l.loadNumber,
+          origin: `${l.pickupLocation?.city || ""}${l.pickupLocation?.state ? `, ${l.pickupLocation.state}` : ""}`,
+          destination: `${l.deliveryLocation?.city || ""}${l.deliveryLocation?.state ? `, ${l.deliveryLocation.state}` : ""}`,
+          status: l.status,
+          trailerTypeRequired: l.vehicles?.[0]?.trailerType,
+          vehicleCount: l.vehicles?.length || 0,
+          carrierPayAmount: l.pricing?.carrierPayAmount,
+          requestedPickupDate: l.dates?.firstAvailable,
+          isPostedToBoard: false,
+        }));
+
+      setAvailableShipments([...mappedShipments, ...mappedLoads]);
     } catch {
     } finally {
       setShipmentsLoading(false);
@@ -161,13 +209,13 @@ export default function DriverTrackerPage() {
   }, [getToken, isSignedIn]);
 
   const handleAssignLoad = React.useCallback(
-    async (shipmentId: string) => {
+    async (item: AvailableItem) => {
       if (!assigningTo?.driver?.id || !isSignedIn) return;
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/assign-load",
-          { shipmentId, driverId: assigningTo.driver.id },
+          { shipmentId: item._id, driverId: assigningTo.driver.id },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success(`Load assigned to ${assigningTo.driver.name || "driver"}`);
@@ -181,13 +229,13 @@ export default function DriverTrackerPage() {
   );
 
   const handleAssignFromAvailable = React.useCallback(
-    async (shipmentId: string, driverId: string) => {
+    async (item: AvailableItem, driverId: string) => {
       if (!isSignedIn) return;
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/assign-load",
-          { shipmentId, driverId },
+          { shipmentId: item._id, driverId },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load assigned successfully");
@@ -353,6 +401,25 @@ export default function DriverTrackerPage() {
           fetchAvailableShipments();
           fetchLoadRequests();
         });
+
+        sock.on("driver:load_requested", () => {
+          fetchLoadRequests();
+          fetchAvailableShipments();
+        });
+
+        sock.on("driver:load_request_updated", () => {
+          fetchLoadRequests();
+          fetchDrivers();
+          fetchAvailableShipments();
+        });
+
+        sock.on("load:change", () => {
+          fetchAvailableShipments();
+        });
+
+        sock.on("shipment:change", () => {
+          fetchAvailableShipments();
+        });
       } catch { }
     };
 
@@ -362,6 +429,10 @@ export default function DriverTrackerPage() {
       cancelled = true;
       socketRef.current?.off("driver:location_update");
       socketRef.current?.off("driver:loads_updated");
+      socketRef.current?.off("driver:load_requested");
+      socketRef.current?.off("driver:load_request_updated");
+      socketRef.current?.off("load:change");
+      socketRef.current?.off("shipment:change");
       socketRef.current = null;
     };
   }, [isSignedIn]);
