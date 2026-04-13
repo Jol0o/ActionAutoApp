@@ -103,7 +103,7 @@ export function BulkInviteDialog() {
                             <Textarea
                                 id="emails"
                                 placeholder="john@example.com, jane@example.com..."
-                                className="min-h-[150px] resize-none"
+                                className="min-h-[150px] resize-none max-w-[450px]"
                                 value={emails}
                                 onChange={(e) => setEmails(e.target.value)}
                             />
