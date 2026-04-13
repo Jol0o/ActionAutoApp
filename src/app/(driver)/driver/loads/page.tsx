@@ -94,9 +94,18 @@ export default function DriverLoadsPage() {
       const refresh = () => { if (mounted) fetchLoads(); };
       sock.on('driver:loads_updated', refresh);
       sock.on('driver:load_request_updated', refresh);
+      sock.on('driver:load_requested', refresh);
     };
     setup();
-    return () => { mounted = false; const s = getSocket(); if (s) { s.off('driver:loads_updated'); s.off('driver:load_request_updated'); } };
+    return () => {
+      mounted = false;
+      const s = getSocket();
+      if (s) {
+        s.off('driver:loads_updated');
+        s.off('driver:load_request_updated');
+        s.off('driver:load_requested');
+      }
+    };
   }, [getToken, fetchLoads]);
 
   const handleRefresh = () => { setRefreshing(true); fetchLoads(); };

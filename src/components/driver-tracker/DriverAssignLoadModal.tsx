@@ -15,20 +15,33 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Shipment } from "@/types/transportation";
 import { DriverTrackingItem } from "@/types/driver-tracking";
 import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
 
 const trailerLabel = (val?: string) =>
   trailerTypeOptions.find((t) => t.value === val)?.label || val || "";
 
+interface AvailableItem {
+  _id: string;
+  __docType: "shipment" | "load";
+  trackingNumber?: string;
+  origin?: string;
+  destination?: string;
+  status: string;
+  trailerTypeRequired?: string;
+  vehicleCount?: number;
+  carrierPayAmount?: number;
+  requestedPickupDate?: string;
+  isPostedToBoard?: boolean;
+}
+
 interface DriverAssignLoadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   driver: DriverTrackingItem | null;
-  availableShipments: Shipment[];
+  availableShipments: AvailableItem[];
   isLoading: boolean;
-  onAssign: (shipmentId: string) => Promise<void>;
+  onAssign: (item: AvailableItem) => Promise<void>;
 }
 
 export function DriverAssignLoadModal({
@@ -55,10 +68,10 @@ export function DriverAssignLoadModal({
     });
   }, [availableShipments, loadSearch]);
 
-  const handleAssign = async (shipmentId: string) => {
-    setAssigning(shipmentId);
+  const handleAssign = async (item: AvailableItem) => {
+    setAssigning(item._id);
     try {
-      await onAssign(shipmentId);
+      await onAssign(item);
     } finally {
       setAssigning(null);
     }
@@ -193,7 +206,7 @@ export function DriverAssignLoadModal({
                   <Button
                     size="sm"
                     className="h-8 px-3 text-xs font-bold shrink-0 shadow-sm"
-                    onClick={() => handleAssign(shipment._id)}
+                    onClick={() => handleAssign(shipment)}
                     disabled={assigning !== null}
                   >
                     {assigning === shipment._id ? (

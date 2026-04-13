@@ -39,6 +39,10 @@ export function DriverTrackerLoadsCard({
 }: DriverTrackerLoadsCardProps) {
   const router = useRouter();
   const [viewDriver, setViewDriver] = React.useState<DriverTrackingItem | null>(null);
+  const currentViewDriver = React.useMemo(
+    () => (viewDriver ? (drivers.find((d) => d.id === viewDriver.id) ?? null) : null),
+    [drivers, viewDriver],
+  );
   const [removing, setRemoving] = React.useState<string | null>(null);
   const [reassigning, setReassigning] = React.useState<string | null>(null);
   const [reassignShipmentId, setReassignShipmentId] = React.useState<string | null>(null);
@@ -173,39 +177,39 @@ export function DriverTrackerLoadsCard({
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Truck className="size-4 text-primary" />
-              {viewDriver?.driver?.name || "Driver"} — Assigned Loads
+              {currentViewDriver?.driver?.name || "Driver"} — Assigned Loads
             </DialogTitle>
             <p className="text-[11px] text-muted-foreground/60 font-medium">
-              {viewDriver?.shipments?.length || 0} load{(viewDriver?.shipments?.length || 0) !== 1 ? "s" : ""} assigned
+              {currentViewDriver?.shipments?.length || 0} load{(currentViewDriver?.shipments?.length || 0) !== 1 ? "s" : ""} assigned
             </p>
-            {viewDriver?.equipment && (
+            {currentViewDriver?.equipment && (
               <div className="flex flex-wrap gap-1 mt-1">
-                {viewDriver.equipment.truckMake && (
+                {currentViewDriver.equipment.truckMake && (
                   <Badge className="text-[9px] px-1.5 py-0 h-5 bg-muted text-muted-foreground border-border/50">
-                    {viewDriver.equipment.truckMake} {viewDriver.equipment.truckModel || ""}
+                    {currentViewDriver.equipment.truckMake} {currentViewDriver.equipment.truckModel || ""}
                   </Badge>
                 )}
-                {viewDriver.equipment.trailerType && (
+                {currentViewDriver.equipment.trailerType && (
                   <Badge className="text-[9px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 gap-0.5">
-                    <Truck className="size-2.5" />{trailerLabel(viewDriver.equipment.trailerType)}
+                    <Truck className="size-2.5" />{trailerLabel(currentViewDriver.equipment.trailerType)}
                   </Badge>
                 )}
-                {viewDriver.equipment.maxVehicleCapacity != null && (
+                {currentViewDriver.equipment.maxVehicleCapacity != null && (
                   <Badge className="text-[9px] px-1.5 py-0 h-5 bg-indigo-500/10 text-indigo-600 border-indigo-200">
-                    Cap: {viewDriver.equipment.maxVehicleCapacity}
+                    Cap: {currentViewDriver.equipment.maxVehicleCapacity}
                   </Badge>
                 )}
               </div>
             )}
           </DialogHeader>
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-            {(viewDriver?.shipments?.length || 0) === 0 && (
+            {(currentViewDriver?.shipments?.length || 0) === 0 && (
               <div className="flex flex-col items-center justify-center py-8 gap-2">
                 <Package className="size-8 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground">No loads assigned</p>
               </div>
             )}
-            {viewDriver?.shipments?.map((shipment) => (
+            {currentViewDriver?.shipments?.map((shipment) => (
               <div key={shipment.id} className="rounded-xl border border-border/40 p-4 hover:border-primary/30 hover:shadow-sm transition-all duration-200">
                 <div
                   className="flex items-center justify-between gap-3 cursor-pointer"

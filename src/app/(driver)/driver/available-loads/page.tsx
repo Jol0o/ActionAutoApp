@@ -94,9 +94,21 @@ export default function AvailableLoadsPage() {
       sock.on('driver:loads_updated', refresh);
       sock.on('driver:load_requested', refresh);
       sock.on('driver:load_request_updated', refresh);
+      sock.on('load:change', refresh);
+      sock.on('shipment:change', refresh);
     };
     setup();
-    return () => { mounted = false; const s = getSocket(); if (s) { s.off('driver:loads_updated'); s.off('driver:load_requested'); s.off('driver:load_request_updated'); } };
+    return () => {
+      mounted = false;
+      const s = getSocket();
+      if (s) {
+        s.off('driver:loads_updated');
+        s.off('driver:load_requested');
+        s.off('driver:load_request_updated');
+        s.off('load:change');
+        s.off('shipment:change');
+      }
+    };
   }, [getToken, fetchLoads]);
 
   const handleRefresh = () => { setRefreshing(true); fetchLoads(); };
