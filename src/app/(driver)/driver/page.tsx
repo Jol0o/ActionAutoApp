@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -196,7 +196,8 @@ export default function DriverDashboardPage() {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => null),
       ]);
-      setLoads(loadsRes.data?.data || []);
+      const loadsData = loadsRes.data?.data;
+      setLoads(loadsData?.loads ?? (Array.isArray(loadsData) ? loadsData : []));
       if (statsRes?.data?.data) setDashStats(statsRes.data.data);
       const profile = profileRes?.data?.data;
       if (profile) {

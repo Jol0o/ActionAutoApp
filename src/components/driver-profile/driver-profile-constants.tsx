@@ -16,24 +16,24 @@ export const hitchTypeOptions: { value: string; label: string; description: stri
     { value: 'pintle', label: 'Pintle Hook', description: 'Heavy-duty hook and lunette ring' },
 ];
 
-export const trailerTypeOptions: { value: TrailerType; label: string; description: string; capacity: string; category: string }[] = [
-    { value: 'open_3car_wedge', label: 'Open 3-Car Wedge', description: 'Standard open auto hauler with wedge design', capacity: '3 vehicles', category: 'open' },
-    { value: 'open_2car', label: 'Open 2-Car', description: 'Compact open trailer for 2 vehicles', capacity: '2 vehicles', category: 'open' },
-    { value: '5car_open', label: '5-Car Open', description: 'Mid-size open auto hauler', capacity: '5 vehicles', category: 'open' },
-    { value: 'enclosed_2car', label: 'Enclosed 2-Car', description: 'Fully enclosed protection for premium vehicles', capacity: '2 vehicles', category: 'enclosed' },
-    { value: 'enclosed_3car', label: 'Enclosed 3-Car', description: 'Larger enclosed for high-value transport', capacity: '3 vehicles', category: 'enclosed' },
-    { value: 'flatbed', label: 'Flatbed', description: 'Open flat platform for heavy or oversized loads', capacity: '1-2 vehicles', category: 'flatbed' },
-    { value: 'dually_flatbed', label: 'Dually Flatbed', description: 'Dually truck with flatbed configuration', capacity: '1-2 vehicles', category: 'flatbed' },
-    { value: 'hotshot', label: 'Hotshot', description: 'Pickup truck with gooseneck for quick hauls', capacity: '1-3 vehicles', category: 'specialty' },
-    { value: 'gooseneck', label: 'Gooseneck', description: 'Gooseneck hitch auto trailer', capacity: '2-4 vehicles', category: 'specialty' },
-    { value: 'lowboy', label: 'Lowboy', description: 'Ultra-low profile for tall/heavy machinery', capacity: '1-2 vehicles', category: 'heavy' },
-    { value: 'step_deck', label: 'Step Deck', description: 'Two-level for height clearance flexibility', capacity: '1-3 vehicles', category: 'heavy' },
-    { value: 'rgn', label: 'RGN (Removable Gooseneck)', description: 'Detachable gooseneck for heavy/oversized loads', capacity: '1 vehicle', category: 'heavy' },
-    { value: 'double_drop', label: 'Double Drop', description: 'Extended low-deck for tall, heavy cargo', capacity: '1-2 vehicles', category: 'heavy' },
-    { value: '9car_stinger', label: '9-Car Stinger', description: 'Full-size commercial 9-car auto hauler', capacity: '9 vehicles', category: 'multi' },
-    { value: '7car_stinger', label: '7-Car Stinger', description: 'Commercial 7-car hauler', capacity: '7 vehicles', category: 'multi' },
-    { value: 'power_only', label: 'Power Only', description: 'Cab only — pull customer-provided trailer', capacity: 'Varies', category: 'specialty' },
-    { value: 'other', label: 'Other', description: 'Custom or unlisted trailer configuration', capacity: 'Varies', category: 'specialty' },
+export const trailerTypeOptions: { value: TrailerType; label: string; description: string; capacity: string; maxCapacity: number; category: string }[] = [
+    { value: 'open_3car_wedge', label: 'Open 3-Car Wedge', description: 'Standard open auto hauler with wedge design', capacity: '3 vehicles', maxCapacity: 3, category: 'open' },
+    { value: 'open_2car', label: 'Open 2-Car', description: 'Compact open trailer for 2 vehicles', capacity: '2 vehicles', maxCapacity: 2, category: 'open' },
+    { value: '5car_open', label: '5-Car Open', description: 'Mid-size open auto hauler', capacity: '5 vehicles', maxCapacity: 5, category: 'open' },
+    { value: 'enclosed_2car', label: 'Enclosed 2-Car', description: 'Fully enclosed protection for premium vehicles', capacity: '2 vehicles', maxCapacity: 2, category: 'enclosed' },
+    { value: 'enclosed_3car', label: 'Enclosed 3-Car', description: 'Larger enclosed for high-value transport', capacity: '3 vehicles', maxCapacity: 3, category: 'enclosed' },
+    { value: 'flatbed', label: 'Flatbed', description: 'Open flat platform for heavy or oversized loads', capacity: '1-2 vehicles', maxCapacity: 2, category: 'flatbed' },
+    { value: 'dually_flatbed', label: 'Dually Flatbed', description: 'Dually truck with flatbed configuration', capacity: '1-2 vehicles', maxCapacity: 2, category: 'flatbed' },
+    { value: 'hotshot', label: 'Hotshot', description: 'Pickup truck with gooseneck for quick hauls', capacity: '1-3 vehicles', maxCapacity: 3, category: 'specialty' },
+    { value: 'gooseneck', label: 'Gooseneck', description: 'Gooseneck hitch auto trailer', capacity: '2-4 vehicles', maxCapacity: 4, category: 'specialty' },
+    { value: 'lowboy', label: 'Lowboy', description: 'Ultra-low profile for tall/heavy machinery', capacity: '1-2 vehicles', maxCapacity: 2, category: 'heavy' },
+    { value: 'step_deck', label: 'Step Deck', description: 'Two-level for height clearance flexibility', capacity: '1-3 vehicles', maxCapacity: 3, category: 'heavy' },
+    { value: 'rgn', label: 'RGN (Removable Gooseneck)', description: 'Detachable gooseneck for heavy/oversized loads', capacity: '1 vehicle', maxCapacity: 1, category: 'heavy' },
+    { value: 'double_drop', label: 'Double Drop', description: 'Extended low-deck for tall, heavy cargo', capacity: '1-2 vehicles', maxCapacity: 2, category: 'heavy' },
+    { value: '9car_stinger', label: '9-Car Stinger', description: 'Full-size commercial 9-car auto hauler', capacity: '9 vehicles', maxCapacity: 9, category: 'multi' },
+    { value: '7car_stinger', label: '7-Car Stinger', description: 'Commercial 7-car hauler', capacity: '7 vehicles', maxCapacity: 7, category: 'multi' },
+    { value: 'power_only', label: 'Power Only', description: 'Cab only — pull customer-provided trailer', capacity: 'Varies', maxCapacity: 12, category: 'specialty' },
+    { value: 'other', label: 'Other', description: 'Custom or unlisted trailer configuration', capacity: 'Varies', maxCapacity: 12, category: 'specialty' },
 ];
 
 export const TRAILER_CATEGORIES = [

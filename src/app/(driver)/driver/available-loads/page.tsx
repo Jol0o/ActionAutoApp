@@ -64,10 +64,46 @@ export default function AvailableLoadsPage() {
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [trailerFilter, setTrailerFilter] = React.useState('all');
+  const [driverTrailerType, setDriverTrailerType] = React.useState<string | null>(null);
+  const [activeLoadCount, setActiveLoadCount] = React.useState(0);
+  const [maxLoadCapacity, setMaxLoadCapacity] = React.useState(12);
   const [sortBy, setSortBy] = React.useState<SortMode>('newest');
   const [requestTarget, setRequestTarget] = React.useState<AvailableLoad | null>(null);
   const [requesting, setRequesting] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+
+  const fetchDriverProfile = React.useCallback(async () => {
+    try {
+      const token = await getToken();
+      const [profileRes, loadsRes] = await Promise.all([
+        apiClient.get('/api/driver-profile', { headers: { Authorization: `Bearer ${token}` } }),
+        apiClient.get('/api/driver-tracking/my-loads', { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const trailer = profileRes.data?.data?.trailerType;
+      const cap = profileRes.data?.data?.maxVehicleCapacity || 12;
+      if (trailer) {
+        setDriverTrailerType(trailer);
+        setTrailerFilter(prev => prev === 'all' ? trailer : prev);
+      }
+      setMaxLoadCapacity(cap);
+      const myLoadsData = loadsRes.data?.data;
+      if (myLoadsData?.activeLoadCount != null) {
+        setActiveLoadCount(myLoadsData.activeLoadCount);
+        if (myLoadsData.maxLoadCapacity) setMaxLoadCapacity(myLoadsData.maxLoadCapacity);
+      } else {
+        const myLoads = Array.isArray(myLoadsData) ? myLoadsData : [];
+        setActiveLoadCount(myLoads.filter((l: any) => l.status !== 'Delivered' && l.status !== 'Cancelled').length);
+      }
+    } catch { /* silently fall back */ }
+  }, [getToken]);
+
+  React.useEffect(() => { fetchDriverProfile(); }, [fetchDriverProfile]);
+
+  React.useEffect(() => {
+    const onVisibility = () => { if (document.visibilityState === 'visible') fetchDriverProfile(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [fetchDriverProfile]);
 
   const fetchLoads = React.useCallback(async () => {
     try {
@@ -128,7 +164,13 @@ export default function AvailableLoadsPage() {
     finally { setRequesting(false); }
   };
 
-  const uniqueTrailers = React.useMemo(() => Array.from(new Set(loads.map(l => l.trailerTypeRequired).filter(Boolean))) as string[], [loads]);
+  const uniqueTrailers = React.useMemo(() => {
+    const set = new Set(loads.map(l => l.trailerTypeRequired).filter(Boolean) as string[]);
+    if (driverTrailerType) set.add(driverTrailerType);
+    return Array.from(set);
+  }, [loads, driverTrailerType]);
+
+  const atCapacity = activeLoadCount >= maxLoadCapacity;
 
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -197,10 +239,14 @@ export default function AvailableLoadsPage() {
             </div>
 
             {!loading && loads.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 mt-5">
+              <div className="grid grid-cols-4 gap-3 mt-5">
                 <div className="rounded-xl bg-white/5 border border-white/8 p-3 text-center">
                   <p className="text-lg sm:text-xl font-black text-white tabular-nums">{loads.length}</p>
                   <p className="text-[10px] text-white/30 font-semibold uppercase tracking-widest">Available</p>
+                </div>
+                <div className={cn("rounded-xl bg-white/5 border p-3 text-center", atCapacity ? "border-red-500/30" : "border-white/8")}>
+                  <p className={cn("text-lg sm:text-xl font-black tabular-nums", atCapacity ? "text-red-400" : "text-amber-400")}>{activeLoadCount}/{maxLoadCapacity}</p>
+                  <p className="text-[10px] text-white/30 font-semibold uppercase tracking-widest">My Loads</p>
                 </div>
                 <div className="rounded-xl bg-white/5 border border-white/8 p-3 text-center">
                   <p className="text-lg sm:text-xl font-black text-emerald-400 tabular-nums">${avgPay.toLocaleString()}</p>
@@ -233,19 +279,19 @@ export default function AvailableLoadsPage() {
                 {sortOpts.map(o => <DropdownMenuItem key={o.key} onClick={() => setSortBy(o.key)} className={sortBy === o.key ? 'bg-accent' : ''}><span className="flex items-center gap-2"><o.icon className="size-3.5" />{o.label}</span></DropdownMenuItem>)}
               </DropdownMenuContent>
             </DropdownMenu>
-            {uniqueTrailers.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5 h-10 shrink-0 rounded-xl border-border/20">
-                    <Filter className="size-3.5" /><span className="hidden sm:inline">{trailerFilter === 'all' ? 'All Trailers' : trailerLabel(trailerFilter)}</span><ChevronDown className="size-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setTrailerFilter('all')}>All Trailers</DropdownMenuItem>
-                  {uniqueTrailers.map(t => <DropdownMenuItem key={t} onClick={() => setTrailerFilter(t)}>{trailerLabel(t)}</DropdownMenuItem>)}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("gap-1.5 h-10 shrink-0 rounded-xl border-border/20", trailerFilter !== 'all' && "border-primary/40 bg-primary/5")}>
+                  <Filter className="size-3.5" /><span className="hidden sm:inline">{trailerFilter === 'all' ? 'All Trailers' : trailerLabel(trailerFilter)}</span><ChevronDown className="size-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">Trailer Filter</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setTrailerFilter('all')} className={trailerFilter === 'all' ? 'bg-accent' : ''}>All Trailers</DropdownMenuItem>
+                {uniqueTrailers.map(t => <DropdownMenuItem key={t} onClick={() => setTrailerFilter(t)} className={trailerFilter === t ? 'bg-accent' : ''}>{trailerLabel(t)}</DropdownMenuItem>)}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -304,12 +350,16 @@ export default function AvailableLoadsPage() {
           )}
           <div className="flex items-start gap-2 rounded-xl bg-amber-500/5 border border-amber-500/15 p-3">
             <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700 dark:text-amber-400">Requesting a load does not guarantee assignment. Your compliance and equipment profile will be verified.</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              {atCapacity
+                ? `You've reached your active load limit (${activeLoadCount}/${maxLoadCapacity}). Complete or drop a load before requesting more.`
+                : `Requesting a load does not guarantee assignment. Active loads: ${activeLoadCount}/${maxLoadCapacity}`}
+            </p>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setRequestTarget(null)} disabled={requesting}>Cancel</Button>
-            <Button onClick={handleRequest} disabled={requesting} className="gap-1.5">
-              {requesting ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />}{requesting ? 'Requesting...' : 'Request Assignment'}
+            <Button onClick={handleRequest} disabled={requesting || atCapacity} className="gap-1.5">
+              {requesting ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />}{requesting ? 'Requesting...' : atCapacity ? 'At Capacity' : 'Request Assignment'}
             </Button>
           </DialogFooter>
         </DialogContent>

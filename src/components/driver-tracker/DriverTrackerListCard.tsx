@@ -191,8 +191,8 @@ export function DriverTrackerListCard({
                       </p>
                       <div className="flex items-center gap-1 shrink-0">
                         {shipments.length > 0 && (
-                          <Badge variant="outline" className="text-[9px] font-semibold border-border/50 h-5">
-                            {shipments.length} load{shipments.length !== 1 ? "s" : ""}
+                          <Badge variant="outline" className={`text-[9px] font-semibold h-5 ${eq?.maxVehicleCapacity && shipments.length >= eq.maxVehicleCapacity ? 'border-red-500/50 text-red-600' : 'border-border/50'}`}>
+                            {shipments.length}{eq?.maxVehicleCapacity ? `/${eq.maxVehicleCapacity}` : ''} load{shipments.length !== 1 ? "s" : ""}
                           </Badge>
                         )}
                         <Button
@@ -231,8 +231,8 @@ export function DriverTrackerListCard({
                           {trailerLabel(eq.trailerType)}
                         </span>
                         {eq.maxVehicleCapacity && eq.maxVehicleCapacity > 0 && (
-                          <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[9px] font-semibold text-indigo-600">
-                            Cap: {eq.maxVehicleCapacity}
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${shipments.length >= eq.maxVehicleCapacity ? 'bg-red-500/10 text-red-600' : 'bg-indigo-500/10 text-indigo-600'}`}>
+                            {shipments.length}/{eq.maxVehicleCapacity} loads
                           </span>
                         )}
                       </div>
@@ -257,9 +257,9 @@ export function DriverTrackerListCard({
                       </div>
                     )}
                     {eq?.maxVehicleCapacity != null && (
-                      <div className="rounded-lg bg-muted/30 px-2.5 py-1.5">
-                        <p className="text-[9px] text-muted-foreground font-medium">Capacity</p>
-                        <p className="text-[11px] font-bold">{eq.maxVehicleCapacity} vehicles</p>
+                      <div className={`rounded-lg px-2.5 py-1.5 ${shipments.length >= eq.maxVehicleCapacity ? 'bg-red-500/5 border border-red-500/10' : 'bg-muted/30'}`}>
+                        <p className="text-[9px] text-muted-foreground font-medium">Load Capacity</p>
+                        <p className={`text-[11px] font-bold ${shipments.length >= eq.maxVehicleCapacity ? 'text-red-600' : ''}`}>{shipments.length}/{eq.maxVehicleCapacity} active</p>
                       </div>
                     )}
                     {eq?.operationalStatus && (

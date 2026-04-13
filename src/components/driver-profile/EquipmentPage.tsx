@@ -27,7 +27,7 @@ interface EquipmentForm {
   truckMake: string; truckModel: string; truckYear: number | undefined;
   truckColor: string; engineType: string; gvwr: number | undefined;
   vin: string; plateNumber: string; dotNumber: string; mcNumber: string;
-  trailerType: string; trailerMake: string; trailerModel: string;
+  trailerType: string; customTrailerName: string; trailerMake: string; trailerModel: string;
   trailerYear: number | undefined; hitchType: string; maxVehicleCapacity: number;
   trailerLength: number | undefined; trailerAxles: number;
   trailerGvwr: number | undefined; specialFeatures: string[];
@@ -36,8 +36,8 @@ interface EquipmentForm {
 const INIT: EquipmentForm = {
   truckMake: '', truckModel: '', truckYear: undefined, truckColor: '',
   engineType: '', gvwr: undefined, vin: '', plateNumber: '', dotNumber: '',
-  mcNumber: '', trailerType: 'open_3car_wedge', trailerMake: '', trailerModel: '',
-  trailerYear: undefined, hitchType: '', maxVehicleCapacity: 1,
+  mcNumber: '', trailerType: 'open_3car_wedge', customTrailerName: '', trailerMake: '', trailerModel: '',
+  trailerYear: undefined, hitchType: '', maxVehicleCapacity: 3,
   trailerLength: undefined, trailerAxles: 2, trailerGvwr: undefined,
   specialFeatures: [],
 };
@@ -161,7 +161,16 @@ export const EquipmentPage: React.FC = () => {
   const [customInputs, setCustomInputs] = useState<string[]>(['']);
   const [nav, setNav] = useState<Nav>('rig');
 
-  const patch = useCallback((u: Partial<EquipmentForm>) => setForm(f => ({ ...f, ...u })), []);
+  const getCapLimit = (type: string) => trailerTypeOptions.find(t => t.value === type)?.maxCapacity ?? 12;
+
+  const patch = useCallback((u: Partial<EquipmentForm>) => setForm(f => {
+    const next = { ...f, ...u };
+    if (u.trailerType) {
+      const cap = trailerTypeOptions.find(t => t.value === u.trailerType)?.maxCapacity ?? 12;
+      next.maxVehicleCapacity = cap;
+    }
+    return next;
+  }), []);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -173,6 +182,7 @@ export const EquipmentPage: React.FC = () => {
           truckMake: d.truckMake || '', truckModel: d.truckModel || '', truckYear: d.truckYear, truckColor: d.truckColor || '',
           engineType: d.engineType || '', gvwr: d.gvwr, vin: d.vin || '', plateNumber: d.plateNumber || '',
           dotNumber: d.dotNumber || '', mcNumber: d.mcNumber || '', trailerType: d.trailerType || 'open_3car_wedge',
+          customTrailerName: (d as any).customTrailerName || '',
           trailerMake: d.trailerMake || '', trailerModel: d.trailerModel || '', trailerYear: d.trailerYear,
           hitchType: d.hitchType || '', maxVehicleCapacity: d.maxVehicleCapacity || 1, trailerLength: d.trailerLength,
           trailerAxles: d.trailerAxles || 2, trailerGvwr: d.trailerGvwr, specialFeatures: d.specialFeatures || [],
@@ -192,6 +202,7 @@ export const EquipmentPage: React.FC = () => {
       const token = await getToken();
       await apiClient.patch('/api/driver-profile/equipment', {
         trailerType: form.trailerType, maxVehicleCapacity: form.maxVehicleCapacity,
+        customTrailerName: form.trailerType === 'other' ? form.customTrailerName.trim() : '',
         truckMake: form.truckMake.trim(), truckModel: form.truckModel.trim(),
         truckYear: form.truckYear || undefined, trailerLength: form.trailerLength || undefined,
         dotNumber: form.dotNumber.trim(), mcNumber: form.mcNumber.trim(),
@@ -435,6 +446,14 @@ export const EquipmentPage: React.FC = () => {
                           <ChevronRight className="size-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                         </div>
                       </motion.button>
+                      {form.trailerType === 'other' && (
+                        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2 pt-2">
+                          <Label className="text-xs font-bold text-muted-foreground">Custom Trailer Name *</Label>
+                          <Input value={form.customTrailerName} onChange={e => patch({ customTrailerName: e.target.value })} placeholder="e.g. Custom 4-Car Enclosed Wedge" maxLength={80}
+                            className="h-11 bg-linear-to-br from-background to-muted/30 border-2 border-border/40 rounded-xl hover:border-border/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" />
+                          <p className="text-[10px] text-muted-foreground">Describe your trailer so dispatchers know what you haul</p>
+                        </motion.div>
+                      )}
                     </div>
 
                     <div className="rounded-2xl border-2 border-border/30 bg-muted/10 p-5 space-y-4">
@@ -510,19 +529,19 @@ export const EquipmentPage: React.FC = () => {
                           </div>
                           <div className="flex-1">
                             <h4 className="text-sm font-black">Max Vehicles</h4>
-                            <p className="text-xs text-muted-foreground">{form.maxVehicleCapacity} vehicles</p>
+                            <p className="text-xs text-muted-foreground">{form.maxVehicleCapacity} of {getCapLimit(form.trailerType)}</p>
                           </div>
                         </div>
-                        <input type="range" min={1} max={12} value={form.maxVehicleCapacity} onChange={e => patch({ maxVehicleCapacity: parseInt(e.target.value) })}
+                        <input type="range" min={1} max={getCapLimit(form.trailerType)} value={form.maxVehicleCapacity} onChange={e => patch({ maxVehicleCapacity: parseInt(e.target.value) })}
                           className="w-full h-4 bg-muted/30 rounded-full appearance-none cursor-pointer accent-amber-500" />
                         <div className="flex items-center justify-between text-base text-muted-foreground font-bold">
                           <span>1</span>
                           <span className="text-amber-600 text-lg font-black">{form.maxVehicleCapacity}</span>
-                          <span>12</span>
+                          <span>{getCapLimit(form.trailerType)}</span>
                         </div>
                         <div className="pt-1 flex justify-center">
                           <div className="flex gap-1.5">
-                            {Array.from({ length: 12 }, (_, i) => (
+                            {Array.from({ length: getCapLimit(form.trailerType) }, (_, i) => (
                               <motion.div key={i} initial={false}
                                 animate={{ scale: i < form.maxVehicleCapacity ? 1 : 0.6, opacity: i < form.maxVehicleCapacity ? 1 : 0.2 }}
                                 className={cn('size-3 rounded-full', i < form.maxVehicleCapacity ? 'bg-amber-500 shadow-sm shadow-amber-500/30' : 'bg-border')} />

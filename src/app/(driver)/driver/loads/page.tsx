@@ -65,6 +65,7 @@ export default function DriverLoadsPage() {
   const [proofTarget, setProofTarget] = React.useState<Shipment | null>(null);
   const [dropTarget, setDropTarget] = React.useState<Shipment | null>(null);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [maxLoadCapacity, setMaxLoadCapacity] = React.useState(12);
 
   const fetchLoads = React.useCallback(async () => {
     try {
@@ -73,7 +74,13 @@ export default function DriverLoadsPage() {
         apiClient.get('/api/driver-tracking/my-loads', { headers: { Authorization: `Bearer ${token}` } }),
         apiClient.get('/api/driver-tracking/my-requests', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      setLoads(loadsRes.data?.data || []);
+      const data = loadsRes.data?.data;
+      if (data?.loads) {
+        setLoads(data.loads);
+        setMaxLoadCapacity(data.maxLoadCapacity || 12);
+      } else {
+        setLoads(data || []);
+      }
       setRequests(reqRes.data?.data || []);
     } catch (err: any) { toast.error(extractErr(err, 'Failed to fetch loads')); }
     finally { setLoading(false); setRefreshing(false); }
@@ -153,6 +160,7 @@ export default function DriverLoadsPage() {
   const rejected = requests.filter(r => r.myRequestStatus === 'rejected');
   const activeCount = loads.filter(l => l.status !== 'Delivered' && l.status !== 'Cancelled').length;
   const completedCount = loads.filter(l => l.status === 'Delivered').length;
+  const atCapacity = activeCount >= maxLoadCapacity;
 
   const filtered = React.useMemo(() => {
     let result: Shipment[] = [];
@@ -168,7 +176,7 @@ export default function DriverLoadsPage() {
   }, [loads, requests, tab, search, pending, rejected]);
 
   const tabItems: { key: Tab; label: string; count?: number; icon: React.ElementType }[] = [
-    { key: 'active', label: 'Active', count: activeCount || undefined, icon: Navigation2 },
+    { key: 'active', label: `Active (${activeCount}/${maxLoadCapacity})`, count: undefined, icon: Navigation2 },
     { key: 'requests', label: 'Requests', count: pending.length || undefined, icon: Timer },
     { key: 'completed', label: 'Completed', count: completedCount || undefined, icon: CheckCircle2 },
     { key: 'all', label: 'All', count: loads.length || undefined, icon: Package },
@@ -191,7 +199,7 @@ export default function DriverLoadsPage() {
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">My Loads</h1>
                   <p className="text-sm text-white/40 mt-0.5">
-                    {loads.length} total{activeCount > 0 && <span className="text-emerald-400 font-semibold"> · {activeCount} active</span>}
+                    {loading ? 'Loading...' : <>{activeCount}/{maxLoadCapacity} active{completedCount > 0 && <span className="text-emerald-400 font-semibold"> · {completedCount} completed</span>}</>}
                   </p>
                 </div>
               </div>
@@ -510,7 +518,7 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
                 <div className="p-4 rounded-full bg-primary/10"><Camera className="size-8 text-primary" /></div>
                 <div className="text-center"><p className="text-sm font-semibold">Take a Photo</p><p className="text-xs text-muted-foreground">Opens your camera</p></div>
               </button>
-              <button type="button" onClick={() => galRef.current?.click()} className="w-full flex items-center justify-center gap-2 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted">
+              <button type="button" onClick={() => galRef.current?.click()} className="w-full flex items-center justify-center gap-2 min-h-11 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted">
                 <ImageIcon className="size-4" />Choose from gallery
               </button>
             </div>
@@ -518,8 +526,8 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
             <div className="space-y-2">
               <div className="rounded-xl overflow-hidden border border-border"><img src={preview} alt="Proof preview" className="w-full max-h-60 object-contain bg-muted" /></div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => camRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><Camera className="size-3.5" />Retake</button>
-                <button type="button" onClick={() => galRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><ImageIcon className="size-3.5" />Change Photo</button>
+                <button type="button" onClick={() => camRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 min-h-11 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><Camera className="size-3.5" />Retake</button>
+                <button type="button" onClick={() => galRef.current?.click()} className="flex-1 flex items-center justify-center gap-1.5 min-h-11 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors hover:bg-muted"><ImageIcon className="size-3.5" />Change Photo</button>
               </div>
             </div>
           )}
