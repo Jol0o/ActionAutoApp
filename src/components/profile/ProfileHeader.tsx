@@ -250,26 +250,26 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 <div className="shrink-0 flex items-center gap-2">
                     {onEditProfile && (
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium hidden sm:inline-flex"
+                            className="bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium hidden sm:inline-flex"
                             onClick={onEditProfile}
                         >
                             <Pencil className="size-3.5 mr-1.5" />Edit Profile
                         </Button>
                     )}
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className="border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium"
+                        className="bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium"
                         onClick={() => setShowStatusDialog(true)}
                     >
                         <CircleDot className="size-3.5 mr-1.5" />Status
                     </Button>
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className="border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium hidden sm:inline-flex"
+                        className="bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium hidden sm:inline-flex"
                         onClick={handleCopyId}
                     >
                         <Copy className="size-3.5 mr-1.5" />ID

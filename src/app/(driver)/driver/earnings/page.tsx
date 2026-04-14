@@ -74,7 +74,7 @@ export default function DriverEarningsPage() {
           apiClient.get("/api/driver-tracking/my-loads", { headers }),
           apiClient.get("/api/driver-payouts/my-payouts", { headers }),
         ]);
-        setLoads(loadsRes.data?.data || []);
+        setLoads(loadsRes.data?.data?.loads || []);
         setPayouts(payoutsRes.data?.data || []);
       } catch {
         // silent

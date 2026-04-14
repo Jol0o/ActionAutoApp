@@ -15,7 +15,7 @@ import { QuoteCard } from "@/components/QuoteCard"
 import { useRouter } from "next/navigation"
 import { useTransportationData, PER_PAGE_OPTIONS, PerPageOption } from "@/hooks/useTransportationData"
 import { useLoadsData } from "@/hooks/useLoadsData"
-import { useAlert } from "@/components/AlertDialog"
+import { useAlert, AlertDialog } from "@/components/AlertDialog"
 import { Quote } from "@/types/transportation"
 import { LoadCard } from "@/components/LoadCard"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -132,7 +132,7 @@ function TransportationPageInner() {
     const [isQuoteResultModalOpen, setIsQuoteResultModalOpen] = React.useState(false)
     const [calculatedQuote, setCalculatedQuote] = React.useState<Quote | null>(null)
 
-    const { showAlert, AlertComponent } = useAlert()
+    const { showAlert, alert, hideAlert } = useAlert()
 
     const {
         isLoading,
@@ -181,7 +181,18 @@ function TransportationPageInner() {
         activeTab === "load-board" ? selectedStatus : undefined,
     )
 
-    // Initial fetch is handled inside useTransportationData when auth is ready
+    // Refetch when tab becomes visible again (covers navigation back from create-load page
+    // and browser tab switching) — catches socket events missed while page was hidden
+    React.useEffect(() => {
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                fetchData({ silent: true })
+                fetchLoads()
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibility)
+        return () => document.removeEventListener('visibilitychange', handleVisibility)
+    }, [fetchData, fetchLoads])
 
     // Auto-dismiss new entries banner after 8 seconds
     React.useEffect(() => {
@@ -293,7 +304,7 @@ const handleCalculateQuoteWrapper = async (formData: any) => {
 
     return (
         <div className="min-h-screen bg-background">
-            <AlertComponent />
+            <AlertDialog {...alert} onOpenChange={hideAlert} />
 
             {/* New entries banner */}
             {hasNewEntries && (

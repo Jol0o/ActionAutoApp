@@ -72,6 +72,7 @@ export default function CreateLoadPage() {
 
   const handleSuccess = (_loadId: string, loadNumber: string) => {
     setSuccessInfo({ loadNumber })
+    router.refresh() // invalidate Next.js router cache so transportation page re-fetches
     setTimeout(() => router.push(buildBackUrl()), 2000)
   }
 

@@ -398,7 +398,7 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
     const [isDeleting, setIsDeleting] = React.useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false)
     const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false)
-    const { showAlert, AlertComponent } = useAlert()
+    const { showAlert, alert, hideAlert } = useAlert()
 
     const handleDelete = React.useCallback(() => {
         const quote = shipment.quoteId || shipment.preservedQuoteData
@@ -473,7 +473,7 @@ export function ShipmentCard({ shipment, onDelete, onUpdate }: ShipmentCardProps
 
     return (
         <>
-            <AlertComponent />
+            <AlertDialog {...alert} onOpenChange={hideAlert} />
             <ShipmentCardInner
                 shipment={shipment}
                 isDeleting={isDeleting}
