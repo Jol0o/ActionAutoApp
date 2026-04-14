@@ -247,12 +247,12 @@ export const ProfileView: React.FC = () => {
         setIsSaving(true);
         try {
             const token = await getToken();
-            await apiClient.patch('/api/profile/personal-info', { onlineStatus, customStatus }, {
+            await apiClient.patch('/api/profile/online-status', { status: onlineStatus, customStatus }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Status updated');
             setShowStatusDialog(false);
-            fetchProfile();
+            setProfile(prev => prev ? { ...prev, onlineStatus, customStatus } : prev);
         } catch {
             toast.error('Failed to update status');
         } finally {

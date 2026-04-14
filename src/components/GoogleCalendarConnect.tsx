@@ -35,6 +35,12 @@ export function GoogleCalendarConnect({
 
   React.useEffect(() => {
     checkConnection()
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') checkConnection()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
   const checkConnection = async () => {

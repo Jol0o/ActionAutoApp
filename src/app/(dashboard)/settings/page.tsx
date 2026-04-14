@@ -14,11 +14,9 @@ import {
     Download,
     Share2,
     Trash2,
-    MoreVertical,
-    ChevronRight,
     Printer,
-    Search
 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -26,15 +24,100 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
+import { AlertDialog } from "@/components/AlertDialog"
 import { OrganizationMembersSettings } from "@/components/settings/org-members-settings"
 import { DriverRequestsSettings } from "@/components/settings/driver-requests-settings"
 import { DriverVerificationPanel } from "@/components/settings/driver-verification-panel"
 import { BulkInviteDialog } from "@/components/admin/BulkInviteDialog"
 import { Truck } from "lucide-react"
 
+interface FileEntry {
+    id: string
+    name: string
+    date: string
+    size: string
+    type: string
+    url?: string
+}
+
+const INITIAL_FILES: FileEntry[] = [
+    { id: "1", name: "Condition_Report_AA1024.pdf",           date: "12 mins ago",  size: "2.4 MB", type: "PDF" },
+    { id: "2", name: "Inventory_Snapshot_Jan_14.xlsx",        date: "2 hours ago",  size: "1.1 MB", type: "XLSX" },
+    { id: "3", name: "Market_Supply_Audit_Region_Utah.pdf",   date: "Yesterday",    size: "4.8 MB", type: "PDF" },
+    { id: "4", name: "Recon_Efficiency_Weekly.pdf",           date: "Jan 12, 2026", size: "1.2 MB", type: "PDF" },
+]
+
 export default function UtilitiesPage() {
     const searchParams = useSearchParams();
     const defaultTab = searchParams.get('tab') || 'reports';
+
+    const [files, setFiles] = React.useState<FileEntry[]>(INITIAL_FILES)
+    const [deleteTarget, setDeleteTarget] = React.useState<FileEntry | null>(null)
+    const [isDeleting, setIsDeleting] = React.useState(false)
+
+    const handleDownload = async (file: FileEntry) => {
+        toast.loading(`Preparing ${file.name}…`, { id: `dl-${file.id}` })
+        try {
+            let href: string
+            let needsRevoke = false
+
+            if (file.url) {
+                // Fetch the real file and stream it as a blob so the browser shows Save As
+                const res = await fetch(file.url)
+                if (!res.ok) throw new Error("Download failed")
+                const blob = await res.blob()
+                href = URL.createObjectURL(blob)
+                needsRevoke = true
+            } else {
+                // No backend URL yet — create a placeholder blob so the save dialog still opens
+                const blob = new Blob([`${file.name}\n\nPlaceholder file.`], { type: "application/octet-stream" })
+                href = URL.createObjectURL(blob)
+                needsRevoke = true
+            }
+
+            const a = document.createElement("a")
+            a.href = href
+            a.download = file.name
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            if (needsRevoke) setTimeout(() => URL.revokeObjectURL(href), 10_000)
+
+            toast.success(`${file.name} downloaded`, { id: `dl-${file.id}` })
+        } catch {
+            toast.error("Download failed. Please try again.", { id: `dl-${file.id}` })
+        }
+    }
+
+    const handleShare = async (file: FileEntry) => {
+        const shareUrl = file.url || `${window.location.origin}/reports/${file.id}`
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: file.name, url: shareUrl })
+            } else {
+                await navigator.clipboard.writeText(shareUrl)
+                toast.success("Link copied to clipboard")
+            }
+        } catch {
+            // User cancelled share or clipboard failed
+        }
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return
+        setIsDeleting(true)
+        try {
+            // Replace with real API call when backend endpoint is available
+            await new Promise((r) => setTimeout(r, 800))
+            setFiles((prev) => prev.filter((f) => f.id !== deleteTarget.id))
+            toast.success(`${deleteTarget.name} deleted`)
+            setDeleteTarget(null)
+        } catch {
+            toast.error("Failed to delete file. Please try again.")
+        } finally {
+            setIsDeleting(false)
+        }
+    }
 
     return (
         <div className="p-4 md:p-6 space-y-6 bg-background min-h-screen">
@@ -96,14 +179,37 @@ export default function UtilitiesPage() {
                             <CardTitle className="text-lg font-bold">Recent Generated Files</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <div className="divide-y">
-                                <FileRow name="Condition_Report_AA1024.pdf" date="12 mins ago" size="2.4 MB" type="PDF" />
-                                <FileRow name="Inventory_Snapshot_Jan_14.xlsx" date="2 hours ago" size="1.1 MB" type="XLSX" />
-                                <FileRow name="Market_Supply_Audit_Region_Utah.pdf" date="Yesterday" size="4.8 MB" type="PDF" />
-                                <FileRow name="Recon_Efficiency_Weekly.pdf" date="Jan 12, 2026" size="1.2 MB" type="PDF" />
-                            </div>
+                            {files.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                                    <FileText className="size-8 mb-2 opacity-40" />
+                                    <p className="text-sm">No files yet</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y">
+                                    {files.map((file) => (
+                                        <FileRow
+                                            key={file.id}
+                                            file={file}
+                                            onDownload={() => handleDownload(file)}
+                                            onShare={() => handleShare(file)}
+                                            onDelete={() => setDeleteTarget(file)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
+
+                    <AlertDialog
+                        open={!!deleteTarget}
+                        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+                        type="warning"
+                        title="Delete File"
+                        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
+                        confirmText={isDeleting ? "Deleting…" : "Delete"}
+                        cancelText="Cancel"
+                        onConfirm={handleDeleteConfirm}
+                    />
                 </TabsContent>
 
                 <TabsContent value="settings" className="m-0">
@@ -218,26 +324,42 @@ function ReportCard({ title, description, count, icon }: { title: string, descri
     )
 }
 
-function FileRow({ name, date, size, type }: { name: string, date: string, size: string, type: string }) {
+function FileRow({
+    file,
+    onDownload,
+    onShare,
+    onDelete,
+}: {
+    file: FileEntry
+    onDownload: () => void
+    onShare: () => void
+    onDelete: () => void
+}) {
     return (
         <div className="p-4 flex items-center justify-between group hover:bg-secondary transition-colors overflow-hidden">
-            <div className="flex w-3/4 items-center gap-4 overflow-hidden text-clip ">
+            <div className="flex w-3/4 items-center gap-4 overflow-hidden text-clip">
                 <div className="size-10 bg-secondary rounded flex items-center justify-center text-muted-foreground shrink-0">
                     <FileText className="size-5" />
                 </div>
-                <div >
-                    <h4 className="text-sm font-bold overflow-hidden text-foreground group-hover:text-primary transition-colors text-ellipsis md:text-clip">{name}</h4>
+                <div>
+                    <h4 className="text-sm font-bold overflow-hidden text-foreground group-hover:text-primary transition-colors text-ellipsis md:text-clip">{file.name}</h4>
                     <div className="flex items-center gap-3 mt-0.5 border-none">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{date}</span>
-                        <span className="text-[10px] font-bold text-muted-foreground">{size}</span>
-                        <Badge className="bg-secondary text-muted-foreground hover:bg-secondary h-4 px-1 text-[8px] border-none">{type}</Badge>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{file.date}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground">{file.size}</span>
+                        <Badge className="bg-secondary text-muted-foreground hover:bg-secondary h-4 px-1 text-[8px] border-none">{file.type}</Badge>
                     </div>
                 </div>
             </div>
-            <div className="flex  items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Download className="size-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Share2 className="size-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="size-4" /></Button>
+            <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={onDownload} title="Download">
+                    <Download className="size-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={onShare} title="Share">
+                    <Share2 className="size-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDelete} title="Delete">
+                    <Trash2 className="size-4" />
+                </Button>
             </div>
         </div>
     )

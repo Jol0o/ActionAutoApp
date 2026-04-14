@@ -53,6 +53,8 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
         setMessage('Sync timed out. Please try again.')
       } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
         setMessage('Cannot reach server. Check that the backend is running.')
+      } else if (error.response?.status === 403) {
+        setMessage('Google account is missing required permissions. Please disconnect and reconnect your Google account.')
       } else if (error.response?.status === 401) {
         const errMsg = error.response?.data?.message || ''
         if (errMsg.toLowerCase().includes('reconnect')) {
@@ -64,7 +66,8 @@ export function GoogleCalendarSyncButton({ onSyncComplete }: GoogleCalendarSyncB
         const errMsg = error.response?.data?.message || 'Server error during sync'
         if (
           errMsg.toLowerCase().includes('refresh token') ||
-          errMsg.toLowerCase().includes('no refresh token')
+          errMsg.toLowerCase().includes('no refresh token') ||
+          errMsg.toLowerCase().includes('insufficient')
         ) {
           setMessage('Google Calendar needs to be reconnected. Please disconnect and reconnect your calendar.')
         } else {
