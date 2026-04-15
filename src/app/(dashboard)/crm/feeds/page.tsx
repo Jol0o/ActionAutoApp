@@ -462,6 +462,7 @@ function CommentItem({
   )
 }
 
+
 // ─── Comment Section ──────────────────────────────────────────────────────────
 
 function CommentSection({
@@ -481,10 +482,11 @@ function CommentSection({
   commentReactions: Record<string, ReactionState>
   setCommentReactions: React.Dispatch<React.SetStateAction<Record<string, ReactionState>>>
 }) {
-  const [isOpen, setIsOpen]         = React.useState(false)
-  const [loading, setLoading]       = React.useState(false)
-  const [hasFetched, setHasFetched] = React.useState(false)
+  const COLLAPSE_THRESHOLD = 5   // collapse when count reaches this
+  const VISIBLE_WHEN_COLLAPSED = 3
 
+  const [loading, setLoading]         = React.useState(false)
+  const [showAll, setShowAll]         = React.useState(false)
   const [newComment, setNewComment]   = React.useState("")
   const [submitting, setSubmitting]   = React.useState(false)
   const [submitError, setSubmitError] = React.useState("")
@@ -492,6 +494,7 @@ function CommentSection({
   const inputRef = React.useRef<HTMLTextAreaElement>(null)
   const emojiRef = React.useRef<HTMLDivElement>(null)
 
+  // Close emoji picker on outside click
   React.useEffect(() => {
     function handle(e: MouseEvent) {
       if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
@@ -502,41 +505,32 @@ function CommentSection({
     return () => document.removeEventListener("mousedown", handle)
   }, [showEmoji])
 
-  const handleToggle = async () => {
-    const opening = !isOpen
-    setIsOpen(opening)
-
-    if (opening && !hasFetched) {
-      setLoading(true)
-      try {
-        const res = await apiClient.get(`/api/crm/feeds/${post._id}/comments`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const fetchedComments: Comment[] = res.data?.data?.comments || []
-        setComments(fetchedComments)
-        setHasFetched(true)
-
-        // Bulk-fetch reactions for all comments
-        if (fetchedComments.length > 0) {
-          const rRes = await apiClient.post(
-            "/api/crm/feeds/reactions/bulk",
-            { targetIds: fetchedComments.map((c) => c._id) },
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
-          const rxData: Record<string, ReactionState> = rRes.data?.data?.reactions || {}
-          setCommentReactions(rxData)
+  // Fetch comments + their reactions on mount
+  React.useEffect(() => {
+    if (!token || !post._id) return
+    setLoading(true)
+    apiClient
+      .get(`/api/crm/feeds/${post._id}/comments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(async (res) => {
+        const fetched: Comment[] = res.data?.data?.comments || []
+        setComments(fetched)
+        if (fetched.length > 0) {
+          try {
+            const rRes = await apiClient.post(
+              "/api/crm/feeds/reactions/bulk",
+              { targetIds: fetched.map((c) => c._id) },
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+            setCommentReactions(rRes.data?.data?.reactions || {})
+          } catch { /* Non-critical */ }
         }
-      } catch {
-        // Leave empty
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (opening) {
-      setTimeout(() => inputRef.current?.focus(), 150)
-    }
-  }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post._id, token])
 
   const handleSubmit = async () => {
     if (!newComment.trim()) return
@@ -552,13 +546,14 @@ function CommentSection({
       setComments((prev) =>
         prev.some((c) => c._id === comment._id) ? prev : [...prev, comment]
       )
-      // Init empty reaction state for new comment
       setCommentReactions((prev) => ({
         ...prev,
         [comment._id]: { summary: {}, myReaction: null },
       }))
       setNewComment("")
       setShowEmoji(false)
+      // Auto-expand so the new comment is visible
+      setShowAll(true)
     } catch (err: any) {
       setSubmitError(err?.response?.data?.message || "Failed to post comment")
     } finally {
@@ -582,120 +577,136 @@ function CommentSection({
     }
   }
 
+  // Decide which comments to render
+  const shouldCollapse = comments.length >= COLLAPSE_THRESHOLD && !showAll
+  const visibleComments = shouldCollapse
+    ? comments.slice(-VISIBLE_WHEN_COLLAPSED)   // show the most recent N
+    : comments
+  const hiddenCount = comments.length - VISIBLE_WHEN_COLLAPSED
+
   return (
-    <div className="border-t border-border/20 mt-1">
-      <button
-        onClick={handleToggle}
-        className="flex items-center gap-2 w-full px-1 py-2.5 text-[11px] font-semibold text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
-      >
-        <MessageCircle className="h-3.5 w-3.5" />
-        {comments.length > 0
-          ? `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`
-          : "Comment"}
-        {isOpen
-          ? <ChevronUp className="h-3 w-3 ml-auto" />
-          : <ChevronDown className="h-3 w-3 ml-auto" />}
-      </button>
+    <div className="border-t border-border/20 mt-1 pt-3 space-y-3">
 
-      {isOpen && (
-        <div className="space-y-3 pb-3">
-          {loading && (
-            <div className="flex justify-center py-3">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
-            </div>
-          )}
-
-          {!loading && comments.length === 0 && (
-            <p className="text-xs text-muted-foreground/30 text-center py-2">
-              No comments yet. Be the first!
-            </p>
-          )}
-
-          {!loading && comments.map((comment) => (
-            <CommentItem
-              key={comment._id}
-              comment={comment}
-              currentUser={currentUser}
-              token={token}
-              postId={post._id}
-              onDeleted={handleDeleteComment}
-              reactionState={commentReactions[comment._id] ?? { summary: {}, myReaction: null }}
-              onReactionChange={(state) =>
-                setCommentReactions((prev) => ({ ...prev, [comment._id]: state }))
-              }
-            />
-          ))}
-
-          {/* New comment input */}
-          <div className="flex items-start gap-2.5 pt-1">
-            <Avatar className="h-7 w-7 shrink-0 mt-0.5 ring-1 ring-border/30">
-              <AvatarImage src={currentUser.avatar} />
-              <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">
-                {ini(currentUser.fullName)}
-              </AvatarFallback>
-            </Avatar>
-
-            <div className="flex-1 relative">
-              <div className="rounded-2xl rounded-tl-sm border border-border/40 bg-muted/20 focus-within:border-emerald-500/30 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all">
-                <textarea
-                  ref={inputRef}
-                  value={newComment}
-                  onChange={(e) => { setNewComment(e.target.value); setSubmitError("") }}
-                  onKeyDown={handleKey}
-                  placeholder="Write a comment…"
-                  rows={1}
-                  maxLength={1000}
-                  className="w-full bg-transparent text-xs leading-relaxed p-2.5 pr-16 resize-none focus:outline-none placeholder:text-muted-foreground/25"
-                  style={{ minHeight: "36px" }}
-                />
-                <div className="flex items-center justify-between px-2.5 pb-2">
-                  <div className="relative" ref={emojiRef}>
-                    <button
-                      type="button"
-                      onClick={() => setShowEmoji((p) => !p)}
-                      className="text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors"
-                    >
-                      <Smile className="h-3.5 w-3.5" />
-                    </button>
-                    {showEmoji && (
-                      <div className="absolute bottom-full left-0 mb-2 z-30 shadow-2xl">
-                        <EmojiPicker
-                          theme={"auto" as Theme}
-                          onEmojiClick={(e: EmojiClickData) => {
-                            setNewComment((p) => p + e.emoji)
-                            setShowEmoji(false)
-                            inputRef.current?.focus()
-                          }}
-                          height={320}
-                          width={280}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={submitting || !newComment.trim()}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {submitting
-                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                      : <Send className="h-3 w-3" />}
-                    Post
-                  </button>
-                </div>
-              </div>
-
-              {submitError && (
-                <p className="text-[10px] text-red-500 mt-1 pl-1">{submitError}</p>
-              )}
-              {newComment && !submitError && (
-                <p className="text-[9px] text-muted-foreground/20 mt-1 pl-1">Ctrl+Enter to post</p>
-              )}
-            </div>
-          </div>
+      {/* Loading spinner */}
+      {loading && (
+        <div className="flex justify-center py-2">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
         </div>
       )}
+
+      {/* "See more comments" expander */}
+      {!loading && shouldCollapse && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+          See {hiddenCount} more {hiddenCount === 1 ? "comment" : "comments"}
+        </button>
+      )}
+
+      {/* "Collapse" button once expanded */}
+      {!loading && comments.length >= COLLAPSE_THRESHOLD && showAll && (
+        <button
+          onClick={() => setShowAll(false)}
+          className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+        >
+          <ChevronUp className="h-3.5 w-3.5" />
+          Show less
+        </button>
+      )}
+
+      {/* Empty state */}
+      {!loading && comments.length === 0 && (
+        <p className="text-xs text-muted-foreground/30 text-center py-1">
+          No comments yet. Be the first!
+        </p>
+      )}
+
+      {/* Comment list */}
+      {!loading && visibleComments.map((comment) => (
+        <CommentItem
+          key={comment._id}
+          comment={comment}
+          currentUser={currentUser}
+          token={token}
+          postId={post._id}
+          onDeleted={handleDeleteComment}
+          reactionState={commentReactions[comment._id] ?? { summary: {}, myReaction: null }}
+          onReactionChange={(state) =>
+            setCommentReactions((prev) => ({ ...prev, [comment._id]: state }))
+          }
+        />
+      ))}
+
+      {/* ── New comment input (always visible) ── */}
+      <div className="flex items-start gap-2.5 pt-1">
+        <Avatar className="h-7 w-7 shrink-0 mt-0.5 ring-1 ring-border/30">
+          <AvatarImage src={currentUser.avatar} />
+          <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">
+            {ini(currentUser.fullName)}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex-1 relative">
+          <div className="rounded-2xl rounded-tl-sm border border-border/40 bg-muted/20 focus-within:border-emerald-500/30 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all">
+            <textarea
+              ref={inputRef}
+              value={newComment}
+              onChange={(e) => { setNewComment(e.target.value); setSubmitError("") }}
+              onKeyDown={handleKey}
+              placeholder="Write a comment…"
+              rows={1}
+              maxLength={1000}
+              className="w-full bg-transparent text-xs leading-relaxed p-2.5 pr-16 resize-none focus:outline-none placeholder:text-muted-foreground/25"
+              style={{ minHeight: "36px" }}
+            />
+            <div className="flex items-center justify-between px-2.5 pb-2">
+              <div className="relative" ref={emojiRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmoji((p) => !p)}
+                  className="text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors"
+                >
+                  <Smile className="h-3.5 w-3.5" />
+                </button>
+                {showEmoji && (
+                  <div className="absolute bottom-full left-0 mb-2 z-30 shadow-2xl">
+                    <EmojiPicker
+                      theme={"auto" as Theme}
+                      onEmojiClick={(e: EmojiClickData) => {
+                        setNewComment((p) => p + e.emoji)
+                        setShowEmoji(false)
+                        inputRef.current?.focus()
+                      }}
+                      height={320}
+                      width={280}
+                    />
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting || !newComment.trim()}
+                className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Send className="h-3 w-3" />}
+                Post
+              </button>
+            </div>
+          </div>
+
+          {submitError && (
+            <p className="text-[10px] text-red-500 mt-1 pl-1">{submitError}</p>
+          )}
+          {newComment && !submitError && (
+            <p className="text-[9px] text-muted-foreground/20 mt-1 pl-1">Ctrl+Enter to post</p>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
