@@ -1,8 +1,8 @@
-// ─── Inbound Calls – Shared Types ─────────────────────────────────────────────
+// ─── Shared Types ─────────────────────────────────────────────────────────────
 
 export type AgentStatus = "available" | "on-call" | "break" | "offline"
-
 export type BreakReason = "lunch" | "short-break" | "meeting" | "training"
+export type CallDirection = "inbound" | "outbound"
 
 export interface AgentInfo {
   name: string
@@ -10,7 +10,6 @@ export interface AgentInfo {
   avatar?: string
   status: AgentStatus
   breakReason?: BreakReason
-  /** ISO timestamp when the agent went live */
   liveAt?: string
 }
 
@@ -22,11 +21,24 @@ export interface InboundCall {
   startedAt: string
   answeredAt?: string
   endedAt?: string
-  duration?: number          // seconds
+  duration?: number
   isRecording?: boolean
   isMuted?: boolean
-  /** Linked CRM lead id, if any */
   leadId?: string
+  notes?: string
+}
+
+export interface OutboundCall {
+  id: string
+  dialedNumber: string
+  contactName?: string
+  status: "dialing" | "ringing" | "connected" | "on-hold" | "ended" | "failed" | "no-answer"
+  startedAt: string
+  answeredAt?: string
+  endedAt?: string
+  duration?: number
+  isRecording?: boolean
+  isMuted?: boolean
   notes?: string
 }
 
@@ -34,8 +46,8 @@ export interface QueuedCall {
   id: string
   callerNumber: string
   callerName?: string
-  waitingSince: string       // ISO
-  estimatedWait?: number     // seconds
+  waitingSince: string
+  estimatedWait?: number
   priority: "normal" | "high" | "vip"
 }
 
@@ -43,10 +55,10 @@ export interface CallLogEntry {
   id: string
   callerNumber: string
   callerName?: string
-  direction: "inbound" | "outbound"
-  status: "answered" | "missed" | "voicemail"
+  direction: CallDirection
+  status: "answered" | "missed" | "voicemail" | "no-answer" | "failed"
   startedAt: string
-  duration: number           // seconds
+  duration: number
   notes?: string
 }
 
@@ -61,35 +73,43 @@ export interface CustomerRecord {
   internalNotes?: string
 }
 
-// ─── Status config (mirrors the existing app palette) ────────────────────────
+export interface RecentContact {
+  name: string
+  number: string
+  lastCalled?: string
+}
 
 export const agentStatusConfig: Record<
   AgentStatus,
-  { label: string; color: string; dot: string; bg: string }
+  { label: string; color: string; dot: string; bg: string; border: string }
 > = {
   available: {
     label: "Available",
-    color: "text-emerald-700 dark:text-emerald-300",
-    dot: "bg-emerald-500",
-    bg: "bg-emerald-500/10 border-emerald-500/20",
+    color: "text-emerald-400",
+    dot: "bg-emerald-400",
+    bg: "bg-emerald-400/10",
+    border: "border-emerald-400/20",
   },
   "on-call": {
     label: "On Call",
-    color: "text-amber-700 dark:text-amber-300",
-    dot: "bg-amber-500 animate-pulse",
-    bg: "bg-amber-500/10 border-amber-500/20",
+    color: "text-amber-400",
+    dot: "bg-amber-400 animate-pulse",
+    bg: "bg-amber-400/10",
+    border: "border-amber-400/20",
   },
   break: {
     label: "On Break",
-    color: "text-blue-700 dark:text-blue-300",
-    dot: "bg-blue-500",
-    bg: "bg-blue-500/10 border-blue-500/20",
+    color: "text-sky-400",
+    dot: "bg-sky-400",
+    bg: "bg-sky-400/10",
+    border: "border-sky-400/20",
   },
   offline: {
     label: "Offline",
-    color: "text-muted-foreground/60",
-    dot: "bg-muted-foreground/40",
-    bg: "bg-muted/30 border-border/50",
+    color: "text-zinc-500",
+    dot: "bg-zinc-600",
+    bg: "bg-zinc-800/50",
+    border: "border-zinc-700/50",
   },
 }
 

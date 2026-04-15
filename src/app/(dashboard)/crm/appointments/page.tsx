@@ -1,14 +1,5 @@
 "use client"
 
-/**
- * app/(dashboard)/crm/appointments/page.tsx — UPDATED
- *
- * Changes vs original:
- *  • Added "customers" tab option beside "booked"
- *  • Imported CustomerCredentialsTab
- *  • Registered the tab in TAB_OPTIONS, renderTabContent, and the normal TabsList/TabsContent
- */
-
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
