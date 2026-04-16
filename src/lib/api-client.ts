@@ -278,6 +278,10 @@ class ApiClient {
         return this.get('/api/dashboard/metrics', { ...config, params });
     }
 
+    async getLeaderboard(params: { page?: number; limit?: number }, config?: AxiosRequestConfig) {
+        return this.get('/api/dashboard/leaderboard', { ...config, params });
+    }
+
     async completeOnboarding(role: string, config?: AxiosRequestConfig) {
         return this.post('/api/auth/complete-onboarding', { role }, config);
     }

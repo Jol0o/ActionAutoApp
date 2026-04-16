@@ -29,6 +29,7 @@ import { useOrg } from "@/hooks/useOrg"
 import { adminStore } from "@/store/admin-store"
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav"
 import { dealershipNav } from "@/components/layout/mobile-nav-config"
+import { DashboardSearch } from "@/components/layout/DashboardSearch"
 
 function DashboardLayoutContent({
     children,
@@ -126,14 +127,9 @@ function DashboardLayoutContent({
                                 </DropdownMenu>
                             </div>
 
-                            <div className="relative max-w-md w-full hidden sm:block">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    type="search"
-                                    placeholder="Search Inventory..."
-                                    className="w-full bg-background pl-8 h-9"
-                                />
-                            </div>
+                            <React.Suspense fallback={<div className="w-10 h-9 bg-muted animate-pulse rounded-md" />}>
+                                <DashboardSearch />
+                            </React.Suspense>
                         </div>
 
                         <div className="flex items-center gap-3">

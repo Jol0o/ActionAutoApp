@@ -11,18 +11,18 @@ export interface DashboardMetrics {
         avgDaysOnLot?: number;
     };
     revenueTrajectory: Array<{ name: string; revenue: number }>;
-    leaderboard: Array<{
+    activeReps: Array<{
         name: string;
-        role: string;
-        calls: number;
-        convs: number;
-        appts: number;
-        shipments: number;
         avatar: string;
     }>;
     logistics: {
         drivers: { active: number; ready: number };
         shipments: Record<string, number>;
+    };
+    intelligence: {
+        netMargin: number;
+        complianceAlerts: number;
+        speedToLead: number;
     };
     livePayments: Array<{
         customerName: string;
