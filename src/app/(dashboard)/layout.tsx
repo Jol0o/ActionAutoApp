@@ -29,6 +29,7 @@ import { useOrg } from "@/hooks/useOrg"
 import { adminStore } from "@/store/admin-store"
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav"
 import { dealershipNav } from "@/components/layout/mobile-nav-config"
+import { ThemeModeToggle } from "@/components/layout/ThemeModeToggle"
 
 function DashboardLayoutContent({
     children,
@@ -104,7 +105,7 @@ function DashboardLayoutContent({
         <SidebarProvider>
             <AppSidebar />
             <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center justify-between px-2 sm:px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <header className="flex h-16 shrink-0 items-center justify-between px-2 sm:px-4 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
                     <div className="flex items-center justify-between gap-2 sm:gap-4 flex-1">
 
 
@@ -140,6 +141,8 @@ function DashboardLayoutContent({
                             <Button variant="outline" size="icon" className="h-9 w-9 rounded-full">
                                 <Plus className="size-5" />
                             </Button>
+
+                            <ThemeModeToggle compact />
 
                             {/* Notification Bell */}
                             <NotificationBell />

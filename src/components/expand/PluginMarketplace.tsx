@@ -166,7 +166,7 @@ export default function PluginMarketplace() {
         {/* Main Content Pane */}
         <main className="flex-1 relative bg-muted/5">
           <ScrollArea className="h-full">
-            <div className="p-10 max-w-[1500px] mx-auto">
+            <div className="p-10 max-w-375 mx-auto">
               <div className="mb-10 space-y-2">
                 <h2 className="text-3xl font-black tracking-tighter uppercase">
                   Power-Ups Library
@@ -211,8 +211,14 @@ export default function PluginMarketplace() {
 
           {/* Plugin Detail Overlay (Management & Enrollment) */}
           {selectedPlugin && (
-            <div className="absolute inset-0 bg-background/60 backdrop-blur-xl z-50 flex items-center justify-center p-8 animate-in fade-in zoom-in-95 duration-300">
-              <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border-primary/20 flex flex-col">
+            <div
+              className="fixed inset-0 z-50 bg-background/60 backdrop-blur-xl flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-300"
+              onClick={() => setSelectedPlugin(null)}
+            >
+              <Card
+                className="w-full max-w-2xl h-[calc(100dvh-2rem)] sm:h-[calc(100dvh-4rem)] max-h-230 overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border-primary/20 flex flex-col"
+                onClick={(event) => event.stopPropagation()}
+              >
                 <PluginDetailView
                   plugin={selectedPlugin}
                   onClose={() => setSelectedPlugin(null)}
@@ -352,7 +358,7 @@ function PluginDetailView({
   const isInstalled = plugin.status === "active";
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="flex flex-col h-full min-h-0 bg-card">
       <div className="p-4 border-b flex items-center justify-between bg-muted/20">
         <Button
           variant="ghost"
@@ -380,10 +386,10 @@ function PluginDetailView({
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-10 space-y-10">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-6 sm:p-10 space-y-10">
           <div className="flex gap-8 items-start">
-            <div className="size-24 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-inner group relative">
+            <div className="size-24 rounded-4xl bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-inner group relative">
               <Icon className="size-12 group-hover:scale-110 transition-transform duration-500" />
               {isInstalled && (
                 <div className="absolute -top-2 -right-2 size-8 bg-green-500 rounded-full flex items-center justify-center text-white border-4 border-background shadow-lg shadow-green-500/20">
@@ -417,7 +423,7 @@ function PluginDetailView({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-[1.5rem] bg-muted/40 border border-border/50 flex flex-col justify-between hover:border-primary/20 transition-all cursor-default">
+            <div className="p-6 rounded-3xl bg-muted/40 border border-border/50 flex flex-col justify-between hover:border-primary/20 transition-all cursor-default">
               <div className="space-y-1">
                 <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-widest">
                   Billing Tier
@@ -430,7 +436,7 @@ function PluginDetailView({
                 <CreditCard className="size-3.5" /> Post-Paid Monthly
               </div>
             </div>
-            <div className="p-6 rounded-[1.5rem] bg-muted/40 border border-border/50 space-y-4 hover:border-primary/20 transition-all cursor-default">
+            <div className="p-6 rounded-3xl bg-muted/40 border border-border/50 space-y-4 hover:border-primary/20 transition-all cursor-default">
               <div className="flex justify-between items-end">
                 <div className="space-y-1">
                   <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-widest">
@@ -457,7 +463,7 @@ function PluginDetailView({
             </div>
           </div>
 
-          <div className="bg-primary/5 p-8 rounded-[2rem] border border-primary/10 space-y-8 shadow-inner shadow-primary/5">
+          <div className="bg-primary/5 p-8 rounded-4xl border border-primary/10 space-y-8 shadow-inner shadow-primary/5">
             <h4 className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary flex items-center gap-3">
               <Settings className="size-4 animate-spin-slow" /> Management
               Control Panel
@@ -513,18 +519,18 @@ function PluginDetailView({
         </div>
       </ScrollArea>
 
-      <div className="p-8 border-t bg-card mt-auto flex items-center gap-4">
+      <div className="p-4 sm:p-8 border-t bg-card mt-auto flex items-center gap-4">
         {isInstalled ? (
           <Button
             variant="outline"
-            className="flex-1 h-14 text-xs font-black uppercase tracking-widest gap-3 bg-green-500/5 hover:bg-green-500/10 text-green-700 border-green-500/20 shadow-inner rounded-[1rem]"
+            className="flex-1 h-14 text-xs font-black uppercase tracking-widest gap-3 bg-green-500/5 hover:bg-green-500/10 text-green-700 border-green-500/20 shadow-inner rounded-2xl"
             disabled
           >
             <CheckCircle2 className="size-5" /> Subscribed & Verified
           </Button>
         ) : (
           <Button
-            className="flex-1 h-14 text-xs font-black uppercase tracking-[0.15em] gap-3 shadow-lg shadow-primary/20 animate-pulse rounded-[1rem]"
+            className="flex-1 h-14 text-xs font-black uppercase tracking-[0.15em] gap-3 shadow-lg shadow-primary/20 animate-pulse rounded-2xl"
             onClick={onEnroll}
             disabled={isEnrolling}
           >

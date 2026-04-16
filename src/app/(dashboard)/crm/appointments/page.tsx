@@ -36,12 +36,12 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 // ─── Available tabs ───────────────────────────────────────────────────────────
 
 const TAB_OPTIONS: TabOption[] = [
-  { id: "leads",     label: "Leads",                  icon: <Mail    className="h-3.5 w-3.5" /> },
-  { id: "calendar",  label: "Calendar View",           icon: <Calendar className="h-3.5 w-3.5" /> },
-  { id: "upcoming",  label: "Upcoming",                icon: <Clock   className="h-3.5 w-3.5" /> },
-  { id: "booked",    label: "Booked",                  icon: <Users   className="h-3.5 w-3.5" /> },
+  { id: "leads", label: "Leads", icon: <Mail className="h-3.5 w-3.5" /> },
+  { id: "calendar", label: "Calendar View", icon: <Calendar className="h-3.5 w-3.5" /> },
+  { id: "upcoming", label: "Upcoming", icon: <Clock className="h-3.5 w-3.5" /> },
+  { id: "booked", label: "Booked", icon: <Users className="h-3.5 w-3.5" /> },
   // ↓↓↓ NEW TAB ↓↓↓
-  { id: "customers", label: "Customer Credentials",    icon: <Contact className="h-3.5 w-3.5" /> },
+  { id: "customers", label: "Customer Credentials", icon: <Contact className="h-3.5 w-3.5" /> },
 ]
 
 // ─── Inner Page ───────────────────────────────────────────────────────────────
@@ -284,7 +284,7 @@ function AppointmentsPageInner() {
                                     <Badge
                                       variant={
                                         appointment.status === "confirmed" ? "default" :
-                                        appointment.status === "cancelled" ? "destructive" : "secondary"
+                                          appointment.status === "cancelled" ? "destructive" : "secondary"
                                       }
                                       className={appointment.status === "confirmed" ? "bg-green-500" : ""}
                                     >
@@ -344,17 +344,15 @@ function AppointmentsPageInner() {
     <>
       <FullscreenWrapper>
         <div
-          className={`${
-            isFullscreen
+          className={`${isFullscreen
               ? "flex flex-col h-full overflow-hidden"
-              : "container mx-auto py-6 space-y-6"
-          }`}
+              : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
+            }`}
         >
           {/* Header */}
           <div
-            className={`flex items-center justify-between ${
-              isFullscreen ? "px-5 py-3 border-b border-border/50 bg-card shrink-0" : ""
-            }`}
+            className={`flex items-center justify-between ${isFullscreen ? "px-5 py-3 border-b border-border/50 bg-card shrink-0" : ""
+              }`}
           >
             <div className="flex items-center gap-3">
               <Button

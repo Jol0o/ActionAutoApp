@@ -106,7 +106,7 @@ export function CustomerSidebar({ ...props }: React.ComponentProps<typeof Sideba
             )}
           </div>
           <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-            <span className="font-bold text-sm tracking-tight uppercase truncate max-w-[140px]">
+            <span className="font-bold text-sm tracking-tight uppercase truncate max-w-35">
               {organization?.name || "ACTION AUTO UTAH"}
             </span>
             <span className="text-[9px] font-extrabold text-green-600 uppercase tracking-widest leading-tight">
@@ -138,8 +138,11 @@ export function CustomerSidebar({ ...props }: React.ComponentProps<typeof Sideba
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="h-12 w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                  <Avatar className="h-8 w-8 rounded-lg">
+                <SidebarMenuButton
+                  size="lg"
+                  className="w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+                >
+                  <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
                     <AvatarImage
                       src={user?.imageUrl}
                       alt={user?.fullName || ""}
