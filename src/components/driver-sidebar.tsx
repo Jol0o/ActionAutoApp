@@ -69,7 +69,7 @@ export function DriverSidebar({ ...props }: React.ComponentProps<typeof Sidebar>
             <Truck className="size-5" />
           </div>
           <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-            <span className="font-bold text-sm tracking-tight uppercase truncate max-w-[140px]">
+            <span className="font-bold text-sm tracking-tight uppercase truncate max-w-35">
               {organization?.name || "ACTION AUTO"}
             </span>
             <span className="text-[9px] font-extrabold text-emerald-500 uppercase tracking-widest leading-tight">
@@ -122,8 +122,11 @@ export function DriverSidebar({ ...props }: React.ComponentProps<typeof Sidebar>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="h-12 w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                  <Avatar className="h-8 w-8 rounded-lg">
+                <SidebarMenuButton
+                  size="lg"
+                  className="w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+                >
+                  <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
                     <AvatarImage src={user?.imageUrl} alt={user?.fullName || ""} />
                     <AvatarFallback className="rounded-lg">
                       {user?.firstName?.substring(0, 1).toUpperCase() || "DR"}

@@ -66,6 +66,31 @@ interface CrmUser {
   organizationId?: string
 }
 
+// ─── Reaction Types ───────────────────────────────────────────────────────────
+
+type ReactionType = "like" | "love" | "haha" | "wow" | "sad" | "angry"
+
+interface ReactionSummary {
+  [key: string]: { count: number; users: string[] }
+}
+
+interface ReactionState {
+  summary: ReactionSummary
+  myReaction: ReactionType | null
+}
+
+// Emoji + label + color for each reaction type
+const REACTIONS: { type: ReactionType; emoji: string; label: string; color: string; bg: string }[] = [
+  { type: "like",  emoji: "👍", label: "Like",  color: "text-blue-500",   bg: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30" },
+  { type: "love",  emoji: "❤️", label: "Love",  color: "text-red-500",    bg: "bg-red-500/10 hover:bg-red-500/20 border-red-500/30" },
+  { type: "haha",  emoji: "😂", label: "Haha",  color: "text-yellow-500", bg: "bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-500/30" },
+  { type: "wow",   emoji: "😮", label: "Wow",   color: "text-yellow-400", bg: "bg-yellow-400/10 hover:bg-yellow-400/20 border-yellow-400/30" },
+  { type: "sad",   emoji: "😢", label: "Sad",   color: "text-sky-400",    bg: "bg-sky-400/10 hover:bg-sky-400/20 border-sky-400/30" },
+  { type: "angry", emoji: "😡", label: "Angry", color: "text-orange-500", bg: "bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/30" },
+]
+
+const REACTION_MAP = Object.fromEntries(REACTIONS.map((r) => [r.type, r])) as Record<ReactionType, typeof REACTIONS[0]>
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function ini(n: string) {
@@ -96,6 +121,201 @@ const ROLE_COLORS: Record<string, string> = {
   admin:    "text-violet-500 bg-violet-500/10 border-violet-500/20",
   manager:  "text-sky-500 bg-sky-500/10 border-sky-500/20",
   employee: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+}
+
+/** Returns total reaction count across all types */
+function totalReactions(summary: ReactionSummary): number {
+  return Object.values(summary).reduce((acc, v) => acc + v.count, 0)
+}
+
+/** Returns top 3 distinct reaction emojis by count */
+function topReactionEmojis(summary: ReactionSummary): string[] {
+  return Object.entries(summary)
+    .filter(([, v]) => v.count > 0)
+    .sort(([, a], [, b]) => b.count - a.count)
+    .slice(0, 3)
+    .map(([type]) => REACTION_MAP[type as ReactionType]?.emoji ?? "")
+}
+
+// ─── Reaction Bar ─────────────────────────────────────────────────────────────
+// The floating emoji picker + reaction summary bar rendered under a post or comment.
+
+function ReactionBar({
+  targetType,
+  targetId,
+  token,
+  reactionState,
+  onReactionChange,
+  compact = false,
+}: {
+  targetType: "post" | "comment"
+  targetId: string
+  token: string
+  reactionState: ReactionState
+  onReactionChange: (state: ReactionState) => void
+  compact?: boolean
+}) {
+  const [showPicker, setShowPicker] = React.useState(false)
+  const [loading, setLoading]       = React.useState(false)
+  const pickerRef = React.useRef<HTMLDivElement>(null)
+  const btnRef    = React.useRef<HTMLButtonElement>(null)
+  const hoverTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Close picker on outside click
+  React.useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (
+        pickerRef.current && !pickerRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) {
+        setShowPicker(false)
+      }
+    }
+    if (showPicker) document.addEventListener("mousedown", handle)
+    return () => document.removeEventListener("mousedown", handle)
+  }, [showPicker])
+
+  const handleReact = async (type: ReactionType) => {
+    if (loading) return
+    setLoading(true)
+    setShowPicker(false)
+    try {
+      const res = await apiClient.post(
+        "/api/crm/feeds/reactions",
+        { targetType, targetId, reaction: type },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const { summary, action } = res.data?.data
+      onReactionChange({
+        summary,
+        myReaction: action === "removed" ? null : type,
+      })
+    } catch {
+      // Silently fail — UI reverts to previous state
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const { summary, myReaction } = reactionState
+  const total   = totalReactions(summary)
+  const topEmojis = topReactionEmojis(summary)
+  const myMeta  = myReaction ? REACTION_MAP[myReaction] : null
+
+  // Tooltip: list all reactors for a given reaction type
+  function tooltipFor(type: ReactionType): string {
+    const users = summary[type]?.users || []
+    if (!users.length) return ""
+    if (users.length <= 3) return users.join(", ")
+    return `${users.slice(0, 3).join(", ")} and ${users.length - 3} more`
+  }
+
+  return (
+    <div className={`flex items-center gap-2 ${compact ? "" : "mt-0.5"}`}>
+
+      {/* ── Reaction trigger button ── */}
+      <div className="relative">
+        <button
+          ref={btnRef}
+          disabled={loading}
+          onClick={() => setShowPicker((p) => !p)}
+          onMouseEnter={() => {
+            hoverTimer.current = setTimeout(() => setShowPicker(true), 400)
+          }}
+          onMouseLeave={() => {
+            if (hoverTimer.current) clearTimeout(hoverTimer.current)
+          }}
+          className={`
+            flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold
+            transition-all duration-150 select-none
+            ${myMeta
+              ? `${myMeta.bg} ${myMeta.color} border-current`
+              : "border-border/30 text-muted-foreground/40 hover:border-border/60 hover:text-muted-foreground/70 hover:bg-muted/30"
+            }
+            ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
+          `}
+        >
+          {loading
+            ? <Loader2 className="h-3 w-3 animate-spin" />
+            : <span className={compact ? "text-sm" : "text-base leading-none"}>{myMeta ? myMeta.emoji : "👍"}</span>
+          }
+          {!compact && <span>{myMeta ? myMeta.label : "React"}</span>}
+        </button>
+
+        {/* ── Floating emoji picker ── */}
+        {showPicker && (
+          <div
+            ref={pickerRef}
+            className="absolute bottom-full left-0 mb-2 z-50 flex items-center gap-1 rounded-full border border-border/40 bg-card/95 backdrop-blur-xl px-2 py-1.5 shadow-2xl shadow-black/20"
+            onMouseEnter={() => {
+              if (hoverTimer.current) clearTimeout(hoverTimer.current)
+            }}
+          >
+            {REACTIONS.map((r) => (
+              <button
+                key={r.type}
+                onClick={() => handleReact(r.type)}
+                title={r.label}
+                className={`
+                  group relative flex items-center justify-center rounded-full w-9 h-9
+                  transition-all duration-150 hover:scale-125 active:scale-110
+                  ${myReaction === r.type ? "bg-muted/60 ring-2 ring-current scale-110" : "hover:bg-muted/40"}
+                  ${r.color}
+                `}
+              >
+                <span className="text-xl leading-none select-none">{r.emoji}</span>
+                {/* Tooltip label on hover */}
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-popover border border-border/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none">
+                  {r.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Reaction summary (emoji stack + count) ── */}
+      {total > 0 && (
+        <div className="flex items-center gap-1">
+          {/* Stacked emoji bubbles for top 3 reaction types */}
+          <div className="flex -space-x-1">
+            {topEmojis.map((emoji, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-muted/60 border border-border/30 text-[11px] leading-none select-none"
+                style={{ zIndex: topEmojis.length - i }}
+              >
+                {emoji}
+              </span>
+            ))}
+          </div>
+
+          {/* Individual reaction type counts with tooltips */}
+          <div className="flex items-center gap-1">
+            {Object.entries(summary)
+              .filter(([, v]) => v.count > 0)
+              .sort(([, a], [, b]) => b.count - a.count)
+              .map(([type, data]) => {
+                const meta = REACTION_MAP[type as ReactionType]
+                if (!meta) return null
+                return (
+                  <span
+                    key={type}
+                    title={tooltipFor(type as ReactionType)}
+                    className={`
+                      text-[11px] font-semibold cursor-default transition-colors
+                      ${myReaction === type ? meta.color : "text-muted-foreground/40 hover:text-muted-foreground/70"}
+                    `}
+                  >
+                    {data.count}
+                  </span>
+                )
+              })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─── Delete Confirm Modal ─────────────────────────────────────────────────────
@@ -136,8 +356,6 @@ function DeleteModal({
 }
 
 // ─── Comment Item ─────────────────────────────────────────────────────────────
-// Renders a single comment row with author info, content, and a delete button
-// (visible only to the comment owner or an admin).
 
 function CommentItem({
   comment,
@@ -145,12 +363,16 @@ function CommentItem({
   token,
   postId,
   onDeleted,
+  reactionState,
+  onReactionChange,
 }: {
   comment: Comment
   currentUser: CrmUser
   token: string
   postId: string
   onDeleted: (commentId: string) => void
+  reactionState: ReactionState
+  onReactionChange: (state: ReactionState) => void
 }) {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false)
   const [deleteLoading, setDeleteLoading]     = React.useState(false)
@@ -184,7 +406,6 @@ function CommentItem({
       )}
 
       <div className="group flex items-start gap-2.5">
-        {/* Author avatar — smaller than post avatars */}
         <Avatar className="h-7 w-7 shrink-0 mt-0.5 ring-1 ring-border/30">
           <AvatarImage src={comment.authorAvatar} />
           <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">
@@ -192,10 +413,8 @@ function CommentItem({
           </AvatarFallback>
         </Avatar>
 
-        {/* Comment bubble */}
         <div className="flex-1 min-w-0">
           <div className="inline-block rounded-2xl rounded-tl-sm bg-muted/40 px-3.5 py-2.5 max-w-full">
-            {/* Author name + role */}
             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
               <span className="text-[11px] font-bold leading-none">{comment.authorName}</span>
               <Badge
@@ -205,14 +424,13 @@ function CommentItem({
                 {comment.authorRole}
               </Badge>
             </div>
-            {/* Comment text */}
             <p className="text-xs leading-relaxed whitespace-pre-wrap break-words text-foreground/80">
               {comment.content}
             </p>
           </div>
 
-          {/* Timestamp + delete button below the bubble */}
-          <div className="flex items-center gap-2 mt-1 pl-1">
+          {/* Timestamp + delete + reactions */}
+          <div className="flex items-center gap-2 mt-1 pl-1 flex-wrap">
             <span
               className="text-[10px] text-muted-foreground/35 cursor-default"
               title={fullDate(comment.createdAt)}
@@ -227,6 +445,16 @@ function CommentItem({
                 Delete
               </button>
             )}
+
+            {/* Compact reaction bar for comments */}
+            <ReactionBar
+              targetType="comment"
+              targetId={comment._id}
+              token={token}
+              reactionState={reactionState}
+              onReactionChange={onReactionChange}
+              compact
+            />
           </div>
         </div>
       </div>
@@ -234,38 +462,37 @@ function CommentItem({
   )
 }
 
+
 // ─── Comment Section ──────────────────────────────────────────────────────────
-// Collapsible panel that lives at the bottom of each PostCard.
-// On first open it fetches the comments from the API.
-// Subsequent opens use the cached list (no refetch unless a real-time event
-// forces an update).
 
 function CommentSection({
   post,
   currentUser,
   token,
-  // External comment list state — lifted to PostCard so Socket.IO events
-  // can update the list without reopening the section
   comments,
   setComments,
+  commentReactions,
+  setCommentReactions,
 }: {
   post: Post
   currentUser: CrmUser
   token: string
   comments: Comment[]
   setComments: React.Dispatch<React.SetStateAction<Comment[]>>
+  commentReactions: Record<string, ReactionState>
+  setCommentReactions: React.Dispatch<React.SetStateAction<Record<string, ReactionState>>>
 }) {
-  const [isOpen, setIsOpen]         = React.useState(false)
-  const [loading, setLoading]       = React.useState(false)
-  const [hasFetched, setHasFetched] = React.useState(false) // Prevents duplicate fetches
+  const COLLAPSE_THRESHOLD = 5   // collapse when count reaches this
+  const VISIBLE_WHEN_COLLAPSED = 3
 
-  // Compose-comment state
-  const [newComment, setNewComment]     = React.useState("")
-  const [submitting, setSubmitting]     = React.useState(false)
-  const [submitError, setSubmitError]   = React.useState("")
-  const [showEmoji, setShowEmoji]       = React.useState(false)
-  const inputRef   = React.useRef<HTMLTextAreaElement>(null)
-  const emojiRef   = React.useRef<HTMLDivElement>(null)
+  const [loading, setLoading]         = React.useState(false)
+  const [showAll, setShowAll]         = React.useState(false)
+  const [newComment, setNewComment]   = React.useState("")
+  const [submitting, setSubmitting]   = React.useState(false)
+  const [submitError, setSubmitError] = React.useState("")
+  const [showEmoji, setShowEmoji]     = React.useState(false)
+  const inputRef = React.useRef<HTMLTextAreaElement>(null)
+  const emojiRef = React.useRef<HTMLDivElement>(null)
 
   // Close emoji picker on outside click
   React.useEffect(() => {
@@ -278,33 +505,33 @@ function CommentSection({
     return () => document.removeEventListener("mousedown", handle)
   }, [showEmoji])
 
-  // Fetch comments the first time the section is opened
-  const handleToggle = async () => {
-    const opening = !isOpen
-    setIsOpen(opening)
+  // Fetch comments + their reactions on mount
+  React.useEffect(() => {
+    if (!token || !post._id) return
+    setLoading(true)
+    apiClient
+      .get(`/api/crm/feeds/${post._id}/comments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(async (res) => {
+        const fetched: Comment[] = res.data?.data?.comments || []
+        setComments(fetched)
+        if (fetched.length > 0) {
+          try {
+            const rRes = await apiClient.post(
+              "/api/crm/feeds/reactions/bulk",
+              { targetIds: fetched.map((c) => c._id) },
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+            setCommentReactions(rRes.data?.data?.reactions || {})
+          } catch { /* Non-critical */ }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post._id, token])
 
-    if (opening && !hasFetched) {
-      setLoading(true)
-      try {
-        const res = await apiClient.get(`/api/crm/feeds/${post._id}/comments`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        setComments(res.data?.data?.comments || [])
-        setHasFetched(true)
-      } catch {
-        // Leave the list empty — the user can retry by toggling again
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    // Auto-focus the comment input when opening
-    if (opening) {
-      setTimeout(() => inputRef.current?.focus(), 150)
-    }
-  }
-
-  /** Submits a new comment to POST /api/crm/feeds/:postId/comments */
   const handleSubmit = async () => {
     if (!newComment.trim()) return
     setSubmitting(true)
@@ -316,13 +543,17 @@ function CommentSection({
         { headers: { Authorization: `Bearer ${token}` } }
       )
       const comment: Comment = res.data?.data?.comment
-      // Append optimistically — the Socket.IO event may also arrive but
-      // the duplicate guard in the parent will discard it
       setComments((prev) =>
         prev.some((c) => c._id === comment._id) ? prev : [...prev, comment]
       )
+      setCommentReactions((prev) => ({
+        ...prev,
+        [comment._id]: { summary: {}, myReaction: null },
+      }))
       setNewComment("")
       setShowEmoji(false)
+      // Auto-expand so the new comment is visible
+      setShowAll(true)
     } catch (err: any) {
       setSubmitError(err?.response?.data?.message || "Failed to post comment")
     } finally {
@@ -332,6 +563,11 @@ function CommentSection({
 
   const handleDeleteComment = (commentId: string) => {
     setComments((prev) => prev.filter((c) => c._id !== commentId))
+    setCommentReactions((prev) => {
+      const next = { ...prev }
+      delete next[commentId]
+      return next
+    })
   }
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -341,138 +577,141 @@ function CommentSection({
     }
   }
 
+  // Decide which comments to render
+  const shouldCollapse = comments.length >= COLLAPSE_THRESHOLD && !showAll
+  const visibleComments = shouldCollapse
+    ? comments.slice(-VISIBLE_WHEN_COLLAPSED)   // show the most recent N
+    : comments
+  const hiddenCount = comments.length - VISIBLE_WHEN_COLLAPSED
+
   return (
-    <div className="border-t border-border/20 mt-1">
+    <div className="border-t border-border/20 mt-1 pt-3 space-y-3">
 
-      {/* ── Toggle button ── */}
-      <button
-        onClick={handleToggle}
-        className="flex items-center gap-2 w-full px-1 py-2.5 text-[11px] font-semibold text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
-      >
-        <MessageCircle className="h-3.5 w-3.5" />
-        {comments.length > 0
-          ? `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`
-          : "Comment"}
-        {isOpen
-          ? <ChevronUp className="h-3 w-3 ml-auto" />
-          : <ChevronDown className="h-3 w-3 ml-auto" />}
-      </button>
-
-      {/* ── Expanded comment thread ── */}
-      {isOpen && (
-        <div className="space-y-3 pb-3">
-
-          {/* Loading state */}
-          {loading && (
-            <div className="flex justify-center py-3">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
-            </div>
-          )}
-
-          {/* Comment list — oldest first (natural thread order) */}
-          {!loading && comments.length === 0 && (
-            <p className="text-xs text-muted-foreground/30 text-center py-2">
-              No comments yet. Be the first!
-            </p>
-          )}
-
-          {!loading && comments.map((comment) => (
-            <CommentItem
-              key={comment._id}
-              comment={comment}
-              currentUser={currentUser}
-              token={token}
-              postId={post._id}
-              onDeleted={handleDeleteComment}
-            />
-          ))}
-
-          {/* ── New comment input ── */}
-          <div className="flex items-start gap-2.5 pt-1">
-            {/* Current user's avatar */}
-            <Avatar className="h-7 w-7 shrink-0 mt-0.5 ring-1 ring-border/30">
-              <AvatarImage src={currentUser.avatar} />
-              <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">
-                {ini(currentUser.fullName)}
-              </AvatarFallback>
-            </Avatar>
-
-            {/* Input area */}
-            <div className="flex-1 relative">
-              <div className="rounded-2xl rounded-tl-sm border border-border/40 bg-muted/20 focus-within:border-emerald-500/30 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all">
-                <textarea
-                  ref={inputRef}
-                  value={newComment}
-                  onChange={(e) => { setNewComment(e.target.value); setSubmitError("") }}
-                  onKeyDown={handleKey}
-                  placeholder="Write a comment…"
-                  rows={1}
-                  maxLength={1000}
-                  className="w-full bg-transparent text-xs leading-relaxed p-2.5 pr-16 resize-none focus:outline-none placeholder:text-muted-foreground/25"
-                  style={{ minHeight: "36px" }}
-                />
-
-                {/* Action row inside the input bubble */}
-                <div className="flex items-center justify-between px-2.5 pb-2">
-                  {/* Emoji picker for comment input */}
-                  <div className="relative" ref={emojiRef}>
-                    <button
-                      type="button"
-                      onClick={() => setShowEmoji((p) => !p)}
-                      className="text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors"
-                    >
-                      <Smile className="h-3.5 w-3.5" />
-                    </button>
-                    {showEmoji && (
-                      <div className="absolute bottom-full left-0 mb-2 z-30 shadow-2xl">
-                        <EmojiPicker
-                          theme={"auto" as Theme}
-                          onEmojiClick={(e: EmojiClickData) => {
-                            setNewComment((p) => p + e.emoji)
-                            setShowEmoji(false)
-                            inputRef.current?.focus()
-                          }}
-                          height={320}
-                          width={280}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Submit button — disabled when empty or submitting */}
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={submitting || !newComment.trim()}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {submitting
-                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                      : <Send className="h-3 w-3" />}
-                    Post
-                  </button>
-                </div>
-              </div>
-
-              {/* Inline error + keyboard hint */}
-              {submitError && (
-                <p className="text-[10px] text-red-500 mt-1 pl-1">{submitError}</p>
-              )}
-              {newComment && !submitError && (
-                <p className="text-[9px] text-muted-foreground/20 mt-1 pl-1">Ctrl+Enter to post</p>
-              )}
-            </div>
-          </div>
+      {/* Loading spinner */}
+      {loading && (
+        <div className="flex justify-center py-2">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
         </div>
       )}
+
+      {/* "See more comments" expander */}
+      {!loading && shouldCollapse && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+          See {hiddenCount} more {hiddenCount === 1 ? "comment" : "comments"}
+        </button>
+      )}
+
+      {/* "Collapse" button once expanded */}
+      {!loading && comments.length >= COLLAPSE_THRESHOLD && showAll && (
+        <button
+          onClick={() => setShowAll(false)}
+          className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+        >
+          <ChevronUp className="h-3.5 w-3.5" />
+          Show less
+        </button>
+      )}
+
+      {/* Empty state */}
+      {!loading && comments.length === 0 && (
+        <p className="text-xs text-muted-foreground/30 text-center py-1">
+          No comments yet. Be the first!
+        </p>
+      )}
+
+      {/* Comment list */}
+      {!loading && visibleComments.map((comment) => (
+        <CommentItem
+          key={comment._id}
+          comment={comment}
+          currentUser={currentUser}
+          token={token}
+          postId={post._id}
+          onDeleted={handleDeleteComment}
+          reactionState={commentReactions[comment._id] ?? { summary: {}, myReaction: null }}
+          onReactionChange={(state) =>
+            setCommentReactions((prev) => ({ ...prev, [comment._id]: state }))
+          }
+        />
+      ))}
+
+      {/* ── New comment input (always visible) ── */}
+      <div className="flex items-start gap-2.5 pt-1">
+        <Avatar className="h-7 w-7 shrink-0 mt-0.5 ring-1 ring-border/30">
+          <AvatarImage src={currentUser.avatar} />
+          <AvatarFallback className="bg-emerald-600 text-white text-[9px] font-bold">
+            {ini(currentUser.fullName)}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex-1 relative">
+          <div className="rounded-2xl rounded-tl-sm border border-border/40 bg-muted/20 focus-within:border-emerald-500/30 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all">
+            <textarea
+              ref={inputRef}
+              value={newComment}
+              onChange={(e) => { setNewComment(e.target.value); setSubmitError("") }}
+              onKeyDown={handleKey}
+              placeholder="Write a comment…"
+              rows={1}
+              maxLength={1000}
+              className="w-full bg-transparent text-xs leading-relaxed p-2.5 pr-16 resize-none focus:outline-none placeholder:text-muted-foreground/25"
+              style={{ minHeight: "36px" }}
+            />
+            <div className="flex items-center justify-between px-2.5 pb-2">
+              <div className="relative" ref={emojiRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmoji((p) => !p)}
+                  className="text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors"
+                >
+                  <Smile className="h-3.5 w-3.5" />
+                </button>
+                {showEmoji && (
+                  <div className="absolute bottom-full left-0 mb-2 z-30 shadow-2xl">
+                    <EmojiPicker
+                      theme={"auto" as Theme}
+                      onEmojiClick={(e: EmojiClickData) => {
+                        setNewComment((p) => p + e.emoji)
+                        setShowEmoji(false)
+                        inputRef.current?.focus()
+                      }}
+                      height={320}
+                      width={280}
+                    />
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting || !newComment.trim()}
+                className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Send className="h-3 w-3" />}
+                Post
+              </button>
+            </div>
+          </div>
+
+          {submitError && (
+            <p className="text-[10px] text-red-500 mt-1 pl-1">{submitError}</p>
+          )}
+          {newComment && !submitError && (
+            <p className="text-[9px] text-muted-foreground/20 mt-1 pl-1">Ctrl+Enter to post</p>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
-// Renders a full post including its comment section.
-// Comment state is owned here so Socket.IO events (from the feed page)
-// can push updates without having to re-open the section.
 
 function PostCard({
   post,
@@ -480,26 +719,26 @@ function PostCard({
   token,
   onUpdated,
   onDeleted,
+  reactionState,
+  onReactionChange,
 }: {
   post: Post
   currentUser: CrmUser
   token: string
   onUpdated: (updated: Post) => void
   onDeleted: (id: string) => void
+  reactionState: ReactionState
+  onReactionChange: (state: ReactionState) => void
 }) {
-  // Edit state
   const [isEditing, setIsEditing]         = React.useState(false)
   const [editContent, setEditContent]     = React.useState(post.content)
   const [editLoading, setEditLoading]     = React.useState(false)
   const [editError, setEditError]         = React.useState("")
   const [showEmojiEdit, setShowEmojiEdit] = React.useState(false)
-
-  // Delete state
   const [showDeleteModal, setShowDeleteModal] = React.useState(false)
   const [deleteLoading, setDeleteLoading]     = React.useState(false)
-
-  // Comment list — lifted here so Socket.IO can push to it from the feed page
-  const [comments, setComments] = React.useState<Comment[]>([])
+  const [comments, setComments]           = React.useState<Comment[]>([])
+  const [commentReactions, setCommentReactions] = React.useState<Record<string, ReactionState>>({})
 
   const editRef = React.useRef<HTMLTextAreaElement>(null)
 
@@ -561,7 +800,7 @@ function PostCard({
 
       <article className="group rounded-2xl border border-border/40 bg-card p-5 space-y-3 transition-colors hover:border-border/60">
 
-        {/* ── Post header ── */}
+        {/* Post header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Avatar className="h-9 w-9 shrink-0 ring-2 ring-border/30">
@@ -591,7 +830,6 @@ function PostCard({
             </div>
           </div>
 
-          {/* Post context menu */}
           {(canEdit || canDelete) && !isEditing && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -621,7 +859,7 @@ function PostCard({
           )}
         </div>
 
-        {/* ── Post content / inline edit form ── */}
+        {/* Post content / edit form */}
         {isEditing ? (
           <div className="space-y-3">
             <div className="relative">
@@ -674,13 +912,24 @@ function PostCard({
           </p>
         )}
 
-        {/* ── Comments section — always visible, expands on toggle ── */}
+        {/* ── Reaction bar for post ── */}
+        <ReactionBar
+          targetType="post"
+          targetId={post._id}
+          token={token}
+          reactionState={reactionState}
+          onReactionChange={onReactionChange}
+        />
+
+        {/* Comments section */}
         <CommentSection
           post={post}
           currentUser={currentUser}
           token={token}
           comments={comments}
           setComments={setComments}
+          commentReactions={commentReactions}
+          setCommentReactions={setCommentReactions}
         />
       </article>
     </>
@@ -818,6 +1067,7 @@ export default function FeedsPage() {
   const [currentUser, setCurrentUser]   = React.useState<CrmUser | null>(null)
   const [token, setToken]               = React.useState("")
   const [posts, setPosts]               = React.useState<Post[]>([])
+  const [postReactions, setPostReactions] = React.useState<Record<string, ReactionState>>({})
   const [page, setPage]                 = React.useState(1)
   const [hasMore, setHasMore]           = React.useState(false)
   const [loadingInit, setLoadingInit]   = React.useState(true)
@@ -836,18 +1086,41 @@ export default function FeedsPage() {
       .catch(() => { localStorage.removeItem("crm_token"); router.replace("/crm") })
   }, [router])
 
+  /** Fetches posts and their bulk reactions in one go */
+  const fetchPostsAndReactions = React.useCallback(async (tk: string, pg: number) => {
+    const res = await apiClient.get(`/api/crm/feeds?page=${pg}&limit=${PAGE_LIMIT}`, {
+      headers: { Authorization: `Bearer ${tk}` },
+    })
+    const d = res.data?.data
+    const fetchedPosts: Post[] = d.posts || []
+
+    let rxMap: Record<string, ReactionState> = {}
+    if (fetchedPosts.length > 0) {
+      try {
+        const rRes = await apiClient.post(
+          "/api/crm/feeds/reactions/bulk",
+          { targetIds: fetchedPosts.map((p) => p._id) },
+          { headers: { Authorization: `Bearer ${tk}` } }
+        )
+        rxMap = rRes.data?.data?.reactions || {}
+      } catch { /* Non-critical — reactions just show as empty */ }
+    }
+
+    return { posts: fetchedPosts, hasMore: d.hasMore ?? false, reactions: rxMap }
+  }, [])
+
   // Initial fetch
   React.useEffect(() => {
     if (!token) return
-    apiClient.get(`/api/crm/feeds?page=1&limit=${PAGE_LIMIT}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => {
-        const d = res.data?.data
-        setPosts(d.posts || [])
-        setHasMore(d.hasMore ?? false)
+    fetchPostsAndReactions(token, 1)
+      .then(({ posts, hasMore, reactions }) => {
+        setPosts(posts)
+        setPostReactions(reactions)
+        setHasMore(hasMore)
       })
       .catch(() => {})
       .finally(() => setLoadingInit(false))
-  }, [token])
+  }, [token, fetchPostsAndReactions])
 
   // Socket.IO real-time
   React.useEffect(() => {
@@ -869,8 +1142,28 @@ export default function FeedsPage() {
       socket.on("feed:deleted", ({ postId }: { postId: string }) => {
         setPosts((prev) => prev.filter((p) => p._id !== postId))
       })
-      // Real-time comment events bubble up here but are handled inside PostCard
-      // via the shared setComments ref — no extra wiring needed at page level
+      // Real-time reaction updates from other users
+      socket.on("feed:reactions_updated", ({
+        targetType,
+        targetId,
+        summary,
+      }: {
+        targetType: "post" | "comment"
+        targetId: string
+        summary: ReactionSummary
+      }) => {
+        if (targetType === "post") {
+          setPostReactions((prev) => ({
+            ...prev,
+            [targetId]: {
+              // Preserve current user's own reaction — server summary already includes it
+              summary,
+              myReaction: prev[targetId]?.myReaction ?? null,
+            },
+          }))
+        }
+        // Comment reaction updates are handled at the PostCard level via its own state
+      })
       socketRef.current = socket
     }).catch(() => {})
     return () => { socketRef.current?.disconnect() }
@@ -881,7 +1174,9 @@ export default function FeedsPage() {
     if (!token) return
     const id = setInterval(async () => {
       try {
-        const res = await apiClient.get(`/api/crm/feeds?page=1&limit=${PAGE_LIMIT}`, { headers: { Authorization: `Bearer ${token}` } })
+        const res = await apiClient.get(`/api/crm/feeds?page=1&limit=${PAGE_LIMIT}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         const fresh: Post[] = res.data?.data?.posts || []
         setPosts((prev) => {
           const prevIds = new Set(prev.map((p) => p._id))
@@ -911,13 +1206,14 @@ export default function FeedsPage() {
     setLoadingMore(true)
     const next = page + 1
     try {
-      const res = await apiClient.get(`/api/crm/feeds?page=${next}&limit=${PAGE_LIMIT}`, { headers: { Authorization: `Bearer ${token}` } })
-      const d = res.data?.data
+      const { posts: morePosts, hasMore: moreHasMore, reactions } =
+        await fetchPostsAndReactions(token, next)
       setPosts((prev) => {
         const ids = new Set(prev.map((p) => p._id))
-        return [...prev, ...(d.posts || []).filter((p: Post) => !ids.has(p._id))]
+        return [...prev, ...morePosts.filter((p) => !ids.has(p._id))]
       })
-      setHasMore(d.hasMore ?? false)
+      setPostReactions((prev) => ({ ...prev, ...reactions }))
+      setHasMore(moreHasMore)
       setPage(next)
     } catch {}
     finally { setLoadingMore(false) }
@@ -926,9 +1222,11 @@ export default function FeedsPage() {
   const handleRefresh = async () => {
     setRefreshing(true); setNewPostCount(0)
     try {
-      const res = await apiClient.get(`/api/crm/feeds?page=1&limit=${PAGE_LIMIT}`, { headers: { Authorization: `Bearer ${token}` } })
-      const d = res.data?.data
-      setPosts(d.posts || []); setHasMore(d.hasMore ?? false); setPage(1)
+      const { posts, hasMore, reactions } = await fetchPostsAndReactions(token, 1)
+      setPosts(posts)
+      setPostReactions(reactions)
+      setHasMore(hasMore)
+      setPage(1)
     } catch {}
     finally { setRefreshing(false) }
   }
@@ -976,7 +1274,10 @@ export default function FeedsPage() {
           </button>
         )}
 
-        <Composer currentUser={currentUser} token={token} onPosted={(p) => setPosts((prev) => [p, ...prev])} />
+        <Composer currentUser={currentUser} token={token} onPosted={(p) => {
+          setPosts((prev) => [p, ...prev])
+          setPostReactions((prev) => ({ ...prev, [p._id]: { summary: {}, myReaction: null } }))
+        }} />
 
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-border/30" />
@@ -1003,7 +1304,14 @@ export default function FeedsPage() {
                 currentUser={currentUser}
                 token={token}
                 onUpdated={(u) => setPosts((prev) => prev.map((p) => (p._id === u._id ? u : p)))}
-                onDeleted={(id) => setPosts((prev) => prev.filter((p) => p._id !== id))}
+                onDeleted={(id) => {
+                  setPosts((prev) => prev.filter((p) => p._id !== id))
+                  setPostReactions((prev) => { const n = { ...prev }; delete n[id]; return n })
+                }}
+                reactionState={postReactions[post._id] ?? { summary: {}, myReaction: null }}
+                onReactionChange={(state) =>
+                  setPostReactions((prev) => ({ ...prev, [post._id]: state }))
+                }
               />
             ))}
           </div>

@@ -4,8 +4,8 @@ import * as React from "react";
 import { X, Copy, CheckCircle2, ExternalLink, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 
 const DISPLAY = "'Rajdhani', var(--font-sans), sans-serif";
-const MONO    = "'Share Tech Mono', 'Roboto Mono', monospace";
-const ORANGE  = "#E55A00";
+const MONO = "'Share Tech Mono', 'Roboto Mono', monospace";
+const ORANGE = "#E55A00";
 const PAGE_BG = "#0a0a0c";
 
 // ─── Provider Config ───────────────────────────────────────────────────────────
@@ -70,10 +70,10 @@ const PROVIDERS: ProviderConfig[] = [
     accentText: "#163300",
     logo: <WiseLogo />,
     fields: [
-      { key: "account_name", label: "Account Name",   value: "SupraPay Inc.",          copyable: true },
-      { key: "account_num",  label: "Account Number", value: "8312 7490 2217",          copyable: true },
-      { key: "routing",      label: "Routing (ACH)",  value: "026073150",               copyable: true },
-      { key: "bank_name",    label: "Bank",           value: "Community Federal Savings Bank" },
+      { key: "account_name", label: "Account Name", value: "SupraPay Inc.", copyable: true },
+      { key: "account_num", label: "Account Number", value: "8312 7490 2217", copyable: true },
+      { key: "routing", label: "Routing (ACH)", value: "026073150", copyable: true },
+      { key: "bank_name", label: "Bank", value: "Community Federal Savings Bank" },
     ],
     instructions: [
       "Log in to your Wise account.",
@@ -177,7 +177,7 @@ function CopyField({ field }: { field: FieldConfig }) {
       await navigator.clipboard.writeText(field.value);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch { }
   };
 
   return (
@@ -384,9 +384,9 @@ interface CashInModalProps {
 }
 
 export function CashInModal({ open, onClose }: CashInModalProps) {
-  const [step, setStep]           = React.useState<"provider" | "amount" | "details">("provider");
+  const [step, setStep] = React.useState<"provider" | "amount" | "details">("provider");
   const [selectedId, setSelectedId] = React.useState<Provider | null>(null);
-  const [amount, setAmount]       = React.useState("");
+  const [amount, setAmount] = React.useState("");
 
   React.useEffect(() => {
     if (!open) { setStep("provider"); setSelectedId(null); setAmount(""); }
@@ -403,7 +403,16 @@ export function CashInModal({ open, onClose }: CashInModalProps) {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
-        @keyframes ciSlideUp { from { opacity: 0; transform: translateY(24px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes ciSlideUp {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -50%) translateY(24px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%) translateY(0) scale(1);
+          }
+        }
       `}</style>
 
       {/* Backdrop */}
@@ -441,8 +450,8 @@ export function CashInModal({ open, onClose }: CashInModalProps) {
             </h2>
             <p style={{ fontFamily: DISPLAY, fontSize: 12, color: "rgba(255,255,255,0.30)", margin: "3px 0 0" }}>
               {step === "provider" && "Choose a deposit method"}
-              {step === "amount"   && `via ${provider?.name}`}
-              {step === "details"  && `${provider?.name} details`}
+              {step === "amount" && `via ${provider?.name}`}
+              {step === "details" && `${provider?.name} details`}
             </p>
           </div>
 
