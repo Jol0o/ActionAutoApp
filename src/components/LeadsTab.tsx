@@ -15,6 +15,11 @@ import { ConversationView } from "./leads/ConversationView"
 import { ReplySection } from "./leads/ReplySection"
 import { AppointmentDialog } from "./leads/AppointmentDialog"
 
+// CRM Pro Components
+import { SmsThreadView } from "./crm/SmsThreadView"
+import { SmsReplySection } from "./crm/SmsReplySection"
+import { MOCK_SMS_LEADS, MOCK_SMS_THREADS } from "@/data/mock-sms"
+
 // External Components
 import { InboundCallsTab } from "@/components/inbound-calls/InboundCallsTab"
 import { SupraLeoAI } from "@/components/supra-leo-ai/SupraLeoAI"
@@ -30,6 +35,7 @@ const TABS = [
   { key: 'Pending', label: 'Pending' },
   { key: 'Contacted', label: 'Contacted' },
   { key: 'Appointment Set', label: 'Appt. Set' },
+  { key: 'sms', label: 'SMS' },
   { key: 'Closed', label: 'Closed' },
   { key: 'Inbound Calls', label: 'Inbound Calls' },
 ] as const
@@ -76,6 +82,8 @@ export function LeadsTab() {
   const [toasts, setToasts] = React.useState<Toast[]>([])
   const [isClosed, setIsClosed] = React.useState(false)
   const [threads, setThreads] = React.useState<Record<string, any[]>>({})
+  const [mockThreads, setMockThreads] = React.useState<Record<string, any[]>>(MOCK_SMS_THREADS)
+  const [isCustomerTyping, setIsCustomerTyping] = React.useState(false)
   const [highlightedLeadIds, setHighlightedLeadIds] = React.useState<Set<string>>(new Set())
 
   // 1. Reliability Sync: Keep selectedLead in sync with master leads list
@@ -143,6 +151,16 @@ export function LeadsTab() {
   const syncAndRefresh = React.useCallback(async () => {
     if (isWorkerSyncing || localIsSyncing) return
     setLocalIsSyncing(true)
+    
+    // Air-Gap: Skip real sync if on mock SMS tab
+    if (statusFilter === 'sms') {
+      await new Promise(res => setTimeout(res, 1000))
+      setLastSyncTime(new Date())
+      addToast('success', 'SMS Threads Refreshed')
+      setLocalIsSyncing(false)
+      return
+    }
+
     try {
       const token = await getToken(); if (!token) return
       await refetch()
@@ -173,6 +191,8 @@ export function LeadsTab() {
 
   // 6. Thread Refresh
   const fetchThread = React.useCallback(async (lead: Lead) => {
+    if (lead._id.startsWith('mock-sms-')) return // Managed by mockThreads selector
+    
     const threadId = (lead as any).threadId
     if (!threadId) { setThreads(p => ({ ...p, [lead._id]: [] })); return }
     try {
@@ -182,11 +202,38 @@ export function LeadsTab() {
     } catch { setThreads(p => ({ ...p, [lead._id]: [] })) }
   }, [getToken])
 
+  const currentMessages = React.useMemo(() => {
+    if (!selectedLead) return []
+    if (selectedLead._id.startsWith('mock-sms-')) {
+      // Definitive Merge: Static Base + Local Overrides
+      const staticBase = MOCK_SMS_THREADS[selectedLead._id] || []
+      const sessionHistory = mockThreads[selectedLead._id] || []
+      
+      // If the sessionHistory doesn't contain the static items (e.g. only contains new replies), 
+      // merge them. If mockThreads was initialized with the static data, this just returns mockThreads.
+      // To be 100% safe, we deduplicate by ID.
+      const merged = [...staticBase];
+      const seenIds = new Set(staticBase.map(m => m.id));
+      
+      sessionHistory.forEach(msg => {
+        if (!seenIds.has(msg.id)) {
+            merged.push(msg);
+            seenIds.add(msg.id);
+        }
+      });
+      
+      return merged.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    }
+    return threads[selectedLead._id] || []
+  }, [selectedLead, mockThreads, threads])
+
   React.useEffect(() => {
     if (!selectedLead) return
-    fetchThread(selectedLead)
-    const tid = setInterval(() => fetchThread(selectedLead), THREAD_POLL_INTERVAL_MS)
-    return () => clearInterval(tid)
+    if (!selectedLead._id.startsWith('mock-sms-')) {
+        fetchThread(selectedLead)
+        const tid = setInterval(() => fetchThread(selectedLead), THREAD_POLL_INTERVAL_MS)
+        return () => clearInterval(tid)
+    }
   }, [selectedLead, fetchThread])
 
   // Helpers
@@ -215,12 +262,16 @@ export function LeadsTab() {
       setIsClosed(lead.status === 'Closed')
       fetchThread(lead)
 
-      if (!lead.isRead) {
+      if (lead._id.startsWith('mock-sms-')) {
+          return
+      }
+
+      if (!lead.isRead && !lead._id.startsWith('mock-sms-')) {
         await markAsRead(lead._id)
       }
 
-      // Only transition to Pending if it's currently New
-      if (lead.status === 'New') {
+      // Only transition to Pending if it's currently New (skip real DB for mocks)
+      if (lead.status === 'New' && !lead._id.startsWith('mock-sms-')) {
         await handleStatus('Pending', lead)
       }
     }
@@ -228,6 +279,65 @@ export function LeadsTab() {
 
   const handleSend = async () => {
     if (!selectedLead || !replyMessage.trim()) return
+
+    if (selectedLead._id.startsWith('mock-sms-')) {
+       setIsSending(true)
+       const userMsg = replyMessage;
+       setTimeout(() => {
+           const newMessage = { 
+               id: Math.random(), 
+               content: userMsg, 
+               direction: 'outbound', 
+               status: 'delivered',
+               timestamp: new Date().toISOString() 
+           }
+
+           setMockThreads(prev => ({
+               ...prev,
+               [selectedLead._id]: [...(prev[selectedLead._id] || []), newMessage]
+           }))
+           setThreads(p => ({
+               ...p,
+               [selectedLead._id]: [...(p[selectedLead._id] || []), newMessage]
+           }))
+
+           setReplyMessage('')
+           setIsSending(false)
+           addToast('success', 'SMS Message Sent')
+           
+           // Interaction Event for Dynamic Island
+           window.dispatchEvent(new CustomEvent('dynamic-island:status', {
+               detail: { status: 'success', message: 'SMS Sent Successfully' }
+           }))
+
+           // --- SIMULATED AUTO-REPLY ---
+           setTimeout(() => {
+                setIsCustomerTyping(true)
+                setTimeout(() => {
+                    const responseMsg = {
+                        id: Math.random(),
+                        content: "Thanks for the info! I'll talk to my partner and get back to you by this afternoon.",
+                        direction: 'inbound',
+                        timestamp: new Date().toISOString()
+                    }
+                    setMockThreads(prev => ({
+                        ...prev,
+                        [selectedLead._id]: [...(prev[selectedLead._id] || []), responseMsg]
+                    }))
+                    setThreads(p => ({
+                        ...p,
+                        [selectedLead._id]: [...(p[selectedLead._id] || []), responseMsg]
+                    }))
+                    setIsCustomerTyping(false)
+                    
+                    // Optional Notification for reply
+                    addToast('info', 'New SMS Received')
+                }, 2500)
+           }, 1000)
+       }, 800)
+       return
+    }
+
     setIsSending(true)
     try {
       const token = await getToken(); if (!token) { addToast('error', 'Auth required'); return }
@@ -266,6 +376,15 @@ export function LeadsTab() {
       await refetch()
     } catch { addToast('error', 'Failed to save appointment') }
   }
+
+  // Combined Leads (Mock Injection)
+  const displayLeads = React.useMemo(() => {
+    if (statusFilter === 'sms') return MOCK_SMS_LEADS;
+    return leads;
+  }, [leads, statusFilter]);
+
+  const displayTotal = statusFilter === 'sms' ? MOCK_SMS_LEADS.length : total;
+  const displayPages = statusFilter === 'sms' ? 1 : pages;
 
   return (
     <div className="flex flex-col bg-background text-foreground" style={{ height: '100vh', minHeight: 860 }}>
@@ -322,10 +441,10 @@ export function LeadsTab() {
       ) : (
         <div className="flex flex-1 min-h-0 border-t border-border shadow-inner">
           <LeadsList
-            leads={leads}
+            leads={displayLeads}
             isLoading={isLoading}
-            total={total}
-            pages={pages}
+            total={displayTotal}
+            pages={displayPages}
             currentPage={currentPage}
             selectedLeadId={selectedLead?._id}
             searchQuery={searchQuery}
@@ -340,25 +459,44 @@ export function LeadsTab() {
 
           <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-slate-50/50 dark:bg-background ${!selectedLead ? 'hidden lg:flex' : 'flex'}`}>
             {selectedLead ? (
-              <>
-                <ConversationView
-                  lead={selectedLead}
-                  threads={threads[selectedLead._id] || []}
-                  onClose={() => setSelectedLead(null)}
-                  sourceEmail={LEADS_SOURCE_EMAIL}
-                />
-                <ReplySection
-                  isClosed={isClosed}
-                  replyMessage={replyMessage}
-                  setReplyMessage={setReplyMessage}
-                  onSend={handleSend}
-                  isSending={isSending}
-                  onStatusChange={handleStatus}
-                  onApptOpen={() => setApptOpen(true)}
-                  onReopen={() => handleStatus('Pending')}
-                  selectedLeadStatus={selectedLead.status}
-                />
-              </>
+              selectedLead.channel === 'sms' ? (
+                <>
+                  <SmsThreadView
+                    key={selectedLead._id}
+                    lead={selectedLead}
+                    messages={currentMessages}
+                    isTyping={isCustomerTyping}
+                  />
+                  <SmsReplySection
+                    message={replyMessage}
+                    setMessage={setReplyMessage}
+                    onSend={handleSend}
+                    isSending={isSending}
+                    onApptOpen={() => setApptOpen(true)}
+                    onStatusChange={handleStatus}
+                  />
+                </>
+              ) : (
+                <>
+                  <ConversationView
+                    lead={selectedLead}
+                    threads={threads[selectedLead._id] || []}
+                    onClose={() => setSelectedLead(null)}
+                    sourceEmail={LEADS_SOURCE_EMAIL}
+                  />
+                  <ReplySection
+                    isClosed={isClosed}
+                    replyMessage={replyMessage}
+                    setReplyMessage={setReplyMessage}
+                    onSend={handleSend}
+                    isSending={isSending}
+                    onStatusChange={handleStatus}
+                    onApptOpen={() => setApptOpen(true)}
+                    onReopen={() => handleStatus('Pending')}
+                    selectedLeadStatus={selectedLead.status}
+                  />
+                </>
+              )
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
                 <div className="h-24 w-24 rounded-[32px] border-2 border-dashed border-border bg-white dark:bg-muted/10 shadow-sm flex items-center justify-center">

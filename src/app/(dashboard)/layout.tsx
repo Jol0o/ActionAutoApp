@@ -15,6 +15,7 @@ import { NotificationProvider } from "@/context/NotificationContext"
 import { ProfileProvider, useProfileContext } from "@/context/ProfileContext"
 import { ProfileToastProvider } from "@/components/ProfileToast"
 import { useRouter } from "next/navigation"
+import { DynamicIsland } from "@/components/layout/DynamicIsland"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -102,6 +103,7 @@ function DashboardLayoutContent({
 
     return (
         <SidebarProvider>
+            {/* <DynamicIsland /> */}
             <AppSidebar />
             <SidebarInset>
                 <header className="flex h-16 shrink-0 items-center justify-between px-2 sm:px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

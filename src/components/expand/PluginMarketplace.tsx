@@ -31,12 +31,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { NumberProvisioningGala } from "./NumberProvisioningGala";
 
 export default function PluginMarketplace() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
   const [plugins, setPlugins] = useState<Plugin[]>(marketplacePlugins);
+  const [isProvisioning, setIsProvisioning] = useState(false);
 
   const filteredPlugins = useMemo(() => {
     return plugins.filter((p) => {
@@ -53,6 +55,11 @@ export default function PluginMarketplace() {
   }, [plugins, searchQuery, selectedCategory]);
 
   const handleEnroll = (pluginId: string) => {
+    if (pluginId === 'crm-pro') {
+      setIsProvisioning(true);
+      return;
+    }
+
     setPlugins((prev) =>
       prev.map((p) => (p.id === pluginId ? { ...p, status: "enrolling" } : p)),
     );
@@ -70,6 +77,29 @@ export default function PluginMarketplace() {
         description: `${plugins.find((p) => p.id === pluginId)?.name} is now ready for use.`,
       });
     }, 2000);
+  };
+
+  const handleProvisionComplete = (phoneNumber: string) => {
+    setIsProvisioning(false);
+    const pluginId = 'crm-pro';
+    
+    setPlugins((prev) =>
+      prev.map((p) => (p.id === pluginId ? { ...p, status: "enrolling" } : p)),
+    );
+
+    setTimeout(() => {
+      setPlugins((prev) => {
+        const updated = prev.map((p) =>
+          p.id === pluginId ? { ...p, status: "active" as const } : p,
+        );
+        const newPlugin = updated.find((p) => p.id === pluginId);
+        if (newPlugin) setSelectedPlugin(newPlugin);
+        return updated;
+      });
+      toast.success("CRM Pro Activated", {
+        description: `Your new line ${phoneNumber} is ready to use!`,
+      });
+    }, 1500);
   };
 
   const handleDeactivate = (pluginId: string) => {
@@ -220,6 +250,13 @@ export default function PluginMarketplace() {
                   onDeactivate={() => handleDeactivate(selectedPlugin.id)}
                 />
               </Card>
+            </div>
+          )}
+
+          {/* Number Provisioning Gala Overlay */}
+          {isProvisioning && (
+            <div className="absolute inset-0 bg-black/95 backdrop-blur-3xl z-[100] flex items-center justify-center animate-in fade-in duration-500">
+               <NumberProvisioningGala onComplete={handleProvisionComplete} />
             </div>
           )}
         </main>

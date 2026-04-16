@@ -115,7 +115,9 @@ export const LeadsList = React.memo(({
                       </p>
                       <span className="text-[10px] text-muted-foreground/50 shrink-0 tabular-nums">{fmtShort(new Date(lead.createdAt))}</span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground/50 truncate mb-1">{lead.email}</p>
+                    <p className="text-[11px] text-muted-foreground/50 truncate mb-1">
+                      {lead.channel === 'sms' ? lead.phone : lead.email}
+                    </p>
                     <p className={`text-xs truncate leading-snug ${lead.isRead ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
                       {lead.subject || '(No subject)'}
                     </p>
