@@ -54,14 +54,14 @@ function ResizeDivider({ onDrag }: { onDrag: (deltaX: number) => void }) {
       onMouseDown={(e) => { e.preventDefault(); setIsDragging(true) }}
       onTouchStart={(e) => { lastTouchX.current = e.touches[0].clientX; setIsDragging(true) }}
       className={`
-        relative flex-shrink-0 w-[6px] cursor-col-resize
+        relative shrink-0 w-1.5 cursor-col-resize
         flex items-center justify-center group/divider z-10
         transition-colors duration-150
         ${isDragging ? "bg-emerald-500/20" : "hover:bg-muted/60"}
       `}
     >
       <div className={`
-        flex flex-col items-center gap-0.5 rounded-full px-[3px] py-2 transition-all duration-150
+        flex flex-col items-center gap-0.5 rounded-full px-0.75 py-2 transition-all duration-150
         ${isDragging
           ? "bg-emerald-500 text-white shadow-sm"
           : "bg-border/60 text-muted-foreground/40 group-hover/divider:bg-emerald-500/60 group-hover/divider:text-white"
@@ -91,11 +91,10 @@ export function PaneToolbar({ tabOptions }: { tabOptions: TabOption[] }) {
             variant="outline"
             size="sm"
             onClick={toggleFullscreen}
-            className={`h-8 w-8 p-0 rounded-lg transition-all ${
-              isFullscreen
+            className={`h-8 w-8 p-0 rounded-lg transition-all ${isFullscreen
                 ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 hover:text-white"
                 : "border-border/50 hover:border-emerald-500/40"
-            }`}
+              }`}
           >
             {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
           </Button>
@@ -120,7 +119,7 @@ export function PaneToolbar({ tabOptions }: { tabOptions: TabOption[] }) {
                 <ChevronDown className="h-3 w-3 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 rounded-xl z-[200]">
+            <DropdownMenuContent align="end" className="w-52 rounded-xl z-200">
               <div className="px-2 py-1.5">
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
                   Open in new pane
@@ -153,7 +152,7 @@ export function PaneToolbar({ tabOptions }: { tabOptions: TabOption[] }) {
                   <span className="hidden sm:inline">Single View</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs z-[200]">
+              <TooltipContent side="bottom" className="text-xs z-200">
                 Close all extra panes
               </TooltipContent>
             </Tooltip>
@@ -275,7 +274,7 @@ export function MultiPaneContainer({
                       <ChevronDown className="h-3 w-3 text-muted-foreground/40 shrink-0" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48 rounded-xl z-[200]">
+                  <DropdownMenuContent align="start" className="w-48 rounded-xl z-200">
                     <div className="px-2 py-1.5">
                       <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
                         Switch tab
@@ -285,9 +284,8 @@ export function MultiPaneContainer({
                       <DropdownMenuItem
                         key={tab.id}
                         onClick={() => setPaneTab(pane.id, tab.id)}
-                        className={`text-xs gap-2 cursor-pointer ${
-                          tab.id === pane.selectedTab ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : ""
-                        }`}
+                        className={`text-xs gap-2 cursor-pointer ${tab.id === pane.selectedTab ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : ""
+                          }`}
                       >
                         {tab.icon}
                         {tab.label}
@@ -312,7 +310,7 @@ export function MultiPaneContainer({
                         <X className="h-3 w-3" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs z-[200]">
+                    <TooltipContent side="bottom" className="text-xs z-200">
                       Close pane
                     </TooltipContent>
                   </Tooltip>

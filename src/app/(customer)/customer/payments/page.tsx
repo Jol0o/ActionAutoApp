@@ -118,12 +118,12 @@ export default function CustomerPaymentsPage() {
 
   const stripeOptions: StripeElementsOptions | undefined = clientSecret
     ? {
-        clientSecret,
-        appearance: {
-          theme: "stripe",
-          variables: { colorPrimary: "#16a34a", borderRadius: "8px" },
-        },
-      }
+      clientSecret,
+      appearance: {
+        theme: "stripe",
+        variables: { colorPrimary: "#16a34a", borderRadius: "8px" },
+      },
+    }
     : undefined;
 
   const pending = payments.filter((p) => p.status === "pending" || p.status === "failed");
@@ -275,7 +275,7 @@ export default function CustomerPaymentsPage() {
                   pending.map((p) => (
                     <TableRow key={p._id} className="border-border hover:bg-muted/50">
                       <TableCell className="font-mono text-xs">{p.invoiceNumber || "—"}</TableCell>
-                      <TableCell className="text-sm max-w-[200px] truncate">{p.description}</TableCell>
+                      <TableCell className="text-sm max-w-50 truncate">{p.description}</TableCell>
                       <TableCell className="font-bold text-amber-700 dark:text-amber-400">
                         {formatCurrency(p.amount)}
                       </TableCell>
@@ -330,7 +330,7 @@ export default function CustomerPaymentsPage() {
                   history.map((p) => (
                     <TableRow key={p._id} className="border-border hover:bg-muted/50">
                       <TableCell className="font-mono text-xs">{p.invoiceNumber || "—"}</TableCell>
-                      <TableCell className="text-sm max-w-[200px] truncate">{p.description}</TableCell>
+                      <TableCell className="text-sm max-w-50 truncate">{p.description}</TableCell>
                       <TableCell className={`font-bold ${p.status === "succeeded" ? "text-emerald-700 dark:text-emerald-400" : ""}`}>
                         {formatCurrency(p.amount)}
                       </TableCell>

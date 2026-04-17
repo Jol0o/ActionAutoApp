@@ -19,6 +19,27 @@ import { apiClient } from '@/lib/api-client';
 import { useSupraSpaceSocket, SSConversation, SSMessage } from '@/hooks/useSupraSpaceSocket';
 import { cn } from '@/lib/utils';
 
+const SS4_MAX_UPLOAD_FILES = 5;
+const SS4_MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024;
+const SS4_ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'text/csv',
+  'application/zip',
+]);
+const SS4_ALLOWED_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf',
+  '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.zip',
+]);
+
 // ─── Font + Style Injection ──────────────────────────────────────────────────
 if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
   const link = document.createElement('link');
@@ -711,7 +732,7 @@ function Bubble({ message, isOwn, showAvatar, onReply, onDelete }: {
 
         {/* Bubble */}
         <div className={cn(
-          'px-4 py-2.5 text-sm leading-relaxed break-words',
+          'px-4 py-2.5 text-sm leading-relaxed wrap-break-word',
           isOwn ? 'ss4-bubble-own' : 'ss4-bubble-other'
         )}>
           {message.attachments.filter(a => a.mimeType.startsWith('image/')).map((att, i) => (
@@ -835,7 +856,7 @@ function VideoCallModal({ conv, uid, onClose }: { conv: SSConversation; uid: str
               {state === 'calling' ? (
                 <div className="flex items-center gap-2">
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Calling</span>
-                  {[0,1,2].map(i => (
+                  {[0, 1, 2].map(i => (
                     <span key={i} className="ss4-typing-dot h-1 w-1 rounded-full inline-block"
                       style={{ background: 'rgba(255,255,255,0.4)', animationDelay: `${i * 0.2}s` }} />
                   ))}
@@ -964,7 +985,7 @@ function NewConvModal({ users, onClose, onStartDM, onCreateGroup }: {
                   onClick={() => tab === 'dm' ? onStartDM(u._id) : toggle(u._id)}
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left',
-                    active ? 'bg-[var(--accent-muted)] border border-[rgba(91,124,246,0.2)]' : 'hover:bg-[var(--bg-hover)]'
+                    active ? 'bg-(--accent-muted) border border-[rgba(91,124,246,0.2)]' : 'hover:bg-(--bg-hover)'
                   )}
                 >
                   <div className={cn('h-8 w-8 rounded-full shrink-0 flex items-center justify-center overflow-hidden', getAvaColor(u.fullName))}>
@@ -1006,6 +1027,7 @@ function NewConvModal({ users, onClose, onStartDM, onCreateGroup }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SupraSpacePage() {
   const router = useRouter();
+  const uploadNoticeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [token, setToken] = React.useState('');
   const [uid, setUid] = React.useState('');
   const [loading, setLoading] = React.useState(true);
@@ -1023,6 +1045,8 @@ export default function SupraSpacePage() {
   const [replyTo, setReplyTo] = React.useState<SSMessage | null>(null);
   const [sending, setSending] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
+  const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
+  const [uploadNotice, setUploadNotice] = React.useState<{ kind: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   const [showModal, setShowModal] = React.useState(false);
   const [allUsers, setAllUsers] = React.useState<CrmUser[]>([]);
@@ -1064,6 +1088,29 @@ export default function SupraSpacePage() {
     init();
   }, [router]);
 
+  React.useEffect(() => {
+    return () => {
+      if (uploadNoticeTimerRef.current) clearTimeout(uploadNoticeTimerRef.current);
+    };
+  }, []);
+
+  const showUploadNotice = React.useCallback((kind: 'success' | 'error' | 'info', text: string) => {
+    if (uploadNoticeTimerRef.current) clearTimeout(uploadNoticeTimerRef.current);
+    setUploadNotice({ kind, text });
+    uploadNoticeTimerRef.current = setTimeout(() => setUploadNotice(null), 3500);
+  }, []);
+
+  const appendMessageLocal = React.useCallback((conversationId: string, message: SSMessage) => {
+    setMsgs(p => {
+      const ex = p[conversationId] || [];
+      if (ex.find(m => m._id === message._id)) return p;
+      return { ...p, [conversationId]: [...ex, message] };
+    });
+    setConvos(p => p.map(c => c._id === conversationId
+      ? { ...c, lastMessage: message, lastMessageAt: message.createdAt } : c
+    ).sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()));
+  }, []);
+
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
@@ -1073,14 +1120,7 @@ export default function SupraSpacePage() {
   React.useEffect(() => {
     if (!socket) return;
     const onMsg = ({ conversationId, message }: { conversationId: string; message: SSMessage }) => {
-      setMsgs(p => {
-        const ex = p[conversationId] || [];
-        if (ex.find(m => m._id === message._id)) return p;
-        return { ...p, [conversationId]: [...ex, message] };
-      });
-      setConvos(p => p.map(c => c._id === conversationId
-        ? { ...c, lastMessage: message, lastMessageAt: message.createdAt } : c
-      ).sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()));
+      appendMessageLocal(conversationId, message);
     };
     const onDel = ({ conversationId, messageId }: { conversationId: string; messageId: string }) => {
       setMsgs(p => ({ ...p, [conversationId]: (p[conversationId] || []).map(m => m._id === messageId ? { ...m, isDeleted: true, content: '', attachments: [] } : m) }));
@@ -1090,7 +1130,7 @@ export default function SupraSpacePage() {
     socket.on('message:deleted', onDel);
     socket.on('conversation:new', onNew);
     return () => { socket.off('message:new', onMsg); socket.off('message:deleted', onDel); socket.off('conversation:new', onNew); };
-  }, [socket]);
+  }, [socket, appendMessageLocal]);
 
   React.useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [activeMsgs.length]);
 
@@ -1110,30 +1150,107 @@ export default function SupraSpacePage() {
     return () => leaveConversation(activeId);
   }, [activeId, token]); // eslint-disable-line
 
+  React.useEffect(() => {
+    setPendingFiles([]);
+    setUploadNotice(null);
+  }, [activeId]);
+
   const handleSend = async () => {
-    if (!input.trim() || !activeId || sending) return;
-    setSending(true);
-    sendTypingStop(activeId);
+    if (!activeId || sending) return;
+    const hasText = Boolean(input.trim());
+    const hasPendingFiles = pendingFiles.length > 0;
+    if (!hasText && !hasPendingFiles) return;
+
+    const conversationId = activeId;
     const content = input.trim();
-    const rId = replyTo?._id;
-    setInput('');
-    setReplyTo(null);
+    const replyMessageId = replyTo?._id;
+
+    setSending(true);
+    sendTypingStop(conversationId);
+
     try {
-      await apiClient.post(`/api/supraspace/conversations/${activeId}/messages`, { content, replyTo: rId }, { headers: { Authorization: `Bearer ${token}` } });
-    } catch { setInput(content); }
-    finally { setSending(false); }
+      if (hasPendingFiles) {
+        setUploading(true);
+        const fd = new FormData();
+        pendingFiles.forEach(f => fd.append('files', f));
+        if (content) fd.append('content', content);
+        if (replyMessageId) fd.append('replyTo', replyMessageId);
+
+        const uploadResponse = await apiClient.post(
+          `/api/supraspace/conversations/${conversationId}/upload`,
+          fd,
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+        );
+        const uploadedMessage = uploadResponse.data?.data as SSMessage | undefined;
+        if (uploadedMessage) appendMessageLocal(conversationId, uploadedMessage);
+
+        setPendingFiles([]);
+        setInput('');
+        setReplyTo(null);
+        showUploadNotice('success', pendingFiles.length === 1 ? 'Attachment sent.' : `${pendingFiles.length} attachments sent.`);
+      } else {
+        setInput('');
+        setReplyTo(null);
+        const sendResponse = await apiClient.post(
+          `/api/supraspace/conversations/${conversationId}/messages`,
+          { content, replyTo: replyMessageId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const sentMessage = sendResponse.data?.data as SSMessage | undefined;
+        if (sentMessage) appendMessageLocal(conversationId, sentMessage);
+      }
+    } catch (error: any) {
+      if (hasPendingFiles) {
+        const message = error?.response?.data?.message || 'Failed to send attachment. Please try again.';
+        showUploadNotice('error', message);
+      } else {
+        setInput(content);
+      }
+    } finally {
+      setSending(false);
+      setUploading(false);
+    }
   };
 
   const handleUpload = async (files: FileList | null) => {
-    if (!files || !activeId) return;
-    setUploading(true);
-    const fd = new FormData();
-    Array.from(files).forEach(f => fd.append('files', f));
-    if (replyTo) fd.append('replyTo', replyTo._id);
-    setReplyTo(null);
-    try {
-      await apiClient.post(`/api/supraspace/conversations/${activeId}/upload`, fd, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
-    } catch {} finally { setUploading(false); }
+    if (!files) return;
+    if (!activeId) {
+      showUploadNotice('error', 'Select a conversation before attaching files.');
+      return;
+    }
+
+    const selectedFiles = Array.from(files);
+    if (selectedFiles.length === 0) return;
+
+    const totalFiles = pendingFiles.length + selectedFiles.length;
+    if (totalFiles > SS4_MAX_UPLOAD_FILES) {
+      showUploadNotice('error', `You can attach up to ${SS4_MAX_UPLOAD_FILES} files.`);
+      return;
+    }
+
+    for (const file of selectedFiles) {
+      const ext = file.name.includes('.')
+        ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
+        : '';
+      const allowedType = SS4_ALLOWED_MIME_TYPES.has(file.type) || SS4_ALLOWED_EXTENSIONS.has(ext);
+      if (!allowedType) {
+        showUploadNotice('error', `${file.name} is not a supported file type.`);
+        return;
+      }
+      if (file.size > SS4_MAX_UPLOAD_SIZE_BYTES) {
+        showUploadNotice('error', `${file.name} exceeds 25 MB.`);
+        return;
+      }
+    }
+
+    setPendingFiles(prev => [...prev, ...selectedFiles]);
+    showUploadNotice('info', selectedFiles.length === 1
+      ? `${selectedFiles[0].name} attached. Press Send to deliver.`
+      : `${selectedFiles.length} files attached. Press Send to deliver.`);
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1215,7 +1332,7 @@ export default function SupraSpacePage() {
       setConvos(p => p.find(x => x._id === c._id) ? p : [c, ...p]);
       setActiveId(c._id);
       setSideOpen(false);
-    } catch {}
+    } catch { }
   };
 
   const handleGroup = async (name: string, ids: string[]) => {
@@ -1225,7 +1342,7 @@ export default function SupraSpacePage() {
       setConvos(p => [r.data?.data, ...p]);
       setActiveId(r.data?.data._id);
       setSideOpen(false);
-    } catch {}
+    } catch { }
   };
 
   const loadMore = async () => {
@@ -1236,7 +1353,7 @@ export default function SupraSpacePage() {
       const d = r.data?.data || [];
       setMsgs(p => ({ ...p, [activeId]: [...d, ...(p[activeId] || [])] }));
       setHasMore(p => ({ ...p, [activeId]: d.length === 40 }));
-    } catch {} finally { setLoadingMsgs(false); }
+    } catch { } finally { setLoadingMsgs(false); }
   };
 
   const typers = activeId ? (typing[activeId] || []).filter(t => t.userId !== uid) : [];
@@ -1252,7 +1369,7 @@ export default function SupraSpacePage() {
         <div className="flex flex-col items-center gap-2">
           <p className="ss4-display font-bold" style={{ fontSize: 16, color: 'var(--text-primary)' }}>Supra Space</p>
           <div className="flex gap-1.5">
-            {[0,1,2].map(i => (
+            {[0, 1, 2].map(i => (
               <span key={i} className="ss4-typing-dot h-1.5 w-1.5 rounded-full"
                 style={{ background: 'var(--accent)', animationDelay: `${i * 0.2}s` }} />
             ))}
@@ -1474,12 +1591,12 @@ export default function SupraSpacePage() {
                     {activeConv.type === 'group'
                       ? `${activeConv.members.length} members`
                       : (() => {
-                          const o = activeConv.members.find(m => m._id !== uid);
-                          if (!o) return '';
-                          return presence[o._id] === 'online'
-                            ? <span style={{ color: 'var(--positive)' }}>● Active now</span>
-                            : 'Offline';
-                        })()}
+                        const o = activeConv.members.find(m => m._id !== uid);
+                        if (!o) return '';
+                        return presence[o._id] === 'online'
+                          ? <span style={{ color: 'var(--positive)' }}>● Active now</span>
+                          : 'Offline';
+                      })()}
                   </p>
                 </div>
 
@@ -1551,7 +1668,7 @@ export default function SupraSpacePage() {
                         {typers.map(t => t.fullName).join(', ')} {typers.length === 1 ? 'is' : 'are'} typing
                       </span>
                       <div className="flex gap-1">
-                        {[0,1,2].map(i => (
+                        {[0, 1, 2].map(i => (
                           <span key={i} className="ss4-typing-dot h-1.5 w-1.5 rounded-full"
                             style={{ background: 'var(--accent)', animationDelay: `${i * 0.2}s` }} />
                         ))}
@@ -1583,6 +1700,49 @@ export default function SupraSpacePage() {
                   </div>
                 )}
 
+                {pendingFiles.length > 0 && (
+                  <div className="ss4-reply-bar flex flex-col gap-2 px-3 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold" style={{ fontSize: 11, color: 'var(--accent-text)' }}>
+                        {pendingFiles.length} attachment{pendingFiles.length === 1 ? '' : 's'} ready
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setPendingFiles([])}
+                        className="ss4-icon-btn h-6 px-2"
+                        style={{ fontSize: 10, color: 'var(--text-tertiary)' }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {pendingFiles.map((file, index) => (
+                        <div
+                          key={`${file.name}-${file.size}-${index}`}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1"
+                          style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-1)' }}
+                        >
+                          <FileText className="h-3.5 w-3.5" style={{ color: 'var(--accent)' }} />
+                          <span className="max-w-32 truncate" style={{ fontSize: 11, color: 'var(--text-primary)' }}>
+                            {file.name}
+                          </span>
+                          <span className="ss4-mono" style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                            {fmtSize(file.size)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removePendingFile(index)}
+                            className="ss4-icon-btn h-5 w-5"
+                            title="Remove attachment"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Input wrapper */}
                 <div className="ss4-input-wrap flex flex-col">
                   <div className="flex items-end gap-2 px-3.5 pt-3 pb-2">
@@ -1594,7 +1754,7 @@ export default function SupraSpacePage() {
                       }}
                       placeholder="Message..."
                       rows={1}
-                      className="flex-1 resize-none bg-transparent text-sm focus:outline-none max-h-36 min-h-[28px] py-0.5"
+                      className="flex-1 resize-none bg-transparent text-sm focus:outline-none max-h-36 min-h-7 py-0.5"
                       style={{ fontFamily: 'Geist, sans-serif', lineHeight: '1.55', color: 'var(--text-primary)', caretColor: 'var(--accent)' }}
                     />
                   </div>
@@ -1603,12 +1763,24 @@ export default function SupraSpacePage() {
                   <div className="flex items-center justify-between px-3 pb-2.5 pt-1.5" style={{ borderTop: '1px solid var(--border-1)' }}>
                     <div className="flex items-center gap-1">
                       {/* Attach */}
-                      <button onClick={() => fileRef.current?.click()} disabled={uploading} className="ss4-icon-btn h-7 w-7" title="Attach files">
+                      <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading || sending} className="ss4-icon-btn h-7 w-7" title="Attach files">
                         {uploading
                           ? <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--accent)' }} />
                           : <Paperclip className="h-4 w-4" />}
                       </button>
-                      <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" className="hidden" onChange={e => handleUpload(e.target.files)} />
+                      <input
+                        id="ss4-file-upload"
+                        ref={fileRef}
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                        className="sr-only"
+                        onChange={e => {
+                          const selected = e.target.files;
+                          void handleUpload(selected);
+                          e.currentTarget.value = '';
+                        }}
+                      />
 
                       {/* Supra Leo AI */}
                       <div className="relative" ref={supraLeoRef}>
@@ -1644,7 +1816,7 @@ export default function SupraSpacePage() {
                                 <>
                                   <button
                                     onClick={() => handleSupraLeoAction('improve')}
-                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-(--bg-hover)"
                                     style={{ fontSize: 12, color: 'var(--text-primary)' }}
                                   >
                                     <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: '#b49dff' }} />
@@ -1652,7 +1824,7 @@ export default function SupraSpacePage() {
                                   </button>
                                   <button
                                     onClick={() => handleSupraLeoAction('formal')}
-                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-(--bg-hover)"
                                     style={{ fontSize: 12, color: 'var(--text-primary)' }}
                                   >
                                     <Bot className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
@@ -1660,7 +1832,7 @@ export default function SupraSpacePage() {
                                   </button>
                                   <button
                                     onClick={() => handleSupraLeoAction('casual')}
-                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-(--bg-hover)"
                                     style={{ fontSize: 12, color: 'var(--text-primary)' }}
                                   >
                                     <Bot className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
@@ -1670,7 +1842,7 @@ export default function SupraSpacePage() {
                               ) : (
                                 <button
                                   onClick={() => handleSupraLeoAction('draft')}
-                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-(--bg-hover)"
                                   style={{ fontSize: 12, color: 'var(--text-primary)' }}
                                 >
                                   <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: '#b49dff' }} />
@@ -1683,12 +1855,27 @@ export default function SupraSpacePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
+                      {uploadNotice && (
+                        <span
+                          className="max-w-50 truncate ss4-mono"
+                          style={{
+                            fontSize: 10,
+                            color: uploadNotice.kind === 'error'
+                              ? 'var(--danger)'
+                              : uploadNotice.kind === 'success'
+                                ? 'var(--positive)'
+                                : 'var(--text-tertiary)',
+                          }}
+                        >
+                          {uploadNotice.text}
+                        </span>
+                      )}
                       <span className="ss4-mono" style={{ fontSize: 10, color: 'var(--text-disabled)' }}>⏎ Send</span>
-                      <button onClick={handleSend} disabled={!input.trim() || sending} className="ss4-send-btn h-7 w-7 flex items-center justify-center">
-                        {sending
+                      <button onClick={handleSend} disabled={(!input.trim() && pendingFiles.length === 0) || sending || uploading} className="ss4-send-btn h-7 w-7 flex items-center justify-center">
+                        {(sending || uploading)
                           ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#fff' }} />
-                          : <Send className="h-3.5 w-3.5" style={{ color: '#fff', opacity: input.trim() ? 1 : 0.5 }} />}
+                          : <Send className="h-3.5 w-3.5" style={{ color: '#fff', opacity: (input.trim() || pendingFiles.length > 0) ? 1 : 0.5 }} />}
                       </button>
                     </div>
                   </div>

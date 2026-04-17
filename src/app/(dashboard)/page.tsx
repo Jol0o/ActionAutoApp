@@ -77,7 +77,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <p className="text-destructive font-bold">
             Failed to load dashboard metrics
@@ -262,11 +262,10 @@ export default function Dashboard() {
                 <button
                   key={month}
                   onClick={() => setLeaderboardMonth(month)}
-                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
-                    leaderboardMonth === month
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${leaderboardMonth === month
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
                 >
                   {month}
                 </button>
@@ -355,7 +354,7 @@ export default function Dashboard() {
         {/* Logistics & Driver Health */}
         <div className="lg:col-span-4 space-y-6">
           <Card className="border-border/50 p-0 bg-card shadow-sm gap-0">
-            <CardHeader className="!pt-3 !pb-2 px-6 gap-1.5 content-center border-b border-border/10">
+            <CardHeader className="pt-3! pb-2! px-6 gap-1.5 content-center border-b border-border/10">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Users className="size-4 text-primary" />
                 Driver Status
@@ -385,7 +384,7 @@ export default function Dashboard() {
           </Card>
 
           <Card className="border-border/50 p-0 bg-card shadow-sm flex-1 gap-0">
-            <CardHeader className="!pt-3 !pb-2 px-6 gap-1 content-center grid-rows-[auto] border-b border-border/10">
+            <CardHeader className="pt-3! pb-2! px-6 gap-1 content-center grid-rows-[auto] border-b border-border/10">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Package className="size-4 text-primary" />
                 Shipment Tracker
@@ -440,11 +439,10 @@ export default function Dashboard() {
                   <button
                     key={period}
                     onClick={() => setRevenuePeriod(period)}
-                    className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
-                      revenuePeriod === period
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${revenuePeriod === period
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                      }`}
                   >
                     {period}
                   </button>
@@ -455,11 +453,11 @@ export default function Dashboard() {
                   {isLoading
                     ? "..."
                     : formatCurrency(
-                        trajectoryData.reduce(
-                          (acc: number, curr: any) => acc + curr.revenue,
-                          0,
-                        ),
-                      )}
+                      trajectoryData.reduce(
+                        (acc: number, curr: any) => acc + curr.revenue,
+                        0,
+                      ),
+                    )}
                 </p>
                 <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest mt-1">
                   Total Period Revenue
@@ -467,15 +465,12 @@ export default function Dashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0 h-[400px]">
+          <CardContent className="h-100 px-2 pt-2 pb-6 sm:px-4 sm:pb-7">
             {isLoading ? (
               <Skeleton className="h-full w-full" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={trajectoryData}
-                  margin={{ top: 20, right: 10, left: 10, bottom: 20 }}
-                >
+                <AreaChart data={trajectoryData} margin={{ top: 16, right: 16, left: 16, bottom: 36 }}>
                   <defs>
                     <linearGradient
                       id="colorRevRestored"
@@ -506,7 +501,8 @@ export default function Dashboard() {
                       fontWeight: 800,
                     }}
                     interval="preserveStartEnd"
-                    dy={10}
+                    tickMargin={10}
+                    padding={{ left: 8, right: 8 }}
                   />
                   <Tooltip
                     content={({ active, payload }) => {
@@ -546,59 +542,54 @@ export default function Dashboard() {
               <DollarSign className="size-4 text-primary" />
               Live Payment Stream
             </CardTitle>
-            <Link
-              href="/payments"
-              className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1 group"
-            >
-              View All{" "}
-              <ChevronRight className="size-3 group-hover:translate-x-1" />
+            <Link href="/billing/payments" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1 group">
+              View All <ChevronRight className="size-3 group-hover:translate-x-1" />
             </Link>
           </CardHeader>
-          <div className="max-h-[320px] overflow-auto">
+          <div className="h-120 overflow-auto">
             <Table>
               <TableBody>
                 {isLoading
                   ? [1, 2, 3, 4, 5, 6].map((i: number) => (
-                      <TableRow key={i}>
-                        <TableCell colSpan={3}>
-                          <Skeleton className="h-12 w-full" />
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    <TableRow key={i}>
+                      <TableCell colSpan={3}>
+                        <Skeleton className="h-12 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))
                   : livePayments.map((payment: any, i: number) => (
-                      <TableRow
-                        key={i}
-                        className="hover:bg-muted/20 border-border/50 transition-colors h-10"
-                      >
-                        <TableCell className="px-8">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-foreground">
-                              {payment.customerName}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter mt-1">
-                              {payment.description}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-black text-sm text-center">
-                          {formatCurrency(payment.amount)}
-                        </TableCell>
-                        <TableCell className="text-right px-8">
-                          <Badge
-                            variant="secondary"
-                            className={`text-[9px] font-black uppercase px-2 py-0.5 border-none ${
-                              payment.status === "succeeded"
-                                ? "bg-emerald-500/10 text-emerald-500"
-                                : payment.status === "processing"
-                                  ? "bg-amber-500/10 text-amber-500"
-                                  : "bg-rose-500/10 text-rose-500"
+                    <TableRow
+                      key={i}
+                      className="hover:bg-muted/20 border-border/50 transition-colors h-10"
+                    >
+                      <TableCell className="px-8">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-foreground">
+                            {payment.customerName}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter mt-1">
+                            {payment.description}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-black text-sm text-center">
+                        {formatCurrency(payment.amount)}
+                      </TableCell>
+                      <TableCell className="text-right px-8">
+                        <Badge
+                          variant="secondary"
+                          className={`text-[9px] font-black uppercase px-2 py-0.5 border-none ${payment.status === "succeeded"
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : payment.status === "processing"
+                              ? "bg-amber-500/10 text-amber-500"
+                              : "bg-rose-500/10 text-rose-500"
                             }`}
-                          >
-                            {payment.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                        >
+                          {payment.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </div>
@@ -665,7 +656,7 @@ export default function Dashboard() {
                     (logisticsData.drivers.active /
                       (logisticsData.drivers.active +
                         logisticsData.drivers.ready || 1)) *
-                      100,
+                    100,
                   )}
                   % of drivers currently active/ready
                 </p>

@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   CreditCard,
   Settings,
-  Terminal,
   CheckCircle2,
   Phone,
   MessageSquare,
@@ -87,10 +86,13 @@ export default function PluginMarketplace() {
       {/* Header Area */}
       <header className="h-16 border-b flex items-center justify-between px-8 bg-card/50 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <Terminal className="size-5 text-primary" />
-          <h1 className="text-lg font-extrabold tracking-tight uppercase">
-            Expand Market
-          </h1>
+          <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+            <Zap className="size-4" />
+          </div>
+          <div>
+            <h1 className="text-lg font-extrabold tracking-tight uppercase">Plugins</h1>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Marketplace</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-6">
