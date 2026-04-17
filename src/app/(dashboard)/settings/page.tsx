@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import {
     FileText,
     Settings as SettingsIcon,
@@ -15,6 +15,8 @@ import {
     Share2,
     Trash2,
     Printer,
+    ArrowRight,
+    X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -41,12 +43,15 @@ import { DriverVerificationPanel } from "@/components/settings/driver-verificati
 import { BulkInviteDialog } from "@/components/admin/BulkInviteDialog"
 import { Truck } from "lucide-react"
 
+type ReportCategory = "transportation" | "driver" | "billings"
+
 interface FileEntry {
     id: string
     name: string
     date: string
     size: string
     type: string
+    category: ReportCategory
     url?: string
 }
 
@@ -65,14 +70,21 @@ const SETTINGS_NAV_ITEMS: Array<{
     ]
 
 const INITIAL_FILES: FileEntry[] = [
-    { id: "1", name: "Condition_Report_AA1024.pdf", date: "12 mins ago", size: "2.4 MB", type: "PDF" },
-    { id: "2", name: "Inventory_Snapshot_Jan_14.xlsx", date: "2 hours ago", size: "1.1 MB", type: "XLSX" },
-    { id: "3", name: "Market_Supply_Audit_Region_Utah.pdf", date: "Yesterday", size: "4.8 MB", type: "PDF" },
-    { id: "4", name: "Recon_Efficiency_Weekly.pdf", date: "Jan 12, 2026", size: "1.2 MB", type: "PDF" },
+    { id: "1", name: "Shipment_Report_April_2026.pdf",        date: "12 mins ago",  size: "2.4 MB", type: "PDF",  category: "transportation" },
+    { id: "2", name: "Quotes_Drafts_Report_April_2026.pdf",   date: "2 hours ago",  size: "1.8 MB", type: "PDF",  category: "transportation" },
+    { id: "3", name: "Driver_Reports_April_2026.pdf",         date: "Yesterday",    size: "1.2 MB", type: "PDF",  category: "driver" },
+    { id: "4", name: "Billing_Report_April_2026.pdf",         date: "Jan 12, 2026", size: "3.1 MB", type: "PDF",  category: "billings" },
 ]
+
+const CATEGORY_LABELS: Record<ReportCategory, string> = {
+    transportation: "Transportation",
+    driver: "Driver Reports",
+    billings: "Billings",
+}
 
 export default function UtilitiesPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const defaultTab = searchParams.get('tab') || 'reports';
 
     const [files, setFiles] = React.useState<FileEntry[]>(INITIAL_FILES)
@@ -88,6 +100,13 @@ export default function UtilitiesPage() {
     const [activeSettingsSection, setActiveSettingsSection] = React.useState<SettingsSection>("account")
     const [deleteTarget, setDeleteTarget] = React.useState<FileEntry | null>(null)
     const [isDeleting, setIsDeleting] = React.useState(false)
+    const [activeCategory, setActiveCategory] = React.useState<ReportCategory | null>(null)
+
+    const visibleFiles = activeCategory ? files.filter(f => f.category === activeCategory) : files
+
+    const handleCardClick = (category: ReportCategory) => {
+        setActiveCategory(prev => prev === category ? null : category)
+    }
 
     const printableFiles = React.useMemo(
         () => files.filter((file) => selectedPrintFileIds.includes(file.id)),
@@ -507,38 +526,71 @@ export default function UtilitiesPage() {
                 <TabsContent value="reports" className="m-0 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <ReportCard
-                            title="Condition Reports"
-                            description="Detailed mechanical and cosmetic inspections for every vehicle."
-                            count={124}
-                            icon={<FileText className="size-5 text-primary" />}
+                            title="Transportation"
+                            description="Shipment tracking, delivery performance, route analysis, and quotes."
+                            count={2}
+                            icon={<Truck className="size-5 text-primary" />}
+                            active={activeCategory === "transportation"}
+                            onClick={() => handleCardClick("transportation")}
+                            onViewAll={() => router.push("/reports?tab=Transportation")}
                         />
                         <ReportCard
-                            title="Inventory Health"
-                            description="Daily audit of ADOL, pricing efficiency, and status flow."
-                            count={12}
-                            icon={<Shield className="size-5 text-primary" />}
+                            title="Driver Reports"
+                            description="Driver assignments, delivery outcomes, and per-driver performance."
+                            count={1}
+                            icon={<MapPin className="size-5 text-primary" />}
+                            active={activeCategory === "driver"}
+                            onClick={() => handleCardClick("driver")}
+                            onViewAll={() => router.push("/reports?tab=Driver+Reports")}
                         />
                         <ReportCard
-                            title="Financial Audits"
-                            description="Inventory value analysis and projected profit trends."
-                            count={8}
-                            icon={<CreditCard className="size-5 text-accent-foreground" />}
+                            title="Billings"
+                            description="Customer payments, driver payouts, and full transaction history."
+                            count={1}
+                            icon={<CreditCard className="size-5 text-primary" />}
+                            active={activeCategory === "billings"}
+                            onClick={() => handleCardClick("billings")}
+                            onViewAll={() => router.push("/reports?tab=Billings")}
                         />
                     </div>
 
                     <Card className="border-none shadow-sm bg-card">
                         <CardHeader className="border-b">
-                            <CardTitle className="text-lg font-bold">Recent Generated Files</CardTitle>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <CardTitle className="text-lg font-bold">Recent Generated Files</CardTitle>
+                                    {activeCategory && (
+                                        <Badge variant="secondary" className="gap-1.5 text-xs font-medium pr-1.5">
+                                            {CATEGORY_LABELS[activeCategory]}
+                                            <button
+                                                onClick={() => setActiveCategory(null)}
+                                                className="ml-0.5 rounded-full hover:bg-muted-foreground/20 transition-colors p-0.5"
+                                                title="Clear filter"
+                                            >
+                                                <X className="size-3" />
+                                            </button>
+                                        </Badge>
+                                    )}
+                                </div>
+                                {activeCategory && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {visibleFiles.length} of {files.length} files
+                                    </span>
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
-                            {files.length === 0 ? (
+                            {visibleFiles.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                                     <FileText className="size-8 mb-2 opacity-40" />
-                                    <p className="text-sm">No files yet</p>
+                                    <p className="text-sm">No files for this category</p>
+                                    <button onClick={() => setActiveCategory(null)} className="text-xs text-primary mt-1 hover:underline">
+                                        Show all files
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="divide-y">
-                                    {files.map((file) => (
+                                    {visibleFiles.map((file) => (
                                         <FileRow
                                             key={file.id}
                                             file={file}
@@ -798,18 +850,43 @@ export default function UtilitiesPage() {
     )
 }
 
-function ReportCard({ title, description, count, icon }: { title: string, description: string, count: number, icon: React.ReactNode }) {
+function ReportCard({
+    title, description, count, icon, active, onClick, onViewAll,
+}: {
+    title: string
+    description: string
+    count: number
+    icon: React.ReactNode
+    active: boolean
+    onClick: () => void
+    onViewAll: () => void
+}) {
     return (
-        <Card className="border-none shadow-sm hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer bg-card p-0 md:p-4">
+        <Card
+            onClick={onClick}
+            className={`border shadow-sm transition-all cursor-pointer bg-card p-0 md:p-4 group ${
+                active
+                    ? "border-primary/50 ring-2 ring-primary/20 bg-primary/5"
+                    : "border-border/50 hover:border-primary/30 hover:ring-1 hover:ring-primary/20 hover:shadow-md"
+            }`}
+        >
             <CardContent className="p-2 md:p-6">
                 <div className="flex gap-2 md:items-center justify-between mb-4">
-                    <div className="size-10 bg-secondary rounded-lg flex items-center justify-center border shrink-0">
+                    <div className={`size-10 rounded-lg flex items-center justify-center border shrink-0 transition-colors ${active ? "bg-primary/10 border-primary/30" : "bg-secondary"}`}>
                         {icon}
                     </div>
-                    <Badge variant="outline" className="h-5 text-[10px] font-bold text-muted-foreground">{count} Files</Badge>
+                    <Badge variant="outline" className={`h-5 text-[10px] font-bold transition-colors ${active ? "border-primary/40 text-primary" : "text-muted-foreground"}`}>
+                        {count} Files
+                    </Badge>
                 </div>
-                <h3 className="font-bold text-xs md:text-sm text-foreground mb-1">{title}</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed italic">{description}</p>
+                <h3 className={`font-bold text-xs md:text-sm mb-1 transition-colors ${active ? "text-primary" : "text-foreground"}`}>{title}</h3>
+                <p className="text-[11px] text-muted-foreground leading-relaxed italic mb-3">{description}</p>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onViewAll(); }}
+                    className="flex items-center gap-1 text-[11px] font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                >
+                    View in Reports <ArrowRight className="size-3" />
+                </button>
             </CardContent>
         </Card>
     )

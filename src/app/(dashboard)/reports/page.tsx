@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/providers/AuthProvider"
 import { apiClient } from "@/lib/api-client"
 import {
@@ -420,7 +421,12 @@ function getMonthOptions() {
 
 export default function ReportsPage() {
     const { getToken } = useAuth()
-    const [activeTab, setActiveTab] = React.useState<TabValue>("ALL")
+    const searchParams = useSearchParams()
+    const [activeTab, setActiveTab] = React.useState<TabValue>(() => {
+        const tab = searchParams.get("tab")
+        if (tab && (TABS as readonly string[]).includes(tab)) return tab as TabValue
+        return "ALL"
+    })
     const [selectedMonth, setSelectedMonth] = React.useState(() => {
         const now = new Date()
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`

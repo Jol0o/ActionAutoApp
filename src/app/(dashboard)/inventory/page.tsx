@@ -336,7 +336,7 @@ function InventoryContent() {
                                 <select
                                     value={currentSortValue}
                                     onChange={(e) => handleSortChange(e.target.value as SortOption)}
-                                    className="border border-border rounded px-3 py-1.5 pr-8 text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:border-transparent outline-none transition-all cursor-pointer"
+                                    className="appearance-none border border-border rounded px-3 py-1.5 pr-8 text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:border-transparent outline-none transition-all cursor-pointer"
                                 >
                                     <option value="make-asc">Make (A-Z)</option>
                                     <option value="make-desc">Make (Z-A)</option>
@@ -357,7 +357,7 @@ function InventoryContent() {
                 </div>
             </div>
 
-            <div className="flex-1 max-w-8xl mx-auto px-4 py-8 w-full">
+            <div className="flex-1 max-w-8xl mx-auto px-4 py-8 w-full bg-muted/20 rounded-xl">
                 {isLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {[...Array(8)].map((_, i) => (
