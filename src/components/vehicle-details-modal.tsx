@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Share2, Gauge, FileText, Fuel, MapPin, X } from "lucide-react"
+import { Share2, Gauge, FileText, Fuel, MapPin, X, ImageOff } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
     Dialog,
     DialogContent,
@@ -29,12 +30,22 @@ export function VehicleDetailsModal({
     shippingQuote
 }: VehicleDetailsModalProps) {
     const [activeImage, setActiveImage] = React.useState<string>("")
+    const [mainImgLoaded, setMainImgLoaded] = React.useState(false)
+    const [mainImgError, setMainImgError] = React.useState(false)
 
     React.useEffect(() => {
         if (vehicle) {
             setActiveImage(vehicle.image)
+            setMainImgLoaded(false)
+            setMainImgError(false)
         }
     }, [vehicle])
+
+    const switchImage = (img: string) => {
+        setActiveImage(img)
+        setMainImgLoaded(false)
+        setMainImgError(false)
+    }
 
     if (!vehicle) return null
 
@@ -75,14 +86,34 @@ export function VehicleDetailsModal({
 
                             {/* Gallery Section */}
                             <div className="space-y-3">
-                                <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-lg border border-border/50 relative group">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                        src={activeImage}
-                                        alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                                        className="h-full w-full object-contain"
-                                    />
-                                    <div className="absolute bottom-3 left-3 bg-black/60 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">
+                                <div className="w-full rounded-xl overflow-hidden bg-card shadow-lg border border-border/30 relative min-h-[200px]">
+                                    {/* Skeleton — shows while image is loading */}
+                                    {!mainImgLoaded && (
+                                        <div className="absolute inset-0 z-10 bg-muted animate-pulse flex items-center justify-center min-h-[200px]">
+                                            <ImageOff className="w-12 h-12 text-muted-foreground/20" />
+                                        </div>
+                                    )}
+
+                                    {/* Main image — natural aspect ratio, fills full width, no crop no spaces */}
+                                    {!mainImgError ? (
+                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                        <img
+                                            src={activeImage}
+                                            alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                                            loading="lazy"
+                                            decoding="async"
+                                            onLoad={() => setMainImgLoaded(true)}
+                                            onError={() => { setMainImgError(true); setMainImgLoaded(true) }}
+                                            className="w-full h-auto block"
+                                        />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center gap-2 bg-muted py-16">
+                                            <ImageOff className="w-10 h-10 text-muted-foreground/30" />
+                                            <span className="text-xs text-muted-foreground/50">Image unavailable</span>
+                                        </div>
+                                    )}
+
+                                    <div className="absolute bottom-3 left-3 z-10 bg-black/60 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">
                                         Action Auto Utah
                                     </div>
                                 </div>
@@ -91,21 +122,13 @@ export function VehicleDetailsModal({
                                 {allImages.length > 1 && (
                                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 snap-x">
                                         {allImages.map((img, idx) => (
-                                            <button
+                                            <ThumbImage
                                                 key={idx}
-                                                onClick={() => setActiveImage(img)}
-                                                className={`relative aspect-[4/3] w-20 shrink-0 overflow-hidden rounded-md border transition-all snap-start ${activeImage === img
-                                                    ? "border-primary ring-2 ring-primary/20 opacity-100"
-                                                    : "border-transparent opacity-60 hover:opacity-100"
-                                                    }`}
-                                            >
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img
-                                                    src={img}
-                                                    alt={`Thumb ${idx}`}
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            </button>
+                                                src={img}
+                                                idx={idx}
+                                                active={activeImage === img}
+                                                onClick={() => switchImage(img)}
+                                            />
                                         ))}
                                     </div>
                                 )}
@@ -286,5 +309,36 @@ export function VehicleDetailsModal({
                 </div>
             </DialogContent>
         </Dialog>
+    )
+}
+
+function ThumbImage({ src, idx, active, onClick }: { src: string; idx: number; active: boolean; onClick: () => void }) {
+    const [loaded, setLoaded] = React.useState(false)
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "relative shrink-0 overflow-hidden rounded-md border transition-all snap-start bg-muted",
+                "w-20 aspect-[4/3]",
+                active
+                    ? "border-primary ring-2 ring-primary/20 opacity-100"
+                    : "border-transparent opacity-60 hover:opacity-100"
+            )}
+        >
+            {/* Skeleton */}
+            {!loaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={src}
+                alt={`Thumbnail ${idx + 1}`}
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setLoaded(true)}
+                className={cn(
+                    "absolute inset-0 w-full h-full object-cover transition-opacity duration-200",
+                    loaded ? "opacity-100" : "opacity-0"
+                )}
+            />
+        </button>
     )
 }

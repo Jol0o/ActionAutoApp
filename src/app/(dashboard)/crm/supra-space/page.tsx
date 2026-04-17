@@ -1029,6 +1029,10 @@ export default function SupraSpacePage() {
   const [q, setQ] = React.useState('');
   const [videoCallConv, setVideoCallConv] = React.useState<SSConversation | null>(null);
 
+  const [supraLeoOpen, setSupraLeoOpen] = React.useState(false);
+  const [supraLeoLoading, setSupraLeoLoading] = React.useState(false);
+  const supraLeoRef = React.useRef<HTMLDivElement>(null);
+
   const endRef = React.useRef<HTMLDivElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const typingRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1147,6 +1151,59 @@ export default function SupraSpacePage() {
       await apiClient.delete(`/api/supraspace/messages/${msgId}`, { headers: { Authorization: `Bearer ${token}` } });
     } catch {
       setMsgs(p => ({ ...p, [activeId]: (p[activeId] || []).map(m => m._id === msgId ? { ...m, isDeleted: false } : m) }));
+    }
+  };
+
+  // Close Supra Leo popover on outside click
+  React.useEffect(() => {
+    if (!supraLeoOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (supraLeoRef.current && !supraLeoRef.current.contains(e.target as Node)) {
+        setSupraLeoOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [supraLeoOpen]);
+
+  const handleSupraLeoAction = async (action: 'improve' | 'draft' | 'formal' | 'casual') => {
+    setSupraLeoOpen(false);
+    setSupraLeoLoading(true);
+
+    const recentContext = activeMsgs.slice(-10).map(m => `${m.sender?.fullName || 'User'}: ${m.content || '(attachment)'}`).join('\n');
+    const conversationName = activeConv?.name || 'this conversation';
+
+    const prompts: Record<string, string> = {
+      improve: input.trim()
+        ? `Improve this draft message for clarity and professionalism. Return only the improved message text, no explanation:\n\n"${input.trim()}"`
+        : 'No draft provided.',
+      draft: `You are helping compose a team message in Supra Space for conversation "${conversationName}". Based on the recent conversation context below, draft a brief, professional reply that would be appropriate to send next. Return only the message text, no explanation.\n\nRecent messages:\n${recentContext || '(no messages yet)'}`,
+      formal: input.trim()
+        ? `Rewrite this message in a more formal, professional tone. Return only the rewritten message text, no explanation:\n\n"${input.trim()}"`
+        : 'No draft provided.',
+      casual: input.trim()
+        ? `Rewrite this message in a friendly, casual tone suitable for internal team chat. Return only the rewritten message text, no explanation:\n\n"${input.trim()}"`
+        : 'No draft provided.',
+    };
+
+    const prompt = prompts[action];
+    if (prompt === 'No draft provided.') {
+      setSupraLeoLoading(false);
+      return;
+    }
+
+    try {
+      const res = await apiClient.post(
+        '/api/supraleo/chat',
+        { message: prompt, module: 'supraspace' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const reply: string = res.data?.data?.message || '';
+      if (reply.trim()) setInput(reply.trim());
+    } catch {
+      // silent fail — button just returns to idle
+    } finally {
+      setSupraLeoLoading(false);
     }
   };
 
@@ -1554,10 +1611,76 @@ export default function SupraSpacePage() {
                       <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" className="hidden" onChange={e => handleUpload(e.target.files)} />
 
                       {/* Supra Leo AI */}
-                      <button className="ss4-ai-btn h-7 px-2.5 flex items-center gap-1.5" title="Supra Leo AI">
-                        <Sparkles className="h-3 w-3" style={{ color: '#b49dff' }} />
-                        <span className="ss4-ai-text font-semibold" style={{ fontSize: 11 }}>Supra Leo</span>
-                      </button>
+                      <div className="relative" ref={supraLeoRef}>
+                        <button
+                          onClick={() => !supraLeoLoading && setSupraLeoOpen(v => !v)}
+                          disabled={supraLeoLoading}
+                          className="ss4-ai-btn h-7 px-2.5 flex items-center gap-1.5"
+                          title="Supra Leo AI"
+                        >
+                          {supraLeoLoading
+                            ? <Loader2 className="h-3 w-3 animate-spin" style={{ color: '#b49dff' }} />
+                            : <Sparkles className="h-3 w-3" style={{ color: '#b49dff' }} />}
+                          <span className="ss4-ai-text font-semibold" style={{ fontSize: 11 }}>Supra Leo</span>
+                        </button>
+
+                        {supraLeoOpen && (
+                          <div
+                            className="absolute bottom-full left-0 mb-2 z-50 rounded-xl overflow-hidden shadow-lg"
+                            style={{
+                              background: 'var(--surface-2)',
+                              border: '1px solid var(--border-2)',
+                              minWidth: 190,
+                              boxShadow: 'var(--shadow-md)',
+                            }}
+                          >
+                            <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--border-1)' }}>
+                              <p className="font-semibold" style={{ fontSize: 10, color: '#b49dff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                Supra Leo AI
+                              </p>
+                            </div>
+                            <div className="py-1">
+                              {input.trim() ? (
+                                <>
+                                  <button
+                                    onClick={() => handleSupraLeoAction('improve')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                                    style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                                  >
+                                    <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: '#b49dff' }} />
+                                    Improve draft
+                                  </button>
+                                  <button
+                                    onClick={() => handleSupraLeoAction('formal')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                                    style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                                  >
+                                    <Bot className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                                    Make formal
+                                  </button>
+                                  <button
+                                    onClick={() => handleSupraLeoAction('casual')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                                    style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                                  >
+                                    <Bot className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                                    Make casual
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => handleSupraLeoAction('draft')}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                                  style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                                >
+                                  <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: '#b49dff' }} />
+                                  Draft a reply
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1.5">

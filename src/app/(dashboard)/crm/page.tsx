@@ -359,10 +359,10 @@ export default function CrmLoginPage() {
         </div>
 
         {/* ── Card ── */}
-        <div className="rounded-2xl border border-border/50 bg-card p-7 space-y-5 shadow-sm">
+        <div className="rounded-2xl border border-border/50 bg-card p-7 space-y-6 shadow-sm">
           <div className="space-y-0.5">
             <h1 className="text-xl font-bold tracking-tight">Welcome back</h1>
-            <p className="text-xs text-muted-foreground/50">Sign in to your employee portal</p>
+            <p className="text-sm text-muted-foreground">Sign in to your employee portal</p>
           </div>
 
           {/* ── Auth Method Tabs ── */}
@@ -372,7 +372,7 @@ export default function CrmLoginPage() {
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-medium transition-all ${
                 loginMode === "password"
                   ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground/50 hover:text-muted-foreground"
+                  : "text-muted-foreground/70 hover:text-foreground"
               }`}
             >
               <KeyRound className="h-3.5 w-3.5" />
@@ -384,7 +384,7 @@ export default function CrmLoginPage() {
                 className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-medium transition-all ${
                   loginMode === "biometric"
                     ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground/50 hover:text-muted-foreground"
+                    : "text-muted-foreground/70 hover:text-foreground"
                 }`}
               >
                 <Fingerprint className="h-3.5 w-3.5" />
@@ -396,7 +396,7 @@ export default function CrmLoginPage() {
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-medium transition-all ${
                 loginMode === "ssh"
                   ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground/50 hover:text-muted-foreground"
+                  : "text-muted-foreground/70 hover:text-foreground"
               }`}
             >
               <Terminal className="h-3.5 w-3.5" />
@@ -417,8 +417,8 @@ export default function CrmLoginPage() {
           {/* ════════════════════════════════════════════════════════════════ */}
           {loginMode === "password" && (
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="eid" className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
+              <div className="space-y-2">
+                <Label htmlFor="eid" className="text-xs font-medium text-foreground/75">
                   Employee ID
                 </Label>
                 <Input
@@ -428,12 +428,12 @@ export default function CrmLoginPage() {
                   placeholder="e.g. 2026-00001"
                   autoComplete="username"
                   disabled={isLoading}
-                  className="h-10 rounded-xl border-border/50 bg-muted/20 text-sm focus-visible:ring-emerald-500/30"
+                  className="h-10 rounded-xl border-border/70 bg-background text-sm focus-visible:ring-emerald-500/30"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="pwd" className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
+              <div className="space-y-2">
+                <Label htmlFor="pwd" className="text-xs font-medium text-foreground/75">
                   Password
                 </Label>
                 <div className="relative">
@@ -445,13 +445,13 @@ export default function CrmLoginPage() {
                     placeholder="Enter your password"
                     autoComplete="current-password"
                     disabled={isLoading}
-                    className="h-10 rounded-xl border-border/50 bg-muted/20 text-sm pr-10 focus-visible:ring-emerald-500/30"
+                    className="h-10 rounded-xl border-border/70 bg-background text-sm pr-10 focus-visible:ring-emerald-500/30"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     tabIndex={-1}
-                    className="absolute right-0 top-0 h-10 w-10 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                    className="absolute right-0 top-0 h-10 w-10 flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -462,7 +462,7 @@ export default function CrmLoginPage() {
                 <button
                   type="button"
                   onClick={openForgot}
-                  className="text-[11px] text-muted-foreground/50 hover:text-emerald-600 transition-colors"
+                  className="text-xs text-muted-foreground/70 hover:text-emerald-600 transition-colors"
                 >
                   Forgot password?
                 </button>
@@ -490,8 +490,8 @@ export default function CrmLoginPage() {
           {/* ════════════════════════════════════════════════════════════════ */}
           {loginMode === "biometric" && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-foreground/75">
                   Employee ID (optional)
                 </Label>
                 <Input
@@ -499,9 +499,9 @@ export default function CrmLoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="e.g. 2026-00001"
                   disabled={biometricLoading}
-                  className="h-10 rounded-xl border-border/50 bg-muted/20 text-sm focus-visible:ring-emerald-500/30"
+                  className="h-10 rounded-xl border-border/70 bg-background text-sm focus-visible:ring-emerald-500/30"
                 />
-                <p className="text-[10px] text-muted-foreground/40">
+                <p className="text-xs text-muted-foreground/60">
                   Leave blank to use discoverable credentials
                 </p>
               </div>
@@ -535,8 +535,8 @@ export default function CrmLoginPage() {
               {/* Step 1: Employee ID + Get Challenge */}
               {!sshChallengeReady && (
                 <>
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-foreground/75">
                       Employee ID
                     </Label>
                     <Input
@@ -544,7 +544,7 @@ export default function CrmLoginPage() {
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="e.g. 2026-00001"
                       disabled={sshLoading}
-                      className="h-10 rounded-xl border-border/50 bg-muted/20 text-sm focus-visible:ring-emerald-500/30"
+                      className="h-10 rounded-xl border-border/70 bg-background text-sm focus-visible:ring-emerald-500/30"
                     />
                   </div>
 
@@ -563,8 +563,8 @@ export default function CrmLoginPage() {
                   </Button>
 
                   <div className="rounded-xl bg-muted/20 border border-border/30 px-3.5 py-2.5 space-y-1.5">
-                    <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">How it works</p>
-                    <ol className="text-[11px] text-muted-foreground/50 space-y-1 list-decimal pl-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">How it works</p>
+                    <ol className="text-xs text-muted-foreground/70 space-y-1 list-decimal pl-4">
                       <li>Enter your Employee ID and click &quot;Get SSH Challenge&quot;</li>
                       <li>Copy the sign command and run it in your terminal</li>
                       <li>Paste the signature output back here to sign in</li>
@@ -578,7 +578,7 @@ export default function CrmLoginPage() {
                 <>
                   {/* Challenge display */}
                   <div className="space-y-2">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
+                    <p className="text-xs font-medium text-foreground/75">
                       Step 1 — Run this in your terminal
                     </p>
                     <div className="relative rounded-xl bg-zinc-950 dark:bg-zinc-900 border border-border/30 p-3 group">
@@ -597,14 +597,14 @@ export default function CrmLoginPage() {
                         )}
                       </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/40">
-                      Using a different key? Replace <code className="text-[10px] bg-muted/40 rounded px-1 py-0.5">id_ed25519</code> with your key file name.
+                    <p className="text-xs text-muted-foreground/60">
+                      Using a different key? Replace <code className="text-xs bg-muted/40 rounded px-1 py-0.5">id_ed25519</code> with your key file name.
                     </p>
                   </div>
 
                   {/* Signature input */}
-                  <div className="space-y-1.5">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/50">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-foreground/75">
                       Step 2 — Paste the signature output
                     </p>
                     <textarea
@@ -613,7 +613,7 @@ export default function CrmLoginPage() {
                       placeholder={"-----BEGIN SSH SIGNATURE-----\n...\n-----END SSH SIGNATURE-----"}
                       rows={5}
                       disabled={sshLoading}
-                      className="w-full rounded-xl border border-border/50 bg-muted/20 text-xs font-mono p-3 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/30 placeholder:text-muted-foreground/20"
+                      className="w-full rounded-xl border border-border/70 bg-background text-xs font-mono p-3 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/30 placeholder:text-muted-foreground/40"
                     />
                   </div>
 
@@ -653,7 +653,7 @@ export default function CrmLoginPage() {
           {/* ── Footer separator ── */}
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-border/40" />
-            <p className="text-[10px] text-muted-foreground/30 font-medium">
+            <p className="text-xs text-muted-foreground/50 font-medium">
               Authorized personnel only
             </p>
             <div className="flex-1 h-px bg-border/40" />
@@ -661,7 +661,7 @@ export default function CrmLoginPage() {
         </div>
 
         {/* ── Footer ── */}
-        <p className="text-center text-[10px] text-muted-foreground/30">
+        <p className="text-center text-xs text-muted-foreground/50">
           Action Auto CRM v1.0 &middot; Customer Lifecycle Management
         </p>
       </div>
