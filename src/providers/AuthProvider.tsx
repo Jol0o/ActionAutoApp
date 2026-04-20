@@ -45,7 +45,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Module-level variable to track ongoing refresh requests across all hooks/components
 let globalRefreshPromise: Promise<string | null> | null = null;
 
-const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback', '/verify-email', '/accept-invite'];
+const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/upgrade', '/auth/callback', '/verify-email', '/accept-invite', '/vehicle'];
 
 const isPublicRoute = (path: string) => {
     return PUBLIC_ROUTES.some(r => path.startsWith(r));

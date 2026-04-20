@@ -286,6 +286,27 @@ class ApiClient {
         return this.post('/api/auth/complete-onboarding', { role }, config);
     }
 
+    // ── Vehicle Methods ──────────────────────────────────────────────────────
+    async getVehicles(params?: any, config?: AxiosRequestConfig) {
+        return this.get('/api/vehicles', { ...config, params });
+    }
+
+    async getVehicle(id: string, config?: AxiosRequestConfig) {
+        return this.get(`/api/vehicles/${id}`, config);
+    }
+
+    async getPublicVehicle(id: string, config?: AxiosRequestConfig) {
+        return this.get(`/api/vehicles/public/${id}`, config);
+    }
+
+    async checkVehicleAvailability(id: string, config?: AxiosRequestConfig) {
+        return this.get(`/api/vehicles/${id}/availability`, config);
+    }
+
+    async reserveVehicle(id: string, customerName: string, config?: AxiosRequestConfig) {
+        return this.post(`/api/vehicles/${id}/reserve`, { customerName }, config);
+    }
+
     setOnAuthFailure(callback: () => void) {
         this.onAuthFailure = callback;
     }

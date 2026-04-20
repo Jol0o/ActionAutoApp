@@ -102,7 +102,7 @@ export function LeaderboardPro() {
           {allUsers.map((user, i) => {
             const rank = i + 1
             const isTop3 = rank <= 3
-            const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2)
+            const initials = (user.name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2)
 
             return (
               <button

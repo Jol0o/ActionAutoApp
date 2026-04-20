@@ -28,10 +28,20 @@ export interface Vehicle {
     reconStartDate?: string;
     stepEnteredAt?: string;
     marketPrice?: number;
-    notes?: any[]; // Keep flexible as we don't know the note structure yet
+    cost?: number;
+    notes?: Array<{
+        text: string;
+        author: {
+            name: string;
+            email: string;
+        };
+        date: string;
+    }>;
     dateAdded?: string;
     featured?: boolean;
     engine?: string;
+    videoUrl?: string;
+    comments?: string;
 }
 
 export interface FilterOptions {

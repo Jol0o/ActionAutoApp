@@ -9,13 +9,21 @@ interface CarInventoryCardProps {
   shippingPrice?: number
   onGetQuote: (vehicle: Vehicle) => void
   onVehicleClick?: (vehicle: Vehicle) => void
+  onCheckAvailability?: (vehicle: Vehicle) => void
+  onApplyNow?: (vehicle: Vehicle) => void
+  onCallUs?: (vehicle: Vehicle) => void
+  onVideo?: (vehicle: Vehicle) => void
 }
 
 export function CarInventoryCard({
   vehicle,
   shippingPrice,
   onGetQuote,
-  onVehicleClick
+  onVehicleClick,
+  onCheckAvailability,
+  onApplyNow,
+  onCallUs,
+  onVideo
 }: CarInventoryCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 p-0 h-full flex flex-col group border-transparent hover:border-border/50">
@@ -96,21 +104,41 @@ export function CarInventoryCard({
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-auto flex flex-col gap-2 pt-2">
+        <div className="mt-auto flex flex-col gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" className="text-xs h-9">
+            <Button
+              onClick={() => onCheckAvailability?.(vehicle)}
+              variant="outline"
+              size="sm"
+              className="text-xs h-9 hover:bg-zinc-50 dark:hover:bg-zinc-900 border-zinc-200"
+            >
               Check Availability
             </Button>
-            <Button variant="outline" size="sm" className="text-xs h-9">
+            <Button
+              onClick={() => onApplyNow?.(vehicle)}
+              variant="outline"
+              size="sm"
+              className="text-xs h-9 hover:bg-zinc-50 dark:hover:bg-zinc-900 border-zinc-200"
+            >
               Apply Now
             </Button>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" className="text-xs h-9">
+            <Button
+              onClick={() => onCallUs?.(vehicle)}
+              variant="outline"
+              size="sm"
+              className="text-xs h-9 hover:bg-zinc-50 dark:hover:bg-zinc-900 border-zinc-200"
+            >
               <Phone className="w-3 h-3 mr-1" /> Call Us
             </Button>
-            <Button variant="outline" size="sm" className="text-xs h-9">
+            <Button
+              onClick={() => onVideo?.(vehicle)}
+              variant="outline"
+              size="sm"
+              className="text-xs h-9 hover:bg-zinc-50 dark:hover:bg-zinc-900 border-zinc-200"
+            >
               <Play className="w-3 h-3 mr-1" /> Video
             </Button>
           </div>
