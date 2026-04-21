@@ -3,8 +3,11 @@
 import * as React from "react"
 import { ChevronDown, RefreshCw } from "lucide-react"
 import { CarInventoryCard } from "@/components/car-inventory-card"
+import { PremiumVehicleCard } from "@/components/customer/PremiumVehicleCard"
 import { ShippingQuoteModal } from "@/components/shipping-quote-modal"
 import { VehicleDetailsModal } from "@/components/vehicle-details-modal"
+import { VehicleInquiryModal } from "@/components/vehicle-inquiry-modal"
+import { FinanceApplicationModal } from "@/components/finance-application-modal"
 import type { Vehicle, ShippingQuoteFormData } from "@/types/inventory"
 import { apiClient } from "@/lib/api-client"
 import { AxiosError } from "axios"
@@ -12,6 +15,8 @@ import { InventoryFilters } from "@/components/inventory-filters"
 import { InventoryPagination } from "@/components/inventory-pagination"
 import { useAuth } from "@/providers/AuthProvider"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useInventoryActions } from "@/hooks/useInventoryActions"
+import { LayoutGrid, Table as TableIcon } from "lucide-react"
 
 type SortOption =
     | "price-asc"
@@ -47,12 +52,26 @@ function InventoryContent() {
     const searchParams = useSearchParams()
     const { getToken } = useAuth()
 
-    const [isModalOpen, setIsModalOpen] = React.useState(false)
-    const [detailsModalOpen, setDetailsModalOpen] = React.useState(false)
-    const [selectedDetailVehicle, setSelectedDetailVehicle] = React.useState<Vehicle | null>(null)
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+    const [isPremiumView, setIsPremiumView] = React.useState(true)
+    const [shippingRates, setShippingRates] = React.useState<Record<string, number>>({})
+
+    const {
+        selectedVehicle,
+        openModals,
+        setDetailsOpen,
+        setInquiryOpen,
+        setFinanceOpen,
+        setShippingOpen,
+        handleVehicleClick,
+        handleCheckAvailability,
+        handleApplyNow,
+        handleCallUs,
+        handleVideo,
+        handleGetQuote
+    } = useInventoryActions()
 
     // Pagination State
     const [page, setPage] = React.useState(Number(searchParams.get("page")) || 1)
@@ -77,7 +96,7 @@ function InventoryContent() {
         sortOrder: searchParams.get("sortOrder") || "asc"
     })
 
-    // Debounced search term to avoid rapid API calls
+    // Debounced search term
     const [debouncedSearch, setDebouncedSearch] = React.useState(filters.search)
 
     React.useEffect(() => {
@@ -88,7 +107,6 @@ function InventoryContent() {
     }, [filters.search])
 
     React.useEffect(() => {
-        // Update URL when state changes
         const params = new URLSearchParams()
         params.set("page", page.toString())
         params.set("limit", limit.toString())
@@ -100,9 +118,7 @@ function InventoryContent() {
         })
 
         router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-
         fetchVehicles()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, limit, debouncedSearch, filters.make, filters.model, filters.status, filters.year, filters.minPrice, filters.maxPrice, filters.minMileage, filters.maxMileage, filters.sortBy, filters.sortOrder])
 
     const fetchVehicles = async () => {
@@ -110,15 +126,9 @@ function InventoryContent() {
         setError(null)
 
         try {
-            console.log('[Inventory] Fetching vehicles with params:', {
-                page, limit, ...filters, search: debouncedSearch
-            })
-
             const token = await getToken()
             const response = await apiClient.get('/api/vehicles', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
+                headers: { Authorization: `Bearer ${token}` },
                 params: {
                     page,
                     limit,
@@ -128,26 +138,22 @@ function InventoryContent() {
             })
 
             const responseData = response.data?.data || response.data
-            const vehiclesData = responseData.vehicles || []
-            const paginationData = responseData.pagination || { total: 0, totalPages: 1 }
-
-            setVehicles(vehiclesData)
-            setTotal(paginationData.total)
-            setTotalPages(paginationData.totalPages)
+            setVehicles(responseData.vehicles || [])
+            setTotal(responseData.pagination?.total || 0)
+            setTotalPages(responseData.pagination?.totalPages || 1)
 
         } catch (err) {
             console.error('[Inventory] Error fetching vehicles:', err)
             const axiosError = err as AxiosError
             if (axiosError.code !== "ERR_CANCELED") {
-                const apiErrorData = axiosError.response?.data as any
-                const errorMessage = apiErrorData?.message || axiosError.message || 'Failed to load vehicles'
-                setError(errorMessage)
-                setVehicles([])
+                setError((axiosError.response?.data as any)?.message || axiosError.message || 'Failed to load vehicles')
             }
         } finally {
             setIsLoading(false)
         }
     }
+
+    // Auto-modal logic removed as we now use dedicated vehicle pages
 
     const handleFilterChange = (key: string, value: any) => {
         setFilters((prev: any) => ({ ...prev, [key]: value }))
@@ -223,79 +229,40 @@ function InventoryContent() {
         return 'make-asc';
     }, [filters.sortBy, filters.sortOrder])
 
-    const [shippingRates, setShippingRates] = React.useState<Record<string, number>>({})
-
     const handleCalculateQuote = async (formData: ShippingQuoteFormData) => {
         try {
-            console.log('[Quote] Submitting quote request:', formData)
-
             const token = await getToken()
             const response = await apiClient.post('/api/quotes', {
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                email: formData.email,
-                phone: formData.phone,
-                vehicleId: formData.vehicleId,
-                fromZip: formData.fromZip,
+                ...formData,
                 toZip: formData.zipCode,
-                fromAddress: formData.fromAddress,
                 toAddress: formData.fullAddress,
-                units: formData.units,
-                enclosedTrailer: formData.enclosedTrailer,
-                vehicleInoperable: formData.vehicleInoperable
             }, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             })
 
             const data = response.data?.data || response.data
-            console.log('[Quote] Quote created successfully:', data)
-
             if (formData.vehicleId) {
-                setShippingRates(prev => ({
-                    ...prev,
-                    [formData.vehicleId!]: data.rate
-                }))
+                setShippingRates(prev => ({ ...prev, [formData.vehicleId!]: data.rate }))
             }
 
-            alert(`Quote created successfully! Rate: $${data.rate}, ETA: ${data.eta.min}-${data.eta.max} days`)
-            setIsModalOpen(false)
+            alert(`Quote created successfully! Rate: $${data.rate}`)
+            setShippingOpen(false)
 
         } catch (error) {
             console.error('[Quote] Error creating quote:', error)
-            const axiosError = error as AxiosError
-            const apiErrorData = axiosError.response?.data as any
-            const errorMessage = apiErrorData?.message || axiosError.message || 'Unknown error'
-            alert('Failed to create quote: ' + errorMessage)
-        }
-    }
-
-
-    const handleVehicleClick = (vehicle: Vehicle) => {
-        setSelectedDetailVehicle(vehicle)
-        setDetailsModalOpen(true)
-    }
-
-    const handleQuoteFromDetails = () => {
-        if (selectedDetailVehicle) {
-            setIsModalOpen(true)
+            alert('Failed to create quote')
         }
     }
 
     if (error) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center p-8">
                 <div className="text-center max-w-md">
                     <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6">
                         <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Inventory</h2>
                         <p className="text-destructive/80 mb-4">{error}</p>
-                        <button
-                            onClick={fetchVehicles}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 transition-colors"
-                        >
-                            <RefreshCw className="h-4 w-4" />
-                            Retry Loading
+                        <button onClick={fetchVehicles} className="inline-flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 transition-colors">
+                            <RefreshCw className="h-4 w-4" /> Retry Loading
                         </button>
                     </div>
                 </div>
@@ -307,7 +274,6 @@ function InventoryContent() {
         <div className="min-h-screen bg-background flex flex-col">
             <div className="border-b bg-card sticky top-0 z-10 shadow-sm">
                 <div className="max-w-8xl mx-auto px-4 py-4 space-y-4">
-
                     <InventoryFilters
                         filters={filters}
                         onFilterChange={handleFilterChange}
@@ -320,12 +286,7 @@ function InventoryContent() {
                             <p className="text-sm font-medium text-muted-foreground">
                                 <span className="font-bold text-foreground">{total}</span> Vehicles Found
                             </p>
-                            <button
-                                onClick={fetchVehicles}
-                                disabled={isLoading}
-                                className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                                title="Refresh inventory"
-                            >
+                            <button onClick={fetchVehicles} disabled={isLoading} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors">
                                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                             </button>
                         </div>
@@ -364,31 +325,35 @@ function InventoryContent() {
                             <div key={i} className="h-[400px] bg-muted rounded-lg animate-pulse" />
                         ))}
                     </div>
-                ) : vehicles.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="bg-card border border-border rounded-lg p-12 max-w-lg mx-auto shadow-sm">
-                            <p className="text-xl font-semibold text-foreground mb-2">No vehicles found</p>
-                            <p className="text-muted-foreground mb-6">
-                                Try adjusting your filters or search terms to find what you're looking for.
-                            </p>
-                            <button
-                                onClick={handleClearFilters}
-                                className="inline-flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                            >
-                                Clear Filters
-                            </button>
-                        </div>
-                    </div>
                 ) : (
                     <div className="space-y-8">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                        <div className={`grid gap-6 items-stretch ${isPremiumView ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'}`}>
                             {vehicles.map((vehicle) => (
-                                <CarInventoryCard
-                                    key={vehicle.id}
-                                    vehicle={vehicle}
-                                    onGetQuote={() => setIsModalOpen(true)}
-                                    onVehicleClick={handleVehicleClick}
-                                />
+                                isPremiumView ? (
+                                    <PremiumVehicleCard
+                                        key={vehicle.id}
+                                        vehicle={vehicle}
+                                        shippingPrice={shippingRates[vehicle.id]}
+                                        onGetQuote={handleGetQuote}
+                                        onVehicleClick={handleVehicleClick}
+                                        onCheckAvailability={handleCheckAvailability}
+                                        onApplyNow={handleApplyNow}
+                                        onCallUs={handleCallUs}
+                                        onVideo={handleVideo}
+                                    />
+                                ) : (
+                                    <CarInventoryCard
+                                        key={vehicle.id}
+                                        vehicle={vehicle}
+                                        shippingPrice={shippingRates[vehicle.id]}
+                                        onGetQuote={handleGetQuote}
+                                        onVehicleClick={handleVehicleClick}
+                                        onCheckAvailability={handleCheckAvailability}
+                                        onApplyNow={handleApplyNow}
+                                        onCallUs={handleCallUs}
+                                        onVideo={handleVideo}
+                                    />
+                                )
                             ))}
                         </div>
 
@@ -405,19 +370,34 @@ function InventoryContent() {
             </div>
 
             <ShippingQuoteModal
-                open={isModalOpen}
-                onOpenChange={setIsModalOpen}
+                open={openModals.shipping}
+                onOpenChange={setShippingOpen}
                 vehicles={vehicles}
-                defaultVehicle={selectedDetailVehicle}
+                defaultVehicle={selectedVehicle}
                 onCalculate={handleCalculateQuote}
             />
 
+
             <VehicleDetailsModal
-                isOpen={detailsModalOpen}
-                onClose={() => setDetailsModalOpen(false)}
-                vehicle={selectedDetailVehicle}
-                onQuoteClick={handleQuoteFromDetails}
-                shippingQuote={selectedDetailVehicle ? shippingRates[selectedDetailVehicle.id] : null}
+                isOpen={openModals.details}
+                onClose={() => setDetailsOpen(false)}
+                vehicle={selectedVehicle}
+                onQuoteClick={() => setShippingOpen(true)}
+                onInquiryClick={handleCheckAvailability}
+                onApplyNow={handleApplyNow}
+                shippingQuote={selectedVehicle ? shippingRates[selectedVehicle.id] : null}
+            />
+
+            <VehicleInquiryModal
+                isOpen={openModals.inquiry}
+                onClose={() => setInquiryOpen(false)}
+                vehicle={selectedVehicle}
+            />
+
+            <FinanceApplicationModal
+                isOpen={openModals.finance}
+                onClose={() => setFinanceOpen(false)}
+                vehicle={selectedVehicle}
             />
         </div>
     )
@@ -425,14 +405,7 @@ function InventoryContent() {
 
 export default function InventoryPage() {
     return (
-        <React.Suspense fallback={
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-r-transparent" />
-                    <p className="text-muted-foreground">Loading inventory...</p>
-                </div>
-            </div>
-        }>
+        <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center p-8">Loading...</div>}>
             <InventoryContent />
         </React.Suspense>
     )

@@ -1,8 +1,17 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import DOMPurify from "dompurify"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+/**
+ * Sanitizes input string to prevent XSS
+ */
+export function sanitizeInput(input: string): string {
+  if (typeof window === 'undefined') return input;
+  return DOMPurify.sanitize(input);
 }
 
 export function resolveImageUrl(url?: string | null): string | undefined {

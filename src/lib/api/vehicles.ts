@@ -1,6 +1,7 @@
 import { apiClient } from '../api-client';
 
 export interface OwnedVehicle {
+    id: string;
     _id: string;
     vin: string;
     make: string;

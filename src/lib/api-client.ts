@@ -278,8 +278,53 @@ class ApiClient {
         return this.get('/api/dashboard/metrics', { ...config, params });
     }
 
+    async getLeaderboard(params: { page?: number; limit?: number }, config?: AxiosRequestConfig) {
+        return this.get('/api/dashboard/leaderboard', { ...config, params });
+    }
+
     async completeOnboarding(role: string, config?: AxiosRequestConfig) {
         return this.post('/api/auth/complete-onboarding', { role }, config);
+    }
+
+    // ── Vehicle Methods ──────────────────────────────────────────────────────
+    async getVehicles(params?: any, config?: AxiosRequestConfig) {
+        return this.get('/api/vehicles', { ...config, params });
+    }
+
+    async getVehicle(id: string, config?: AxiosRequestConfig) {
+        return this.get(`/api/vehicles/${id}`, config);
+    }
+
+    async getPublicVehicle(id: string, config?: AxiosRequestConfig) {
+        return this.get(`/api/vehicles/public/${id}`, config);
+    }
+
+    async checkVehicleAvailability(id: string, config?: AxiosRequestConfig) {
+        return this.get(`/api/vehicles/${id}/availability`, config);
+    }
+
+    async reserveVehicle(id: string, customerName: string, config?: AxiosRequestConfig) {
+        return this.post(`/api/vehicles/${id}/reserve`, { customerName }, config);
+    }
+
+    // ── Customer Lead Methods ────────────────────────────────────────────────
+    async submitInquiry(data: { 
+        vehicleId: string; 
+        comments?: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+    }, config?: AxiosRequestConfig) {
+        return this.post('/api/customer/leads/inquiry', data, config);
+    }
+
+    async submitFinanceApplication(data: { 
+        vehicleId: string; 
+        personalInfo: any; 
+        employmentInfo: any 
+    }, config?: AxiosRequestConfig) {
+        return this.post('/api/customer/leads/finance', data, config);
     }
 
     setOnAuthFailure(callback: () => void) {

@@ -2,7 +2,7 @@ import React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { TruckIcon, GaugeIcon, MapPinIcon, Phone, Play, ArrowRight, CheckCircle2 } from "lucide-react"
+import { TruckIcon, GaugeIcon, MapPinIcon, Phone, Play, CheckCircle2 } from "lucide-react"
 import { Vehicle } from "@/types/inventory"
 
 interface PremiumVehicleCardProps {
@@ -11,6 +11,9 @@ interface PremiumVehicleCardProps {
     onCheckAvailability?: (vehicle: Vehicle) => void
     onApplyNow?: (vehicle: Vehicle) => void
     onCallUs?: (vehicle: Vehicle) => void
+    onVideo?: (vehicle: Vehicle) => void
+    onGetQuote?: (vehicle: Vehicle) => void
+    onVehicleClick?: (vehicle: Vehicle) => void
 }
 
 export function PremiumVehicleCard({
@@ -18,16 +21,22 @@ export function PremiumVehicleCard({
     shippingPrice,
     onCheckAvailability,
     onApplyNow,
-    onCallUs
+    onCallUs,
+    onVideo,
+    onGetQuote,
+    onVehicleClick
 }: PremiumVehicleCardProps) {
     // Mocking "Retail Price" vs "One Time Payment" for the UI showcase
     const retailPrice = vehicle.price + 0; // Mock markup
     const memberPrice = vehicle.price;
 
     return (
-        <Card className="group relative overflow-hidden rounded-2xl py-0 bg-white dark:bg-zinc-950 border border-border/40 hover:border-green-500/50 shadow-sm hover:shadow-2xl hover:shadow-green-500/10 transition-all duration-500 flex flex-col h-full">
+        <Card 
+            className="group relative overflow-hidden rounded-2xl py-0 bg-white dark:bg-zinc-950 border border-border/40 hover:border-green-500/50 shadow-sm hover:shadow-2xl hover:shadow-green-500/10 transition-all duration-500 flex flex-col h-full cursor-pointer"
+            onClick={() => onVehicleClick?.(vehicle)}
+        >
             {/* Premium Image Header */}
-            <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100 dark:bg-zinc-900 cursor-pointer">
+            <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                 <img
                     src={vehicle.image || "https://images.unsplash.com/photo-1550355291-bbee04a92027?q=80&w=2636&auto=format&fit=crop"}
                     alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
@@ -104,14 +113,23 @@ export function PremiumVehicleCard({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="mt-auto flex flex-col gap-2.5">
-                    <Button
-                        onClick={() => onCheckAvailability?.(vehicle)}
-                        variant="outline"
-                        className="w-full text-sm h-11 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold"
-                    >
-                        <CheckCircle2 className="w-4 h-4 mr-2 text-blue-500" /> Check Availability
-                    </Button>
+                <div className="mt-auto flex flex-col gap-2.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <Button
+                            onClick={() => onCheckAvailability?.(vehicle)}
+                            variant="outline"
+                            className="w-full text-sm h-11 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold"
+                        >
+                            <CheckCircle2 className="w-4 h-4 mr-2 text-blue-500" /> Availability
+                        </Button>
+                        <Button
+                            onClick={() => onVideo?.(vehicle)}
+                            variant="outline"
+                            className="w-full text-sm h-11 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold"
+                        >
+                            <Play className="w-4 h-4 mr-2 text-red-500" /> Video
+                        </Button>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-2.5">
                         <Button
@@ -128,6 +146,13 @@ export function PremiumVehicleCard({
                             <Phone className="w-4 h-4 mr-2 text-emerald-500" /> Call Us
                         </Button>
                     </div>
+
+                    <Button
+                        onClick={() => onGetQuote?.(vehicle)}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-11 shadow-lg active:scale-[0.98] transition-all"
+                    >
+                        <TruckIcon className="w-4 h-4 mr-2" /> Home Shipping Quote
+                    </Button>
                 </div>
             </div>
         </Card>

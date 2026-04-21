@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { PremiumVehicleCard } from "@/components/customer/PremiumVehicleCard"
-import type { Vehicle } from "@/types/inventory"
+import type { Vehicle, ShippingQuoteFormData } from "@/types/inventory"
 import { ChevronDown, RefreshCw } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { AxiosError } from "axios"
@@ -10,6 +10,11 @@ import { InventoryFilters } from "@/components/inventory-filters"
 import { InventoryPagination } from "@/components/inventory-pagination"
 import { useAuth } from "@/providers/AuthProvider"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useInventoryActions } from "@/hooks/useInventoryActions"
+import { VehicleInquiryModal } from "@/components/vehicle-inquiry-modal"
+import { ShippingQuoteModal } from "@/components/shipping-quote-modal"
+import { VehicleDetailsModal } from "@/components/vehicle-details-modal"
+import { FinanceApplicationModal } from "@/components/finance-application-modal"
 
 type SortOption =
     | "price-asc"
@@ -48,6 +53,22 @@ function ShopVehiclesContent() {
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+    const [shippingRates, setShippingRates] = React.useState<Record<string, number>>({})
+
+    const {
+        selectedVehicle,
+        openModals,
+        setDetailsOpen,
+        setInquiryOpen,
+        setFinanceOpen,
+        setShippingOpen,
+        handleVehicleClick,
+        handleCheckAvailability,
+        handleApplyNow,
+        handleCallUs,
+        handleVideo,
+        handleGetQuote
+    } = useInventoryActions()
 
     // Pagination State
     const [page, setPage] = React.useState(Number(searchParams.get("page")) || 1)
@@ -72,7 +93,6 @@ function ShopVehiclesContent() {
         sortOrder: searchParams.get("sortOrder") || "asc"
     })
 
-    // Debounced search term to avoid rapid API calls
     const [debouncedSearch, setDebouncedSearch] = React.useState(filters.search)
 
     React.useEffect(() => {
@@ -83,7 +103,6 @@ function ShopVehiclesContent() {
     }, [filters.search])
 
     React.useEffect(() => {
-        // Update URL when state changes
         const params = new URLSearchParams()
         params.set("page", page.toString())
         params.set("limit", limit.toString())
@@ -95,9 +114,7 @@ function ShopVehiclesContent() {
         })
 
         router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-
         fetchVehicles()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, limit, debouncedSearch, filters.make, filters.model, filters.status, filters.year, filters.minPrice, filters.maxPrice, filters.minMileage, filters.maxMileage, filters.sortBy, filters.sortOrder])
 
     const fetchVehicles = async () => {
@@ -106,10 +123,8 @@ function ShopVehiclesContent() {
 
         try {
             const token = await getToken()
-            const response = await apiClient.get('/api/vehicles', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
+            const response = await apiClient.get('/api/vehicles/marketplace', {
+                headers: { Authorization: `Bearer ${token}` },
                 params: {
                     page,
                     limit,
@@ -119,26 +134,22 @@ function ShopVehiclesContent() {
             })
 
             const responseData = response.data?.data || response.data
-            const vehiclesData = responseData.vehicles || []
-            const paginationData = responseData.pagination || { total: 0, totalPages: 1 }
-
-            setVehicles(vehiclesData)
-            setTotal(paginationData.total)
-            setTotalPages(paginationData.totalPages)
+            setVehicles(responseData.vehicles || [])
+            setTotal(responseData.pagination?.total || 0)
+            setTotalPages(responseData.pagination?.totalPages || 1)
 
         } catch (err) {
             console.error('[Inventory] Error fetching vehicles:', err)
             const axiosError = err as AxiosError
             if (axiosError.code !== "ERR_CANCELED") {
-                const apiErrorData = axiosError.response?.data as any
-                const errorMessage = apiErrorData?.message || axiosError.message || 'Failed to load vehicles'
-                setError(errorMessage)
-                setVehicles([])
+                setError((axiosError.response?.data as any)?.message || axiosError.message || 'Failed to load vehicles')
             }
         } finally {
             setIsLoading(false)
         }
     }
+
+    // Auto-modal logic removed as we now use dedicated vehicle pages
 
     const handleFilterChange = (key: string, value: any) => {
         setFilters((prev: any) => ({ ...prev, [key]: value }))
@@ -169,6 +180,28 @@ function ShopVehiclesContent() {
         setPage(1)
     }
 
+    const handleCalculateQuote = async (formData: ShippingQuoteFormData) => {
+        try {
+            const token = await getToken()
+            const response = await apiClient.post('/api/quotes', {
+                ...formData,
+                toZip: formData.zipCode,
+                toAddress: formData.fullAddress
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+
+            const data = response.data?.data || response.data
+            if (formData.vehicleId) {
+                setShippingRates(prev => ({ ...prev, [formData.vehicleId!]: data.rate }))
+            }
+            alert(`Quote created! Rate: $${data.rate}`)
+            setShippingOpen(false)
+        } catch (error) {
+            console.error('Error creating quote:', error)
+        }
+    }
+
     const handleSortChange = (value: SortOption) => {
         let sortBy = "createdAt"
         let sortOrder = "desc"
@@ -179,26 +212,8 @@ function ShopVehiclesContent() {
             case "mileage-asc": sortBy = "mileage"; sortOrder = "asc"; break;
             case "mileage-desc": sortBy = "mileage"; sortOrder = "desc"; break;
             case "year-desc": sortBy = "year"; sortOrder = "desc"; break;
-            case "createdAt-desc": sortBy = "createdAt"; sortOrder = "desc"; break;
-            case "year-asc": sortBy = "year"; sortOrder = "asc"; break;
             case "make-asc": sortBy = "make"; sortOrder = "asc"; break;
-            case "make-desc": sortBy = "make"; sortOrder = "desc"; break;
-            case "model-asc": sortBy = "model"; sortOrder = "asc"; break;
-            case "model-desc": sortBy = "model"; sortOrder = "desc"; break;
-            case "stockNumber-asc": sortBy = "stockNumber"; sortOrder = "asc"; break;
-            case "stockNumber-desc": sortBy = "stockNumber"; sortOrder = "desc"; break;
-            case "location-asc": sortBy = "location"; sortOrder = "asc"; break;
-            case "location-desc": sortBy = "location"; sortOrder = "desc"; break;
-            case "age-asc": sortBy = "age"; sortOrder = "asc"; break;
-            case "age-desc": sortBy = "age"; sortOrder = "desc"; break;
-            case "status-asc": sortBy = "status"; sortOrder = "asc"; break;
-            case "status-desc": sortBy = "status"; sortOrder = "desc"; break;
-            case "created-asc": sortBy = "created"; sortOrder = "asc"; break;
-            case "created-desc": sortBy = "created"; sortOrder = "desc"; break;
-            case "recent-asc": sortBy = "recent"; sortOrder = "asc"; break;
-            case "recent-desc": sortBy = "recent"; sortOrder = "desc"; break;
-            case "cost-asc": sortBy = "cost"; sortOrder = "asc"; break;
-            case "cost-desc": sortBy = "cost"; sortOrder = "desc"; break;
+            default: sortBy = "make"; sortOrder = "asc";
         }
 
         setFilters((prev: any) => ({ ...prev, sortBy, sortOrder }))
@@ -221,12 +236,8 @@ function ShopVehiclesContent() {
                     <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-6">
                         <h2 className="text-xl font-semibold text-red-600 dark:text-red-400 mb-2">Error Loading Vehicles</h2>
                         <p className="text-red-500/80 mb-4">{error}</p>
-                        <button
-                            onClick={fetchVehicles}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                        >
-                            <RefreshCw className="h-4 w-4" />
-                            Retry Loading
+                        <button onClick={fetchVehicles} className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
+                            <RefreshCw className="h-4 w-4" /> Retry Loading
                         </button>
                     </div>
                 </div>
@@ -237,40 +248,30 @@ function ShopVehiclesContent() {
     return (
         <div className="space-y-8 animate-in fade-in flex flex-col min-h-full slide-in-from-bottom-4 duration-700">
 
-            {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6 shrink-0">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-                        Shop Vehicles
-                    </h1>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase italic tracking-tighter">Shop Vehicles</h1>
                     <p className="text-muted-foreground mt-2 max-w-2xl text-lg">
-                        Browse our premium inventory. As an Action Auto Member, you unlock exclusive
-                        <span className="text-green-600 dark:text-green-400 font-semibold mx-1">One Time Payment</span>
-                        discounts on all vehicles.
+                        Browse our premium inventory. Take advantage of Member Exclusive pricing.
                     </p>
                 </div>
             </div>
 
-            {/* Filters Section */}
             <div className="space-y-4 shrink-0">
                 <InventoryFilters
                     filters={filters}
                     onFilterChange={handleFilterChange}
                     onBulkFilterChange={handleBulkFilterChange}
                     onClearFilters={handleClearFilters}
+                    apiPath="/api/vehicles/marketplace/filters"
                 />
 
                 <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
                     <div className="flex items-center gap-3">
                         <p className="text-sm font-medium text-muted-foreground">
-                            <span className="font-bold text-foreground">{total}</span> Vehicles Found
+                            <span className="font-bold text-foreground tracking-tight">{total}</span> Vehicles Found
                         </p>
-                        <button
-                            onClick={fetchVehicles}
-                            disabled={isLoading}
-                            className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                            title="Refresh inventory"
-                        >
+                        <button onClick={fetchVehicles} disabled={isLoading} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors">
                             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
@@ -281,19 +282,12 @@ function ShopVehiclesContent() {
                             <select
                                 value={currentSortValue}
                                 onChange={(e) => handleSortChange(e.target.value as SortOption)}
-                                className="border border-border rounded px-3 py-1.5 pr-8 text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:border-transparent outline-none transition-all cursor-pointer"
+                                className="border border-border rounded px-3 py-1.5 pr-8 text-sm bg-card text-foreground focus:ring-2 focus:ring-ring outline-none cursor-pointer"
                             >
                                 <option value="make-asc">Make (A-Z)</option>
-                                <option value="make-desc">Make (Z-A)</option>
                                 <option value="price-asc">Price: Low to High</option>
                                 <option value="price-desc">Price: High to Low</option>
-                                <option value="mileage-asc">Mileage: Low to High</option>
-                                <option value="mileage-desc">Mileage: High to Low</option>
                                 <option value="year-desc">Year: Newest</option>
-                                <option value="year-asc">Year: Oldest</option>
-                                <option value="age-asc">Newest on Lot</option>
-                                <option value="age-desc">Oldest on Lot</option>
-                                <option value="created-desc">Recently Added</option>
                             </select>
                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                         </div>
@@ -301,7 +295,6 @@ function ShopVehiclesContent() {
                 </div>
             </div>
 
-            {/* Content Area */}
             <div className="flex-1 min-h-0 pt-2">
                 {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -309,32 +302,20 @@ function ShopVehiclesContent() {
                             <div key={i} className="h-[450px] bg-zinc-100 dark:bg-zinc-900 rounded-2xl animate-pulse" />
                         ))}
                     </div>
-                ) : vehicles.length === 0 ? (
-                    <div className="text-center py-20 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-border/50">
-                        <div className="max-w-lg mx-auto p-4">
-                            <p className="text-xl font-semibold text-foreground mb-2">No vehicles found</p>
-                            <p className="text-muted-foreground mb-6">
-                                Try adjusting your filters or search terms to find what you're looking for.
-                            </p>
-                            <button
-                                onClick={handleClearFilters}
-                                className="inline-flex items-center gap-2 px-6 py-2 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-semibold rounded-xl hover:opacity-90 transition-opacity"
-                            >
-                                Clear Filters
-                            </button>
-                        </div>
-                    </div>
                 ) : (
                     <div className="space-y-8">
-                        {/* Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {vehicles.map((vehicle) => (
                                 <PremiumVehicleCard
                                     key={vehicle.id}
                                     vehicle={vehicle}
-                                    onCheckAvailability={() => console.log("Checking availability:", vehicle.id)}
-                                    onApplyNow={() => console.log("Applying for:", vehicle.id)}
-                                    onCallUs={() => window.open("tel:+15555555555")}
+                                    shippingPrice={shippingRates[vehicle.id]}
+                                    onCheckAvailability={handleCheckAvailability}
+                                    onApplyNow={handleApplyNow}
+                                    onCallUs={handleCallUs}
+                                    onVideo={handleVideo}
+                                    onGetQuote={handleGetQuote}
+                                    onVehicleClick={handleVehicleClick}
                                 />
                             ))}
                         </div>
@@ -350,20 +331,44 @@ function ShopVehiclesContent() {
                     </div>
                 )}
             </div>
+
+            <ShippingQuoteModal
+                open={openModals.shipping}
+                onOpenChange={setShippingOpen}
+                vehicles={vehicles}
+                defaultVehicle={selectedVehicle}
+                onCalculate={handleCalculateQuote}
+            />
+
+
+            <VehicleDetailsModal
+                isOpen={openModals.details}
+                onClose={() => setDetailsOpen(false)}
+                vehicle={selectedVehicle}
+                onQuoteClick={() => setShippingOpen(true)}
+                onInquiryClick={handleCheckAvailability}
+                onApplyNow={handleApplyNow}
+                shippingQuote={selectedVehicle ? shippingRates[selectedVehicle.id] : null}
+            />
+
+            <VehicleInquiryModal
+                isOpen={openModals.inquiry}
+                onClose={() => setInquiryOpen(false)}
+                vehicle={selectedVehicle}
+            />
+
+            <FinanceApplicationModal
+                isOpen={openModals.finance}
+                onClose={() => setFinanceOpen(false)}
+                vehicle={selectedVehicle}
+            />
         </div>
     )
 }
 
 export default function ShopVehiclesPage() {
     return (
-        <React.Suspense fallback={
-            <div className="p-8 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-500 border-r-transparent" />
-                    <p className="text-muted-foreground font-medium">Preparing showroom...</p>
-                </div>
-            </div>
-        }>
+        <React.Suspense fallback={<div className="p-8 flex items-center justify-center">Loading...</div>}>
             <ShopVehiclesContent />
         </React.Suspense>
     )
