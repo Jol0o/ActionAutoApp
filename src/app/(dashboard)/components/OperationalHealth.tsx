@@ -24,7 +24,7 @@ export function OperationalHealth({ metrics, isLoading }: OperationalHealthProps
   )
 
   return (
-    <Card className="border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col">
+    <Card className="border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col p-0">
       <CardHeader className="py-5 px-6 border-b border-border/10">
         <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">
           Operational Pipeline Momentum
@@ -47,7 +47,7 @@ export function OperationalHealth({ metrics, isLoading }: OperationalHealthProps
               Target: 14 Days | Current: {stats?.avgDaysOnLot || 14} Days
             </p>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between items-end">
               <h4 className="text-lg font-black tracking-tighter">Quote Conversion</h4>

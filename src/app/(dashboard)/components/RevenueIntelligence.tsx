@@ -140,7 +140,7 @@ export function RevenueIntelligence({
       </Card>
 
       {/* Live Payments Feed */}
-      <Card className="lg:col-span-5 border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col">
+      <Card className="lg:col-span-5 border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col p-0">
         <CardHeader className="py-5 px-6 border-b border-border/10 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-lg font-black flex items-center gap-2">
@@ -181,8 +181,8 @@ export function RevenueIntelligence({
                   </TableCell>
                   <TableCell className="pr-6 text-right">
                     <Badge variant="secondary" className={`text-[8px] font-black uppercase px-2 py-0.5 border-none ${payment.status === 'succeeded' ? 'bg-emerald-500/10 text-emerald-500' :
-                        payment.status === 'processing' ? 'bg-amber-500/10 text-amber-500' :
-                          'bg-rose-500/10 text-rose-500'
+                      payment.status === 'processing' ? 'bg-amber-500/10 text-amber-500' :
+                        'bg-rose-500/10 text-rose-500'
                       }`}>
                       {payment.status}
                     </Badge>
