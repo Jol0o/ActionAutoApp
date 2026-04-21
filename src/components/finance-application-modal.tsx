@@ -13,6 +13,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import type { Vehicle } from "@/types/inventory"
+import { useAuth } from "@/providers/AuthProvider"
+import { apiClient } from "@/lib/api-client"
+import { toast } from "sonner"
+import { LogIn } from "lucide-react"
 
 interface FinanceApplicationModalProps {
     vehicle: Vehicle | null
@@ -27,14 +31,51 @@ export function FinanceApplicationModal({
     isOpen,
     onClose
 }: FinanceApplicationModalProps) {
+    const { isSignedIn } = useAuth()
     const [step, setStep] = React.useState<Step>(1)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [isSuccess, setIsSuccess] = React.useState(false)
+    
+    // Form State
+    const [formData, setFormData] = React.useState({
+        personalInfo: {
+            firstName: "",
+            lastName: "",
+            email: "",
+            phone: "",
+            dob: "",
+            ssn: "",
+            maritalStatus: ""
+        },
+        address: {
+            street: "",
+            city: "",
+            state: "",
+            zip: ""
+        },
+        employmentInfo: {
+            employer: "",
+            jobTitle: "",
+            income: "",
+            incomeFrequency: "Yearly" as "Yearly" | "Monthly" | "Weekly",
+            yearsAtJob: "1"
+        }
+    })
 
     if (!vehicle) return null
 
     const nextStep = () => setStep(prev => (prev < 5 ? prev + 1 : prev) as Step)
     const prevStep = () => setStep(prev => (prev > 1 ? prev - 1 : prev) as Step)
+
+    const updateNestedField = (section: keyof typeof formData, field: string, value: string) => {
+        setFormData(prev => ({
+            ...prev,
+            [section]: {
+                ...prev[section],
+                [field]: value
+            }
+        }))
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -43,17 +84,35 @@ export function FinanceApplicationModal({
             return
         }
         
+        if (!isSignedIn) {
+            toast.error("Please sign in to submit a finance application")
+            return
+        }
+
         setIsSubmitting(true)
-        // Mock API call
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        setIsSubmitting(false)
-        setIsSuccess(true)
         
-        setTimeout(() => {
-            onClose()
-            setStep(1)
-            setIsSuccess(false)
-        }, 3000)
+        try {
+            await apiClient.submitFinanceApplication({
+                vehicleId: vehicle.id,
+                personalInfo: {
+                    ...formData.personalInfo,
+                    address: formData.address
+                },
+                employmentInfo: formData.employmentInfo
+            })
+
+            setIsSuccess(true)
+            
+            setTimeout(() => {
+                onClose()
+                setStep(1)
+                setIsSuccess(false)
+            }, 3000)
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to submit application. Please try again.")
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     const stepInfo = [
@@ -158,7 +217,26 @@ export function FinanceApplicationModal({
                                         Your credit application has been securely transmitted. A finance specialist will contact you shortly.
                                     </p>
                                 </div>
-                                <Button onClick={onClose} className="px-8 font-bold">Close Portal</Button>
+                                <Button onClick={onClose} className="px-8 font-bold text-white bg-zinc-900 dark:bg-green-600">Close Portal</Button>
+                            </div>
+                        ) : !isSignedIn ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center space-y-6 py-12 px-4 shadow-inner rounded-3xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800">
+                                <div className="w-20 h-20 bg-zinc-200 dark:bg-zinc-800 rounded-full flex items-center justify-center">
+                                    <ShieldCheck className="w-10 h-10 text-zinc-400" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter">Identity Required</h4>
+                                    <p className="text-zinc-500 max-w-[280px] mx-auto">
+                                        This is a secure financial document. Please sign in to verify your identity before proceeding.
+                                    </p>
+                                </div>
+                                <Button 
+                                    onClick={() => window.location.href = `/sign-in?redirect_url=${encodeURIComponent(window.location.pathname)}`}
+                                    className="w-full max-w-[240px] h-12 bg-zinc-900 hover:bg-zinc-800 dark:bg-green-600 dark:hover:bg-green-700 text-white font-bold rounded-xl shadow-xl active:scale-[0.98] transition-all"
+                                >
+                                    <LogIn className="w-5 h-5 mr-3" />
+                                    Secure Login
+                                </Button>
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-8 h-full flex flex-col">
@@ -193,17 +271,16 @@ export function FinanceApplicationModal({
                                                             <div className="w-2 h-2 bg-green-500 rounded-full" />
                                                         </div>
                                                     </div>
-                                                    <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 cursor-pointer flex items-center justify-between group transition-all">
+                                                    <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 cursor-pointer flex items-center justify-between group transition-all opacity-50">
                                                         <div className="flex items-center gap-4">
                                                             <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-lg flex items-center justify-center">
                                                                 <Landmark className="w-5 h-5" />
                                                             </div>
                                                             <div>
                                                                 <h4 className="font-bold text-zinc-900 dark:text-white">Joint Application</h4>
-                                                                <p className="text-xs text-zinc-500">Applying with a co-borrower</p>
+                                                                <p className="text-xs text-zinc-500">Check back soon for co-borrowers</p>
                                                             </div>
                                                         </div>
-                                                        <div className="w-5 h-5 rounded-full border border-zinc-300 dark:border-zinc-700" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -214,15 +291,44 @@ export function FinanceApplicationModal({
                                             <div className="space-y-6">
                                                 <h3 className="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter italic">Personal Identification</h3>
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2"><Label>First Name</Label><Input required placeholder="First" /></div>
-                                                    <div className="space-y-2"><Label>Last Name</Label><Input required placeholder="Last" /></div>
+                                                    <div className="space-y-2">
+                                                        <Label>First Name</Label>
+                                                        <Input required value={formData.personalInfo.firstName} onChange={(e) => updateNestedField('personalInfo', 'firstName', e.target.value)} placeholder="First" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Last Name</Label>
+                                                        <Input required value={formData.personalInfo.lastName} onChange={(e) => updateNestedField('personalInfo', 'lastName', e.target.value)} placeholder="Last" />
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-2"><Label>Social Security Number</Label><Input required type="password" placeholder="XXX - XX - XXXX" className="font-mono" /></div>
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2"><Label>Date of Birth</Label><Input required type="date" /></div>
+                                                    <div className="space-y-2">
+                                                        <Label>Email Address</Label>
+                                                        <Input required type="email" value={formData.personalInfo.email} onChange={(e) => updateNestedField('personalInfo', 'email', e.target.value)} placeholder="email@example.com" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Phone Number</Label>
+                                                        <Input required type="tel" value={formData.personalInfo.phone} onChange={(e) => updateNestedField('personalInfo', 'phone', e.target.value)} placeholder="(555) 000-0000" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Social Security Number</Label>
+                                                    <Input required type="password" value={formData.personalInfo.ssn} onChange={(e) => updateNestedField('personalInfo', 'ssn', e.target.value)} placeholder="XXX - XX - XXXX" className="font-mono" />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Date of Birth</Label>
+                                                        <Input required type="date" value={formData.personalInfo.dob} onChange={(e) => updateNestedField('personalInfo', 'dob', e.target.value)} />
+                                                    </div>
                                                     <div className="space-y-2">
                                                         <Label>Marital Status</Label>
-                                                        <Select><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="s">Single</SelectItem><SelectItem value="m">Married</SelectItem></SelectContent></Select>
+                                                        <Select value={formData.personalInfo.maritalStatus} onValueChange={(val) => updateNestedField('personalInfo', 'maritalStatus', val)}>
+                                                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="s">Single</SelectItem>
+                                                                <SelectItem value="m">Married</SelectItem>
+                                                                <SelectItem value="d">Divorced</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
                                                 </div>
                                             </div>
@@ -232,17 +338,14 @@ export function FinanceApplicationModal({
                                         {step === 3 && (
                                             <div className="space-y-6">
                                                 <h3 className="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter italic">Current Residence</h3>
-                                                <div className="space-y-2"><Label>Street Address</Label><Input required placeholder="Address" /></div>
+                                                <div className="space-y-2"><Label>Street Address</Label><Input required value={formData.address.street} onChange={(e) => updateNestedField('address', 'street', e.target.value)} placeholder="Address" /></div>
                                                 <div className="grid grid-cols-3 gap-4">
-                                                    <div className="col-span-2 space-y-2"><Label>City</Label><Input required placeholder="City" /></div>
-                                                    <div className="space-y-2"><Label>ZIP Code</Label><Input required placeholder="ZIP" /></div>
+                                                    <div className="col-span-2 space-y-2"><Label>City</Label><Input required value={formData.address.city} onChange={(e) => updateNestedField('address', 'city', e.target.value)} placeholder="City" /></div>
+                                                    <div className="space-y-2"><Label>ZIP Code</Label><Input required value={formData.address.zip} onChange={(e) => updateNestedField('address', 'zip', e.target.value)} placeholder="ZIP" /></div>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label>Primary Status</Label>
-                                                        <Select><SelectTrigger><SelectValue placeholder="Rent / Own" /></SelectTrigger><SelectContent><SelectItem value="own">Own</SelectItem><SelectItem value="rent">Rent</SelectItem></SelectContent></Select>
-                                                    </div>
-                                                    <div className="space-y-2"><Label>Monthly Payment</Label><Input required type="number" placeholder="$0.00" /></div>
+                                                <div className="space-y-2">
+                                                    <Label>State</Label>
+                                                    <Input required value={formData.address.state} onChange={(e) => updateNestedField('address', 'state', e.target.value)} placeholder="e.g. UT" />
                                                 </div>
                                             </div>
                                         )}
@@ -251,13 +354,23 @@ export function FinanceApplicationModal({
                                         {step === 4 && (
                                             <div className="space-y-6">
                                                 <h3 className="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter italic">Employment & Income</h3>
-                                                <div className="space-y-2"><Label>Employer Name</Label><Input required placeholder="Company Name" /></div>
-                                                <div className="space-y-2"><Label>Job Title</Label><Input required placeholder="Software Engineer / etc" /></div>
+                                                <div className="space-y-2"><Label>Employer Name</Label><Input required value={formData.employmentInfo.employer} onChange={(e) => updateNestedField('employmentInfo', 'employer', e.target.value)} placeholder="Company Name" /></div>
+                                                <div className="space-y-2"><Label>Job Title</Label><Input required value={formData.employmentInfo.jobTitle} onChange={(e) => updateNestedField('employmentInfo', 'jobTitle', e.target.value)} placeholder="Software Engineer / etc" /></div>
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2"><Label>Annual Gross Income</Label><Input required type="number" placeholder="$0.00" /></div>
+                                                    <div className="space-y-2">
+                                                        <Label>Annual Gross Income</Label>
+                                                        <Input required value={formData.employmentInfo.income} onChange={(e) => updateNestedField('employmentInfo', 'income', e.target.value)} placeholder="$0.00" />
+                                                    </div>
                                                     <div className="space-y-2">
                                                         <Label>Income Frequency</Label>
-                                                        <Select><SelectTrigger><SelectValue placeholder="Frequency" /></SelectTrigger><SelectContent><SelectItem value="yr">Annually</SelectItem><SelectItem value="mo">Monthly</SelectItem></SelectContent></Select>
+                                                        <Select value={formData.employmentInfo.incomeFrequency} onValueChange={(val: any) => updateNestedField('employmentInfo', 'incomeFrequency', val)}>
+                                                            <SelectTrigger><SelectValue placeholder="Frequency" /></SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Yearly">Annually</SelectItem>
+                                                                <SelectItem value="Monthly">Monthly</SelectItem>
+                                                                <SelectItem value="Weekly">Weekly</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
                                                 </div>
                                             </div>

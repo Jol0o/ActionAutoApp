@@ -13,6 +13,33 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import type { Vehicle } from "@/types/inventory"
+import { useAuth, useUser } from "@/providers/AuthProvider"
+import { apiClient } from "@/lib/api-client"
+import { toast } from "sonner"
+import { LogIn, AlertCircle } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { sanitizeInput } from "@/lib/utils"
+
+const InquirySchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(50, "First name too long"),
+  lastName: z.string().min(1, "Last name is required").max(50, "Last name too long"),
+  email: z.string().email("Invalid email address").max(100, "Email too long"),
+  phone: z.string().min(14, "Phone number must be at least 10 digits").max(14, "Invalid phone format"),
+  message: z.string().max(500, "Message too long").optional(),
+})
+
+type InquiryData = z.infer<typeof InquirySchema>
+
+function ErrorMsg({ message }: { message?: string }) {
+  if (!message) return null
+  return (
+    <div className="text-[10px] font-bold uppercase tracking-tight text-red-500 mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+      <AlertCircle className="w-3 h-3" /> {message}
+    </div>
+  )
+}
 
 interface VehicleInquiryModalProps {
     vehicle: Vehicle | null
@@ -25,26 +52,76 @@ export function VehicleInquiryModal({
     isOpen,
     onClose
 }: VehicleInquiryModalProps) {
+    const { isSignedIn } = useAuth()
+    const { user } = useUser()
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [isSuccess, setIsSuccess] = React.useState(false)
 
+    const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<InquiryData>({
+        resolver: zodResolver(InquirySchema),
+        defaultValues: {
+            firstName: "",
+            lastName: "",
+            email: "",
+            phone: "",
+            message: ""
+        }
+    })
+
+    // Pre-fill user data when modal opens or user changes
+    React.useEffect(() => {
+        if (isSignedIn && user && isOpen) {
+            setValue("firstName", user.firstName || "")
+            setValue("lastName", user.lastName || "")
+            setValue("email", user.primaryEmailAddress?.emailAddress || "")
+        }
+    }, [isSignedIn, user, isOpen, setValue])
+
     if (!vehicle) return null
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
+    // Format Phone as user types: (XXX) XXX-XXXX
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value.replace(/\D/g, '')
+        if (val.length > 10) val = val.slice(0, 10)
+
+        let formatted = val
+        if (val.length > 6) formatted = `(${val.slice(0, 3)}) ${val.slice(3, 6)}-${val.slice(6)}`
+        else if (val.length > 3) formatted = `(${val.slice(0, 3)}) ${val.slice(3)}`
+        else if (val.length > 0) formatted = `(${val}`
+
+        setValue('phone', formatted, { shouldValidate: true })
+    }
+
+    const onSubmit = async (data: InquiryData) => {
+        if (!isSignedIn) {
+            toast.error("Please sign in to submit an inquiry")
+            return
+        }
+
         setIsSubmitting(true)
 
-        // Mock API call to simulate lead submission
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        try {
+            await apiClient.submitInquiry({
+                vehicleId: vehicle.id,
+                comments: sanitizeInput(data.message || ""),
+                firstName: sanitizeInput(data.firstName),
+                lastName: sanitizeInput(data.lastName),
+                email: sanitizeInput(data.email),
+                phone: sanitizeInput(data.phone)
+            })
+            
+            setIsSuccess(true)
 
-        setIsSubmitting(false)
-        setIsSuccess(true)
-
-        // Auto close after 2 seconds on success
-        setTimeout(() => {
-            onClose()
-            setIsSuccess(false)
-        }, 3000)
+            // Auto close after 3 seconds on success
+            setTimeout(() => {
+                onClose()
+                setIsSuccess(false)
+            }, 3000)
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to send inquiry. Please try again.")
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     return (
@@ -110,42 +187,109 @@ export function VehicleInquiryModal({
                                     A specialist will check availability and get back to you shortly.
                                 </p>
                             </div>
+                        ) : !isSignedIn ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center space-y-6 py-12 px-4 shadow-inner rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800">
+                                <div className="w-16 h-16 bg-zinc-200 dark:bg-zinc-800 rounded-full flex items-center justify-center">
+                                    <User className="w-8 h-8 text-zinc-400" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">Login Required</h4>
+                                    <p className="text-sm text-zinc-500 max-w-[240px] mx-auto">
+                                        Please sign in to your ActionAuto account to process this secure inquiry.
+                                    </p>
+                                </div>
+                                <Button 
+                                    onClick={() => window.location.href = `/sign-in?redirect_url=${encodeURIComponent(window.location.pathname)}`}
+                                    className="w-full max-w-[200px] h-11 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-bold rounded-xl shadow-lg border-b-4 border-zinc-700 dark:border-zinc-300 active:border-b-0 active:translate-y-1 transition-all"
+                                >
+                                    <LogIn className="w-4 h-4 mr-2" />
+                                    Sign In Now
+                                </Button>
+                            </div>
                         ) : (
-                            <form onSubmit={handleSubmit} className="space-y-4">
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                                <div className="p-4 rounded-xl bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 mb-2">
+                                    <p className="text-xs font-semibold text-green-800 dark:text-green-400 uppercase tracking-widest mb-1">Authenticated Account</p>
+                                    <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                                        Please confirm or update your contact details below so the dealer can reach you.
+                                    </p>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
                                         <Label htmlFor="firstName" className="text-xs font-bold uppercase tracking-wider text-zinc-500">First Name</Label>
-                                        <Input id="firstName" placeholder="First Name" required className="h-11 border-zinc-200 focus:ring-green-500 focus:border-green-500" />
+                                        <div className="relative">
+                                            <User className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                                            <Input
+                                                id="firstName"
+                                                {...register("firstName")}
+                                                placeholder="First Name"
+                                                maxLength={50}
+                                                className="pl-10 h-10 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-green-500/50"
+                                            />
+                                        </div>
+                                        <ErrorMsg message={errors.firstName?.message} />
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label htmlFor="lastName" className="text-xs font-bold uppercase tracking-wider text-zinc-500">Last Name</Label>
-                                        <Input id="lastName" placeholder="Last Name" required className="h-11 border-zinc-200" />
+                                        <Input
+                                            id="lastName"
+                                            {...register("lastName")}
+                                            placeholder="Last Name"
+                                            maxLength={50}
+                                            className="h-10 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-green-500/50"
+                                        />
+                                        <ErrorMsg message={errors.lastName?.message} />
                                     </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-zinc-500">Email Address</Label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                                        <Input id="email" type="email" placeholder="email@example.com" required className="pl-10 h-11 border-zinc-200" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-zinc-500">Email Address</Label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                {...register("email")}
+                                                placeholder="email@example.com"
+                                                maxLength={100}
+                                                className="pl-10 h-10 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-green-500/50"
+                                            />
+                                        </div>
+                                        <ErrorMsg message={errors.email?.message} />
                                     </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-wider text-zinc-500">Phone Number</Label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                                        <Input id="phone" type="tel" placeholder="(555) 000-0000" required className="pl-10 h-11 border-zinc-200" />
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-wider text-zinc-500">Phone Number</Label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                                            <Input
+                                                id="phone"
+                                                type="tel"
+                                                {...register("phone")}
+                                                onChange={handlePhoneChange}
+                                                placeholder="(555) 000-0000"
+                                                maxLength={14}
+                                                className="pl-10 h-10 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-green-500/50"
+                                            />
+                                        </div>
+                                        <ErrorMsg message={errors.phone?.message} />
                                     </div>
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <Label htmlFor="message" className="text-xs font-bold uppercase tracking-wider text-zinc-500">Message (Optional)</Label>
-                                    <Textarea
-                                        id="message"
-                                        placeholder="I'm interested in this vehicle..."
-                                        className="min-h-[100px] border-zinc-200 resize-none"
-                                    />
+                                    <div className="relative">
+                                        <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+                                        <Textarea
+                                            id="message"
+                                            {...register("message")}
+                                            placeholder="I'm interested in this vehicle. Is it still available?"
+                                            maxLength={500}
+                                            className="pl-10 min-h-[80px] border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 resize-none focus:ring-2 focus:ring-green-500/50"
+                                        />
+                                    </div>
+                                    <ErrorMsg message={errors.message?.message} />
                                 </div>
 
                                 <Button

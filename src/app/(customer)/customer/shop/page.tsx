@@ -123,7 +123,7 @@ function ShopVehiclesContent() {
 
         try {
             const token = await getToken()
-            const response = await apiClient.get('/api/vehicles', {
+            const response = await apiClient.get('/api/vehicles/marketplace', {
                 headers: { Authorization: `Bearer ${token}` },
                 params: {
                     page,
@@ -263,6 +263,7 @@ function ShopVehiclesContent() {
                     onFilterChange={handleFilterChange}
                     onBulkFilterChange={handleBulkFilterChange}
                     onClearFilters={handleClearFilters}
+                    apiPath="/api/vehicles/marketplace/filters"
                 />
 
                 <div className="flex flex-wrap items-center justify-between gap-4 pt-2">

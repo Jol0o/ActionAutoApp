@@ -30,7 +30,7 @@ export function UpdateMileageModal({ vehicle, isOpen, onOpenChange }: UpdateMile
     }, [vehicle, isOpen])
 
     const mutation = useMutation({
-        mutationFn: (newMileage: number) => updateVehicleMileage(vehicle!._id, newMileage),
+        mutationFn: (newMileage: number) => updateVehicleMileage(vehicle!.id, newMileage),
         onSuccess: () => {
             toast.success("Mileage updated successfully!")
             queryClient.invalidateQueries({ queryKey: ["vehicles"] })

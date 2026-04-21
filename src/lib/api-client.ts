@@ -307,6 +307,26 @@ class ApiClient {
         return this.post(`/api/vehicles/${id}/reserve`, { customerName }, config);
     }
 
+    // ── Customer Lead Methods ────────────────────────────────────────────────
+    async submitInquiry(data: { 
+        vehicleId: string; 
+        comments?: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+    }, config?: AxiosRequestConfig) {
+        return this.post('/api/customer/leads/inquiry', data, config);
+    }
+
+    async submitFinanceApplication(data: { 
+        vehicleId: string; 
+        personalInfo: any; 
+        employmentInfo: any 
+    }, config?: AxiosRequestConfig) {
+        return this.post('/api/customer/leads/finance', data, config);
+    }
+
     setOnAuthFailure(callback: () => void) {
         this.onAuthFailure = callback;
     }
