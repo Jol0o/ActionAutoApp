@@ -42,9 +42,9 @@ export function LeaderboardPro() {
           fetchNextPage()
         }
       },
-      { 
+      {
         threshold: 0.1, // Trigger earlier for smoother experience
-        root: scrollContainerRef.current 
+        root: scrollContainerRef.current
       }
     )
 
@@ -80,7 +80,7 @@ export function LeaderboardPro() {
 
   return (
     <>
-      <Card className="border-border/40 bg-card/50 backdrop-blur-sm h-[750px] overflow-hidden flex flex-col font-sans">
+      <Card className="border-border/40 bg-card/50 backdrop-blur-sm h-[550px] overflow-hidden flex flex-col font-sans">
         <CardHeader className="pb-4 border-b border-border/10">
           <div className="flex items-center justify-between">
             <div>
@@ -94,8 +94,8 @@ export function LeaderboardPro() {
             </div>
           </div>
         </CardHeader>
-        
-        <CardContent 
+
+        <CardContent
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto space-y-3 px-4 py-4 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20 scrollbar-track-transparent transition-all"
         >
@@ -108,9 +108,8 @@ export function LeaderboardPro() {
               <button
                 key={user.id || i}
                 onClick={() => handleUserClick(user)}
-                className={`w-full group flex items-center gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-300 hover:ring-2 hover:ring-primary/20 hover:scale-[1.01] active:scale-[0.99] ${
-                  isTop3 ? "border-primary/20 bg-card/80 shadow-md ring-1 ring-primary/5" : "border-border/20 bg-transparent hover:bg-card/40"
-                }`}
+                className={`w-full group flex items-center gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-300 hover:ring-2 hover:ring-primary/20 hover:scale-[1.01] active:scale-[0.99] ${isTop3 ? "border-primary/20 bg-card/80 shadow-md ring-1 ring-primary/5" : "border-border/20 bg-transparent hover:bg-card/40"
+                  }`}
               >
                 {/* Rank Icon or Number */}
                 <div className="w-8 flex flex-col items-center shrink-0">
@@ -188,10 +187,10 @@ export function LeaderboardPro() {
       </Card>
 
       {/* User Performance Detail Sheet */}
-      <UserDetailSheet 
-        user={selectedUser} 
-        open={sheetOpen} 
-        onOpenChange={setSheetOpen} 
+      <UserDetailSheet
+        user={selectedUser}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
       />
     </>
   )

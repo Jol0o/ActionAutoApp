@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import * as React from "react"
 import { Clock } from "lucide-react"
@@ -15,16 +15,20 @@ import { RevenueIntelligence } from "./components/RevenueIntelligence"
 import { OperationalHealth } from "./components/OperationalHealth"
 
 export default function Dashboard() {
-  const [currentTime, setCurrentTime] = React.useState(new Date())
-  const [revenuePeriod, setRevenuePeriod] = React.useState<string>("1Y")
-  const [leaderboardMonth, setLeaderboardMonth] = React.useState<string>("Mar")
+  const [currentTime, setCurrentTime] = React.useState(new Date());
+  const [revenuePeriod, setRevenuePeriod] = React.useState<string>("1Y");
+  const [leaderboardMonth, setLeaderboardMonth] = React.useState<string>("Mar");
 
-  const { data: metrics, isLoading, error } = useDashboardStats(revenuePeriod, leaderboardMonth)
+  const {
+    data: metrics,
+    isLoading,
+    error,
+  } = useDashboardStats(revenuePeriod, leaderboardMonth);
 
   React.useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (error) {
     return (
@@ -37,12 +41,12 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="p-4 sm:p-8 space-y-8 container mx-auto min-h-screen pb-12 animate-in fade-in duration-700">
-      
+
       {/* ── Header Layer ────────────────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
@@ -92,17 +96,27 @@ export default function Dashboard() {
       </div>
 
       {/* ── Financial Trajectory Layer ───────────────────────────────────── */}
-      <RevenueIntelligence 
-        trajectory={metrics?.revenueTrajectory || []} 
-        livePayments={metrics?.livePayments || []} 
+      <RevenueIntelligence
+        trajectory={metrics?.revenueTrajectory || []}
+        livePayments={metrics?.livePayments || []}
         period={revenuePeriod}
         onPeriodChange={setRevenuePeriod}
-        isLoading={isLoading} 
+        isLoading={isLoading}
       />
 
       {/* ── Efficiency & Pipeline Health ─────────────────────────────────── */}
       <OperationalHealth metrics={metrics} isLoading={isLoading} />
 
     </div>
-  )
+  );
+}
+
+function Select({
+  children,
+  defaultValue,
+}: {
+  children: React.ReactNode;
+  defaultValue: string;
+}) {
+  return <div className="flex items-center">{children}</div>;
 }

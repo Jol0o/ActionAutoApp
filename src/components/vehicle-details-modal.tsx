@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Share2, Gauge, FileText, Fuel, MapPin, X } from "lucide-react"
+import { Share2, Gauge, FileText, Fuel, MapPin, X, ImageOff } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
     Dialog,
     DialogContent,
@@ -33,6 +34,14 @@ export function VehicleDetailsModal({
     onApplyNow,
     shippingQuote
 }: VehicleDetailsModalProps) {
+    const [activeImage, setActiveImage] = React.useState<string>("")
+
+    React.useEffect(() => {
+        if (vehicle) {
+            setActiveImage(vehicle.image)
+        }
+    }, [vehicle])
+
     if (!vehicle) return null
 
     return (
@@ -71,5 +80,36 @@ export function VehicleDetailsModal({
                 />
             </DialogContent>
         </Dialog>
+    )
+}
+
+function ThumbImage({ src, idx, active, onClick }: { src: string; idx: number; active: boolean; onClick: () => void }) {
+    const [loaded, setLoaded] = React.useState(false)
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "relative shrink-0 overflow-hidden rounded-md border transition-all snap-start bg-muted",
+                "w-20 aspect-[4/3]",
+                active
+                    ? "border-primary ring-2 ring-primary/20 opacity-100"
+                    : "border-transparent opacity-60 hover:opacity-100"
+            )}
+        >
+            {/* Skeleton */}
+            {!loaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={src}
+                alt={`Thumbnail ${idx + 1}`}
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setLoaded(true)}
+                className={cn(
+                    "absolute inset-0 w-full h-full object-cover transition-opacity duration-200",
+                    loaded ? "opacity-100" : "opacity-0"
+                )}
+            />
+        </button>
     )
 }

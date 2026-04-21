@@ -36,12 +36,12 @@ interface RevenueIntelligenceProps {
   isLoading: boolean
 }
 
-export function RevenueIntelligence({ 
-  trajectory, 
-  livePayments, 
-  period, 
-  onPeriodChange, 
-  isLoading 
+export function RevenueIntelligence({
+  trajectory,
+  livePayments,
+  period,
+  onPeriodChange,
+  isLoading
 }: RevenueIntelligenceProps) {
   const totalPeriodRevenue = React.useMemo(() => {
     return trajectory.reduce((acc, curr) => acc + curr.revenue, 0)
@@ -50,7 +50,7 @@ export function RevenueIntelligence({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Revenue Trajectory Chart */}
-      <Card className="lg:col-span-7 border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col">
+      <Card className="lg:col-span-7 border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col p-0">
         <CardHeader className="py-5 px-6 border-b border-border/10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -64,7 +64,7 @@ export function RevenueIntelligence({
                 Monthly Performance Momentum
               </CardDescription>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="flex gap-1 p-1 bg-muted/30 rounded-lg">
                 {["7D", "1M", "1Y"].map((p) => (
@@ -74,7 +74,7 @@ export function RevenueIntelligence({
                     className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${period === p
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
-                    }`}
+                      }`}
                   >
                     {p}
                   </button>
@@ -92,7 +92,7 @@ export function RevenueIntelligence({
         <CardContent className="p-0 flex-1 min-h-[350px]">
           {isLoading ? (
             <div className="h-full w-full p-8 space-y-4">
-               <Skeleton className="h-full w-full rounded-2xl" />
+              <Skeleton className="h-full w-full rounded-2xl" />
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -124,13 +124,13 @@ export function RevenueIntelligence({
                     return null
                   }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="var(--primary)" 
-                  strokeWidth={3} 
-                  fillOpacity={1} 
-                  fill="url(#colorRev)" 
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--primary)"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorRev)"
                   animationDuration={1500}
                 />
               </AreaChart>
@@ -161,7 +161,7 @@ export function RevenueIntelligence({
           <Table>
             <TableBody>
               {isLoading ? (
-                [1,2,3,4,5].map(i => (
+                [1, 2, 3, 4, 5].map(i => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-10 w-full" /></TableCell>
                   </TableRow>
@@ -180,10 +180,9 @@ export function RevenueIntelligence({
                     {formatCurrency(payment.amount)}
                   </TableCell>
                   <TableCell className="pr-6 text-right">
-                    <Badge variant="secondary" className={`text-[8px] font-black uppercase px-2 py-0.5 border-none ${
-                        payment.status === 'succeeded' ? 'bg-emerald-500/10 text-emerald-500' :
+                    <Badge variant="secondary" className={`text-[8px] font-black uppercase px-2 py-0.5 border-none ${payment.status === 'succeeded' ? 'bg-emerald-500/10 text-emerald-500' :
                         payment.status === 'processing' ? 'bg-amber-500/10 text-amber-500' :
-                        'bg-rose-500/10 text-rose-500'
+                          'bg-rose-500/10 text-rose-500'
                       }`}>
                       {payment.status}
                     </Badge>

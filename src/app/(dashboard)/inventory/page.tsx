@@ -292,37 +292,33 @@ function InventoryContent() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                             <span className="text-sm font-medium text-foreground">Sort by</span>
-                             <div className="relative">
-                                 <select
-                                     value={currentSortValue}
-                                     onChange={(e) => handleSortChange(e.target.value as SortOption)}
-                                     className="border border-border rounded px-3 py-1.5 pr-8 text-sm bg-card text-foreground focus:ring-2 focus:ring-ring outline-none transition-all cursor-pointer"
-                                 >
-                                     <option value="make-asc">Make (A-Z)</option>
-                                     <option value="make-desc">Make (Z-A)</option>
-                                     <option value="price-asc">Price: Low to High</option>
-                                     <option value="price-desc">Price: High to Low</option>
-                                     <option value="year-desc">Year: Newest</option>
-                                     <option value="created-desc">Recently Added</option>
-                                 </select>
-                                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                             </div>
-                         </div>
-
-                         <div className="flex items-center bg-muted/30 p-1 rounded-lg border border-border/50">
-                            <button onClick={() => setIsPremiumView(false)} className={`p-1.5 rounded-md transition-all ${!isPremiumView ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                                <LayoutGrid className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => setIsPremiumView(true)} className={`p-1.5 rounded-md transition-all ${isPremiumView ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                                <TableIcon className="w-4 h-4" />
-                            </button>
-                         </div>
-                      </div>
+                            <span className="text-sm font-medium text-foreground">Sort by</span>
+                            <div className="relative">
+                                <select
+                                    value={currentSortValue}
+                                    onChange={(e) => handleSortChange(e.target.value as SortOption)}
+                                    className="appearance-none border border-border rounded px-3 py-1.5 pr-8 text-sm bg-card text-foreground focus:ring-2 focus:ring-ring focus:border-transparent outline-none transition-all cursor-pointer"
+                                >
+                                    <option value="make-asc">Make (A-Z)</option>
+                                    <option value="make-desc">Make (Z-A)</option>
+                                    <option value="price-asc">Price: Low to High</option>
+                                    <option value="price-desc">Price: High to Low</option>
+                                    <option value="mileage-asc">Mileage: Low to High</option>
+                                    <option value="mileage-desc">Mileage: High to Low</option>
+                                    <option value="year-desc">Year: Newest</option>
+                                    <option value="year-asc">Year: Oldest</option>
+                                    <option value="age-asc">Newest on Lot</option>
+                                    <option value="age-desc">Oldest on Lot</option>
+                                    <option value="created-desc">Recently Added</option>
+                                </select>
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex-1 max-w-8xl mx-auto px-4 py-8 w-full">
+            <div className="flex-1 max-w-8xl mx-auto px-4 py-8 w-full bg-muted/20 rounded-xl">
                 {isLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {[...Array(8)].map((_, i) => (

@@ -14,22 +14,22 @@ import {
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const T = {
-  bg:       "var(--color-background-tertiary)",
-  surface:  "var(--color-background-secondary)",
-  hi:       "var(--color-background-primary)",
-  border:   "var(--color-border-tertiary)",
-  borderHi: "var(--color-border-secondary)",
-  text:     "var(--color-text-primary)",
-  textSub:  "var(--color-text-secondary)",
-  textMute: "var(--color-text-tertiary)",
-  accent:   "var(--color-text-info)",
-  accentBg: "var(--color-background-info)",
-  green:    "var(--color-text-success)",
-  greenBg:  "var(--color-background-success)",
-  amber:    "var(--color-text-warning)",
-  amberBg:  "var(--color-background-warning)",
-  red:      "var(--color-text-danger)",
-  redBg:    "var(--color-background-danger)",
+  bg: "var(--color-background-tertiary, var(--background))",
+  surface: "var(--color-background-secondary, var(--card))",
+  hi: "var(--color-background-primary, var(--popover))",
+  border: "var(--color-border-tertiary, var(--border))",
+  borderHi: "var(--color-border-secondary, var(--border))",
+  text: "var(--color-text-primary, var(--foreground))",
+  textSub: "var(--color-text-secondary, var(--muted-foreground))",
+  textMute: "var(--color-text-tertiary, var(--muted-foreground))",
+  accent: "var(--color-text-info, #22C55E)",
+  accentBg: "var(--color-background-info, rgba(34,197,94,0.12))",
+  green: "var(--color-text-success, #22C55E)",
+  greenBg: "var(--color-background-success, rgba(34,197,94,0.12))",
+  amber: "var(--color-text-warning, #D97706)",
+  amberBg: "var(--color-background-warning, rgba(217,119,6,0.12))",
+  red: "var(--color-text-danger, #DC2626)",
+  redBg: "var(--color-background-danger, rgba(220,38,38,0.12))",
 };
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -76,12 +76,12 @@ function useToast() {
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { c: string; bg: string }> = {
-    succeeded: { c: T.green,   bg: T.greenBg  },
-    pending:   { c: T.amber,   bg: T.amberBg  },
-    failed:    { c: T.red,     bg: T.redBg    },
-    processing:{ c: T.accent,  bg: T.accentBg },
-    cancelled: { c: T.textSub, bg: T.surface  },
-    refunded:  { c: T.textSub, bg: T.surface  },
+    succeeded: { c: T.green, bg: T.greenBg },
+    pending: { c: T.amber, bg: T.amberBg },
+    failed: { c: T.red, bg: T.redBg },
+    processing: { c: T.accent, bg: T.accentBg },
+    cancelled: { c: T.textSub, bg: T.surface },
+    refunded: { c: T.textSub, bg: T.surface },
   };
   const s = map[status] ?? map.cancelled;
   return (
@@ -327,26 +327,37 @@ export default function PaymentsPage() {
 
   return (
     <>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes slideIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Epilogue:wght@500;600;700;800&display=swap');
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes slideIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+      `}</style>
 
-      <div style={{ background: T.bg, minHeight: "100%" }}>
+      <div style={{ background: `linear-gradient(180deg, ${T.accentBg} 0%, ${T.bg} 180px)`, minHeight: "100%" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 20px 80px" }}>
 
           {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28, flexWrap: "wrap" }}>
             <Link href="/billing" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: T.textMute, textDecoration: "none" }}>
               <ChevronLeft style={{ width: 14, height: 14 }} /> Dashboard
             </Link>
             <span style={{ color: T.border }}>›</span>
-            <h1 style={{ fontSize: 20, fontWeight: 500, color: T.text, margin: 0 }}>Payments</h1>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, margin: 0, letterSpacing: "-0.02em", fontFamily: "'Epilogue', sans-serif" }}>
+                Suprah<span style={{ color: T.accent }}>Pay</span> Payments
+              </h1>
+              <p style={{ fontSize: 10, fontWeight: 700, color: T.textMute, margin: "2px 0 0", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+                Full Payment Stream
+              </p>
+            </div>
           </div>
 
           {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginBottom: 24 }}>
             {[
-              { label: "Revenue",   val: formatCurrency(stats?.totalRevenue ?? 0), color: T.green  },
-              { label: "Pending",   val: formatCurrency(stats?.pendingAmount ?? 0), color: T.amber  },
-              { label: "Volume",    val: String(stats?.totalCount ?? 0),            color: T.accent },
+              { label: "Revenue", val: formatCurrency(stats?.totalRevenue ?? 0), color: T.green },
+              { label: "Pending", val: formatCurrency(stats?.pendingAmount ?? 0), color: T.amber },
+              { label: "Volume", val: String(stats?.totalCount ?? 0), color: T.accent },
               { label: "Succeeded", val: String(stats?.byStatus?.succeeded?.count ?? 0), color: T.green },
             ].map(({ label, val, color }) => (
               <div key={label} style={{ background: T.surface, border: `0.5px solid ${T.border}`, borderRadius: "var(--border-radius-lg)", padding: "14px 16px" }}>

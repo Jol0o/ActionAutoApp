@@ -31,7 +31,7 @@ export function LogisticsMonitor({ data, isLoading }: LogisticsMonitorProps) {
   return (
     <div className="space-y-6">
       {/* Driver Availability Heatmap */}
-      <Card className="border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden">
+      <Card className="border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden p-0">
         <CardHeader className="py-4 border-b border-border/10">
           <CardTitle className="text-sm font-black flex items-center gap-2">
             <Users className="h-4 w-4 text-primary" />
@@ -60,7 +60,7 @@ export function LogisticsMonitor({ data, isLoading }: LogisticsMonitorProps) {
       </Card>
 
       {/* Shipment Pipeline */}
-      <Card className="border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden">
+      <Card className="border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden p-0">
         <CardHeader className="py-4 border-b border-border/10">
           <CardTitle className="text-sm font-black flex items-center gap-2">
             <Package className="h-4 w-4 text-primary" />
@@ -81,7 +81,7 @@ export function LogisticsMonitor({ data, isLoading }: LogisticsMonitorProps) {
               </span>
             </div>
           ))}
-          
+
           <div className="pt-3 mt-3 border-t border-border/10 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary hover:underline cursor-pointer group">
             View Full Pipeline
             <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
