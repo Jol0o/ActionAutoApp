@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUser } from "@/providers/AuthProvider";
@@ -961,108 +960,116 @@ export default function DriverTrackerPage() {
       </div>
 
       <Card className="border-border/50 shadow-sm p-0 gap-0 overflow-hidden">
-        <Tabs value={loadsTab} onValueChange={setLoadsTab}>
-          <CardHeader className="py-3 px-5 border-b border-border/30">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-black flex items-center gap-2">
-                <LayoutGrid className="size-4.5 text-primary" />
-                Load Management
-              </CardTitle>
-              <TabsList className="h-8">
-                <TabsTrigger
-                  value="assigned"
-                  className="text-xs font-bold gap-1.5 px-3"
+        <CardHeader className="py-3 px-5 border-b border-border/30 space-y-3">
+          <CardTitle className="text-base font-black flex items-center gap-2">
+            <LayoutGrid className="size-4.5 text-primary" />
+            Load Management
+          </CardTitle>
+          <div className="flex gap-1 p-1 rounded-lg bg-muted/30 border border-border/40">
+            {(
+              [
+                {
+                  key: "assigned",
+                  label: "Assigned",
+                  icon: <Package className="size-3 text-emerald-400" />,
+                  count: driversWithLoads.length,
+                  activeClass: "bg-emerald-500/20 border-emerald-500/40",
+                  badgeClass: "bg-emerald-500/20 text-emerald-400",
+                },
+                {
+                  key: "available",
+                  label: "Available",
+                  icon: <Truck className="size-3 text-blue-400" />,
+                  count: availableShipments.length,
+                  activeClass: "bg-blue-500/20 border-blue-500/40",
+                  badgeClass: "bg-blue-500/20 text-blue-400",
+                },
+                {
+                  key: "requests",
+                  label: "Requests",
+                  icon: <Bell className="size-3 text-amber-400" />,
+                  count: loadRequests.length,
+                  activeClass: "bg-amber-500/20 border-amber-500/40",
+                  badgeClass: "bg-amber-500/20 text-amber-400",
+                },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setLoadsTab(tab.key)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md flex-1 transition-all ${
+                  loadsTab === tab.key
+                    ? `${tab.activeClass} border shadow-sm`
+                    : "border border-transparent hover:bg-muted/50"
+                }`}
+              >
+                {tab.icon}
+                <span
+                  className={`text-[11px] font-bold flex-1 text-left ${
+                    loadsTab === tab.key
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  }`}
                 >
-                  <Package className="size-3" />
-                  Assigned
-                  {driversWithLoads.length > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-emerald-500/10 text-emerald-600"
-                    >
-                      {driversWithLoads.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="available"
-                  className="text-xs font-bold gap-1.5 px-3"
+                  {tab.label}
+                </span>
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    loadsTab === tab.key
+                      ? tab.badgeClass
+                      : "bg-muted/50 text-muted-foreground/60"
+                  }`}
                 >
-                  <Truck className="size-3" />
-                  Available
-                  {availableShipments.length > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-blue-500/10 text-blue-600"
-                    >
-                      {availableShipments.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="requests"
-                  className="text-xs font-bold gap-1.5 px-3"
-                >
-                  <Bell className="size-3" />
-                  Requests
-                  {loadRequests.length > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-amber-500/10 text-amber-600"
-                    >
-                      {loadRequests.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </CardHeader>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </CardHeader>
 
-          <TabsContent value="assigned" className="m-0">
-            <DriverTrackerLoadsCard
-              drivers={driversWithLoads}
-              isLoading={isLoading}
-              error={error}
-              activeDrivers={activeDrivers}
-              onRemoveLoad={handleRemoveLoad}
-              onReassignLoad={handleReassignLoad}
-            />
-          </TabsContent>
+        {loadsTab === "assigned" && (
+          <DriverTrackerLoadsCard
+            drivers={driversWithLoads}
+            isLoading={isLoading}
+            error={error}
+            activeDrivers={activeDrivers}
+            onRemoveLoad={handleRemoveLoad}
+            onReassignLoad={handleReassignLoad}
+          />
+        )}
 
-          <TabsContent value="available" className="m-0">
-            <DriverTrackerAvailableLoadsCard
-              shipments={availableShipments}
-              isLoading={shipmentsLoading}
-              activeDrivers={activeDrivers}
-              onAssign={handleAssignFromAvailable}
-            />
-          </TabsContent>
+        {loadsTab === "available" && (
+          <DriverTrackerAvailableLoadsCard
+            shipments={availableShipments}
+            isLoading={shipmentsLoading}
+            activeDrivers={activeDrivers}
+            onAssign={handleAssignFromAvailable}
+          />
+        )}
 
-          <TabsContent value="requests" className="m-0">
-            {!loadRequestsLoading && loadRequests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="size-14 rounded-2xl bg-muted/40 flex items-center justify-center">
-                  <Bell className="size-7 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm text-muted-foreground font-medium">
-                  No pending requests
-                </p>
-                <p className="text-[11px] text-muted-foreground/60">
-                  Driver load requests will appear here
-                </p>
+        {loadsTab === "requests" &&
+          (!loadRequestsLoading && loadRequests.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="size-14 rounded-2xl bg-muted/40 flex items-center justify-center">
+                <Bell className="size-7 text-muted-foreground/40" />
               </div>
-            ) : (
-              <DriverTrackerRequestsCard
-                requests={loadRequests}
-                isLoading={loadRequestsLoading}
-                onApprove={handleApproveRequest}
-                onReject={handleRejectRequest}
-                approvingId={approvingId}
-                rejectingId={rejectingId}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+              <p className="text-sm text-muted-foreground font-medium">
+                No pending requests
+              </p>
+              <p className="text-[11px] text-muted-foreground/60">
+                Driver load requests will appear here
+              </p>
+            </div>
+          ) : (
+            <DriverTrackerRequestsCard
+              requests={loadRequests}
+              isLoading={loadRequestsLoading}
+              onApprove={handleApproveRequest}
+              onReject={handleRejectRequest}
+              approvingId={approvingId}
+              rejectingId={rejectingId}
+            />
+          ))}
       </Card>
 
       <DriverAssignLoadModal

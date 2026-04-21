@@ -2,8 +2,16 @@
 
 import * as React from "react";
 import {
-  Package, Clock, UserPlus, Users, Truck, Search,
-  Wifi, WifiOff, ChevronDown, ChevronUp,
+  Package,
+  Clock,
+  UserPlus,
+  Users,
+  Truck,
+  Search,
+  Wifi,
+  WifiOff,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LayoutGrid } from "lucide-react";
 import { DriverTrackingItem, DriverStatus } from "@/types/driver-tracking";
 
 type DriverFilter = "all" | "active" | "offline" | "sharing" | "not-sharing";
@@ -38,6 +47,42 @@ const FILTER_OPTIONS: { key: DriverFilter; label: string }[] = [
   { key: "not-sharing", label: "Not Sharing" },
 ];
 
+const FILTER_STYLE: Record<
+  DriverFilter,
+  { activeClass: string; badgeClass: string; icon: React.ReactNode }
+> = {
+  all: {
+    activeClass: "bg-indigo-500/20 border-indigo-500/40",
+    badgeClass: "bg-indigo-500/20 text-indigo-400",
+    icon: <LayoutGrid className="size-3 text-indigo-400" />,
+  },
+  active: {
+    activeClass: "bg-emerald-500/20 border-emerald-500/40",
+    badgeClass: "bg-emerald-500/20 text-emerald-400",
+    icon: (
+      <span className="relative flex size-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-40" />
+        <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+      </span>
+    ),
+  },
+  offline: {
+    activeClass: "bg-slate-500/20 border-slate-500/40",
+    badgeClass: "bg-slate-500/20 text-slate-400",
+    icon: <span className="inline-block size-2 rounded-full bg-slate-400" />,
+  },
+  sharing: {
+    activeClass: "bg-blue-500/20 border-blue-500/40",
+    badgeClass: "bg-blue-500/20 text-blue-400",
+    icon: <Wifi className="size-3 text-blue-400" />,
+  },
+  "not-sharing": {
+    activeClass: "bg-amber-500/20 border-amber-500/40",
+    badgeClass: "bg-amber-500/20 text-amber-400",
+    icon: <WifiOff className="size-3 text-amber-400" />,
+  },
+};
+
 export function DriverTrackerListCard({
   drivers,
   isLoading,
@@ -62,18 +107,24 @@ export function DriverTrackerListCard({
       if (!q) return true;
       const name = d.driver?.name?.toLowerCase() || "";
       const email = d.driver?.email?.toLowerCase() || "";
-      const tracking = d.shipments?.map((s) => s.trackingNumber?.toLowerCase() || "").join(" ") || "";
+      const tracking =
+        d.shipments
+          ?.map((s) => s.trackingNumber?.toLowerCase() || "")
+          .join(" ") || "";
       return name.includes(q) || email.includes(q) || tracking.includes(q);
     });
   }, [drivers, filter, query]);
 
-  const counts = React.useMemo(() => ({
-    all: drivers.length,
-    active: drivers.filter((d) => d.status !== "offline").length,
-    offline: drivers.filter((d) => d.status === "offline").length,
-    sharing: drivers.filter((d) => d.status !== "offline").length,
-    "not-sharing": drivers.filter((d) => d.status === "offline").length,
-  }), [drivers]);
+  const counts = React.useMemo(
+    () => ({
+      all: drivers.length,
+      active: drivers.filter((d) => d.status !== "offline").length,
+      offline: drivers.filter((d) => d.status === "offline").length,
+      sharing: drivers.filter((d) => d.status !== "offline").length,
+      "not-sharing": drivers.filter((d) => d.status === "offline").length,
+    }),
+    [drivers],
+  );
 
   return (
     <Card className="border-border/50 shadow-sm p-0 gap-0 overflow-hidden flex flex-col h-full">
@@ -85,11 +136,15 @@ export function DriverTrackerListCard({
               All Drivers
             </CardTitle>
             <p className="text-[10px] text-muted-foreground/60 font-medium mt-0.5">
-              {filtered.length} of {drivers.length} driver{drivers.length !== 1 ? "s" : ""}
+              {filtered.length} of {drivers.length} driver
+              {drivers.length !== 1 ? "s" : ""}
             </p>
           </div>
           {counts.active > 0 && (
-            <Badge variant="secondary" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 gap-1">
+            <Badge
+              variant="secondary"
+              className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 gap-1"
+            >
               <span className="relative flex size-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-40" />
                 <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
@@ -109,22 +164,40 @@ export function DriverTrackerListCard({
           />
         </div>
 
-        <div className="flex flex-wrap gap-1">
-          {FILTER_OPTIONS.map((opt) => (
-            <Button
-              key={opt.key}
-              size="sm"
-              variant={filter === opt.key ? "default" : "ghost"}
-              className={`h-6 px-2 text-[10px] font-bold rounded-md ${filter === opt.key ? "shadow-sm" : "text-muted-foreground hover:text-foreground"
+        <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-muted/30 border border-border/40">
+          {FILTER_OPTIONS.map((opt) => {
+            const cfg = FILTER_STYLE[opt.key];
+            const isActive = filter === opt.key;
+            return (
+              <button
+                key={opt.key}
+                onClick={() => setFilter(opt.key)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md flex-1 min-w-[calc(33%-0.25rem)] transition-all ${
+                  isActive
+                    ? `${cfg.activeClass} border shadow-sm`
+                    : "border border-transparent hover:bg-muted/50"
                 }`}
-              onClick={() => setFilter(opt.key)}
-            >
-              {opt.key === "sharing" && <Wifi className="size-2.5 mr-1" />}
-              {opt.key === "not-sharing" && <WifiOff className="size-2.5 mr-1" />}
-              {opt.label}
-              <span className="ml-1 opacity-60">{counts[opt.key]}</span>
-            </Button>
-          ))}
+              >
+                {cfg.icon}
+                <span
+                  className={`text-[11px] font-bold flex-1 text-left ${
+                    isActive ? "text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  {opt.label}
+                </span>
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    isActive
+                      ? cfg.badgeClass
+                      : "bg-muted/50 text-muted-foreground/60"
+                  }`}
+                >
+                  {counts[opt.key]}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </CardHeader>
 
@@ -172,17 +245,23 @@ export function DriverTrackerListCard({
             >
               <div
                 className={`p-3 ${onDriverClick && driver.coords ? "cursor-pointer" : ""}`}
-                onClick={() => onDriverClick && driver.coords && onDriverClick(driver)}
+                onClick={() =>
+                  onDriverClick && driver.coords && onDriverClick(driver)
+                }
               >
                 <div className="flex items-start gap-3">
                   <div className="relative">
                     <Avatar className="size-9 border-2 border-background shadow-sm">
-                      {driver.driver?.avatar && <AvatarImage src={driver.driver.avatar} />}
+                      {driver.driver?.avatar && (
+                        <AvatarImage src={driver.driver.avatar} />
+                      )}
                       <AvatarFallback className="text-xs font-bold bg-primary/5 text-primary">
                         {driver.driver?.name?.[0]?.toUpperCase() || "?"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-background ${statusStyles[driver.status]}`} />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-background ${statusStyles[driver.status]}`}
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
@@ -191,8 +270,15 @@ export function DriverTrackerListCard({
                       </p>
                       <div className="flex items-center gap-1 shrink-0">
                         {shipments.length > 0 && (
-                          <Badge variant="outline" className={`text-[9px] font-semibold h-5 ${eq?.maxVehicleCapacity && shipments.length >= eq.maxVehicleCapacity ? 'border-red-500/50 text-red-600' : 'border-border/50'}`}>
-                            {shipments.length}{eq?.maxVehicleCapacity ? `/${eq.maxVehicleCapacity}` : ''} load{shipments.length !== 1 ? "s" : ""}
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] font-semibold h-5 ${eq?.maxVehicleCapacity && shipments.length >= eq.maxVehicleCapacity ? "border-red-500/50 text-red-600" : "border-border/50"}`}
+                          >
+                            {shipments.length}
+                            {eq?.maxVehicleCapacity
+                              ? `/${eq.maxVehicleCapacity}`
+                              : ""}{" "}
+                            load{shipments.length !== 1 ? "s" : ""}
                           </Badge>
                         )}
                         <Button
@@ -204,24 +290,37 @@ export function DriverTrackerListCard({
                             setExpandedId(isExpanded ? null : driver.id);
                           }}
                         >
-                          {isExpanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                          {isExpanded ? (
+                            <ChevronUp className="size-3" />
+                          ) : (
+                            <ChevronDown className="size-3" />
+                          )}
                         </Button>
                       </div>
                     </div>
                     <div className="mt-0.5 flex items-center gap-2 text-[11px]">
                       <span className="relative flex size-2">
                         {driver.status === "on-route" && (
-                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusStyles[driver.status]} opacity-40`} />
+                          <span
+                            className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusStyles[driver.status]} opacity-40`}
+                          />
                         )}
-                        <span className={`relative inline-flex size-2 rounded-full ${statusStyles[driver.status]}`} />
+                        <span
+                          className={`relative inline-flex size-2 rounded-full ${statusStyles[driver.status]}`}
+                        />
                       </span>
-                      <span className={`font-semibold ${statusText[driver.status]}`}>
+                      <span
+                        className={`font-semibold ${statusText[driver.status]}`}
+                      >
                         {statusLabel[driver.status]}
                       </span>
                       <span className="text-muted-foreground/30">|</span>
                       <span className="inline-flex items-center gap-1 text-muted-foreground/60">
                         <Clock className="size-2.5" />
-                        {new Date(driver.lastSeenAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(driver.lastSeenAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
                     {eq?.trailerType && (
@@ -231,7 +330,9 @@ export function DriverTrackerListCard({
                           {trailerLabel(eq.trailerType)}
                         </span>
                         {eq.maxVehicleCapacity && eq.maxVehicleCapacity > 0 && (
-                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${shipments.length >= eq.maxVehicleCapacity ? 'bg-red-500/10 text-red-600' : 'bg-indigo-500/10 text-indigo-600'}`}>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${shipments.length >= eq.maxVehicleCapacity ? "bg-red-500/10 text-red-600" : "bg-indigo-500/10 text-indigo-600"}`}
+                          >
                             {shipments.length}/{eq.maxVehicleCapacity} loads
                           </span>
                         )}
@@ -246,31 +347,53 @@ export function DriverTrackerListCard({
                   <div className="pt-2 grid grid-cols-2 gap-2">
                     {eq?.truckMake && (
                       <div className="rounded-lg bg-muted/30 px-2.5 py-1.5">
-                        <p className="text-[9px] text-muted-foreground font-medium">Truck</p>
-                        <p className="text-[11px] font-bold">{eq.truckMake} {eq.truckModel || ""}</p>
+                        <p className="text-[9px] text-muted-foreground font-medium">
+                          Truck
+                        </p>
+                        <p className="text-[11px] font-bold">
+                          {eq.truckMake} {eq.truckModel || ""}
+                        </p>
                       </div>
                     )}
                     {eq?.trailerType && (
                       <div className="rounded-lg bg-muted/30 px-2.5 py-1.5">
-                        <p className="text-[9px] text-muted-foreground font-medium">Trailer</p>
-                        <p className="text-[11px] font-bold">{trailerLabel(eq.trailerType)}</p>
+                        <p className="text-[9px] text-muted-foreground font-medium">
+                          Trailer
+                        </p>
+                        <p className="text-[11px] font-bold">
+                          {trailerLabel(eq.trailerType)}
+                        </p>
                       </div>
                     )}
                     {eq?.maxVehicleCapacity != null && (
-                      <div className={`rounded-lg px-2.5 py-1.5 ${shipments.length >= eq.maxVehicleCapacity ? 'bg-red-500/5 border border-red-500/10' : 'bg-muted/30'}`}>
-                        <p className="text-[9px] text-muted-foreground font-medium">Load Capacity</p>
-                        <p className={`text-[11px] font-bold ${shipments.length >= eq.maxVehicleCapacity ? 'text-red-600' : ''}`}>{shipments.length}/{eq.maxVehicleCapacity} active</p>
+                      <div
+                        className={`rounded-lg px-2.5 py-1.5 ${shipments.length >= eq.maxVehicleCapacity ? "bg-red-500/5 border border-red-500/10" : "bg-muted/30"}`}
+                      >
+                        <p className="text-[9px] text-muted-foreground font-medium">
+                          Load Capacity
+                        </p>
+                        <p
+                          className={`text-[11px] font-bold ${shipments.length >= eq.maxVehicleCapacity ? "text-red-600" : ""}`}
+                        >
+                          {shipments.length}/{eq.maxVehicleCapacity} active
+                        </p>
                       </div>
                     )}
                     {eq?.operationalStatus && (
                       <div className="rounded-lg bg-muted/30 px-2.5 py-1.5">
-                        <p className="text-[9px] text-muted-foreground font-medium">Op. Status</p>
-                        <p className="text-[11px] font-bold capitalize">{eq.operationalStatus.replace("_", " ")}</p>
+                        <p className="text-[9px] text-muted-foreground font-medium">
+                          Op. Status
+                        </p>
+                        <p className="text-[11px] font-bold capitalize">
+                          {eq.operationalStatus.replace("_", " ")}
+                        </p>
                       </div>
                     )}
                     {eq?.profileCompletionScore != null && (
                       <div className="rounded-lg bg-muted/30 px-2.5 py-1.5">
-                        <p className="text-[9px] text-muted-foreground font-medium">Profile</p>
+                        <p className="text-[9px] text-muted-foreground font-medium">
+                          Profile
+                        </p>
                         <div className="flex items-center gap-1.5">
                           <div className="flex-1 h-1 rounded-full bg-border/50 overflow-hidden">
                             <div
@@ -278,32 +401,52 @@ export function DriverTrackerListCard({
                               style={{ width: `${eq.profileCompletionScore}%` }}
                             />
                           </div>
-                          <span className="text-[10px] font-bold">{eq.profileCompletionScore}%</span>
+                          <span className="text-[10px] font-bold">
+                            {eq.profileCompletionScore}%
+                          </span>
                         </div>
                       </div>
                     )}
                     {eq?.isComplianceExpired && (
                       <div className="rounded-lg bg-red-500/5 border border-red-500/10 px-2.5 py-1.5">
-                        <p className="text-[9px] text-red-500 font-medium">Compliance</p>
-                        <p className="text-[11px] font-bold text-red-600">Expired</p>
+                        <p className="text-[9px] text-red-500 font-medium">
+                          Compliance
+                        </p>
+                        <p className="text-[11px] font-bold text-red-600">
+                          Expired
+                        </p>
                       </div>
                     )}
                   </div>
 
                   {shipments.length > 0 && (
                     <div className="space-y-1">
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Active Loads</p>
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Active Loads
+                      </p>
                       {shipments.map((s) => (
-                        <div key={s.id} className="flex items-center gap-2 rounded-lg bg-muted/20 px-2.5 py-1.5">
+                        <div
+                          key={s.id}
+                          className="flex items-center gap-2 rounded-lg bg-muted/20 px-2.5 py-1.5"
+                        >
                           <Package className="size-3 text-primary shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-bold truncate">{s.trackingNumber || s.id}</p>
+                            <p className="text-[10px] font-bold truncate">
+                              {s.trackingNumber || s.id}
+                            </p>
                             {(s.origin || s.destination) && (
-                              <p className="text-[9px] text-muted-foreground truncate">{s.origin} → {s.destination}</p>
+                              <p className="text-[9px] text-muted-foreground truncate">
+                                {s.origin} → {s.destination}
+                              </p>
                             )}
                           </div>
                           {s.status && (
-                            <Badge variant="outline" className="text-[8px] h-4 shrink-0">{s.status}</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] h-4 shrink-0"
+                            >
+                              {s.status}
+                            </Badge>
                           )}
                         </div>
                       ))}

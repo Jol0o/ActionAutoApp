@@ -18,7 +18,7 @@ import {
   Gift,
   Wallet,
   LayoutGrid,
-} from "lucide-react"
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -134,7 +134,7 @@ const customerData = {
       url: "/dashboard/wallet",
       icon: Wallet,
     },
-  ]
+  ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -168,14 +168,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton
                 asChild
                 tooltip={item.title}
-                isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
-                className={item.isNew ? "bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary transition-colors" : ""}
+                isActive={
+                  pathname === item.url || pathname.startsWith(item.url + "/")
+                }
+                className={
+                  item.isNew
+                    ? "bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary transition-colors"
+                    : ""
+                }
               >
                 <Link href={item.url}>
                   <item.icon className={item.isNew ? "animate-pulse" : ""} />
                   <span className="font-medium">{item.title}</span>
                   {item.isNew && (
-                    <Badge variant="secondary" className="ml-auto text-[8px] h-4 px-1 leading-none uppercase tracking-tighter bg-primary text-primary-foreground border-none group-data-[collapsible=icon]:hidden">New</Badge>
+                    <Badge
+                      variant="secondary"
+                      className="ml-auto text-[8px] h-4 px-1 leading-none uppercase tracking-tighter bg-primary text-primary-foreground border-none group-data-[collapsible=icon]:hidden"
+                    >
+                      New
+                    </Badge>
                   )}
                 </Link>
               </SidebarMenuButton>
@@ -195,7 +206,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuButton
                     asChild
                     tooltip={item.title}
-                    isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
+                    isActive={
+                      pathname === item.url ||
+                      pathname.startsWith(item.url + "/")
+                    }
                   >
                     <Link href={item.url}>
                       <item.icon />
@@ -240,7 +254,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
                     <AvatarImage
-                      src={resolveImageUrl(avatarUrl || user?.imageUrl)}
+                      src={resolveImageUrl(
+                        avatarUrl !== null ? avatarUrl : user?.imageUrl,
+                      )}
                       alt={user?.fullName || ""}
                     />
                     <AvatarFallback className="rounded-lg">
@@ -268,7 +284,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarImage
-                        src={resolveImageUrl(avatarUrl || user?.imageUrl)}
+                        src={resolveImageUrl(
+                          avatarUrl !== null ? avatarUrl : user?.imageUrl,
+                        )}
                         alt={user?.fullName || ""}
                       />
                       <AvatarFallback className="rounded-lg">
