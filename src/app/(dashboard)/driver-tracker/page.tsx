@@ -3,8 +3,15 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  MapPin, Clock, Users, Radio, Truck, Package,
-  ChevronRight, Bell, LayoutGrid,
+  MapPin,
+  Clock,
+  Users,
+  Radio,
+  Truck,
+  Package,
+  ChevronRight,
+  Bell,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +45,11 @@ import { DriverAssignLoadModal } from "@/components/driver-tracker/DriverAssignL
 import { DriverTrackerAvailableLoadsCard } from "@/components/driver-tracker/DriverTrackerAvailableLoadsCard";
 import { DriverTrackerRequestsCard } from "@/components/driver-tracker/DriverTrackerRequestsCard";
 import { toast } from "sonner";
-import { initializeSocket, getSocket, disconnectSocket } from "@/lib/socket.client";
+import {
+  initializeSocket,
+  getSocket,
+  disconnectSocket,
+} from "@/lib/socket.client";
 
 const statusLabel: Record<DriverStatus, string> = {
   "on-route": "On Route",
@@ -83,20 +94,26 @@ export default function DriverTrackerPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSharing, setIsSharing] = React.useState(false);
-  const [shareStatus, setShareStatus] = React.useState<DriverStatus>("on-route");
+  const [shareStatus, setShareStatus] =
+    React.useState<DriverStatus>("on-route");
   const [shareError, setShareError] = React.useState<string | null>(null);
   const [lastShareAt, setLastShareAt] = React.useState<string | null>(null);
   const [mapNotice, setMapNotice] = React.useState<string | null>(null);
-  const [availableShipments, setAvailableShipments] = React.useState<AvailableItem[]>([]);
+  const [availableShipments, setAvailableShipments] = React.useState<
+    AvailableItem[]
+  >([]);
   const [shipmentsLoading, setShipmentsLoading] = React.useState(false);
   const [assignModalOpen, setAssignModalOpen] = React.useState(false);
-  const [assigningTo, setAssigningTo] = React.useState<DriverTrackingItem | null>(null);
+  const [assigningTo, setAssigningTo] =
+    React.useState<DriverTrackingItem | null>(null);
   const [loadRequests, setLoadRequests] = React.useState<any[]>([]);
   const [loadRequestsLoading, setLoadRequestsLoading] = React.useState(false);
   const [approvingId, setApprovingId] = React.useState<string | null>(null);
   const [rejectingId, setRejectingId] = React.useState<string | null>(null);
   const [loadsTab, setLoadsTab] = React.useState("assigned");
-  const [mapFilter, setMapFilter] = React.useState<"all" | "sharing" | "on-route" | "with-loads">("all");
+  const [mapFilter, setMapFilter] = React.useState<
+    "all" | "sharing" | "on-route" | "with-loads"
+  >("all");
 
   const mapRef = React.useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = React.useRef<any>(null);
@@ -118,9 +135,12 @@ export default function DriverTrackerPage() {
 
   const mapDrivers = React.useMemo(() => {
     if (mapFilter === "all") return drivers;
-    if (mapFilter === "sharing") return drivers.filter((d) => d.status !== "offline");
-    if (mapFilter === "on-route") return drivers.filter((d) => d.status === "on-route");
-    if (mapFilter === "with-loads") return drivers.filter((d) => d.shipments && d.shipments.length > 0);
+    if (mapFilter === "sharing")
+      return drivers.filter((d) => d.status !== "offline");
+    if (mapFilter === "on-route")
+      return drivers.filter((d) => d.status === "on-route");
+    if (mapFilter === "with-loads")
+      return drivers.filter((d) => d.shipments && d.shipments.length > 0);
     return drivers;
   }, [drivers, mapFilter]);
 
@@ -146,10 +166,12 @@ export default function DriverTrackerPage() {
         data.map((item: DriverTrackingItem) => ({
           ...item,
           shipments: Array.isArray(item.shipments) ? item.shipments : [],
-        }))
+        })),
       );
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to load drivers");
+      setError(
+        err.response?.data?.message || err.message || "Failed to load drivers",
+      );
     } finally {
       initialLoadDone.current = true;
       setIsLoading(false);
@@ -164,13 +186,18 @@ export default function DriverTrackerPage() {
       const headers = { Authorization: `Bearer ${token}` };
       const [shipmentsRes, loadsRes] = await Promise.all([
         apiClient.get("/api/shipments", { headers }),
-        apiClient.get("/api/loads", { headers, params: { status: "Posted", limit: 50 } }),
+        apiClient.get("/api/loads", {
+          headers,
+          params: { status: "Posted", limit: 50 },
+        }),
       ]);
       const allShipments: Shipment[] = shipmentsRes.data?.data?.shipments || [];
       const allLoads: any[] = loadsRes.data?.data?.loads || [];
 
       const mappedShipments: AvailableItem[] = allShipments
-        .filter((s) => s.status === "Available for Pickup" && !s.assignedDriverId)
+        .filter(
+          (s) => s.status === "Available for Pickup" && !s.assignedDriverId,
+        )
         .map((s) => ({
           _id: s._id,
           __docType: "shipment" as const,
@@ -218,7 +245,9 @@ export default function DriverTrackerPage() {
           { shipmentId: item._id, driverId: assigningTo.driver.id },
           { headers: { Authorization: `Bearer ${token}` } },
         );
-        toast.success(`Load assigned to ${assigningTo.driver.name || "driver"}`);
+        toast.success(
+          `Load assigned to ${assigningTo.driver.name || "driver"}`,
+        );
         fetchDrivers();
         fetchAvailableShipments();
       } catch (err: any) {
@@ -304,7 +333,11 @@ export default function DriverTrackerPage() {
   }, [getToken, isSignedIn, isDriver]);
 
   const handleApproveRequest = React.useCallback(
-    async (shipmentId: string | undefined, driverId: string, loadId?: string) => {
+    async (
+      shipmentId: string | undefined,
+      driverId: string,
+      loadId?: string,
+    ) => {
       const key = `${loadId || shipmentId}-${driverId}`;
       setApprovingId(key);
       try {
@@ -328,7 +361,11 @@ export default function DriverTrackerPage() {
   );
 
   const handleRejectRequest = React.useCallback(
-    async (shipmentId: string | undefined, driverId: string, loadId?: string) => {
+    async (
+      shipmentId: string | undefined,
+      driverId: string,
+      loadId?: string,
+    ) => {
       const key = `${loadId || shipmentId}-${driverId}`;
       setRejectingId(key);
       try {
@@ -376,25 +413,28 @@ export default function DriverTrackerPage() {
         const sock = initializeSocket(token);
         socketRef.current = sock;
 
-        sock.on("driver:location_update", (data: {
-          driverId: string;
-          coords: { lat: number; lng: number };
-          status: DriverStatus;
-          lastSeenAt: string;
-        }) => {
-          setDrivers((prev) => {
-            const idx = prev.findIndex((d) => d.driver?.id === data.driverId);
-            if (idx === -1) return prev;
-            const updated = [...prev];
-            updated[idx] = {
-              ...updated[idx],
-              coords: data.coords,
-              status: data.status,
-              lastSeenAt: data.lastSeenAt,
-            };
-            return updated;
-          });
-        });
+        sock.on(
+          "driver:location_update",
+          (data: {
+            driverId: string;
+            coords: { lat: number; lng: number };
+            status: DriverStatus;
+            lastSeenAt: string;
+          }) => {
+            setDrivers((prev) => {
+              const idx = prev.findIndex((d) => d.driver?.id === data.driverId);
+              if (idx === -1) return prev;
+              const updated = [...prev];
+              updated[idx] = {
+                ...updated[idx],
+                coords: data.coords,
+                status: data.status,
+                lastSeenAt: data.lastSeenAt,
+              };
+              return updated;
+            });
+          },
+        );
 
         sock.on("driver:loads_updated", () => {
           fetchDrivers();
@@ -420,7 +460,7 @@ export default function DriverTrackerPage() {
         sock.on("shipment:change", () => {
           fetchAvailableShipments();
         });
-      } catch { }
+      } catch {}
     };
 
     connectSocket();
@@ -447,12 +487,16 @@ export default function DriverTrackerPage() {
       if (cancelled || !mapRef.current) return;
 
       if (!normalizedToken.startsWith("pk.")) {
-        setMapNotice("Invalid Mapbox token. Use a public token starting with pk.");
+        setMapNotice(
+          "Invalid Mapbox token. Use a public token starting with pk.",
+        );
         return;
       }
 
       if (!mapboxgl.supported()) {
-        setMapNotice("Mapbox requires WebGL. Please enable hardware acceleration.");
+        setMapNotice(
+          "Mapbox requires WebGL. Please enable hardware acceleration.",
+        );
         return;
       }
 
@@ -525,7 +569,10 @@ export default function DriverTrackerPage() {
 
       mapDrivers.forEach((driver) => {
         if (!driver.coords || driver.status === "offline") return;
-        const position = [driver.coords.lng, driver.coords.lat] as [number, number];
+        const position = [driver.coords.lng, driver.coords.lat] as [
+          number,
+          number,
+        ];
 
         const coordKey = `${driver.coords.lat.toFixed(2)},${driver.coords.lng.toFixed(2)}`;
         const cachedLocation = locationNamesRef.current.get(coordKey);
@@ -588,10 +635,12 @@ export default function DriverTrackerPage() {
               const locationName = raw.split(",").slice(0, 2).join(",").trim();
               if (locationName) {
                 locationNamesRef.current.set(coordKey, locationName);
-                popupsRef.current.get(driverId)?.setHTML(buildPopupHtml(locationName));
+                popupsRef.current
+                  .get(driverId)
+                  ?.setHTML(buildPopupHtml(locationName));
               }
             })
-            .catch(() => { });
+            .catch(() => {});
         }
       });
 
@@ -609,12 +658,19 @@ export default function DriverTrackerPage() {
   }, [mapDrivers]);
 
   const sendLocationUpdate = React.useCallback(
-    async (coords: { lat: number; lng: number }, statusOverride?: DriverStatus) => {
+    async (
+      coords: { lat: number; lng: number },
+      statusOverride?: DriverStatus,
+    ) => {
       if (!isSignedIn) return;
       const token = await getToken();
       await apiClient.post(
         "/api/driver-tracking/location",
-        { lat: coords.lat, lng: coords.lng, status: statusOverride ?? shareStatus },
+        {
+          lat: coords.lat,
+          lng: coords.lng,
+          status: statusOverride ?? shareStatus,
+        },
         { headers: { Authorization: `Bearer ${token}` } },
       );
     },
@@ -664,7 +720,11 @@ export default function DriverTrackerPage() {
           await sendLocationUpdate(coords);
           setLastShareAt(new Date().toLocaleTimeString());
         } catch (err: any) {
-          setShareError(err.response?.data?.message || err.message || "Failed to send location");
+          setShareError(
+            err.response?.data?.message ||
+              err.message ||
+              "Failed to send location",
+          );
         }
       },
       (error) => {
@@ -685,7 +745,11 @@ export default function DriverTrackerPage() {
       try {
         await sendLocationUpdate(lastCoordsRef.current, "offline");
       } catch (err: any) {
-        setShareError(err.response?.data?.message || err.message || "Failed to update status");
+        setShareError(
+          err.response?.data?.message ||
+            err.message ||
+            "Failed to update status",
+        );
       }
     }
   };
@@ -713,13 +777,39 @@ export default function DriverTrackerPage() {
     return () => clearInterval(tick);
   }, []);
 
-  const totalLoads = drivers.reduce((sum, d) => sum + (d.shipments?.length || 0), 0);
+  const totalLoads = drivers.reduce(
+    (sum, d) => sum + (d.shipments?.length || 0),
+    0,
+  );
 
   const kpis = [
-    { label: "Total Drivers", value: drivers.length, icon: <Users className="size-7 text-primary/30" />, description: "All tracked drivers" },
-    { label: "Active Now", value: activeDrivers.length, icon: <Radio className="size-7 text-emerald-500/30" />, description: "Currently sharing GPS", color: "text-emerald-500" },
-    { label: "On Route", value: drivers.filter((d) => d.status === "on-route").length, icon: <Truck className="size-7 text-amber-500/30" />, description: "Delivering loads", color: "text-amber-500" },
-    { label: "Loads Assigned", value: totalLoads, icon: <Package className="size-7 text-blue-500/30" />, description: "Active shipments", color: "text-blue-500" },
+    {
+      label: "Total Drivers",
+      value: drivers.length,
+      icon: <Users className="size-7 text-primary" />,
+      description: "All tracked drivers",
+    },
+    {
+      label: "Active Now",
+      value: activeDrivers.length,
+      icon: <Radio className="size-7 text-emerald-600 dark:text-emerald-400" />,
+      description: "Currently sharing GPS",
+      color: "text-emerald-500",
+    },
+    {
+      label: "On Route",
+      value: drivers.filter((d) => d.status === "on-route").length,
+      icon: <Truck className="size-7 text-amber-600 dark:text-amber-400" />,
+      description: "Delivering loads",
+      color: "text-amber-500",
+    },
+    {
+      label: "Loads Assigned",
+      value: totalLoads,
+      icon: <Package className="size-7 text-blue-600 dark:text-blue-400" />,
+      description: "Active shipments",
+      color: "text-blue-500",
+    },
   ];
 
   return (
@@ -727,9 +817,16 @@ export default function DriverTrackerPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <nav className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground mb-2">
-            <Link href="/" className="hover:text-foreground transition-colors">Dashboard</Link>
+            <Link href="/" className="hover:text-foreground transition-colors">
+              Dashboard
+            </Link>
             <ChevronRight className="size-3" />
-            <Link href="/transportation" className="hover:text-foreground transition-colors">Transportation</Link>
+            <Link
+              href="/transportation"
+              className="hover:text-foreground transition-colors"
+            >
+              Transportation
+            </Link>
             <ChevronRight className="size-3" />
             <span className="text-foreground font-bold">Driver Tracker</span>
           </nav>
@@ -744,18 +841,38 @@ export default function DriverTrackerPage() {
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <Clock className="size-3" />
-            {currentTime.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Denver" })}
+            {currentTime.toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              timeZone: "America/Denver",
+            })}
             <span className="text-primary/60 font-black">
-              {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "America/Denver" })} MST
+              {currentTime.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                timeZone: "America/Denver",
+              })}{" "}
+              MST
             </span>
             <span className="text-muted-foreground/40 font-medium normal-case">
-              ({currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} local)
+              (
+              {currentTime.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+              local)
             </span>
           </span>
           {loadRequests.length > 0 && (
-            <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[10px] font-bold gap-1 cursor-pointer" onClick={() => setLoadsTab("requests")}>
+            <Badge
+              className="bg-amber-500/10 text-amber-600 border-amber-200 text-[10px] font-bold gap-1 cursor-pointer"
+              onClick={() => setLoadsTab("requests")}
+            >
               <Bell className="size-3" />
-              {loadRequests.length} request{loadRequests.length !== 1 ? "s" : ""}
+              {loadRequests.length} request
+              {loadRequests.length !== 1 ? "s" : ""}
             </Badge>
           )}
         </div>
@@ -763,18 +880,29 @@ export default function DriverTrackerPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="p-0 border-border/50 shadow-sm hover:shadow-md transition-all duration-200 group relative overflow-hidden">
-            <div className="absolute top-3 right-3 opacity-10 group-hover:opacity-20 transition-opacity">
+          <Card
+            key={kpi.label}
+            className="p-0 border-border/50 shadow-sm hover:shadow-md transition-all duration-200 group relative overflow-hidden"
+          >
+            <div className="absolute top-3 right-3 p-1.5 rounded-lg bg-muted/40 dark:bg-muted/30 opacity-100 transition-opacity">
               {kpi.icon}
             </div>
             <CardContent className="p-4">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{kpi.label}</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                {kpi.label}
+              </p>
               {isLoading ? (
                 <Skeleton className="h-7 w-14 mb-1" />
               ) : (
-                <h3 className={`text-2xl font-black tracking-tighter ${kpi.color || "text-foreground"}`}>{kpi.value}</h3>
+                <h3
+                  className={`text-2xl font-black tracking-tighter ${kpi.color || "text-foreground"}`}
+                >
+                  {kpi.value}
+                </h3>
               )}
-              <p className="text-[10px] text-muted-foreground/60 font-medium mt-0.5">{kpi.description}</p>
+              <p className="text-[10px] text-muted-foreground/60 font-medium mt-0.5">
+                {kpi.description}
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -785,10 +913,14 @@ export default function DriverTrackerPage() {
           shareStatus={shareStatus}
           onStatusChange={setShareStatus}
           isSharing={isSharing}
-          onToggleSharing={() => isSharing ? handleStopSharing() : setIsSharing(true)}
+          onToggleSharing={() =>
+            isSharing ? handleStopSharing() : setIsSharing(true)
+          }
           lastShareAt={lastShareAt}
           shareError={shareError}
-          hasActiveLoad={drivers.some((d) => d.driver?.id === user?.id && (d.shipments?.length ?? 0) > 0)}
+          hasActiveLoad={drivers.some(
+            (d) => d.driver?.id === user?.id && (d.shipments?.length ?? 0) > 0,
+          )}
         />
       )}
 
@@ -837,29 +969,47 @@ export default function DriverTrackerPage() {
                 Load Management
               </CardTitle>
               <TabsList className="h-8">
-                <TabsTrigger value="assigned" className="text-xs font-bold gap-1.5 px-3">
+                <TabsTrigger
+                  value="assigned"
+                  className="text-xs font-bold gap-1.5 px-3"
+                >
                   <Package className="size-3" />
                   Assigned
                   {driversWithLoads.length > 0 && (
-                    <Badge variant="secondary" className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-emerald-500/10 text-emerald-600">
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-emerald-500/10 text-emerald-600"
+                    >
                       {driversWithLoads.length}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="available" className="text-xs font-bold gap-1.5 px-3">
+                <TabsTrigger
+                  value="available"
+                  className="text-xs font-bold gap-1.5 px-3"
+                >
                   <Truck className="size-3" />
                   Available
                   {availableShipments.length > 0 && (
-                    <Badge variant="secondary" className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-blue-500/10 text-blue-600">
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-blue-500/10 text-blue-600"
+                    >
                       {availableShipments.length}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="requests" className="text-xs font-bold gap-1.5 px-3">
+                <TabsTrigger
+                  value="requests"
+                  className="text-xs font-bold gap-1.5 px-3"
+                >
                   <Bell className="size-3" />
                   Requests
                   {loadRequests.length > 0 && (
-                    <Badge variant="secondary" className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-amber-500/10 text-amber-600">
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] font-bold h-4 px-1 ml-0.5 bg-amber-500/10 text-amber-600"
+                    >
                       {loadRequests.length}
                     </Badge>
                   )}
@@ -894,8 +1044,12 @@ export default function DriverTrackerPage() {
                 <div className="size-14 rounded-2xl bg-muted/40 flex items-center justify-center">
                   <Bell className="size-7 text-muted-foreground/40" />
                 </div>
-                <p className="text-sm text-muted-foreground font-medium">No pending requests</p>
-                <p className="text-[11px] text-muted-foreground/60">Driver load requests will appear here</p>
+                <p className="text-sm text-muted-foreground font-medium">
+                  No pending requests
+                </p>
+                <p className="text-[11px] text-muted-foreground/60">
+                  Driver load requests will appear here
+                </p>
               </div>
             ) : (
               <DriverTrackerRequestsCard
