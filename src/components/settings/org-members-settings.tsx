@@ -6,11 +6,13 @@ import { useAuth, useUser } from "@/providers/AuthProvider" // Import useAuth
 import { apiClient } from "@/lib/api-client"
 import { useOrg } from "@/hooks/useOrg"
 import { OrganizationMember } from "@/types/organization"
+import { BulkInviteDialog } from "@/components/admin/BulkInviteDialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { getInitials } from "@/lib/utils"
 import {
     Table,
     TableBody,
@@ -55,8 +57,14 @@ export function OrganizationMembersSettings() {
     const [isEditingRank, setIsEditingRank] = useState(false)
     const [tempJobTitle, setTempJobTitle] = useState("")
 
+    // Pagination & Sorting State
+    const [page, setPage] = useState(1)
+    const [pageSize] = useState(10)
+    const [sortBy, setSortBy] = useState<"name" | "role" | "date">("date")
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+
     // Fetch Members
-    const { data: members = [], isLoading } = useQuery({
+    const { data: rawMembers = [], isLoading } = useQuery({
         queryKey: ['org-members', organizationId],
         queryFn: async () => {
             if (!organizationId) return []
@@ -70,10 +78,40 @@ export function OrganizationMembersSettings() {
             const response = await apiClient.getMembers(organizationId, {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            return response.data?.data || response.data
+            
+            const data = response.data?.data || response.data || []
+            
+            // Real solution: Map backend keys to frontend types
+            return data.map((m: any) => ({
+                _id: m._id,
+                userId: m.userId || m._id,
+                organizationId: m.organizationId || organizationId,
+                role: m.role,
+                organizationRole: m.organizationRole || 'member',
+                email: m.email,
+                fullName: m.name || m.fullName || 'Unknown User', // Map 'name' -> 'fullName'
+                imageUrl: m.avatar || m.imageUrl, // Map 'avatar' -> 'imageUrl'
+                joinedAt: m.createdAt || m.joinedAt || new Date().toISOString(), // Map 'createdAt' -> 'joinedAt'
+            })) as OrganizationMember[]
         },
         enabled: !!organizationId
     })
+
+    // Derived State: Sorting and Pagination (Client-side for now, as requested in Phase 1)
+    const sortedMembers = [...rawMembers].sort((a, b) => {
+        let comparison = 0
+        if (sortBy === "name") {
+            comparison = a.fullName.localeCompare(b.fullName)
+        } else if (sortBy === "role") {
+            comparison = a.organizationRole.localeCompare(b.organizationRole)
+        } else if (sortBy === "date") {
+            comparison = new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
+        }
+        return sortOrder === "asc" ? comparison : -comparison
+    })
+
+    const paginatedMembers = sortedMembers.slice((page - 1) * pageSize, page * pageSize)
+    const totalPages = Math.ceil(sortedMembers.length / pageSize)
 
     // Fetch user's current jobTitle
     useEffect(() => {
@@ -231,59 +269,82 @@ export function OrganizationMembersSettings() {
                         Manage who has access to this organization.
                     </p>
                 </div>
-                {isAdmin && (
-                    <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-                        <DialogTrigger asChild>
-                            <Button>
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Invite Member
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Invite New Member</DialogTitle>
-                                <DialogDescription>
-                                    Send an email invitation to join {organization.name}.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleInvite}>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Email Address</label>
-                                        <Input
-                                            type="email"
-                                            placeholder="colleague@example.com"
-                                            value={inviteEmail}
-                                            onChange={(e) => setInviteEmail(e.target.value)}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Role</label>
-                                        <Select value={inviteRole} onValueChange={setInviteRole}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="member">Member</SelectItem>
-                                                <SelectItem value="admin">Admin</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button type="button" variant="outline" onClick={() => setIsInviteOpen(false)}>
-                                        Cancel
+                <div className="flex items-center gap-2">
+                    {/* Sorting Dropdown */}
+                    <Select value={`${sortBy}-${sortOrder}`} onValueChange={(val) => {
+                        const [newSort, newOrder] = val.split("-") as [any, any]
+                        setSortBy(newSort)
+                        setSortOrder(newOrder)
+                    }}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="date-desc">Newest First</SelectItem>
+                            <SelectItem value="date-asc">Oldest First</SelectItem>
+                            <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                            <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                            <SelectItem value="role-asc">Role</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {isAdmin && (
+                        <>
+                            <BulkInviteDialog />
+                            <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+                                <DialogTrigger asChild>
+                                    <Button>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Invite Member
                                     </Button>
-                                    <Button type="submit" disabled={inviteMutation.isPending}>
-                                        {inviteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Send Invitation
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                )}
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Invite New Member</DialogTitle>
+                                        <DialogDescription>
+                                            Send an email invitation to join {organization.name}.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <form onSubmit={handleInvite}>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Email Address</label>
+                                                <Input
+                                                    type="email"
+                                                    placeholder="colleague@example.com"
+                                                    value={inviteEmail}
+                                                    onChange={(e) => setInviteEmail(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Role</label>
+                                                <Select value={inviteRole} onValueChange={setInviteRole}>
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="member">Member</SelectItem>
+                                                        <SelectItem value="admin">Admin</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button type="button" variant="outline" onClick={() => setIsInviteOpen(false)}>
+                                                Cancel
+                                            </Button>
+                                            <Button type="submit" disabled={inviteMutation.isPending}>
+                                                {inviteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Send Invitation
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="border rounded-md">
@@ -302,20 +363,20 @@ export function OrganizationMembersSettings() {
                                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                                 </TableCell>
                             </TableRow>
-                        ) : members.length === 0 ? (
+                        ) : rawMembers.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                                     No members found.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            members.map((member: OrganizationMember) => (
+                            paginatedMembers.map((member: OrganizationMember) => (
                                 <TableRow key={member._id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-9 w-9">
                                                 <AvatarImage src={member.imageUrl} alt={member.fullName} />
-                                                <AvatarFallback>{member.fullName?.substring(0, 1).toUpperCase()}</AvatarFallback>
+                                                <AvatarFallback>{getInitials(member.fullName)}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex flex-col">
                                                 <span className="font-medium text-sm">{member.fullName}</span>
@@ -324,10 +385,15 @@ export function OrganizationMembersSettings() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={member.organizationRole === 'admin' ? 'default' : 'secondary'} className="capitalize">
-                                            {member.organizationRole === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <UserIcon className="w-3 h-3 mr-1" />}
-                                            {member.organizationRole}
-                                        </Badge>
+                                        <div className="flex flex-col">
+                                            <Badge variant={member.organizationRole === 'admin' ? 'default' : 'secondary'} className="capitalize w-fit">
+                                                {member.organizationRole === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <UserIcon className="w-3 h-3 mr-1" />}
+                                                {member.organizationRole}
+                                            </Badge>
+                                            <span className="text-[10px] text-muted-foreground mt-1">
+                                                Joined {new Date(member.joinedAt).toLocaleDateString()}
+                                            </span>
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {isAdmin && member.userId !== user?.id && (
@@ -337,7 +403,7 @@ export function OrganizationMembersSettings() {
                                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                 onClick={() => {
                                                     if (confirm("Are you sure you want to remove this member?")) {
-                                                        removeMutation.mutate(member._id)
+                                                        removeMutation.mutate(member.userId)
                                                     }
                                                 }}
                                                 disabled={removeMutation.isPending}
@@ -352,6 +418,46 @@ export function OrganizationMembersSettings() {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between py-2">
+                    <p className="text-xs text-muted-foreground">
+                        Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, sortedMembers.length)} of {sortedMembers.length} members
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                        >
+                            Previous
+                        </Button>
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                                <Button
+                                    key={p}
+                                    variant={p === page ? "default" : "outline"}
+                                    size="sm"
+                                    className="w-8 h-8 p-0"
+                                    onClick={() => setPage(p)}
+                                >
+                                    {p}
+                                </Button>
+                            ))}
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useAuth } from "@/providers/AuthProvider";
+import { useOrg } from "@/hooks/useOrg";
 import { apiClient } from "@/lib/api-client";
 import { DriverRequest } from "@/types/driver-request";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ const statusConfig: Record<
 
 export function DriverRequestsSettings() {
   const { getToken } = useAuth();
+  const { isAdmin } = useOrg();
   const [requests, setRequests] = React.useState<DriverRequest[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [actionId, setActionId] = React.useState<string | null>(null);
@@ -182,7 +184,7 @@ export function DriverRequestsSettings() {
                   <Badge variant="outline" className={config.className}>
                     {config.label}
                   </Badge>
-                  {isPending && (
+                  {isPending && isAdmin && (
                     <>
                       <Button
                         size="sm"

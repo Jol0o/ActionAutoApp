@@ -824,9 +824,6 @@ export default function UtilitiesPage() {
                             <CardDescription>Manage your dealership profile, invites, and team roles.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-4 sm:p-6 min-h-100">
-                            <div className="flex justify-end mb-4">
-                                <BulkInviteDialog />
-                            </div>
                             <OrganizationMembersSettings />
                         </CardContent>
                     </Card>

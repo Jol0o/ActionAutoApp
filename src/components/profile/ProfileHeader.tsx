@@ -18,7 +18,7 @@ import {
   Copy,
 } from "lucide-react";
 import { UserProfile, OnlineStatus } from "@/types/user";
-import { cn, resolveImageUrl } from "@/lib/utils";
+import { cn, resolveImageUrl, getInitials } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import ProfileImageCropper from "@/components/ProfileImageCropper";
 import { onlineStatusOptions, languageOptions } from "./profile-constants";
@@ -164,7 +164,6 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     avatarUrl !== null
       ? avatarUrl
       : profile?.avatarUrl || profile?.avatar || authUser?.imageUrl;
-  const initial = displayName.charAt(0).toUpperCase();
   const initialGradient = getInitialColor(displayName);
 
   return (
@@ -337,7 +336,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 )}
               >
                 <span className="text-white font-bold text-3xl sm:text-4xl md:text-5xl select-none">
-                  {initial}
+                  {getInitials(displayName)}
                 </span>
               </div>
             )}
@@ -417,8 +416,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 <Globe className="size-3 text-cyan-400/60" />
                 {profile?.personalInfo?.language
                   ? languageOptions.find(
-                      (l) => l.code === profile?.personalInfo?.language,
-                    )?.name
+                    (l) => l.code === profile?.personalInfo?.language,
+                  )?.name
                   : "English"}
               </span>
             </div>
