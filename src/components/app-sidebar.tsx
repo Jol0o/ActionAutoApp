@@ -310,7 +310,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <UserIcon className="mr-2 size-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => (window.location.href = "/settings")}
+                >
                   <SettingsIcon className="mr-2 size-4" />
                   Settings
                 </DropdownMenuItem>

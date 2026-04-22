@@ -1,39 +1,28 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts"
-import { Badge } from "@/components/ui/badge"
-import { DollarSign, ChevronRight, TrendingUp } from "lucide-react"
-import { formatCurrency } from "@/utils/format"
-import { Skeleton } from "@/components/ui/skeleton"
-import Link from "next/link"
-import { DashboardMetrics } from "@/hooks/useDashboardStats"
+} from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { DollarSign, ChevronRight, TrendingUp } from "lucide-react";
+import { formatCurrency } from "@/utils/format";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
+import { DashboardMetrics } from "@/hooks/useDashboardStats";
 
 interface RevenueIntelligenceProps {
-  trajectory: DashboardMetrics['revenueTrajectory']
-  livePayments: DashboardMetrics['livePayments']
-  period: string
-  onPeriodChange: (period: string) => void
-  isLoading: boolean
+  trajectory: DashboardMetrics["revenueTrajectory"];
+  livePayments: DashboardMetrics["livePayments"];
+  period: string;
+  onPeriodChange: (period: string) => void;
+  isLoading: boolean;
 }
 
 export function RevenueIntelligence({
@@ -41,11 +30,11 @@ export function RevenueIntelligence({
   livePayments,
   period,
   onPeriodChange,
-  isLoading
+  isLoading,
 }: RevenueIntelligenceProps) {
   const totalPeriodRevenue = React.useMemo(() => {
-    return trajectory.reduce((acc, curr) => acc + curr.revenue, 0)
-  }, [trajectory])
+    return trajectory.reduce((acc, curr) => acc + curr.revenue, 0);
+  }, [trajectory]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -71,10 +60,11 @@ export function RevenueIntelligence({
                   <button
                     key={p}
                     onClick={() => onPeriodChange(p)}
-                    className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${period === p
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                      }`}
+                    className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
+                      period === p
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
                     {p}
                   </button>
@@ -84,7 +74,9 @@ export function RevenueIntelligence({
                 <p className="text-xl font-black text-primary tracking-tight leading-none tabular-nums">
                   {isLoading ? "..." : formatCurrency(totalPeriodRevenue)}
                 </p>
-                <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest mt-1">Total Period</p>
+                <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest mt-1">
+                  Total Period
+                </p>
               </div>
             </div>
           </div>
@@ -96,17 +88,25 @@ export function RevenueIntelligence({
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trajectory} margin={{ top: 20, right: 10, left: 10, bottom: 10 }}>
+              <AreaChart
+                data={trajectory}
+                margin={{ top: 20, right: 10, left: 10, bottom: 10 }}
+              >
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                    <stop
+                      offset="5%"
+                      stopColor="var(--primary)"
+                      stopOpacity={0.2}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor="var(--primary)"
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
-                <XAxis
-                  dataKey="name"
-                  hide
-                />
+                <XAxis dataKey="name" hide />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
@@ -119,9 +119,9 @@ export function RevenueIntelligence({
                             {formatCurrency(payload[0].value as number)}
                           </span>
                         </div>
-                      )
+                      );
                     }
-                    return null
+                    return null;
                   }}
                 />
                 <Area
@@ -153,46 +153,62 @@ export function RevenueIntelligence({
               Transaction Stream
             </CardDescription>
           </div>
-          <Link href="/payments" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1 group">
+          <Link
+            href="/payments"
+            className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1 group"
+          >
             All <ChevronRight className="h-3 w-3 group-hover:translate-x-1" />
           </Link>
         </CardHeader>
-        <CardContent className="p-0 flex-1 overflow-auto max-h-[480px]">
+        <CardContent className="p-0 flex-1 overflow-auto max-h-[480px] scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
           <Table>
             <TableBody>
-              {isLoading ? (
-                [1, 2, 3, 4, 5].map(i => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                  </TableRow>
-                ))
-              ) : livePayments.map((payment, i) => (
-                <TableRow key={i} className="hover:bg-muted/30 border-border/30 transition-colors h-16 group">
-                  <TableCell className="pl-6">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-foreground leading-none">{payment.customerName}</span>
-                      <span className="text-[9px] text-muted-foreground/60 font-medium mt-1 truncate max-w-[200px] uppercase tracking-tighter">
-                        {payment.description}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-black text-sm tabular-nums text-right">
-                    {formatCurrency(payment.amount)}
-                  </TableCell>
-                  <TableCell className="pr-6 text-right">
-                    <Badge variant="secondary" className={`text-[8px] font-black uppercase px-2 py-0.5 border-none ${payment.status === 'succeeded' ? 'bg-emerald-500/10 text-emerald-500' :
-                      payment.status === 'processing' ? 'bg-amber-500/10 text-amber-500' :
-                        'bg-rose-500/10 text-rose-500'
-                      }`}>
-                      {payment.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {isLoading
+                ? [1, 2, 3, 4, 5].map((i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-10 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                : livePayments.map((payment, i) => (
+                    <TableRow
+                      key={i}
+                      className="hover:bg-muted/30 border-border/30 transition-colors h-16 group"
+                    >
+                      <TableCell className="pl-6">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-foreground leading-none">
+                            {payment.customerName}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground/60 font-medium mt-1 truncate max-w-[200px] uppercase tracking-tighter">
+                            {payment.description}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-black text-sm tabular-nums text-right">
+                        {formatCurrency(payment.amount)}
+                      </TableCell>
+                      <TableCell className="pr-6 text-right">
+                        <Badge
+                          variant="secondary"
+                          className={`text-[8px] font-black uppercase px-2 py-0.5 border-none ${
+                            payment.status === "succeeded"
+                              ? "bg-emerald-500/10 text-emerald-500"
+                              : payment.status === "processing"
+                                ? "bg-amber-500/10 text-amber-500"
+                                : "bg-rose-500/10 text-rose-500"
+                          }`}
+                        >
+                          {payment.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
