@@ -28,6 +28,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -90,8 +96,12 @@ export default function PluginMarketplace() {
             <Zap className="size-4" />
           </div>
           <div>
-            <h1 className="text-lg font-extrabold tracking-tight uppercase">Plugins</h1>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Marketplace</p>
+            <h1 className="text-lg font-extrabold tracking-tight uppercase">
+              Plugins
+            </h1>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+              Marketplace
+            </p>
           </div>
         </div>
 
@@ -168,9 +178,9 @@ export default function PluginMarketplace() {
         {/* Main Content Pane */}
         <main className="flex-1 relative bg-muted/5">
           <ScrollArea className="h-full">
-            <div className="p-10 max-w-375 mx-auto">
-              <div className="mb-10 space-y-2">
-                <h2 className="text-3xl font-black tracking-tighter uppercase">
+            <div className="p-6 sm:p-8 lg:p-10 max-w-screen-2xl mx-auto">
+              <div className="mb-8 lg:mb-10 space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
                   Power-Ups Library
                 </h2>
                 <p className="text-sm text-muted-foreground font-medium">
@@ -179,7 +189,7 @@ export default function PluginMarketplace() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
                 {filteredPlugins.map((plugin) => (
                   <MarketplacePluginCard
                     key={plugin.id}
@@ -249,7 +259,7 @@ function MarketplacePluginCard({
   return (
     <Card
       className={cn(
-        "group relative h-full flex flex-col bg-card border-border/40 hover:border-primary/40 transition-all duration-500 cursor-pointer overflow-hidden transform-gpu",
+        "group relative h-full w-full flex flex-col bg-card border-border/40 hover:border-primary/40 transition-all duration-500 cursor-pointer overflow-hidden transform-gpu",
         isInstalled
           ? "ring-2 ring-primary/10 shadow-lg"
           : "hover:shadow-2xl hover:-translate-y-2",
@@ -307,37 +317,42 @@ function MarketplacePluginCard({
 
       <div
         className={cn(
-          "mt-auto p-6 pt-3 flex items-center justify-between border-t transition-colors",
+          "mt-auto p-4 pt-3 flex flex-col gap-3 border-t transition-colors",
           isInstalled
             ? "bg-primary/5 border-primary/10"
             : "bg-muted/10 group-hover:bg-muted/30 border-border/20",
         )}
       >
-        {isInstalled ? (
-          <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
-            <TrendingUp className="size-3.5" />
-            Manage Scale
-          </div>
-        ) : (
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">
-              Pricing
-            </span>
-            <span className="text-sm font-black text-primary">
-              {plugin.price}
-            </span>
-          </div>
-        )}
+        <div className="w-full flex items-center justify-between min-h-[1.5rem]">
+          {isInstalled ? (
+            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest min-w-0">
+              <TrendingUp className="size-3.5 shrink-0" />
+              <span className="truncate">Manage Scale</span>
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">
+                Pricing
+              </span>
+              <span className="text-sm font-black text-primary">
+                {plugin.price}
+              </span>
+            </div>
+          )}
+        </div>
+
         <Button
           variant={isInstalled ? "default" : "ghost"}
           size="sm"
           className={cn(
-            "h-8 text-[10px] font-black uppercase tracking-widest gap-2 shadow-none rounded-lg",
+            "w-full h-8 text-[10px] font-black uppercase tracking-widest gap-2 shadow-none rounded-lg min-w-0",
             !isInstalled && "hover:bg-primary hover:text-primary-foreground",
           )}
         >
-          {isInstalled ? "Control Panel" : "View Specs"}{" "}
-          <Info className="size-3.5" />
+          <span className="truncate">
+            {isInstalled ? "Control Panel" : "View Specs"}
+          </span>
+          <Info className="size-3.5 shrink-0" />
         </Button>
       </div>
     </Card>
@@ -546,13 +561,37 @@ function PluginDetailView({
               : "Activate Risk-Free Enrollment"}
           </Button>
         )}
-        <Button
-          variant="outline"
-          className="h-14 w-14 p-0 rounded-[1.25rem] border-primary/20 hover:border-primary/50 transition-all group"
-          onClick={onClose}
-        >
-          <Info className="size-6 text-muted-foreground group-hover:text-primary transition-colors" />
-        </Button>
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-14 w-14 p-0 rounded-[1.25rem] border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+              >
+                <Info className="size-6 text-muted-foreground group-hover:text-primary transition-colors" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              align="end"
+              className="max-w-[260px] p-4 rounded-2xl space-y-2 border border-primary/20 bg-card shadow-xl"
+            >
+              <p className="text-[11px] font-black uppercase tracking-widest text-primary">
+                Risk-Free Enrollment
+              </p>
+              <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                You won&apos;t be charged until the end of your first billing
+                cycle. Cancel anytime — no lock-in, no penalties.
+              </p>
+              <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                <CheckCircle2 className="size-3.5 text-green-500 shrink-0" />
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  Billed post-usage, monthly
+                </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );
