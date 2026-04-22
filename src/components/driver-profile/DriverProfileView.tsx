@@ -49,7 +49,7 @@ export const DriverProfileView: React.FC = () => {
     const { user: authUser } = useUser();
     const { signOut, openUserProfile } = useAuthActions();
     const { getToken } = useAuth();
-    const { setAvatarUrl, triggerRefresh } = useProfileContext();
+    const { avatarUrl, setAvatarUrl, triggerRefresh, refreshKey } = useProfileContext();
     const { organization } = useOrg();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -111,7 +111,12 @@ export const DriverProfileView: React.FC = () => {
             setActivities(data.recentActivity || data.recentActivities || []);
             setOnlineStatus(data.onlineStatus || 'online');
             setCustomStatus(data.customStatus || '');
-            if (data.avatarUrl) setAvatarUrl(data.avatarUrl);
+            const resolvedAvatar = data.avatarUrl || data.avatar || '';
+            setAvatarUrl(
+                resolvedAvatar
+                    ? `${resolvedAvatar}${resolvedAvatar.includes('?') ? '&' : '?'}v=${Date.now()}`
+                    : ''
+            );
 
             try {
                 const statsRes = await apiClient.get('/api/profile/driver-stats', { headers });
@@ -132,7 +137,7 @@ export const DriverProfileView: React.FC = () => {
         }
     }, [getToken, setAvatarUrl]);
 
-    useEffect(() => { fetchProfile(); }, [fetchProfile]);
+    useEffect(() => { fetchProfile(); }, [fetchProfile, refreshKey]);
 
     const handleTabChange = (value: string) => setActiveTab(value);
 
@@ -312,6 +317,7 @@ export const DriverProfileView: React.FC = () => {
             <ProfileHeader
                 profile={profile}
                 authUser={authUser}
+                avatarUrl={avatarUrl}
                 onlineStatus={onlineStatus}
                 customStatus={customStatus}
                 triggerRefresh={triggerRefresh}
