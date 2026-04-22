@@ -488,7 +488,7 @@ function TxRow({
             fontFamily: "'Epilogue', monospace",
           }}
         >
-          {isHidden ? "₱ •••••" : formatCurrency(payment.amount)}
+          {isHidden ? "$ •••••" : formatCurrency(payment.amount)}
         </p>
         <StatusPill status={payment.status} />
       </div>
@@ -915,7 +915,7 @@ export default function BillingDashboard() {
                         fontFamily: "'Epilogue', sans-serif",
                       }}
                     >
-                      {isHidden ? "₱ ••••••" : formatCurrency(displayBalance)}
+                      {isHidden ? "$ ••••••" : formatCurrency(displayBalance)}
                     </p>
                   )}
                   <div
@@ -1238,7 +1238,7 @@ export default function BillingDashboard() {
                 label="Revenue"
                 skeleton={isLoading}
                 value={
-                  isHidden ? "₱ ••••" : formatCurrency(stats?.totalRevenue ?? 0)
+                  isHidden ? "$ ••••" : formatCurrency(stats?.totalRevenue ?? 0)
                 }
                 sub={`${succeeded?.count ?? 0} deals closed`}
                 colorVar={T.brandMid}
@@ -1251,7 +1251,7 @@ export default function BillingDashboard() {
                 skeleton={isLoading}
                 value={
                   isHidden
-                    ? "₱ ••••"
+                    ? "$ ••••"
                     : formatCurrency(pending?.totalAmount ?? 0)
                 }
                 sub={`${pending?.count ?? 0} awaiting`}
@@ -1264,7 +1264,7 @@ export default function BillingDashboard() {
                 label="Failed"
                 skeleton={isLoading}
                 value={
-                  isHidden ? "₱ ••••" : formatCurrency(failed?.totalAmount ?? 0)
+                  isHidden ? "$ ••••" : formatCurrency(failed?.totalAmount ?? 0)
                 }
                 sub={`${failed?.count ?? 0} failed`}
                 colorVar={T.danger}
