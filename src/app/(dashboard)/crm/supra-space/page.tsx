@@ -21,23 +21,9 @@ import { cn } from '@/lib/utils';
 
 const SS4_MAX_UPLOAD_FILES = 5;
 const SS4_MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024;
-const SS4_ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/plain',
-  'text/csv',
-  'application/zip',
-]);
-const SS4_ALLOWED_EXTENSIONS = new Set([
-  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf',
-  '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.zip',
+const SS4_MAX_VIDEO_UPLOAD_SIZE_BYTES = 40 * 1024 * 1024;
+const SS4_VIDEO_EXTENSIONS = new Set([
+  '.mp4', '.mov', '.webm', '.m4v', '.avi', '.mkv', '.wmv', '.flv', '.3gp', '.mpeg', '.mpg', '.ogv',
 ]);
 
 // ─── Font + Style Injection ──────────────────────────────────────────────────
@@ -648,6 +634,18 @@ function fmtDate(d: string) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 const fmtSize = (b: number) => b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`;
+const isVideoFileLike = (file: Pick<File, 'name' | 'type'>) => {
+  const extension = file.name.includes('.')
+    ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
+    : '';
+  return file.type.startsWith('video/') || SS4_VIDEO_EXTENSIONS.has(extension);
+};
+const isVideoAttachment = (attachment: SSMessage['attachments'][number]) => {
+  const extension = attachment.originalName.includes('.')
+    ? attachment.originalName.slice(attachment.originalName.lastIndexOf('.')).toLowerCase()
+    : '';
+  return attachment.mimeType.startsWith('video/') || SS4_VIDEO_EXTENSIONS.has(extension);
+};
 const getConvName = (c: SSConversation, uid: string) =>
   c.type === 'group' ? (c.name || 'Group') : (c.members.find(m => m._id !== uid)?.fullName || 'Unknown');
 const getConvAvatar = (c: SSConversation, uid: string) =>
@@ -736,12 +734,29 @@ function Bubble({ message, isOwn, showAvatar, onReply, onDelete }: {
           isOwn ? 'ss4-bubble-own' : 'ss4-bubble-other'
         )}>
           {message.attachments.filter(a => a.mimeType.startsWith('image/')).map((att, i) => (
-            <a key={i} href={att.url} target="_blank" rel="noreferrer" className="block mb-2 last:mb-0">
+            <a key={`img-${i}`} href={att.url} target="_blank" rel="noreferrer" className="block mb-2 last:mb-0">
               <img src={att.url} alt={att.originalName} className="rounded-xl object-cover" style={{ maxHeight: 220, maxWidth: '100%' }} />
             </a>
           ))}
-          {message.attachments.filter(a => !a.mimeType.startsWith('image/')).map((att, i) => (
-            <a key={i} href={att.url} target="_blank" rel="noreferrer"
+          {message.attachments.filter(isVideoAttachment).map((att, i) => (
+            <div key={`video-${i}`} className="mb-2 last:mb-0">
+              <video
+                controls
+                preload="metadata"
+                className="rounded-xl"
+                style={{ maxHeight: 260, maxWidth: '100%' }}
+              >
+                <source src={att.url} type={att.mimeType || 'video/mp4'} />
+                Your browser does not support the video tag.
+              </video>
+              <a href={att.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 mt-1 text-[10px] opacity-60 hover:opacity-90">
+                <Download className="h-3 w-3" />
+                Open video
+              </a>
+            </div>
+          ))}
+          {message.attachments.filter(a => !a.mimeType.startsWith('image/') && !isVideoAttachment(a)).map((att, i) => (
+            <a key={`file-${i}`} href={att.url} target="_blank" rel="noreferrer"
               className={cn('flex items-center gap-3 rounded-xl p-2.5 mb-2 last:mb-0 transition-opacity hover:opacity-80', isOwn ? 'ss4-file-own' : 'ss4-file-other')}
             >
               <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: isOwn ? 'rgba(255,255,255,0.12)' : 'var(--accent-muted)' }}>
@@ -1229,16 +1244,15 @@ export default function SupraSpacePage() {
     }
 
     for (const file of selectedFiles) {
-      const ext = file.name.includes('.')
-        ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
-        : '';
-      const allowedType = SS4_ALLOWED_MIME_TYPES.has(file.type) || SS4_ALLOWED_EXTENSIONS.has(ext);
-      if (!allowedType) {
-        showUploadNotice('error', `${file.name} is not a supported file type.`);
+      if (file.size === 0) {
+        showUploadNotice('error', `${file.name} is empty and cannot be sent.`);
         return;
       }
-      if (file.size > SS4_MAX_UPLOAD_SIZE_BYTES) {
-        showUploadNotice('error', `${file.name} exceeds 25 MB.`);
+
+      const videoFile = isVideoFileLike(file);
+      const maxBytes = videoFile ? SS4_MAX_VIDEO_UPLOAD_SIZE_BYTES : SS4_MAX_UPLOAD_SIZE_BYTES;
+      if (file.size > maxBytes) {
+        showUploadNotice('error', `${file.name} exceeds ${videoFile ? '40 MB (video limit)' : '25 MB'}.`);
         return;
       }
     }
@@ -1722,7 +1736,9 @@ export default function SupraSpacePage() {
                           className="flex items-center gap-1.5 rounded-lg px-2 py-1"
                           style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-1)' }}
                         >
-                          <FileText className="h-3.5 w-3.5" style={{ color: 'var(--accent)' }} />
+                          {isVideoFileLike(file)
+                            ? <Video className="h-3.5 w-3.5" style={{ color: 'var(--accent)' }} />
+                            : <FileText className="h-3.5 w-3.5" style={{ color: 'var(--accent)' }} />}
                           <span className="max-w-32 truncate" style={{ fontSize: 11, color: 'var(--text-primary)' }}>
                             {file.name}
                           </span>
@@ -1773,7 +1789,7 @@ export default function SupraSpacePage() {
                         ref={fileRef}
                         type="file"
                         multiple
-                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                        accept="*/*"
                         className="sr-only"
                         onChange={e => {
                           const selected = e.target.files;

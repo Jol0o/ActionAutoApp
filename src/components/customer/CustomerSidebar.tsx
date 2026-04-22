@@ -54,7 +54,7 @@ export function CustomerSidebar() {
 
     return (
         <Sidebar variant="sidebar" collapsible="icon">
-            <SidebarHeader className="flex flex-col items-center justify-center p-4">
+            <SidebarHeader className="flex f2lex-col items-center justify-center p-4">
                 <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
                     <span className="font-bold text-sm tracking-tight uppercase truncate max-w-35">
                         ACTION AUTO UTAH

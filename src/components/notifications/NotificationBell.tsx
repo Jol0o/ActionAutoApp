@@ -40,7 +40,7 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
 
   return (
     <>
-      <div className="flex-shrink-0 px-4 py-3 border-b bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600">
+      <div className="shrink-0 px-4 py-3 border-b bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
@@ -106,7 +106,7 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
       </div>
 
       {notifications.length > 0 && (
-        <div className="flex-shrink-0 border-t px-4 py-2">
+        <div className="shrink-0 border-t px-4 py-2">
           <Link
             href={notificationsPath}
             className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold transition-colors"
@@ -150,7 +150,7 @@ export function NotificationBell() {
               unreadCount > 0 && 'text-emerald-600 dark:text-emerald-400'
             )} />
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-gradient-to-br from-red-500 to-rose-600 rounded-full shadow-sm border-2 border-background animate-in zoom-in-50">
+              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-4.5 h-4.5 px-1 text-[10px] font-bold text-white bg-linear-to-br from-red-500 to-rose-600 rounded-full shadow-sm border-2 border-background animate-in zoom-in-50">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -159,7 +159,7 @@ export function NotificationBell() {
 
         <DropdownMenuContent
           align="end"
-          className="w-[380px] sm:w-[420px] p-0 shadow-2xl border border-border/50 rounded-2xl overflow-hidden flex flex-col max-h-[540px]"
+          className="w-95 sm:w-105 p-0 shadow-2xl border border-border/50 rounded-2xl overflow-hidden flex flex-col max-h-135"
         >
           <NotificationErrorBoundary>
             <NotificationDropdownContent onDriverRequestClick={handleDriverRequestClick} />

@@ -32,7 +32,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center p-8 border border-destructive/20 bg-destructive/5 rounded-3xl backdrop-blur-sm">
           <p className="text-destructive font-black tracking-tight text-lg mb-2">Intelligence Stream Offline</p>
           <p className="text-muted-foreground text-sm mb-6">We encountered a secure protocol error while fetching your metrics.</p>
