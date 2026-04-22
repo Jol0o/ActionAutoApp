@@ -18,7 +18,7 @@ import {
     Copy
 } from 'lucide-react';
 import { UserProfile, OnlineStatus } from '@/types/user';
-import { cn, resolveImageUrl } from '@/lib/utils';
+import { cn, resolveImageUrl, getInitials } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
 import ProfileImageCropper from '@/components/ProfileImageCropper';
 import { onlineStatusOptions, languageOptions } from './profile-constants';
@@ -123,7 +123,6 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         || 'User';
 
     const avatarSrc = profile?.avatarUrl || profile?.avatar || authUser?.imageUrl;
-    const initial = displayName.charAt(0).toUpperCase();
     const initialGradient = getInitialColor(displayName);
 
     return (
@@ -184,7 +183,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                             <img src={resolveImageUrl(avatarSrc)} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
                             <div className={cn("w-full h-full bg-linear-to-br flex items-center justify-center", initialGradient)}>
-                                <span className="text-white font-bold text-3xl sm:text-4xl md:text-5xl select-none">{initial}</span>
+                                <span className="text-white font-bold text-3xl sm:text-4xl md:text-5xl select-none">{getInitials(displayName)}</span>
                             </div>
                         )}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">

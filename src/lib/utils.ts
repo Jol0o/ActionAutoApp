@@ -29,3 +29,25 @@ export function resolveImageUrl(url?: string | null): string | undefined {
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   return `${API_BASE_URL}${cleanPath}`;
 }
+
+/**
+ * Extracts initials from a name string.
+ * Example: "John Doe" -> "JD", "Jane" -> "J", "John M. Doe" -> "JD"
+ */
+export function getInitials(name?: string | null): string {
+  if (!name) return 'AA'; // Default fallback
+
+  const parts = name.trim().split(/\s+/);
+  
+  if (parts.length === 0) return 'AA';
+  
+  if (parts.length === 1) {
+    return parts[0].substring(0, 1).toUpperCase();
+  }
+
+  // Get first letter of first and last parts
+  const firstInitial = parts[0].substring(0, 1).toUpperCase();
+  const lastInitial = parts[parts.length - 1].substring(0, 1).toUpperCase();
+  
+  return `${firstInitial}${lastInitial}`;
+}
