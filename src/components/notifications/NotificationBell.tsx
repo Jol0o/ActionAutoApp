@@ -108,7 +108,14 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
       {notifications.length > 0 && (
         <div className="shrink-0 border-t px-4 py-2">
           <Link
-            href={notificationsPath}
+            href={{
+              pathname: notificationsPath,
+              query: {
+                tab: 'all',
+                category: 'All',
+                source: 'header',
+              },
+            }}
             className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-semibold transition-colors"
           >
             View all notifications

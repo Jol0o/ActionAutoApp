@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   Car,
@@ -86,6 +86,7 @@ const customerData = {
 
 export function CustomerSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useUser();
   const { signOut } = useAuthActions();
   const { organization } = useOrg();
@@ -190,13 +191,11 @@ export function CustomerSidebar({ ...props }: React.ComponentProps<typeof Sideba
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => (window.location.href = "/profile")}
-                >
+                <DropdownMenuItem onClick={() => router.push("/profile")}>
                   <UserIcon className="mr-2 size-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/settings")}>
                   <SettingsIcon className="mr-2 size-4" />
                   Settings
                 </DropdownMenuItem>

@@ -87,14 +87,14 @@ export function AppointmentDetailsModal({
   // FIXED: Check if user is a registered participant (not a guest)
   const isRegisteredParticipant = React.useMemo(() => {
     if (!currentUser?.id || !appointment?.participants) return false
-    
+
     const currentUserId = currentUser.id
     const currentUserEmail = currentUser.primaryEmailAddress?.emailAddress || currentUser.emailAddresses?.[0]?.emailAddress
-    
+
     return appointment.participants.some(participant => {
       const participantId = participant._id || ''
       const participantEmail = participant.email || ''
-      
+
       // Check by ID or email
       return (
         String(participantId) === String(currentUserId) ||
@@ -108,23 +108,23 @@ export function AppointmentDetailsModal({
     if (!currentUser?.id || !appointment?.createdBy) {
       return false
     }
-    
+
     // Extract creator ID and email
     const createdBy = appointment.createdBy
     const creatorId = createdBy._id || ''
     const creatorEmail = createdBy.email || ''
-    
+
     const currentUserId = currentUser.id
     const currentUserEmail = currentUser.primaryEmailAddress?.emailAddress || currentUser.emailAddresses?.[0]?.emailAddress
-    
+
     // Check by ID or email
     if (String(creatorId) === String(currentUserId)) return true
-    
+
     // Email match (fallback for same user with different auth methods)
     if (currentUserEmail && creatorEmail && currentUserEmail.toLowerCase() === creatorEmail.toLowerCase()) {
       return true
     }
-    
+
     return false
   }, [currentUser, appointment])
 
@@ -219,21 +219,21 @@ export function AppointmentDetailsModal({
       }
 
       // Format guestEmails properly - merge new emails with existing guest data
-      const formattedGuestEmails = editData.guestEmails.length > 0 
+      const formattedGuestEmails = editData.guestEmails.length > 0
         ? editData.guestEmails.map((email: string) => {
-            // Find existing guest data for this email
-            const existingGuest = editData.guestEmailsData?.find((g: any) => g.email === email)
-            
-            // If we have existing data, keep it; otherwise create new guest object
-            if (existingGuest) {
-              return existingGuest
-            } else {
-              return {
-                email: email,
-                status: 'pending'
-              }
+          // Find existing guest data for this email
+          const existingGuest = editData.guestEmailsData?.find((g: any) => g.email === email)
+
+          // If we have existing data, keep it; otherwise create new guest object
+          if (existingGuest) {
+            return existingGuest
+          } else {
+            return {
+              email: email,
+              status: 'pending'
             }
-          })
+          }
+        })
         : undefined
 
       await onUpdate(appointment._id, {
@@ -315,7 +315,7 @@ export function AppointmentDetailsModal({
         {error && (
           <Alert variant="destructive" className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/50">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex-shrink-0">
+              <div className="mt-0.5 shrink-0">
                 <div className="rounded-full bg-red-100 dark:bg-red-900 p-1">
                   <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                 </div>
@@ -330,7 +330,7 @@ export function AppointmentDetailsModal({
               </div>
             </div>
           </Alert>
-        )}  
+        )}
 
         <div className="space-y-6">
           {/* Title */}
@@ -534,10 +534,10 @@ export function AppointmentDetailsModal({
                 <GuestEmailInput
                   emails={
                     // Ensure we always pass strings to GuestEmailInput
-                    Array.isArray(editData.guestEmails) 
-                      ? editData.guestEmails.map((item: any) => 
-                          typeof item === 'string' ? item : item.email
-                        )
+                    Array.isArray(editData.guestEmails)
+                      ? editData.guestEmails.map((item: any) =>
+                        typeof item === 'string' ? item : item.email
+                      )
                       : []
                   }
                   onChange={(emails) => setEditData({ ...editData, guestEmails: emails })}

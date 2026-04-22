@@ -60,11 +60,10 @@ export function RevenueIntelligence({
                   <button
                     key={p}
                     onClick={() => onPeriodChange(p)}
-                    className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
-                      period === p
+                    className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${period === p
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
-                    }`}
+                      }`}
                   >
                     {p}
                   </button>
@@ -81,7 +80,7 @@ export function RevenueIntelligence({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex-1 min-h-[350px]">
+        <CardContent className="p-0 flex-1 min-h-87.5">
           {isLoading ? (
             <div className="h-full w-full p-8 space-y-4">
               <Skeleton className="h-full w-full rounded-2xl" />
@@ -153,58 +152,54 @@ export function RevenueIntelligence({
               Transaction Stream
             </CardDescription>
           </div>
-          <Link
-            href="/payments"
-            className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1 group"
-          >
+          <Link href="/billing/payments" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-1 group">
             All <ChevronRight className="h-3 w-3 group-hover:translate-x-1" />
           </Link>
         </CardHeader>
-        <CardContent className="p-0 flex-1 overflow-auto max-h-[480px] scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+        <CardContent className="p-0 flex-1 overflow-auto max-h-120 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
           <Table>
             <TableBody>
               {isLoading
                 ? [1, 2, 3, 4, 5].map((i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-10 w-full" />
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-10 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
                 : livePayments.map((payment, i) => (
-                    <TableRow
-                      key={i}
-                      className="hover:bg-muted/30 border-border/30 transition-colors h-16 group"
-                    >
-                      <TableCell className="pl-6">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-foreground leading-none">
-                            {payment.customerName}
-                          </span>
-                          <span className="text-[9px] text-muted-foreground/60 font-medium mt-1 truncate max-w-[200px] uppercase tracking-tighter">
-                            {payment.description}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-black text-sm tabular-nums text-right">
-                        {formatCurrency(payment.amount)}
-                      </TableCell>
-                      <TableCell className="pr-6 text-right">
-                        <Badge
-                          variant="secondary"
-                          className={`text-[8px] font-black uppercase px-2 py-0.5 border-none ${
-                            payment.status === "succeeded"
-                              ? "bg-emerald-500/10 text-emerald-500"
-                              : payment.status === "processing"
-                                ? "bg-amber-500/10 text-amber-500"
-                                : "bg-rose-500/10 text-rose-500"
+                  <TableRow
+                    key={i}
+                    className="hover:bg-muted/30 border-border/30 transition-colors h-16 group"
+                  >
+                    <TableCell className="pl-6">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-foreground leading-none">
+                          {payment.customerName}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground/60 font-medium mt-1 truncate max-w-50 uppercase tracking-tighter">
+                          {payment.description}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-black text-sm tabular-nums text-right">
+                      {formatCurrency(payment.amount)}
+                    </TableCell>
+                    <TableCell className="pr-6 text-right">
+                      <Badge
+                        variant="secondary"
+                        className={`text-[8px] font-black uppercase px-2 py-0.5 border-none ${payment.status === "succeeded"
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : payment.status === "processing"
+                              ? "bg-amber-500/10 text-amber-500"
+                              : "bg-rose-500/10 text-rose-500"
                           }`}
-                        >
-                          {payment.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                      >
+                        {payment.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </CardContent>

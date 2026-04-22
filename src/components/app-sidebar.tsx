@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Car,
   ChevronRight,
@@ -19,6 +19,7 @@ import {
   Wallet,
   LayoutGrid,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import {
   Sidebar,
@@ -50,6 +51,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+type SidebarNavItem = {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  isNew?: boolean;
+};
+
 const data = {
   navMain: [
     {
@@ -74,7 +82,7 @@ const data = {
       icon: LayoutGrid,
       isNew: true,
     },
-  ],
+  ] satisfies SidebarNavItem[],
 
   services: [
     {
@@ -97,7 +105,7 @@ const data = {
       url: "/billing",
       icon: CreditCard,
     },
-  ],
+  ] satisfies SidebarNavItem[],
   account: [
     {
       title: "Profile",
@@ -109,7 +117,7 @@ const data = {
       url: "/settings",
       icon: Settings,
     },
-  ],
+  ] satisfies SidebarNavItem[],
 };
 
 const customerData = {
@@ -134,18 +142,26 @@ const customerData = {
       url: "/dashboard/wallet",
       icon: Wallet,
     },
-  ],
+  ] satisfies SidebarNavItem[],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useUser();
   const { signOut } = useAuthActions();
 
-  const { isLoaded, isCustomer } = useOrg();
+  const { isCustomer } = useOrg();
   const { avatarUrl } = useProfileContext();
 
-  const activeNavMain = isCustomer ? customerData.navMain : data.navMain;
+  const activeNavMain: SidebarNavItem[] = isCustomer
+    ? customerData.navMain
+    : data.navMain;
+
+  React.useEffect(() => {
+    router.prefetch("/profile");
+    router.prefetch("/settings");
+  }, [router]);
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
@@ -163,7 +179,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {activeNavMain.map((item: any) => (
+          {activeNavMain.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
@@ -304,15 +320,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => (window.location.href = "/profile")}
-                >
+                <DropdownMenuItem onClick={() => router.push("/profile")}>
                   <UserIcon className="mr-2 size-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => (window.location.href = "/settings")}
-                >
+                <DropdownMenuItem onClick={() => router.push("/settings")}>
                   <SettingsIcon className="mr-2 size-4" />
                   Settings
                 </DropdownMenuItem>

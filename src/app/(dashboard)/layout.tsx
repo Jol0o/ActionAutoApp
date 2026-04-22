@@ -48,6 +48,18 @@ function DashboardLayoutContent({
   const { isImpersonating } = adminStore.useStore();
 
   const [isRedirecting, setIsRedirecting] = React.useState(false);
+  const [hasResolvedOrgAccess, setHasResolvedOrgAccess] = React.useState(false);
+
+  React.useEffect(() => {
+    router.prefetch("/profile");
+    router.prefetch("/settings");
+  }, [router]);
+
+  React.useEffect(() => {
+    if (isLoaded) {
+      setHasResolvedOrgAccess(true);
+    }
+  }, [isLoaded]);
 
   React.useEffect(() => {
     // Wait until org context is fully loaded before making routing decisions
@@ -104,7 +116,7 @@ function DashboardLayoutContent({
 
   // Prevent flashing the dealer dashboard to unauthorized roles while redirecting
   if (
-    !isLoaded ||
+    !hasResolvedOrgAccess ||
     isCustomer ||
     isDriver ||
     (!organization && isEmployee && !isSuperAdmin) ||
@@ -203,12 +215,12 @@ function DashboardLayoutContent({
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => (window.location.href = "/profile")}
+                    onClick={() => router.push("/profile")}
                   >
                     Profile
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => (window.location.href = "/settings")}
+                    onClick={() => router.push("/settings")}
                   >
                     Settings
                   </DropdownMenuItem>
