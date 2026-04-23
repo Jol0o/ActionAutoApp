@@ -83,16 +83,30 @@ class ApiClient {
                 // it using the HttpOnly refreshToken cookie, then retry the
                 // original request. The user never sees the error.
                 const originalRequest = error.config;
+                const requestUrl = String(originalRequest?.url || '');
+                const skipAuthRefresh = Boolean((originalRequest as any)?._skipAuthRefresh);
+                const isRefreshEndpoint = requestUrl.includes('/api/auth/refresh-tokens');
+                const isPublicAuthEndpoint = /\/api\/auth\/(login|register|register-dealership|verify-email|resend-otp|forgot-password|reset-password)/.test(requestUrl);
 
                 if (
                     error.response?.status === 401 &&
-                    !originalRequest._retry &&
                     typeof window !== 'undefined'
                 ) {
+                    // Never refresh for auth endpoints that are expected to be unauthenticated
+                    // or explicitly marked to skip refresh. This prevents login/signup flows
+                    // from being polluted by refresh-token errors.
+                    if (skipAuthRefresh || isPublicAuthEndpoint) {
+                        return Promise.reject(error);
+                    }
+
                     // Prevent retrying the refresh-tokens endpoint itself
-                    if (originalRequest.url?.includes('/api/auth/refresh-tokens')) {
+                    if (isRefreshEndpoint) {
                         // Refresh failed — clear the token and let the auth provider handle redirect
                         (window as any).__AUTH_TOKEN__ = null;
+                        return Promise.reject(error);
+                    }
+
+                    if (originalRequest._retry) {
                         return Promise.reject(error);
                     }
 

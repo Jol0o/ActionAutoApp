@@ -51,6 +51,17 @@ const isPublicRoute = (path: string) => {
     return PUBLIC_ROUTES.some(r => path.startsWith(r));
 };
 
+const isMissingRefreshTokenError = (err: any) => {
+    const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        err?.errors?.[0]?.longMessage ||
+        '';
+
+    return typeof message === 'string' &&
+        /(refresh token missing|no refresh token|missing refresh token)/i.test(message);
+};
+
 // --- PROVIDER COMPONENT ---
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -87,7 +98,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             const token = tokenRes.data?.data?.accessToken || tokenRes.data?.accessToken;
                             return token || null;
                         } catch (err) {
-                            console.error('[AuthProvider] Global refresh failed (Silent Refresh)');
+                            if (!isMissingRefreshTokenError(err)) {
+                                console.error('[AuthProvider] Global refresh failed (Silent Refresh)');
+                            }
                             return null;
                         } finally {
                             globalRefreshPromise = null;
@@ -249,7 +262,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     }
                     return null;
                 } catch (e) {
-                    console.warn('[AuthProvider] Token refresh request failed');
+                    if (!isMissingRefreshTokenError(e)) {
+                        console.warn('[AuthProvider] Token refresh request failed');
+                    }
                     return null;
                 } finally {
                     globalRefreshPromise = null;
@@ -495,7 +510,7 @@ export function useSignIn() {
                 const response = await apiClient.post('/api/auth/login', {
                     email: data.identifier,
                     password: data.password
-                });
+                }, { _skipAuthRefresh: true } as any);
 
                 const token = response.data?.data?.accessToken || response.data?.accessToken;
                 const userObj = response.data?.data?.user || response.data?.user;
