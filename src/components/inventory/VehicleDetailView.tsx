@@ -18,24 +18,32 @@ interface VehicleDetailViewProps {
     isPublic?: boolean
 }
 
-// Helper to standardise comment formatting without removing content
+// Helper to standardise comment formatting dynamically
 function cleanVehicleDescription(text: string, vehicleInfo?: { year?: number, make?: string, model?: string, modelName?: string }) {
     if (!text) return "";
 
     let cleaned = text
-        // Only remove internal system placeholders
+        // Remove known system placeholders
         .replace(/\{Equipment Bulleted\}/gi, "")
-        // INJECT Line Breaks to handle "wall of text" issues from raw data
-        .replace(/(Come in TODAY|call or text anytime|We have customers from|Utah county|Salt Lake county|visit us at any of our locations|LEHI:|OREM:|Phone \(Call or Text\):|Email:|PLEASE CALL TO SCHEDULE|View the Carketa condition|Action Auto Utah believes|Action Auto Utah is an award-winning|Disclaimer:|Pre-owned vehicle pricing|\*Pre-owned vehicle pricing|ALL PRICES ARE FINAL|CALL DEALER FOR MORE INFORMATION|Extended Warranty)/gi, "\n\n$1")
-        // Ensure dash bullets start on new lines (e.g. "stated- Low" becomes "stated\n- Low")
-        // Improved regex: Must follow punctuation/lowercase AND be followed by a Capital letter (avoiding phone numbers)
-        .replace(/([a-z\.\!\?\)\]\*])\s?-\s?([A-Z])/g, "$1\n- $2")
-        // Normalize whitespace and handle paragraph markers
+        // Normalize whitespace
         .replace(/\r\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n') // Collapse excessive newlines
+        .replace(/[ \t]+/g, ' ')
+        // Ensure sentence endings have proper breaks if followed by a starting capital
+        .replace(/([.!?])\s+([A-Z][a-z])/g, "$1\n\n$2")
+        // Detect "Label: Value" or Headers and ensure they start on new lines
+        // e.g. "LEHI: 123 St" -> "\n\nLEHI: 123 St"
+        .replace(/(^|\s)([A-Z]{2,}(?:\s[A-Z]{2,})*:)/g, "\n\n$2")
+        // Detect common transition phrases even if not in all caps
+        .replace(/(Disclaimer:|Pre-owned vehicle pricing|ALL PRICES ARE FINAL|PLEASE CALL TO SCHEDULE|View the Carketa)/gi, "\n\n$1")
+        // Normalize various bullet symbols to a standard dash
+        .replace(/^\s*[-•*]\s*/gm, "\n- ")
+        // Fix cases where bullets were smashed into text: "end.- Next" -> "end.\n- Next"
+        .replace(/([a-z0-9])([.!?])\s?-\s?([A-Z])/g, "$1$2\n- $3")
+        // Collapse excessive newlines
+        .replace(/\n{3,}/g, '\n\n')
         .trim();
 
-    // Redundancy check: If the comment is just the vehicle name again with nothing else
+    // Redundancy check: If the comment is just the vehicle name again
     const vYear = vehicleInfo?.year;
     const vMake = vehicleInfo?.make;
     const vModel = vehicleInfo?.model || vehicleInfo?.modelName;
@@ -51,7 +59,7 @@ function cleanVehicleDescription(text: string, vehicleInfo?: { year?: number, ma
 }
 
 // Sub-component for truncation and formatting
-function ExpandableText({ text, limit = 350, vehicle }: { text: string, limit?: number, vehicle?: Vehicle }) {
+function ExpandableText({ text, limit = 400, vehicle }: { text: string, limit?: number, vehicle?: Vehicle }) {
     const [isExpanded, setIsExpanded] = React.useState(false);
 
     const cleanedText = React.useMemo(() => cleanVehicleDescription(text, vehicle), [text, vehicle]);
@@ -59,34 +67,43 @@ function ExpandableText({ text, limit = 350, vehicle }: { text: string, limit?: 
     if (!cleanedText) return null;
 
     const needsTruncation = cleanedText.length > limit;
-    const displayText = isExpanded ? cleanedText : cleanedText.slice(0, limit);
-
-    // Format paragraphs and simple bullet points
-    const lines = displayText.split('\n').filter(line => line.trim().length > 0);
+    const rawDisplayText = isExpanded ? cleanedText : cleanedText.slice(0, limit);
+    
+    // Split into paragraphs/blocks based on double newlines
+    const blocks = rawDisplayText.split(/\n\n+/).filter(b => b.trim().length > 0);
 
     return (
-        <div className="space-y-3">
-            <div className="text-sm text-muted-foreground leading-relaxed text-left">
-                {lines.map((line, idx) => {
-                    const trimmedLine = line.trim();
-                    const isLastLine = idx === lines.length - 1;
+        <div className="space-y-4">
+            <div className="text-sm text-muted-foreground leading-relaxed text-left space-y-4">
+                {blocks.map((block, bIdx) => {
+                    const lines = block.split('\n').filter(l => l.trim().length > 0);
+                    const isLastBlock = bIdx === blocks.length - 1;
 
-                    if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
+                    // If a block contains lines starting with a bullet, render it as a list
+                    if (lines.some(l => l.trim().startsWith('-'))) {
                         return (
-                            <div key={idx} className="flex gap-2 ml-2 mt-1">
-                                <span className="text-primary font-bold">•</span>
-                                <div className="flex-1">
-                                    {trimmedLine.replace(/^[-•]\s*/, '')}
-                                    {isLastLine && !isExpanded && needsTruncation && "..."}
-                                </div>
+                            <div key={bIdx} className="space-y-1.5">
+                                {lines.map((line, lIdx) => {
+                                    const isLastLine = isLastBlock && lIdx === lines.length - 1;
+                                    return (
+                                        <div key={lIdx} className="flex gap-2 ml-1">
+                                            <span className="text-primary font-bold mt-0.5">•</span>
+                                            <div className="flex-1">
+                                                {line.trim().replace(/^- \s*/, '')}
+                                                {isLastLine && !isExpanded && needsTruncation && "..."}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         );
                     }
 
+                    // Standard paragraph
                     return (
-                        <p key={idx} className="mb-3">
-                            {line}
-                            {isLastLine && !isExpanded && needsTruncation && "..."}
+                        <p key={bIdx} className="whitespace-pre-wrap">
+                            {block.trim()}
+                            {isLastBlock && !isExpanded && needsTruncation && "..."}
                         </p>
                     );
                 })}
