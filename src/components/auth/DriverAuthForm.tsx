@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSignUp } from "@/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -264,9 +265,8 @@ export function DriverAuthForm() {
                   <Label htmlFor="reg-password">Security Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
+                    <PasswordInput
                       id="reg-password"
-                      type="password"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       placeholder="••••••••"
@@ -304,9 +304,8 @@ export function DriverAuthForm() {
                   <Label htmlFor="reg-confirm">Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
+                    <PasswordInput
                       id="reg-confirm"
-                      type="password"
                       value={regConfirmPassword}
                       onChange={(e) => setRegConfirmPassword(e.target.value)}
                       placeholder="••••••••"

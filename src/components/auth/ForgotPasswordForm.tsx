@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -227,9 +228,8 @@ export function ForgotPasswordForm() {
                   <Label htmlFor="newPassword">New Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
+                    <PasswordInput
                       id="newPassword"
-                      type="password"
                       placeholder="••••••••"
                       className="pl-10 h-11 bg-background/50"
                       value={newPassword}
@@ -314,9 +314,8 @@ export function ForgotPasswordForm() {
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
+                    <PasswordInput
                       id="confirmPassword"
-                      type="password"
                       placeholder="••••••••"
                       className="pl-10 h-11 bg-background/50"
                       value={confirmPassword}
