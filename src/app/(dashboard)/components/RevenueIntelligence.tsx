@@ -25,6 +25,21 @@ interface RevenueIntelligenceProps {
   isLoading: boolean;
 }
 
+const MONTH_ORDER = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 export function RevenueIntelligence({
   trajectory,
   livePayments,
@@ -32,15 +47,51 @@ export function RevenueIntelligence({
   onPeriodChange,
   isLoading,
 }: RevenueIntelligenceProps) {
+  const chartData = React.useMemo(() => {
+    if (period !== "1Y") {
+      return trajectory;
+    }
+
+    const monthlyRevenue = new Map<string, number>();
+
+    for (const point of trajectory) {
+      const monthLabel = String(point?.name || "").slice(0, 3);
+      if (!MONTH_ORDER.includes(monthLabel)) {
+        continue;
+      }
+
+      monthlyRevenue.set(
+        monthLabel,
+        (monthlyRevenue.get(monthLabel) || 0) + Number(point?.revenue || 0)
+      );
+    }
+
+    return MONTH_ORDER.map((month) => ({
+      name: month,
+      revenue: monthlyRevenue.get(month) || 0,
+    }));
+  }, [period, trajectory]);
+
   const totalPeriodRevenue = React.useMemo(() => {
-    return trajectory.reduce((acc, curr) => acc + curr.revenue, 0);
-  }, [trajectory]);
+    return chartData.reduce((acc, curr) => acc + curr.revenue, 0);
+  }, [chartData]);
+
+  const formatXAxisLabel = React.useCallback(
+    (value: string) => {
+      const label = String(value || "");
+      if (period === "1M" && label.startsWith("Week ")) {
+        return label.replace("Week ", "W");
+      }
+      return label;
+    },
+    [period]
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Revenue Trajectory Chart */}
       <Card className="lg:col-span-7 border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col p-0">
-        <CardHeader className="py-5 px-6 border-b border-border/10">
+        <CardHeader className="py-5 px-6 border-b border-border/10 lg:min-h-28">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-lg font-black flex items-center gap-2">
@@ -61,8 +112,8 @@ export function RevenueIntelligence({
                     key={p}
                     onClick={() => onPeriodChange(p)}
                     className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${period === p
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                       }`}
                   >
                     {p}
@@ -88,8 +139,8 @@ export function RevenueIntelligence({
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={trajectory}
-                margin={{ top: 20, right: 10, left: 10, bottom: 10 }}
+                data={chartData}
+                margin={{ top: 20, right: 24, left: 24, bottom: 28 }}
               >
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
@@ -105,13 +156,27 @@ export function RevenueIntelligence({
                     />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="name" hide />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  tickMargin={10}
+                  height={40}
+                  padding={{ left: 12, right: 12 }}
+                  tickFormatter={formatXAxisLabel}
+                  tick={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fill: "var(--foreground)",
+                  }}
+                />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       return (
                         <div className="bg-background/90 backdrop-blur-xl p-3 shadow-2xl border border-border/40 rounded-2xl">
-                          <p className="text-[10px] font-bold text-muted-foreground mb-1 uppercase tracking-widest leading-none">
+                          <p className="text-[10px] font-bold text-foreground/70 mb-1 uppercase tracking-widest leading-none">
                             {payload[0].payload.name}
                           </p>
                           <span className="text-lg font-black text-primary tracking-tight italic">
@@ -140,7 +205,7 @@ export function RevenueIntelligence({
 
       {/* Live Payments Feed */}
       <Card className="lg:col-span-5 border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col p-0">
-        <CardHeader className="py-5 px-6 border-b border-border/10 flex flex-row items-center justify-between">
+        <CardHeader className="py-5 px-6 border-b border-border/10 flex flex-row items-center justify-between lg:min-h-28">
           <div>
             <CardTitle className="text-lg font-black flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
@@ -156,8 +221,8 @@ export function RevenueIntelligence({
             All <ChevronRight className="h-3 w-3 group-hover:translate-x-1" />
           </Link>
         </CardHeader>
-        <CardContent className="p-0 flex-1 overflow-auto max-h-120 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
-          <Table>
+        <CardContent className="p-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden max-h-120 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+          <Table className="table-fixed w-full">
             <TableBody>
               {isLoading
                 ? [1, 2, 3, 4, 5].map((i) => (
@@ -172,27 +237,27 @@ export function RevenueIntelligence({
                     key={i}
                     className="hover:bg-muted/30 border-border/30 transition-colors h-16 group"
                   >
-                    <TableCell className="pl-6">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-foreground leading-none">
+                    <TableCell className="pl-6 w-[58%] max-w-0">
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm font-bold text-foreground leading-none">
                           {payment.customerName}
                         </span>
-                        <span className="text-[9px] text-muted-foreground/60 font-medium mt-1 truncate max-w-50 uppercase tracking-tighter">
+                        <span className="mt-1 block truncate text-[9px] text-muted-foreground/60 font-medium uppercase tracking-tighter">
                           {payment.description}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-black text-sm tabular-nums text-right">
+                    <TableCell className="w-32 font-black text-sm tabular-nums text-right whitespace-nowrap">
                       {formatCurrency(payment.amount)}
                     </TableCell>
-                    <TableCell className="pr-6 text-right">
+                    <TableCell className="pr-6 w-28 text-right whitespace-nowrap">
                       <Badge
                         variant="secondary"
                         className={`text-[8px] font-black uppercase px-2 py-0.5 border-none ${payment.status === "succeeded"
-                            ? "bg-emerald-500/10 text-emerald-500"
-                            : payment.status === "processing"
-                              ? "bg-amber-500/10 text-amber-500"
-                              : "bg-rose-500/10 text-rose-500"
+                          ? "bg-emerald-500/10 text-emerald-500"
+                          : payment.status === "processing"
+                            ? "bg-amber-500/10 text-amber-500"
+                            : "bg-rose-500/10 text-rose-500"
                           }`}
                       >
                         {payment.status}

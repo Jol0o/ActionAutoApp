@@ -394,7 +394,7 @@ function MarketplacePluginCard({
             : "bg-muted/10 group-hover:bg-muted/30 border-border/20",
         )}
       >
-        <div className="w-full flex items-center justify-between min-h-[1.5rem]">
+        <div className="w-full flex items-center justify-between min-h-6">
           {isInstalled ? (
             <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest min-w-0">
               <TrendingUp className="size-3.5 shrink-0" />
@@ -645,7 +645,7 @@ function PluginDetailView({
             <TooltipContent
               side="top"
               align="end"
-              className="max-w-[260px] p-4 rounded-2xl space-y-2 border border-primary/20 bg-card shadow-xl"
+              className="max-w-65 p-4 rounded-2xl space-y-2 border border-primary/20 bg-card shadow-xl"
             >
               <p className="text-[11px] font-black uppercase tracking-widest text-primary">
                 Risk-Free Enrollment

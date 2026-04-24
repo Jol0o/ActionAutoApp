@@ -64,8 +64,8 @@ export function LeaderboardPro() {
 
   if (isLoading) {
     return (
-      <Card className="border-border/40 bg-card/50 backdrop-blur-sm h-full font-sans">
-        <CardHeader className="pb-2">
+      <Card className="border-border/40 bg-card/50 backdrop-blur-sm h-full font-sans p-0 overflow-hidden">
+        <CardHeader className="py-5 px-6 border-b border-border/10 min-h-22">
           <CardTitle className="text-xl font-black">Intelligence Ledger</CardTitle>
           <CardDescription className="text-xs">Connecting to team stream...</CardDescription>
         </CardHeader>
@@ -80,8 +80,8 @@ export function LeaderboardPro() {
 
   return (
     <>
-      <Card className="border-border/40 bg-card/50 backdrop-blur-sm h-[550px] overflow-hidden flex flex-col font-sans">
-        <CardHeader className="pb-4 border-b border-border/10">
+      <Card className="border-border/40 bg-card/50 backdrop-blur-sm h-137.5 overflow-hidden flex flex-col font-sans p-0">
+        <CardHeader className="py-5 px-6 border-b border-border/10 min-h-22">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xl font-black tracking-tight">Intelligence Ledger</CardTitle>
@@ -97,91 +97,117 @@ export function LeaderboardPro() {
 
         <CardContent
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto space-y-3 px-4 py-4 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20 scrollbar-track-transparent transition-all"
+          className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20 scrollbar-track-transparent transition-all"
         >
-          {allUsers.map((user, i) => {
-            const rank = i + 1
-            const isTop3 = rank <= 3
-            const initials = (user.name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2)
+          <div className="px-4 pb-2 border-b border-border/10">
+            <div className="flex items-center gap-4">
+              <div className="w-8 shrink-0" aria-hidden="true" />
+              <div className="w-11 shrink-0" aria-hidden="true" />
 
-            return (
-              <button
-                key={user.id || i}
-                onClick={() => handleUserClick(user)}
-                className={`w-full group flex items-center gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-300 hover:ring-2 hover:ring-primary/20 hover:scale-[1.01] active:scale-[0.99] ${isTop3 ? "border-primary/20 bg-card/80 shadow-md ring-1 ring-primary/5" : "border-border/20 bg-transparent hover:bg-card/40"
-                  }`}
-              >
-                {/* Rank Icon or Number */}
-                <div className="w-8 flex flex-col items-center shrink-0">
-                  {isTop3 ? RANK_ICONS[rank - 1] : (
-                    <span className="text-sm font-bold text-muted-foreground/30 tabular-nums">#{rank}</span>
-                  )}
-                </div>
-
-                {/* Avatar */}
-                <div className="relative shrink-0">
-                  <Avatar className={`h-11 w-11 ring-2 ring-offset-2 ring-offset-background transition-all group-hover:ring-primary/40 ${isTop3 ? "ring-primary/30" : "ring-border/20"}`}>
-                    <AvatarImage src={user.avatar} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-black">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  {isTop3 && (
-                    <div className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-background flex items-center justify-center">
-                      <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-black truncate leading-tight group-hover:text-primary transition-colors">
-                      {user.name}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-[0.05em]
-                      ${user.role.toLowerCase().includes('admin') ? "bg-rose-500/10 text-rose-500" : "bg-muted text-muted-foreground/60"}`}
-                    >
-                      {user.role}
-                    </span>
-                    <div className="h-1 w-1 rounded-full bg-border" />
-                    <span className="text-[9px] font-bold text-muted-foreground/40 tabular-nums">{user.calls || 0} calls</span>
-                  </div>
-                </div>
-
-                {/* Metrics */}
-                <div className="flex items-center gap-6 text-right shrink-0">
-                  <div className="hidden sm:block">
-                    <p className="text-sm font-black tabular-nums">{user.convs || 0}</p>
-                    <p className="text-[8px] font-bold text-muted-foreground/30 uppercase tracking-widest leading-none mt-1">Leads</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-black tabular-nums text-primary">{user.appts || 0}</p>
-                    <p className="text-[8px] font-bold text-muted-foreground/30 uppercase tracking-widest leading-none mt-1">Appts</p>
-                  </div>
-                </div>
-
-                <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-primary transition-all group-hover:translate-x-1" />
-              </button>
-            )
-          })}
-
-          {/* Observer Target & Loading State */}
-          <div ref={observerTarget} className="py-4 flex justify-center">
-            {isFetchingNextPage ? (
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 animate-pulse">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Syncing Ledger...
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/45">
+                  Team Member
+                </p>
               </div>
-            ) : hasNextPage ? (
-              <div className="h-4" />
-            ) : (
-              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/20 italic">
-                End of Intelligence Stream
-              </p>
-            )}
+
+              <div className="flex items-center gap-6 text-right shrink-0">
+                <p className="hidden sm:block text-[9px] font-black uppercase tracking-widest text-muted-foreground/45">
+                  Leads
+                </p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/45">
+                  Appts
+                </p>
+              </div>
+
+              <div className="w-4 shrink-0" aria-hidden="true" />
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-3">
+            {allUsers.map((user, i) => {
+              const rank = i + 1
+              const isTop3 = rank <= 3
+              const initials = (user.name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2)
+
+              return (
+                <button
+                  key={user.id || i}
+                  onClick={() => handleUserClick(user)}
+                  className={`w-full group flex items-center gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-300 hover:ring-2 hover:ring-primary/20 hover:scale-[1.01] active:scale-[0.99] ${isTop3 ? "border-primary/20 bg-card/80 shadow-md ring-1 ring-primary/5" : "border-border/20 bg-transparent hover:bg-card/40"
+                    }`}
+                >
+                  {/* Rank Icon or Number */}
+                  <div className="w-8 flex flex-col items-center shrink-0">
+                    {isTop3 ? RANK_ICONS[rank - 1] : (
+                      <span className="text-sm font-bold text-muted-foreground/30 tabular-nums">#{rank}</span>
+                    )}
+                  </div>
+
+                  {/* Avatar */}
+                  <div className="relative shrink-0">
+                    <Avatar className={`h-11 w-11 ring-2 ring-offset-2 ring-offset-background transition-all group-hover:ring-primary/40 ${isTop3 ? "ring-primary/30" : "ring-border/20"}`}>
+                      <AvatarImage src={user.avatar} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs font-black">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isTop3 && (
+                      <div className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-background flex items-center justify-center">
+                        <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-black truncate leading-tight group-hover:text-primary transition-colors">
+                        {user.name}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-[0.05em]
+                        ${user.role.toLowerCase().includes('admin') ? "bg-rose-500/10 text-rose-500" : "bg-muted text-muted-foreground/60"}`}
+                      >
+                        {user.role}
+                      </span>
+                      <div className="h-1 w-1 rounded-full bg-border" />
+                      <span className="text-[9px] font-bold text-muted-foreground/40 tabular-nums">{user.calls || 0} calls</span>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="flex items-center gap-6 text-right shrink-0">
+                    <div className="hidden sm:block">
+                      <p className="text-sm font-black tabular-nums">{user.convs || 0}</p>
+                      <p className="text-[8px] font-bold text-muted-foreground/30 uppercase tracking-widest leading-none mt-1">Leads</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-black tabular-nums text-primary">{user.appts || 0}</p>
+                      <p className="text-[8px] font-bold text-muted-foreground/30 uppercase tracking-widest leading-none mt-1">Appts</p>
+                    </div>
+                  </div>
+
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-primary transition-all group-hover:translate-x-1" />
+                </button>
+              )
+            })}
+
+            {/* Observer Target & Loading State */}
+            <div ref={observerTarget} className="py-4 flex justify-center">
+              {isFetchingNextPage ? (
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 animate-pulse">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Syncing Ledger...
+                </div>
+              ) : hasNextPage ? (
+                <div className="h-4" />
+              ) : (
+                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/20 italic">
+                  End of Intelligence Stream
+                </p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -148,16 +148,23 @@ export function NotificationBell() {
             variant="outline"
             size="icon"
             className={cn(
-              'h-9 w-9 rounded-full relative transition-all duration-300',
-              unreadCount > 0 && 'border-emerald-300 dark:border-emerald-700 shadow-sm shadow-emerald-500/10'
+              'h-9 w-9 rounded-full relative overflow-visible transition-all duration-300',
+              unreadCount > 0
+                ? 'border-emerald-300 dark:border-emerald-700 shadow-sm shadow-emerald-500/10'
+                : 'border-border/80 bg-background text-foreground/85 dark:text-foreground shadow-sm ring-1 ring-border/35 dark:ring-border/45'
             )}
           >
             <Bell className={cn(
               'size-4',
-              unreadCount > 0 && 'text-emerald-600 dark:text-emerald-400'
+              unreadCount > 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-foreground/80 dark:text-foreground'
             )} />
+            {unreadCount === 0 && (
+              <span className="absolute -top-0.5 -right-0.5 z-10 h-2.5 w-2.5 rounded-full bg-muted-foreground/80 dark:bg-muted-foreground border-2 border-background shadow-sm" />
+            )}
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-4.5 h-4.5 px-1 text-[10px] font-bold text-white bg-linear-to-br from-red-500 to-rose-600 rounded-full shadow-sm border-2 border-background animate-in zoom-in-50">
+              <span className="absolute -top-1.5 -right-1.5 z-20 flex items-center justify-center min-w-4.5 h-4.5 px-1 text-[10px] font-bold text-white bg-linear-to-br from-red-500 to-rose-600 rounded-full shadow-sm border-2 border-background animate-in zoom-in-50">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}

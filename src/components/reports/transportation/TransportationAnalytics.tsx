@@ -96,14 +96,28 @@ function buildMonthlyQuoteTrend(rawQuotes: Quote[]) {
   })
 }
 
-function ChartTooltip({ active, payload, label }: any) {
+interface TrendTooltipEntry {
+  color?: string
+  name?: string
+  value?: number | string | null
+}
+
+interface TrendTooltipProps {
+  active?: boolean
+  payload?: TrendTooltipEntry[]
+  label?: string
+}
+
+function ChartTooltip({ active, payload, label }: TrendTooltipProps) {
   if (!active || !payload?.length) return null
+  const hasPositiveValue = payload.some(entry => Number(entry.value ?? 0) > 0)
+  if (!hasPositiveValue) return null
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
       <p className="font-semibold text-foreground mb-1">{label}</p>
-      {payload.map((entry: any, i: number) => (
+      {payload.map((entry, i) => (
         <p key={i} style={{ color: entry.color }} className="font-medium">
-          {entry.name}: {typeof entry.value === "number" && entry.name.toLowerCase().includes("revenue")
+          {entry.name}: {typeof entry.value === "number" && entry.name?.toLowerCase().includes("revenue")
             ? `$${entry.value.toLocaleString()}`
             : entry.value}
         </p>
@@ -112,7 +126,12 @@ function ChartTooltip({ active, payload, label }: any) {
   )
 }
 
-function PieTooltip({ active, payload }: any) {
+interface PieTooltipProps {
+  active?: boolean
+  payload?: Array<{ name: string; value: number }>
+}
+
+function PieTooltip({ active, payload }: PieTooltipProps) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
@@ -127,6 +146,22 @@ export function TransportationAnalytics({ shipments, quotes, rawShipments, rawQu
   const quoteStatusData = React.useMemo(() => buildQuoteStatusData(quotes), [quotes])
   const shipmentTrend = React.useMemo(() => buildMonthlyShipmentTrend(rawShipments), [rawShipments])
   const quoteTrend = React.useMemo(() => buildMonthlyQuoteTrend(rawQuotes), [rawQuotes])
+  const shipmentTrendData = React.useMemo(
+    () => shipmentTrend.filter(point => point.total > 0 || point.delivered > 0 || point.revenue > 0),
+    [shipmentTrend],
+  )
+  const quoteTrendData = React.useMemo(
+    () => quoteTrend.filter(point => point.total > 0 || point.booked > 0 || point.value > 0),
+    [quoteTrend],
+  )
+  const hasShipmentTrendData = React.useMemo(
+    () => shipmentTrendData.length > 0,
+    [shipmentTrendData],
+  )
+  const hasQuoteTrendData = React.useMemo(
+    () => quoteTrendData.length > 0,
+    [quoteTrendData],
+  )
 
   const totalShipments = shipments.length
   const delivered = shipments.filter(s => s.status === "Delivered").length
@@ -246,16 +281,20 @@ export function TransportationAnalytics({ shipments, quotes, rawShipments, rawQu
           <CardDescription className="text-xs">Last 6 months — deliveries & revenue</CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={shipmentTrend} barSize={20}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis tickLine={false} axisLine={false} width={30} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))", radius: 4 } as any} />
-              <Bar dataKey="total" fill="var(--chart-3)" radius={[4, 4, 0, 0]} name="Total" />
-              <Bar dataKey="delivered" fill="var(--chart-1)" radius={[4, 4, 0, 0]} name="Delivered" />
-            </BarChart>
-          </ResponsiveContainer>
+          {!hasShipmentTrendData ? (
+            <p className="text-sm text-muted-foreground py-8 w-full text-center">No data available.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={shipmentTrendData} barSize={20}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tickLine={false} axisLine={false} width={30} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))" }} />
+                <Bar dataKey="total" fill="var(--chart-3)" radius={[4, 4, 0, 0]} name="Total" />
+                <Bar dataKey="delivered" fill="var(--chart-1)" radius={[4, 4, 0, 0]} name="Delivered" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 
@@ -265,26 +304,30 @@ export function TransportationAnalytics({ shipments, quotes, rawShipments, rawQu
           <CardDescription className="text-xs">Last 6 months — quotes & conversions</CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
-          <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={quoteTrend}>
-              <defs>
-                <linearGradient id="quoteGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--chart-4)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="var(--chart-4)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="bookedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis tickLine={false} axisLine={false} width={30} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-              <Tooltip content={<ChartTooltip />} cursor={false} />
-              <Area type="monotone" dataKey="total" stroke="var(--chart-4)" fill="url(#quoteGrad)" strokeWidth={2} name="Total Quotes" />
-              <Area type="monotone" dataKey="booked" stroke="var(--chart-2)" fill="url(#bookedGrad)" strokeWidth={2} name="Booked" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {!hasQuoteTrendData ? (
+            <p className="text-sm text-muted-foreground py-8 w-full text-center">No data available.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={quoteTrendData}>
+                <defs>
+                  <linearGradient id="quoteGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-4)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--chart-4)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="bookedGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tickLine={false} axisLine={false} width={30} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip content={<ChartTooltip />} cursor={false} />
+                <Area type="monotone" dataKey="total" stroke="var(--chart-4)" fill="url(#quoteGrad)" strokeWidth={2} name="Total Quotes" />
+                <Area type="monotone" dataKey="booked" stroke="var(--chart-2)" fill="url(#bookedGrad)" strokeWidth={2} name="Booked" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
     </div>

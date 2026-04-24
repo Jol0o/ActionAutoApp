@@ -349,7 +349,7 @@ export function NotificationPage() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-[340px] rounded-xl p-3 space-y-3">
+              <PopoverContent align="end" className="w-85 rounded-xl p-3 space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <p className="text-[11px] font-medium text-muted-foreground">Date from</p>
