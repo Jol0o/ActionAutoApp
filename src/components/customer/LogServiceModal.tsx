@@ -42,7 +42,7 @@ export function LogServiceModal({ vehicle, isOpen, onOpenChange }: LogServiceMod
             toast.success("Service record logged successfully!")
             queryClient.invalidateQueries({ queryKey: ["vehicles"] })
             if (vehicle) {
-                queryClient.invalidateQueries({ queryKey: ["serviceHistory", vehicle._id] })
+                queryClient.invalidateQueries({ queryKey: ["serviceHistory", vehicle.id] })
             }
             onOpenChange(false)
             // reset forms
@@ -61,7 +61,7 @@ export function LogServiceModal({ vehicle, isOpen, onOpenChange }: LogServiceMod
         if (!vehicle) return
 
         mutation.mutate({
-            vehicleId: vehicle._id,
+            vehicleId: vehicle.id,
             serviceType,
             date,
             mileageAtService: Number(mileage),

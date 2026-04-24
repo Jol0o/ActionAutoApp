@@ -49,15 +49,8 @@ export function ShippingQuoteModal({
 
 
     React.useEffect(() => {
-        console.log('📦 Modal received vehicles:', vehicles?.length || 0, vehicles)
-    }, [vehicles])
-
-
-    React.useEffect(() => {
         if (open) {
-            console.log('🔓 Modal opened with vehicles:', vehicles?.length || 0)
             if (defaultVehicle) {
-                console.log('Pre-selecting vehicle:', defaultVehicle.id)
                 setSelectedVehicle(defaultVehicle)
             }
         }
@@ -186,9 +179,7 @@ export function ShippingQuoteModal({
     }
 
     const handleVehicleSelect = (vehicleId: string) => {
-        console.log('Vehicle selected:', vehicleId)
         const vehicle = vehicles.find(v => v.id === vehicleId)
-        console.log('Found vehicle:', vehicle)
         setSelectedVehicle(vehicle || null)
     }
 

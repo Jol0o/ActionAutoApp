@@ -1,30 +1,47 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
     History,
     Globe,
     MapPin,
-    Clock,
-    Package,
-    Truck,
     TrendingUp,
     Users,
-    Mail,
     Calendar,
     UserPlus,
-    DollarSign,
-    Award,
     Link2,
     ExternalLink,
-    Edit3
+    Edit3,
+    LayoutDashboard,
+    UserCog,
+    HelpCircle,
+    AlertTriangle,
+    Quote,
+    Phone,
+    Briefcase,
+    Building2,
+    User,
+    Moon,
+    Sun
 } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 import { UserProfile, RecentActivity } from '@/types/user';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { activityIcons, languageOptions } from './profile-constants';
 import { useWalletDashboard } from '@/hooks/api/useWallet';
 import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ProfileOverviewTabProps {
     profile: UserProfile | null;
@@ -39,8 +56,11 @@ export const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
     activities,
     handleTabChange,
 }) => {
+    const router = useRouter();
     const { data: walletData } = useWalletDashboard();
+    const { theme, setTheme } = useTheme();
     const isCustomer = profile?.role === 'customer';
+    const [pendingLink, setPendingLink] = useState<{ label: string; url: string } | null>(null);
 
     const handleCopyLink = () => {
         if (!walletData?.referralCode) return;
@@ -49,221 +69,261 @@ export const ProfileOverviewTab: React.FC<ProfileOverviewTabProps> = ({
         toast.success("Referral link copied!");
     };
 
+    const getDashboardPath = () => {
+        if (profile?.role === 'driver') return '/driver';
+        if (profile?.role === 'customer') return '/customer';
+        return '/';
+    };
+
+    const quickLinks = [
+        { label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/50', action: () => router.push(getDashboardPath()) },
+        { label: 'Edit Profile', icon: UserCog, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/50', action: () => handleTabChange('personal') },
+        { label: theme === 'dark' ? 'Light Mode' : 'Dark Mode', icon: theme === 'dark' ? Sun : Moon, color: theme === 'dark' ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/50' : 'text-violet-500 bg-violet-50 dark:bg-violet-950/50', action: () => setTheme(theme === 'dark' ? 'light' : 'dark') },
+        { label: 'Support', icon: HelpCircle, color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/50', action: () => handleTabChange('support') },
+    ];
+
     const successfulReferrals = walletData?.recentTransactions?.filter(
         t => t.type === 'deposit' && t.status === 'completed'
     ).length || 0;
+
+    const rawLinks = profile?.socialLinks?.length ? profile.socialLinks : (profile?.personalInfo as any)?.socialLinks || [];
+    const socialLinks = rawLinks.filter((l: any) => l.label?.trim() || l.url?.trim());
+
+    const handleExternalLink = (link: { label: string; url: string }) => {
+        setPendingLink(link);
+    };
+
+    const confirmExternalLink = () => {
+        if (pendingLink?.url) {
+            window.open(pendingLink.url, '_blank', 'noopener,noreferrer');
+        }
+        setPendingLink(null);
+    };
+
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 animate-tab-switch">
-            {/* Account Status Card */}
-            <Card className="p-0 shadow-xl border border-blue-100 dark:border-blue-900 overflow-hidden hover-lift group">
-                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 animate-gradient"></div>
-                <CardHeader className="py-4 bg-linear-to-br from-blue-50 to-indigo-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-blue-100 dark:border-blue-900">
-                    <div className="flex items-center gap-3 animate-slide-in-left">
-                        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform">
-                            <Package className="size-5 text-white" />
-                        </div>
-                        <CardTitle className="text-lg">Quick Access</CardTitle>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        {[
-                            { label: 'Orders', icon: Package, count: '0', color: 'text-blue-500' },
-                            { label: 'Messages', icon: Mail, count: '0', color: 'text-emerald-500' },
-                            { label: 'Referrals', icon: UserPlus, count: '0', color: 'text-purple-500' },
-                            { label: 'Awards', icon: Award, count: '0', color: 'text-amber-500' }
-                        ].map((item, i) => (
-                            <div key={i} className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all cursor-pointer group/item animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
-                                <item.icon className={cn("size-5 mb-2 group-hover/item:scale-110 transition-transform", item.color)} />
-                                <p className="text-2xl font-black">{item.count}</p>
-                                <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400">{item.label}</p>
+        <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 animate-tab-switch">
+                <Card className="p-0 shadow-lg border border-gray-200/80 dark:border-gray-800 overflow-hidden hover-lift group">
+                    <CardHeader className="py-4 px-5 bg-linear-to-br from-blue-50 to-indigo-50/50 dark:from-gray-900 dark:to-gray-800/80 border-b border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                <LayoutDashboard className="size-4 text-white" />
                             </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Personal Bio Card */}
-            <Card className="shadow-xl p-0 border border-emerald-100 dark:border-emerald-900 md:col-span-2 overflow-hidden hover-lift group">
-                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500 animate-gradient"></div>
-                <CardHeader className="bg-linear-to-br from-emerald-50 to-teal-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-emerald-100 dark:border-emerald-900 flex flex-row items-center justify-between py-5">
-                    <div className="flex items-center gap-3 animate-slide-in-left">
-                        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg group-hover:-rotate-12 transition-transform">
-                            <Globe className="size-5 text-white" />
+                            <CardTitle className="text-base font-bold">Quick Access</CardTitle>
                         </div>
-                        <div>
-                            <CardTitle className="text-lg">About Me</CardTitle>
-                        </div>
-                    </div>
-                    <button onClick={() => handleTabChange('personal')} className="p-2 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-600 dark:text-emerald-400 transition-colors animate-bounce-in">
-                        <Edit3 className="size-5" />
-                    </button>
-                </CardHeader>
-                <CardContent className="p-8">
-                    {profile?.personalInfo?.bio ? (
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-medium animate-fade-in-up">
-                            {profile.personalInfo.bio}
-                        </p>
-                    ) : (
-                        <div className="text-center py-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl animate-fade-in-up">
-                            <p className="text-gray-400 dark:text-gray-500 font-medium">No bio added yet. Tell us your story!</p>
-                            <button
-                                onClick={() => handleTabChange('personal')}
-                                className="mt-4 text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-                            >
-                                Add bio now →
-                            </button>
-                        </div>
-                    )}
-
-                    <div className="mt-6 sm:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-6 sm:pt-8 border-t border-gray-100 dark:border-gray-800">
-                        {[
-                            { label: 'Language', value: profile?.personalInfo?.language ? languageOptions.find(l => l.code === profile?.personalInfo?.language)?.name : 'Not set', icon: Globe, color: 'text-indigo-500' },
-                            { label: 'Timezone', value: profile?.personalInfo?.timezone || 'Not set', icon: Clock, color: 'text-pink-500' },
-                            { label: 'Location', value: profile?.personalInfo?.location || 'Not set', icon: MapPin, color: 'text-emerald-500' },
-                            { label: 'Join Date', value: profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Today', icon: Calendar, color: 'text-amber-500' }
-                        ].map((info, i) => (
-                            <div key={i} className="flex flex-col gap-1 group/info animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
-                                <span className="text-[10px] uppercase font-black tracking-widest text-gray-400 dark:text-gray-500 group-hover/info:text-gray-500 dark:group-hover/info:text-gray-400 transition-colors">{info.label}</span>
-                                <div className="flex items-center gap-2">
-                                    <info.icon className={cn("size-3.5", info.color)} />
-                                    <span className="text-sm font-bold truncate">{info.value}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {profile?.socialLinks && profile.socialLinks.length > 0 && (
-                        <div className="mt-8 flex flex-wrap gap-4 animate-fade-in-up">
-                            {profile.socialLinks.map((link: any, i: number) => (
-                                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all hover:scale-105 group/link">
-                                    <Link2 className="size-4 text-emerald-500 transition-transform group-hover/link:rotate-45" />
-                                    <span className="text-xs font-black uppercase tracking-wider">{link.label}</span>
-                                    <ExternalLink className="size-3 text-gray-400 group-hover/link:translate-x-1 group-hover/link:-translate-y-1 transition-transform" />
-                                </a>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                        <div className="grid grid-cols-2 gap-2.5">
+                            {quickLinks.map((item, i) => (
+                                <button
+                                    key={i}
+                                    onClick={item.action}
+                                    className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-md transition-all group/item active:scale-95"
+                                >
+                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center group-hover/item:scale-110 transition-transform", item.color)}>
+                                        <item.icon className="size-5" />
+                                    </div>
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">{item.label}</span>
+                                </button>
                             ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Recent Activity Mini Card */}
-            <Card className={!isCustomer ? "shadow-xl md:col-span-3 p-0 border border-purple-100 dark:border-purple-900 overflow-hidden hover-lift group" : "shadow-xl p-0 border border-purple-100 dark:border-purple-900 overflow-hidden hover-lift group"}>
-                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-purple-500 via-pink-500 to-rose-500 animate-gradient"></div>
-                <CardHeader className="bg-linear-to-br from-purple-50 to-pink-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-purple-100 dark:border-purple-900 py-5">
-                    <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-3 animate-slide-in-left">
-                            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                <History className="size-5 text-white" />
-                            </div>
-                            <CardTitle className="text-lg">Recent Feed</CardTitle>
-                        </div>
-                        <button
-                            onClick={() => handleTabChange('activity')}
-                            className="text-xs font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 hover:underline animate-bounce-in"
-                        >
-                            View All
-                        </button>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                        {activities.slice(0, 5).map((activity, i) => (
-                            <div key={i} className="p-4 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors group/act animate-fade-in-up" style={{ animationDelay: `${i * 0.1}s` }}>
-                                <div className="flex items-start gap-4">
-                                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 group-hover/act:scale-110 group-hover/act:bg-purple-100 transition-all">
-                                        {activityIcons[activity.type] || <History className="size-4" />}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold truncate group-hover/act:text-purple-600 dark:group-hover/act:text-purple-400 transition-colors">{activity.title}</p>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mt-1">{formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {activities.length === 0 && (
-                            <div className="p-10 text-center animate-fade-in">
-                                <History className="size-10 text-gray-200 dark:text-gray-800 mx-auto mb-4" />
-                                <p className="text-gray-400 dark:text-gray-500 font-bold text-sm">No recent activity found.</p>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Referral Program Preview - Only for Customers */}
-            {isCustomer && (
-                <Card className="p-0 shadow-2xl border-none md:col-span-2 overflow-hidden hover-lift group relative bg-gray-900 dark:bg-zinc-950 text-white min-h-75">
-                    <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-orange-500 via-amber-500 to-orange-600"></div>
-
-                    {/* Background Accents */}
-                    <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl animate-pulse-slow"></div>
-                    <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl animate-pulse-slow"></div>
-
-                    <CardContent className="p-5 sm:p-8 md:p-10 relative z-10">
-                        <div className="flex flex-col lg:flex-row justify-between gap-6 sm:gap-10">
-                            {/* Left Side: Content & Link */}
-                            <div className="flex-1 space-y-8">
-                                <div className="flex items-start gap-5">
-                                    <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-2xl shadow-orange-500/20 group-hover:scale-110 transition-transform duration-500">
-                                        <UserPlus className="size-8 text-white" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/20 text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1">
-                                            Exclusive Reward
-                                        </Badge>
-                                        <h3 className="text-3xl font-black tracking-tight text-white">Refer & Earn $100</h3>
-                                    </div>
-                                </div>
-
-                                <p className="text-zinc-400 font-medium text-lg leading-relaxed max-w-xl">
-                                    Share ActionAutoUtah with your network. For every friend who buys a vehicle through us, you'll receive a <span className="text-orange-400 font-black">$100 bonus</span> as our thank you!
-                                </p>
-
-                                <div className="space-y-3 pt-4">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your Unique Referral Link</label>
-                                    <div className="flex gap-2 p-1.5 rounded-2xl bg-zinc-900 border border-zinc-800 group/input focus-within:border-orange-500/50 transition-all max-w-lg">
-                                        <input
-                                            readOnly
-                                            value={`https://actionautoutah.com/join?ref=${walletData?.referralCode || '...'}`}
-                                            className="bg-transparent border-0 focus:ring-0 flex-1 px-4 font-mono text-sm font-bold text-zinc-400"
-                                        />
-                                        <button
-                                            onClick={handleCopyLink}
-                                            className="px-6 py-3 rounded-xl bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-black text-xs uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-orange-500/20"
-                                        >
-                                            Copy Link
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Right Side: Stats */}
-                            <div className="flex flex-col items-center lg:items-end gap-6 sm:gap-8">
-                                <div className="text-center lg:text-right space-y-1">
-                                    <p className="text-[10px] uppercase font-black tracking-[0.2em] text-zinc-500">Total Rewards Earned</p>
-                                    <div className="text-3xl sm:text-5xl font-black text-orange-500 tracking-tighter">
-                                        ${walletData?.totalEarned?.toFixed(2) || '0.00'}
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-3 sm:gap-4">
-                                    <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-emerald-500/5 border border-emerald-500/10 flex flex-col items-center justify-center min-w-25 sm:min-w-35 group/stat hover:bg-emerald-500/10 transition-colors">
-                                        <TrendingUp className="size-5 sm:size-6 text-emerald-500 mb-2 sm:mb-3 group-hover/stat:scale-110 transition-transform" />
-                                        <span className="text-2xl sm:text-3xl font-black text-white">{successfulReferrals}</span>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70 mt-1">Successful</span>
-                                    </div>
-                                    <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-blue-500/5 border border-blue-500/10 flex flex-col items-center justify-center min-w-25 sm:min-w-35 group/stat hover:bg-blue-500/10 transition-colors">
-                                        <Users className="size-5 sm:size-6 text-blue-500 mb-2 sm:mb-3 group-hover/stat:scale-110 transition-transform" />
-                                        <span className="text-2xl sm:text-3xl font-black text-white">{walletData?.pendingLeads || 0}</span>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/70 mt-1">Signups</span>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </CardContent>
                 </Card>
-            )}
-        </div>
+
+                <Card className="shadow-lg p-0 border border-gray-200/80 dark:border-gray-800 md:col-span-2 overflow-hidden hover-lift group">
+                    <CardHeader className="bg-linear-to-br from-emerald-50 to-teal-50/50 dark:from-gray-900 dark:to-gray-800/80 border-b border-gray-100 dark:border-gray-800 flex flex-row items-center justify-between py-4 px-5">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                <Globe className="size-4 text-white" />
+                            </div>
+                            <CardTitle className="text-base font-bold">About Me</CardTitle>
+                        </div>
+                        <button onClick={() => handleTabChange('personal')} className="p-2 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors">
+                            <Edit3 className="size-4" />
+                        </button>
+                    </CardHeader>
+                    <CardContent className="p-5 sm:p-6">
+                        {profile?.personalInfo?.bio ? (
+                            <div className="relative pl-4 border-l-2 border-emerald-400/40">
+                                <Quote className="absolute -left-2.5 -top-1 size-5 text-emerald-400/50 bg-white dark:bg-gray-950 rounded-full" />
+                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed italic">{profile.personalInfo.bio}</p>
+                            </div>
+                        ) : (
+                            <div className="text-center py-5 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+                                <p className="text-gray-400 dark:text-gray-500 text-sm">No bio yet</p>
+                                <button onClick={() => handleTabChange('personal')} className="mt-2 text-emerald-600 dark:text-emerald-400 font-semibold text-sm hover:underline">
+                                    Add bio &rarr;
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3 pt-5 border-t border-gray-100 dark:border-gray-800">
+                            {[
+                                { label: 'Phone', value: profile?.personalInfo?.phone ? `+1 ${profile.personalInfo.phone}` : null, icon: Phone, color: 'text-blue-500' },
+                                { label: 'Location', value: profile?.personalInfo?.location || null, icon: MapPin, color: 'text-emerald-500' },
+                                { label: 'Birthday', value: profile?.personalInfo?.dateOfBirth ? new Date(profile.personalInfo.dateOfBirth + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null, icon: Calendar, color: 'text-pink-500' },
+                                { label: 'Gender', value: profile?.personalInfo?.gender ? profile.personalInfo.gender.charAt(0).toUpperCase() + profile.personalInfo.gender.slice(1).replace(/-/g, ' ') : null, icon: User, color: 'text-violet-500' },
+                                { label: 'Job Title', value: profile?.personalInfo?.jobTitle || null, icon: Briefcase, color: 'text-amber-500' },
+                                { label: 'Department', value: profile?.personalInfo?.department || null, icon: Building2, color: 'text-cyan-500' },
+                                { label: 'Language', value: profile?.personalInfo?.language ? languageOptions.find(l => l.code === profile?.personalInfo?.language)?.name : null, icon: Globe, color: 'text-indigo-500' },
+                                { label: 'Joined', value: profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Today', icon: Calendar, color: 'text-teal-500' },
+                            ].filter(info => info.value).map((info, i) => (
+                                <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                                    <info.icon className={cn("size-4 shrink-0", info.color)} />
+                                    <div className="min-w-0">
+                                        <p className="text-[9px] uppercase font-bold tracking-widest text-gray-400 dark:text-gray-500">{info.label}</p>
+                                        <p className="text-xs font-semibold truncate text-gray-800 dark:text-gray-200">{info.value}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {socialLinks.length > 0 && (
+                            <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-800">
+                                <p className="text-[9px] uppercase font-bold tracking-widest text-gray-400 mb-3">Links</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {socialLinks.map((link: any, i: number) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => handleExternalLink(link)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all text-xs font-semibold group/link"
+                                        >
+                                            <Link2 className="size-3 text-emerald-500" />
+                                            <span className="truncate max-w-32">{link.label || link.url}</span>
+                                            <ExternalLink className="size-2.5 text-gray-400 group-hover/link:text-emerald-500 transition-colors" />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card className={cn("shadow-lg p-0 border border-gray-200/80 dark:border-gray-800 overflow-hidden hover-lift group", !isCustomer && "md:col-span-3")}>
+                    <CardHeader className="bg-linear-to-br from-purple-50 to-pink-50/50 dark:from-gray-900 dark:to-gray-800/80 border-b border-gray-100 dark:border-gray-800 py-4 px-5">
+                        <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-linear-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                                    <History className="size-4 text-white" />
+                                </div>
+                                <CardTitle className="text-base font-bold">Recent Feed</CardTitle>
+                            </div>
+                            <button onClick={() => handleTabChange('activity')} className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 hover:underline">
+                                View All
+                            </button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {activities.slice(0, 5).map((activity, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => handleTabChange('activity')}
+                                    className="w-full p-3.5 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition-colors group/act text-left"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 group-hover/act:bg-purple-100 dark:group-hover/act:bg-purple-900/40 transition-colors">
+                                            {activityIcons[activity.type] || <History className="size-4" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold truncate group-hover/act:text-purple-600 dark:group-hover/act:text-purple-400 transition-colors">{activity.title}</p>
+                                            <p className="text-[10px] font-medium text-gray-400 mt-0.5">{formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                            {activities.length === 0 && (
+                                <div className="p-10 text-center">
+                                    <History className="size-8 text-gray-200 dark:text-gray-800 mx-auto mb-3" />
+                                    <p className="text-gray-400 text-sm">No recent activity</p>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {isCustomer && (
+                    <Card className="p-0 shadow-lg border-none md:col-span-2 overflow-hidden hover-lift group relative bg-gray-900 dark:bg-zinc-950 text-white">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-orange-500 via-amber-500 to-orange-600" />
+                        <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl" />
+                        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl" />
+
+                        <CardContent className="p-5 sm:p-8 relative z-10">
+                            <div className="flex flex-col lg:flex-row justify-between gap-6 sm:gap-10">
+                                <div className="flex-1 space-y-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-2xl shadow-orange-500/20 group-hover:scale-110 transition-transform">
+                                            <UserPlus className="size-7 text-white" />
+                                        </div>
+                                        <div>
+                                            <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/20 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5">
+                                                Exclusive Reward
+                                            </Badge>
+                                            <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mt-1">Refer & Earn $100</h3>
+                                        </div>
+                                    </div>
+                                    <p className="text-zinc-400 text-sm sm:text-base leading-relaxed max-w-xl">
+                                        Share ActionAutoUtah with friends. For every vehicle purchase through your referral, earn a <span className="text-orange-400 font-bold">$100 bonus</span>.
+                                    </p>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Your Referral Link</label>
+                                        <div className="flex gap-2 p-1 rounded-xl bg-zinc-900 border border-zinc-800 max-w-lg">
+                                            <input
+                                                readOnly
+                                                value={`https://actionautoutah.com/join?ref=${walletData?.referralCode || '...'}`}
+                                                className="bg-transparent border-0 focus:ring-0 flex-1 px-3 font-mono text-xs font-semibold text-zinc-400 outline-none"
+                                            />
+                                            <button onClick={handleCopyLink} className="px-5 py-2.5 rounded-lg bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold text-xs uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-orange-500/20">
+                                                Copy
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-center lg:items-end gap-6">
+                                    <div className="text-center lg:text-right">
+                                        <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500">Total Earned</p>
+                                        <div className="text-3xl sm:text-4xl font-extrabold text-orange-500 tracking-tight">${walletData?.totalEarned?.toFixed(2) || '0.00'}</div>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex flex-col items-center min-w-24 hover:bg-emerald-500/10 transition-colors">
+                                            <TrendingUp className="size-5 text-emerald-500 mb-2" />
+                                            <span className="text-2xl font-extrabold text-white">{successfulReferrals}</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500/70 mt-0.5">Successful</span>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 flex flex-col items-center min-w-24 hover:bg-blue-500/10 transition-colors">
+                                            <Users className="size-5 text-blue-500 mb-2" />
+                                            <span className="text-2xl font-extrabold text-white">{walletData?.pendingLeads || 0}</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500/70 mt-0.5">Signups</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+
+            <AlertDialog open={!!pendingLink} onOpenChange={(open) => !open && setPendingLink(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="size-5 text-amber-500" />
+                            Open External Link?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                            <span className="block">You are about to visit an external website:</span>
+                            <span className="block font-mono text-xs bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg break-all">{pendingLink?.url}</span>
+                            <span className="block text-xs text-gray-500">Make sure you trust this link before proceeding.</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmExternalLink} className="bg-emerald-600 hover:bg-emerald-700">
+                            Visit Link
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 };

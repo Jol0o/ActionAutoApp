@@ -1,8 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import {
     Bell,
     BellRing,
@@ -19,6 +18,7 @@ import { NotificationPreferences } from '@/types/notification';
 import { UserProfile } from '@/types/user';
 import { cn } from '@/lib/utils';
 import { allNotificationCategories } from './profile-constants';
+import { useRouter } from 'next/navigation';
 
 interface NotificationsTabProps {
     preferences: NotificationPreferences | null;
@@ -48,44 +48,59 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
 }) => {
     const { isSupported, isSubscribed, subscribe, unsubscribe, isLoading: isPushLoading } = useWebPush();
 
+    const router = useRouter();
+
     if (!preferences) return null;
 
+    const getDashboardPath = () => {
+        if (profile?.role === 'driver') return '/driver/notifications';
+        if (profile?.role === 'customer') return '/customer/notifications';
+        return '/notifications';
+    };
+
     return (
-        <Card className="p-0 shadow-xl border border-green-100 dark:border-green-900 overflow-hidden hover-lift">
-            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-green-500 via-emerald-500 to-teal-500 animate-gradient"></div>
-            <CardHeader className="py-4 bg-linear-to-br from-green-50 to-emerald-50/50 dark:from-gray-900 dark:to-gray-800 border-b border-green-100 dark:border-green-900">
-                <div className="flex items-center justify-between animate-fade-in-left">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-green-500 to-teal-600 flex items-center justify-center shadow-lg animate-bounce-in hover:scale-110 transition-transform">
-                            <Bell className="size-6 text-white" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-xl">Notification Preferences</CardTitle>
-                            <CardDescription>Control which notifications you receive</CardDescription>
-                        </div>
+        <Card className="p-0 shadow-lg border border-gray-200/80 dark:border-gray-800 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-linear-to-br from-green-500 to-teal-600 flex items-center justify-center">
+                        <Bell className="size-4 text-white" />
                     </div>
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Notification Preferences</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Control which notifications you receive</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
                     <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800">
                         <div className={cn(
                             "w-2 h-2 rounded-full",
-                            getNotificationStats().enabled > 0 ? "bg-green-500 animate-status-aura" : "bg-gray-400"
+                            getNotificationStats().enabled > 0 ? "bg-green-500" : "bg-gray-400"
                         )} />
-                        <span className="text-sm font-medium">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {getNotificationStats().enabled}/{getNotificationStats().total}
                         </span>
                     </div>
+                    <Button
+                        size="sm"
+                        onClick={() => router.push(getDashboardPath())}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                    >
+                        <ExternalLink className="size-3.5" />
+                        <span className="hidden sm:inline">View Notifications</span>
+                    </Button>
                 </div>
-            </CardHeader>
-            <CardContent className="p-6">
-                <div className="flex flex-wrap items-center gap-3 mb-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Quick Actions:</span>
+            </div>
+            <CardContent className="p-5">
+                <div className="flex flex-wrap items-center gap-3 mb-5 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Quick Actions:</span>
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={handleEnableAllNotifications}
                         disabled={savingPreference !== null}
-                        className="gap-2 border-green-200 hover:bg-green-50 hover:border-green-400 dark:border-green-800 dark:hover:bg-green-900/30 transition-all hover:scale-105"
+                        className="gap-2 text-xs border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30"
                     >
-                        <BellRing className="size-4 text-green-600" />
+                        <BellRing className="size-3.5 text-green-600 dark:text-green-400" />
                         Enable All
                     </Button>
                     <Button
@@ -93,12 +108,12 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                         size="sm"
                         onClick={handleDisableAllNotifications}
                         disabled={savingPreference !== null}
-                        className="gap-2 border-red-200 hover:bg-red-50 hover:border-red-400 dark:border-red-800 dark:hover:bg-red-900/30 transition-all hover:scale-105"
+                        className="gap-2 text-xs border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30"
                     >
-                        <BellOff className="size-4 text-red-600" />
+                        <BellOff className="size-3.5 text-red-600 dark:text-red-400" />
                         Disable All
                     </Button>
-                    <div className="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-600" />
+                    <div className="hidden sm:block h-5 w-px bg-gray-200 dark:bg-gray-700" />
                     <Button
                         variant="outline"
                         size="sm"
@@ -111,9 +126,9 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                             });
                         }}
                         disabled={savingPreference !== null}
-                        className="gap-2 border-amber-200 hover:bg-amber-50 hover:border-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/30 transition-all hover:scale-105"
+                        className="gap-2 text-xs border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-900/30"
                     >
-                        <Zap className="size-4 text-amber-600" />
+                        <Zap className="size-3.5 text-amber-600 dark:text-amber-400" />
                         Important Only
                     </Button>
                 </div>
@@ -176,52 +191,37 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                         return (
                             <div
                                 key={category.title}
-                                className="space-y-3 animate-slide-up"
-                                style={{ animationDelay: `${categoryIndex * 0.1}s` }}
+                                className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden"
                             >
-                                <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50">
                                     <div className="flex items-center gap-3">
                                         <div className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-linear-to-br",
+                                            "w-9 h-9 rounded-lg flex items-center justify-center transition-all bg-linear-to-br",
                                             category.color
                                         )}>
-                                            <CategoryIcon className="size-5 text-white" />
+                                            <CategoryIcon className="size-4 text-white" />
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold">{category.title}</h3>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                {categoryEnabled} of {category.items.length} enabled
+                                            <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">{category.title}</h3>
+                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                                {categoryEnabled}/{category.items.length} active
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <div className={cn(
-                                            "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all",
+                                            "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold",
                                             allEnabled && "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400",
                                             someEnabled && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400",
                                             !categoryEnabled && "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                                         )}>
-                                            {allEnabled ? (
-                                                <>
-                                                    <CheckCircle2 className="size-3" />
-                                                    All On
-                                                </>
-                                            ) : someEnabled ? (
-                                                <>
-                                                    <AlertCircle className="size-3" />
-                                                    Partial
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <XCircle className="size-3" />
-                                                    All Off
-                                                </>
-                                            )}
+                                            {allEnabled ? <CheckCircle2 className="size-2.5" /> : someEnabled ? <AlertCircle className="size-2.5" /> : <XCircle className="size-2.5" />}
+                                            {allEnabled ? 'All On' : someEnabled ? 'Partial' : 'Off'}
                                         </div>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-8 px-2"
+                                            className="h-7 px-2 text-[10px]"
                                             onClick={() => {
                                                 const turnOn = categoryEnabled < category.items.length;
                                                 category.items.forEach(item => {
@@ -236,8 +236,8 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pl-2">
-                                    {category.items.map((item, itemIndex) => {
+                                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                    {category.items.map((item) => {
                                         const Icon = item.icon;
                                         const isEnabled = preferences[item.key as keyof NotificationPreferences];
                                         const isSaving = savingPreference === item.key;
@@ -246,50 +246,30 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                                             <div
                                                 key={item.key}
                                                 className={cn(
-                                                    "group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-300 hover-card-lift",
-                                                    isEnabled
-                                                        ? "border-green-300 bg-linear-to-br from-green-50 to-emerald-50/50 dark:border-green-700 dark:from-green-900/30 dark:to-emerald-900/20 shadow-sm"
-                                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-900",
-                                                    isSaving && "opacity-70 pointer-events-none"
+                                                    "flex items-center justify-between px-4 py-3 transition-all",
+                                                    isEnabled ? "bg-green-50/50 dark:bg-green-950/10" : "bg-white dark:bg-gray-900",
+                                                    isSaving && "opacity-60"
                                                 )}
-                                                style={{ animationDelay: `${(categoryIndex * 0.1) + (itemIndex * 0.05)}s` }}
                                             >
-                                                {isSaving && (
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50 rounded-xl z-10">
-                                                        <Loader2 className="size-5 animate-spin text-green-600" />
-                                                    </div>
-                                                )}
-
                                                 <div className="flex items-center gap-3">
                                                     <div className={cn(
-                                                        "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300",
+                                                        "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
                                                         isEnabled
-                                                            ? "bg-linear-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25"
-                                                            : "bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700"
+                                                            ? "bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400"
+                                                            : "bg-gray-100 dark:bg-gray-800 text-gray-400"
                                                     )}>
-                                                        <Icon className={cn(
-                                                            "size-5 transition-all duration-300",
-                                                            isEnabled
-                                                                ? "text-white"
-                                                                : "text-gray-500 dark:text-gray-400"
-                                                        )} />
+                                                        {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
                                                     </div>
                                                     <div>
-                                                        <p className={cn(
-                                                            "text-sm font-semibold transition-colors",
-                                                            isEnabled && "text-green-700 dark:text-green-400"
-                                                        )}>{item.label}</p>
-                                                        <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
+                                                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{item.label}</p>
+                                                        <p className="text-[10px] text-gray-500 dark:text-gray-400">{item.description}</p>
                                                     </div>
                                                 </div>
                                                 <Switch
                                                     checked={isEnabled}
                                                     onCheckedChange={(checked) => handlePreferenceChange(item.key as keyof NotificationPreferences, checked)}
                                                     disabled={isSaving}
-                                                    className={cn(
-                                                        "data-[state=checked]:bg-linear-to-r data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600",
-                                                        "transition-all duration-300"
-                                                    )}
+                                                    className="data-[state=checked]:bg-green-500"
                                                 />
                                             </div>
                                         );

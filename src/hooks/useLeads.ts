@@ -38,6 +38,20 @@ export interface Lead {
   updatedAt: string
 }
 
+export interface PaginatedLeads {
+  leads: Lead[]
+  total: number
+  page: number
+  pages: number
+}
+
+interface UseLeadsOptions {
+  page?: number
+  limit?: number
+  search?: string
+  status?: string | null
+}
+
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 
 // Longer timeout specifically for the leads list fetch.
@@ -45,7 +59,8 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
 // on first load or after a sync. 60s gives the backend enough headroom.
 const LEADS_FETCH_TIMEOUT_MS = 60_000
 
-export const useLeads = () => {
+export const useLeads = (options: UseLeadsOptions = {}) => {
+  const { page = 1, limit = 20, search = '', status = null } = options
   const { getToken } = useAuth()
   const queryClient = useQueryClient()
 
@@ -59,33 +74,58 @@ export const useLeads = () => {
     return { headers: { Authorization: `Bearer ${token}` } }
   }
 
-  // ── Fetch all leads ────────────────────────────────────────────────────────
-  const { data: leads = [], isLoading, refetch } = useQuery({
-    queryKey: ['leads'],
+  // ── Fetch paginated leads ──────────────────────────────────────────────────
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['leads', page, limit, search, status],
     queryFn: async ({ signal }) => {
       const token = await getToken()
+
+      const params = new URLSearchParams()
+      params.append('page', page.toString())
+      params.append('limit', limit.toString())
+      if (search) params.append('search', search)
+      if (status && status !== 'Inbound Calls') params.append('status', status)
 
       // Pass the React Query AbortSignal into axios so that when React Query
       // cancels a stale request (e.g. component unmounts, or a newer fetch
       // supersedes this one), the in-flight HTTP request is also cancelled.
-      // Previously, cancelled queries kept running to completion on the server,
-      // which was a primary driver of the concurrent-request pile-up.
-      const response = await apiClient.get('/api/leads', {
+      const response = await apiClient.get(`/api/leads?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         signal,
         timeout: LEADS_FETCH_TIMEOUT_MS,
       })
 
-      return Array.isArray(response.data)
-        ? response.data
-        : response.data?.data || []
+      const resData = response.data?.data || response.data
+
+      // Temporary fallback for backwards compatibility with un-paginated backend
+      // (This will be removed once Phase 2 backend is deployed)
+      if (Array.isArray(resData)) {
+        // Client-side simulate the query logic if backend is still legacy
+        let filtered = resData
+        if (status && status !== 'Inbound Calls') {
+          filtered = filtered.filter((l: any) => l.status === status)
+        }
+        if (search) {
+          const q = search.toLowerCase()
+          filtered = filtered.filter((l: any) =>
+            l.firstName?.toLowerCase().includes(q) || l.lastName?.toLowerCase().includes(q) ||
+            l.email?.toLowerCase().includes(q) || l.subject?.toLowerCase().includes(q)
+          )
+        }
+        return {
+          leads: filtered.slice((page - 1) * limit, page * limit),
+          total: filtered.length,
+          page: page,
+          pages: Math.ceil(filtered.length / limit)
+        } as PaginatedLeads
+      }
+
+      return resData as PaginatedLeads
     },
     // Always re-fetch from network — never serve stale leads from cache
     staleTime: 0,
     refetchOnWindowFocus: true,
     // Retry once on timeout/network error before surfacing the failure.
-    // Retrying immediately on a timeout would just compound the problem,
-    // so we wait 2s to let any in-flight requests drain first.
     retry: (failureCount, error: any) => {
       if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
         return failureCount < 1
@@ -149,26 +189,32 @@ export const useLeads = () => {
     onSuccess: () => invalidateAndRefetch(300),
   })
 
-  // ── Sync Gmail (central) ───────────────────────────────────────────────────
-  const syncGmailMutation = useMutation({
+  // ── Sync Gmail & Calendar (Unified Org-level) ──────────────────────────────
+  const syncMutation = useMutation({
     mutationFn: async () => {
       const headers = await getAuthHeaders()
-      const response = await apiClient.syncPost(`/api/leads/sync-central`, {}, headers)
+      const response = await apiClient.post(`/api/org-lead/sync`, {}, headers)
       return response.data
     },
     // After sync, wait 1s for all DB writes to settle before refetching
     onSuccess: () => invalidateAndRefetch(1000),
   })
 
+  const stableRefetch = useCallback(() => invalidateAndRefetch(0), [invalidateAndRefetch])
+  const stableSync = useCallback(syncMutation.mutateAsync, [syncMutation.mutateAsync])
+
   return {
-    leads,
+    leads: data?.leads || [],
+    total: data?.total || 0,
+    page: data?.page || 1,
+    pages: data?.pages || 1,
     isLoading,
-    refetch: () => invalidateAndRefetch(0),
-    updateLeadStatus: updateLeadMutation.mutate,
-    markAsRead: markAsReadMutation.mutate,
-    markAsPending: markAsPendingMutation.mutate,
+    refetch: stableRefetch,
+    updateLeadStatus: updateLeadMutation.mutateAsync,
+    markAsRead: markAsReadMutation.mutateAsync,
+    markAsPending: markAsPendingMutation.mutateAsync,
     reply: replyMutation.mutate,
-    syncGmail: syncGmailMutation.mutateAsync,
-    isSyncingGmail: syncGmailMutation.isPending,
+    sync: stableSync,
+    isSyncing: syncMutation.isPending,
   }
 }

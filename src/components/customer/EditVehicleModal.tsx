@@ -40,14 +40,14 @@ export function EditVehicleModal({ vehicle, isOpen, onOpenChange }: EditVehicleM
 
     const editMutation = useMutation({
         mutationFn: async () => {
-            if (!vehicle?._id) throw new Error("No vehicle selected")
+            if (!vehicle?.id) throw new Error("No vehicle selected")
             const payload: Partial<OwnedVehicle> = {
                 color: color || undefined,
                 licensePlate: licensePlate || undefined,
                 trim: trim || undefined,
                 images: imageUrl ? [imageUrl] : vehicle.images,
             }
-            return updateVehicle(vehicle._id, payload)
+            return updateVehicle(vehicle.id, payload)
         },
         onSuccess: () => {
             toast.success("Vehicle updated successfully!")

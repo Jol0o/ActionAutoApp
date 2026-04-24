@@ -1,28 +1,22 @@
 "use client"
 
 import * as React from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import {
   User,
-  Phone,
   Mail,
+  Phone,
   FileText,
-  Clock3,
+  Clock,
   DollarSign,
+  History,
+  AlertTriangle,
+  CheckCircle,
+  UserPlus,
   Plus,
   Save,
-  History,
-  AlertCircle,
-  CheckCircle2,
-  UserPlus,
+  X,
 } from "lucide-react"
-import { CustomerRecord, InboundCall } from "./types"
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { CustomerRecord, InboundCall, OutboundCall } from "./types"
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -30,189 +24,139 @@ function formatDuration(seconds: number) {
   return `${m}m ${String(s).padStart(2, "0")}s`
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+function getInitials(name: string) {
+  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
+}
 
 interface CustomerInfoPanelProps {
-  call: InboundCall | null
+  call: (InboundCall | OutboundCall) | null
+  callerNumber?: string
   customer: CustomerRecord | null
   isLoadingCustomer: boolean
   onSaveNotes?: (notes: string) => void
   onCreateLead?: (data: { name: string; phone: string; email?: string }) => void
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function CustomerInfoPanel({
   call,
+  callerNumber,
   customer,
   isLoadingCustomer,
   onSaveNotes,
   onCreateLead,
 }: CustomerInfoPanelProps) {
-  const [notes, setNotes] = React.useState(customer?.internalNotes || "")
-  const [showCreateLead, setShowCreateLead] = React.useState(false)
-  const [newLeadForm, setNewLeadForm] = React.useState({ name: "", phone: "", email: "" })
+  const [notes, setNotes] = React.useState("")
+  const [showLead, setShowLead] = React.useState(false)
+  const [leadForm, setLeadForm] = React.useState({ name: "", phone: "", email: "" })
 
+  React.useEffect(() => { setNotes(customer?.internalNotes || "") }, [customer])
   React.useEffect(() => {
-    setNotes(customer?.internalNotes || "")
-  }, [customer])
+    const num = callerNumber || ""
+    if (num) setLeadForm((p) => ({ ...p, phone: num }))
+  }, [callerNumber])
 
-  React.useEffect(() => {
-    if (call) {
-      setNewLeadForm((p) => ({ ...p, phone: call.callerNumber }))
-    }
-  }, [call])
-
-  const accountStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
-    active: {
-      label: "Active",
-      color: "text-emerald-700 dark:text-emerald-300",
-      bg: "bg-emerald-500/10 border-emerald-500/20",
-    },
-    inactive: {
-      label: "Inactive",
-      color: "text-muted-foreground/60",
-      bg: "bg-muted/30 border-border/50",
-    },
-    new: {
-      label: "New Customer",
-      color: "text-blue-700 dark:text-blue-300",
-      bg: "bg-blue-500/10 border-blue-500/20",
-    },
+  const statusConfig = {
+    active: { label: "Active", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", dot: "bg-emerald-400" },
+    inactive: { label: "Inactive", color: "text-zinc-500", bg: "bg-zinc-800", border: "border-zinc-700", dot: "bg-zinc-600" },
+    new: { label: "New", color: "text-sky-400", bg: "bg-sky-400/10", border: "border-sky-400/20", dot: "bg-sky-400" },
   }
 
-  // ── No active call ──
   if (!call) {
     return (
-      <div className="flex flex-col rounded-2xl border border-border/50 bg-card overflow-hidden h-full">
-        <div className="px-4 py-3 border-b border-border/50">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-            Customer Info
-          </p>
+      <div className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden h-full">
+        <div className="px-4 py-3 border-b border-zinc-800">
+          <span className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500">Customer</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
-          <div className="h-14 w-14 rounded-2xl border-2 border-dashed border-border/30 flex items-center justify-center">
-            <User className="h-6 w-6 text-muted-foreground/15" />
+          <div className="h-12 w-12 rounded-xl border border-dashed border-zinc-800 flex items-center justify-center">
+            <User className="h-5 w-5 text-zinc-700" />
           </div>
-          <p className="text-xs text-muted-foreground/40">No caller connected</p>
+          <p className="text-xs text-zinc-600">No caller connected</p>
         </div>
       </div>
     )
   }
 
-  // ── Loading ──
   if (isLoadingCustomer) {
     return (
-      <div className="flex flex-col rounded-2xl border border-border/50 bg-card overflow-hidden h-full">
-        <div className="px-4 py-3 border-b border-border/50">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-            Customer Info
-          </p>
+      <div className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden h-full">
+        <div className="px-4 py-3 border-b border-zinc-800">
+          <span className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500">Customer</span>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
-          <div className="h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-muted-foreground/40">Looking up caller…</p>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <div className="h-5 w-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-zinc-600">Looking up caller...</p>
         </div>
       </div>
     )
   }
 
-  // ── Unknown caller – lead creation ──
   if (!customer) {
     return (
-      <div className="flex flex-col rounded-2xl border border-border/50 bg-card overflow-hidden h-full">
-        <div className="px-4 py-3 border-b border-border/50">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-            Customer Info
-          </p>
+      <div className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden h-full">
+        <div className="px-4 py-3 border-b border-zinc-800">
+          <span className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500">Customer</span>
         </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
-            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-400/5 border border-amber-400/15">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                Unknown Caller
-              </p>
-              <p className="text-[11px] text-amber-600/70 dark:text-amber-400/70 mt-0.5">
-                No CRM record found for{" "}
-                <span className="font-mono font-semibold">{call.callerNumber}</span>
+              <p className="text-xs font-semibold text-amber-400">Unknown Caller</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">
+                No record found for <span className="font-mono text-zinc-400">{callerNumber}</span>
               </p>
             </div>
           </div>
 
-          {!showCreateLead ? (
-            <Button
-              onClick={() => setShowCreateLead(true)}
-              variant="outline"
-              className="w-full h-10 text-xs gap-2 rounded-xl border-dashed border-border/60"
+          {!showLead ? (
+            <button
+              onClick={() => setShowLead(true)}
+              className="w-full h-9 flex items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 text-xs font-medium transition-all"
             >
-              <UserPlus className="h-4 w-4 text-emerald-600" />
-              Create New Lead
-            </Button>
+              <UserPlus className="h-3.5 w-3.5" /> Create Lead
+            </button>
           ) : (
-            <div className="space-y-3 rounded-xl border border-border/50 p-4 bg-muted/10">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-                Quick Lead Creation
-              </p>
-              <div>
-                <Label className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/40">
-                  Name *
-                </Label>
-                <Input
-                  value={newLeadForm.name}
-                  onChange={(e) => setNewLeadForm((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="Caller name"
-                  className="mt-1 rounded-xl border-border/50 text-sm h-9"
-                />
+            <div className="space-y-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">New Lead</p>
+                <button onClick={() => setShowLead(false)} className="text-zinc-600 hover:text-zinc-400">
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <div>
-                <Label className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/40">
-                  Phone
-                </Label>
-                <Input
-                  value={newLeadForm.phone}
-                  onChange={(e) => setNewLeadForm((p) => ({ ...p, phone: e.target.value }))}
-                  className="mt-1 rounded-xl border-border/50 text-sm h-9 font-mono"
-                />
-              </div>
-              <div>
-                <Label className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/40">
-                  Email
-                </Label>
-                <Input
-                  value={newLeadForm.email}
-                  onChange={(e) => setNewLeadForm((p) => ({ ...p, email: e.target.value }))}
-                  placeholder="Optional"
-                  className="mt-1 rounded-xl border-border/50 text-sm h-9"
-                />
-              </div>
+              {[
+                { key: "name", label: "Name *", placeholder: "Full name", type: "text" },
+                { key: "phone", label: "Phone", placeholder: "", type: "tel" },
+                { key: "email", label: "Email", placeholder: "Optional", type: "email" },
+              ].map(({ key, label, placeholder, type }) => (
+                <div key={key}>
+                  <label className="text-[9px] uppercase tracking-widest text-zinc-600 font-medium block mb-1">{label}</label>
+                  <input
+                    type={type}
+                    value={(leadForm as any)[key]}
+                    onChange={(e) => setLeadForm((p) => ({ ...p, [key]: e.target.value }))}
+                    placeholder={placeholder || undefined}
+                    className="w-full h-8 px-3 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs font-mono placeholder:text-zinc-700 outline-none focus:border-violet-500/50 transition-colors"
+                  />
+                </div>
+              ))}
               <div className="flex gap-2 pt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCreateLead(false)}
-                  className="rounded-lg text-xs flex-1"
+                <button
+                  onClick={() => setShowLead(false)}
+                  className="flex-1 h-8 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 text-xs font-medium hover:bg-zinc-700 transition-all"
                 >
                   Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={!newLeadForm.name.trim()}
+                </button>
+                <button
+                  disabled={!leadForm.name.trim()}
                   onClick={() => {
-                    onCreateLead?.({
-                      name: newLeadForm.name,
-                      phone: newLeadForm.phone,
-                      email: newLeadForm.email || undefined,
-                    })
-                    setShowCreateLead(false)
-                    setNewLeadForm({ name: "", phone: "", email: "" })
+                    onCreateLead?.({ name: leadForm.name, phone: leadForm.phone, email: leadForm.email || undefined })
+                    setShowLead(false)
+                    setLeadForm({ name: "", phone: "", email: "" })
                   }}
-                  className="rounded-lg text-xs flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="flex-1 h-8 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
                 >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Create Lead
-                </Button>
+                  <Plus className="h-3 w-3" /> Create
+                </button>
               </div>
             </div>
           )}
@@ -221,151 +165,106 @@ export function CustomerInfoPanel({
     )
   }
 
-  // ── Known customer ──
-  const acctCfg = accountStatusConfig[customer.accountStatus] || accountStatusConfig.active
+  const sc = statusConfig[customer.accountStatus] || statusConfig.active
 
   return (
-    <div className="flex flex-col rounded-2xl border border-border/50 bg-card overflow-hidden h-full">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-          Customer Info
-        </p>
-        <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-semibold ${acctCfg.bg} ${acctCfg.color}`}
-        >
-          <CheckCircle2 className="h-2.5 w-2.5" />
-          {acctCfg.label}
+    <div className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden h-full">
+      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+        <span className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500">Customer</span>
+        <span className={`flex items-center gap-1.5 text-[9px] font-semibold px-2 py-0.5 rounded-full border ${sc.bg} ${sc.border} ${sc.color}`}>
+          <span className={`h-1 w-1 rounded-full ${sc.dot}`} /> {sc.label}
         </span>
       </div>
 
-      {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {/* Identity */}
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-            {customer.name
-              .split(" ")
-              .map((w) => w[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()}
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center text-white text-sm font-bold shrink-0">
+            {getInitials(customer.name)}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold truncate">{customer.name}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              {customer.email && (
-                <span className="text-[10px] text-muted-foreground/50 truncate flex items-center gap-1">
-                  <Mail className="h-2.5 w-2.5" /> {customer.email}
-                </span>
-              )}
-            </div>
+            <p className="text-sm font-bold text-zinc-100 truncate">{customer.name}</p>
+            {customer.email && (
+              <p className="text-[10px] text-zinc-500 truncate mt-0.5 flex items-center gap-1">
+                <Mail className="h-2.5 w-2.5" /> {customer.email}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Contact details */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-medium">
-              Phone
-            </p>
-            <p className="text-xs font-semibold font-mono mt-0.5">{customer.phone}</p>
+        {/* Details */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/30">
+            <p className="text-[9px] uppercase tracking-widest text-zinc-600 font-medium">Phone</p>
+            <p className="text-xs font-mono text-zinc-300 mt-0.5 truncate">{customer.phone}</p>
           </div>
-          <div>
-            <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-medium">
-              Account ID
-            </p>
-            <p className="text-xs font-semibold font-mono mt-0.5">{customer.id}</p>
+          <div className="p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/30">
+            <p className="text-[9px] uppercase tracking-widest text-zinc-600 font-medium">Account</p>
+            <p className="text-xs font-mono text-zinc-300 mt-0.5 truncate">{customer.id}</p>
           </div>
         </div>
 
-        <Separator className="opacity-30" />
-
-        {/* Recent transactions */}
+        {/* Transactions */}
         {customer.recentTransactions && customer.recentTransactions.length > 0 && (
           <div>
             <div className="flex items-center gap-1.5 mb-2">
-              <DollarSign className="h-3 w-3 text-muted-foreground/40" />
-              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-                Recent Transactions
-              </p>
+              <DollarSign className="h-3 w-3 text-zinc-600" />
+              <p className="text-[9px] uppercase tracking-widest text-zinc-600 font-medium">Transactions</p>
             </div>
-            <div className="space-y-1.5">
-              {customer.recentTransactions.slice(0, 4).map((tx, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/20 border border-border/30"
-                >
+            <div className="space-y-1">
+              {customer.recentTransactions.slice(0, 3).map((tx, i) => (
+                <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-800/40 border border-zinc-700/30">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium truncate">{tx.description}</p>
-                    <p className="text-[9px] text-muted-foreground/40">{tx.date}</p>
+                    <p className="text-[11px] font-medium text-zinc-300 truncate">{tx.description}</p>
+                    <p className="text-[9px] text-zinc-600">{tx.date}</p>
                   </div>
-                  <p className="text-xs font-bold shrink-0 ml-2">{tx.amount}</p>
+                  <p className="text-xs font-bold text-zinc-200 shrink-0 ml-2">{tx.amount}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Previous call history */}
+        {/* Call history */}
         {customer.previousCalls && customer.previousCalls.length > 0 && (
           <div>
             <div className="flex items-center gap-1.5 mb-2">
-              <History className="h-3 w-3 text-muted-foreground/40" />
-              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-                Call History
-              </p>
+              <History className="h-3 w-3 text-zinc-600" />
+              <p className="text-[9px] uppercase tracking-widest text-zinc-600 font-medium">Call History</p>
             </div>
-            <div className="space-y-1.5">
-              {customer.previousCalls.slice(0, 5).map((c, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/20 border border-border/30"
-                >
+            <div className="space-y-1">
+              {customer.previousCalls.slice(0, 4).map((c, i) => (
+                <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-800/40 border border-zinc-700/30">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium">{c.date}</p>
-                    {c.notes && (
-                      <p className="text-[9px] text-muted-foreground/40 truncate">{c.notes}</p>
-                    )}
+                    <p className="text-[11px] font-medium text-zinc-300">{c.date}</p>
+                    {c.notes && <p className="text-[9px] text-zinc-600 truncate">{c.notes}</p>}
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <Clock3 className="h-2.5 w-2.5 text-muted-foreground/40" />
-                    <span className="text-[10px] font-medium text-muted-foreground/60">
-                      {formatDuration(c.duration)}
-                    </span>
-                  </div>
+                  <p className="text-[10px] font-mono text-zinc-500 shrink-0 ml-2">{formatDuration(c.duration)}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        <Separator className="opacity-30" />
-
-        {/* Internal notes */}
+        {/* Notes */}
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <FileText className="h-3 w-3 text-muted-foreground/40" />
-            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
-              Call Notes
-            </p>
+            <FileText className="h-3 w-3 text-zinc-600" />
+            <p className="text-[9px] uppercase tracking-widest text-zinc-600 font-medium">Notes</p>
           </div>
-          <Textarea
+          <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add notes for this call…"
+            placeholder="Add notes for this call..."
             rows={3}
-            className="text-sm resize-none rounded-xl border-border/50 bg-muted/20 focus-visible:ring-emerald-500/30"
+            className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-xs text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-violet-500/50 resize-none transition-colors"
           />
-          <Button
+          <button
             onClick={() => onSaveNotes?.(notes)}
-            size="sm"
-            variant="outline"
-            className="mt-2 h-7 text-[10px] gap-1 rounded-lg"
+            className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-zinc-200 text-[10px] font-medium transition-all"
           >
-            <Save className="h-3 w-3" />
-            Save Notes
-          </Button>
+            <Save className="h-3 w-3" /> Save Notes
+          </button>
         </div>
       </div>
     </div>

@@ -4,26 +4,21 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Package, Eye, ExternalLink, Truck, Trash2, RefreshCw,
-  Loader2, ChevronDown,
+  Loader2, MapPin, ArrowRight, Search,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { DriverTrackingItem } from "@/types/driver-tracking";
+import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
+
+const trailerLabel = (val?: string) =>
+  trailerTypeOptions.find((t) => t.value === val)?.label || val || "";
 
 interface DriverTrackerLoadsCardProps {
   drivers: DriverTrackingItem[];
@@ -44,9 +39,14 @@ export function DriverTrackerLoadsCard({
 }: DriverTrackerLoadsCardProps) {
   const router = useRouter();
   const [viewDriver, setViewDriver] = React.useState<DriverTrackingItem | null>(null);
+  const currentViewDriver = React.useMemo(
+    () => (viewDriver ? (drivers.find((d) => d.id === viewDriver.id) ?? null) : null),
+    [drivers, viewDriver],
+  );
   const [removing, setRemoving] = React.useState<string | null>(null);
   const [reassigning, setReassigning] = React.useState<string | null>(null);
-  const totalLoads = drivers.reduce((sum, d) => sum + (d.shipments?.length || 0), 0);
+  const [reassignShipmentId, setReassignShipmentId] = React.useState<string | null>(null);
+  const [driverSearch, setDriverSearch] = React.useState("");
 
   const handleRemove = async (shipmentId: string) => {
     if (!onRemoveLoad) return;
@@ -57,73 +57,75 @@ export function DriverTrackerLoadsCard({
   const handleReassign = async (shipmentId: string, newDriverId: string) => {
     if (!onReassignLoad) return;
     setReassigning(shipmentId);
-    try { await onReassignLoad(shipmentId, newDriverId); } finally { setReassigning(null); }
+    try {
+      await onReassignLoad(shipmentId, newDriverId);
+      setReassignShipmentId(null);
+    } finally {
+      setReassigning(null);
+    }
   };
+
+  const reassignCandidates = React.useMemo(() => {
+    const q = driverSearch.trim().toLowerCase();
+    const filtered = activeDrivers.filter((d) => d.driver?.id !== viewDriver?.driver?.id);
+    if (!q) return filtered;
+    return filtered.filter((d) => {
+      const name = d.driver?.name?.toLowerCase() || "";
+      const email = d.driver?.email?.toLowerCase() || "";
+      return name.includes(q) || email.includes(q);
+    });
+  }, [activeDrivers, viewDriver, driverSearch]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3 p-4">
+        {[1, 2].map((i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="size-10 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <div className="rounded-lg bg-destructive/5 border border-destructive/10 px-4 py-3">
+          <p className="text-xs text-destructive font-medium">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (drivers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <div className="size-14 rounded-2xl bg-muted/40 flex items-center justify-center">
+          <Package className="size-7 text-muted-foreground/40" />
+        </div>
+        <p className="text-sm text-muted-foreground font-medium">No assigned loads</p>
+        <p className="text-[11px] text-muted-foreground/60">Assign loads to drivers from the Available tab</p>
+      </div>
+    );
+  }
 
   return (
     <>
-      <Card className="border-border/50 shadow-sm p-0 gap-0 overflow-hidden relative group">
-        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-          <Truck className="size-20" />
-        </div>
-        <CardHeader className="py-4 px-5 border-b border-border/10">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Package className="size-4 text-primary" />
-                Assigned Loads
-              </CardTitle>
-              <p className="text-[10px] text-muted-foreground/60 font-medium mt-0.5">
-                {totalLoads} load{totalLoads !== 1 ? "s" : ""} active
-              </p>
-            </div>
-            {drivers.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
-                {drivers.length} driver{drivers.length !== 1 ? "s" : ""}
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="p-3 max-h-85 overflow-y-auto space-y-2">
-          {error && (
-            <div className="rounded-lg bg-destructive/5 border border-destructive/10 px-3 py-2">
-              <p className="text-[11px] text-destructive font-medium">{error}</p>
-            </div>
-          )}
-
-          {isLoading && !error && (
-            <div className="space-y-2">
-              {[1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-3 p-3">
-                  <Skeleton className="size-8 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-3.5 w-24" />
-                    <Skeleton className="h-3 w-16" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!isLoading && drivers.length === 0 && !error && (
-            <div className="flex flex-col items-center justify-center py-6 gap-2">
-              <div className="size-10 rounded-xl bg-muted/40 flex items-center justify-center">
-                <Package className="size-5 text-muted-foreground/40" />
-              </div>
-              <p className="text-xs text-muted-foreground font-medium">No assigned loads</p>
-            </div>
-          )}
-
-          {drivers.map((item) => {
-            const shipments = item.shipments ?? [];
-            return (
-              <div
-                key={item.id}
-                className="flex items-center justify-between rounded-xl border border-border/40 p-3 hover:border-primary/30 hover:shadow-sm hover:bg-accent/30 transition-all duration-200"
-              >
+      <div className="divide-y divide-border/30">
+        {drivers.map((item) => {
+          const shipments = item.shipments ?? [];
+          return (
+            <div key={item.id} className="p-4 hover:bg-accent/30 transition-colors">
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="size-8 border border-border/50">
-                    <AvatarFallback className="text-[10px] font-bold bg-primary/5 text-primary">
+                  <Avatar className="size-10 border-2 border-background shadow-sm">
+                    {item.driver?.avatar && <AvatarImage src={item.driver.avatar} />}
+                    <AvatarFallback className="text-xs font-bold bg-primary/5 text-primary">
                       {item.driver?.name?.[0]?.toUpperCase() || "?"}
                     </AvatarFallback>
                   </Avatar>
@@ -131,49 +133,84 @@ export function DriverTrackerLoadsCard({
                     <p className="text-sm font-bold text-foreground truncate">
                       {item.driver?.name || "Unknown Driver"}
                     </p>
-                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60 font-medium">
-                      <Package className="size-3" />
-                      {shipments.length} load{shipments.length !== 1 ? "s" : ""}
-                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/60 font-medium">
+                        <Package className="size-3" />
+                        {shipments.length} load{shipments.length !== 1 ? "s" : ""}
+                      </span>
+                      {item.equipment?.trailerType && (
+                        <>
+                          <span className="text-muted-foreground/20">|</span>
+                          <Badge className="text-[9px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 gap-0.5">
+                            <Truck className="size-2.5" />{trailerLabel(item.equipment.trailerType)}
+                          </Badge>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2.5 text-[10px] font-semibold gap-1 shrink-0 border-border/50 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all duration-200"
-                  onClick={() => setViewDriver(item)}
-                >
-                  <Eye className="size-3" />
-                  View
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {shipments.length > 0 && shipments.length <= 2 && shipments.map((s) => (
+                    <Badge key={s.id} variant="outline" className="text-[10px] font-semibold h-6 gap-1 border-border/50">
+                      <Package className="size-2.5" />
+                      {s.trackingNumber || s.id.slice(-6)}
+                    </Badge>
+                  ))}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-3 text-xs font-semibold gap-1.5 border-border/50 hover:bg-primary/5 hover:text-primary hover:border-primary/30"
+                    onClick={() => setViewDriver(item)}
+                  >
+                    <Eye className="size-3.5" />
+                    View Loads
+                  </Button>
+                </div>
               </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+            </div>
+          );
+        })}
+      </div>
 
-      <Dialog open={viewDriver !== null} onOpenChange={(open) => { if (!open) setViewDriver(null); }}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={viewDriver !== null && !reassignShipmentId} onOpenChange={(open) => { if (!open) setViewDriver(null); }}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">
-              {viewDriver?.driver?.name || "Driver"} — Loads
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Truck className="size-4 text-primary" />
+              {currentViewDriver?.driver?.name || "Driver"} — Assigned Loads
             </DialogTitle>
             <p className="text-[11px] text-muted-foreground/60 font-medium">
-              {viewDriver?.shipments?.length || 0} load{(viewDriver?.shipments?.length || 0) !== 1 ? "s" : ""} assigned
+              {currentViewDriver?.shipments?.length || 0} load{(currentViewDriver?.shipments?.length || 0) !== 1 ? "s" : ""} assigned
             </p>
+            {currentViewDriver?.equipment && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {currentViewDriver.equipment.truckMake && (
+                  <Badge className="text-[9px] px-1.5 py-0 h-5 bg-muted text-muted-foreground border-border/50">
+                    {currentViewDriver.equipment.truckMake} {currentViewDriver.equipment.truckModel || ""}
+                  </Badge>
+                )}
+                {currentViewDriver.equipment.trailerType && (
+                  <Badge className="text-[9px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 gap-0.5">
+                    <Truck className="size-2.5" />{trailerLabel(currentViewDriver.equipment.trailerType)}
+                  </Badge>
+                )}
+                {currentViewDriver.equipment.maxVehicleCapacity != null && (
+                  <Badge className="text-[9px] px-1.5 py-0 h-5 bg-indigo-500/10 text-indigo-600 border-indigo-200">
+                    Cap: {currentViewDriver.equipment.maxVehicleCapacity}
+                  </Badge>
+                )}
+              </div>
+            )}
           </DialogHeader>
-          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-            {(viewDriver?.shipments?.length || 0) === 0 && (
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+            {(currentViewDriver?.shipments?.length || 0) === 0 && (
               <div className="flex flex-col items-center justify-center py-8 gap-2">
                 <Package className="size-8 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground">No loads assigned</p>
               </div>
             )}
-            {viewDriver?.shipments?.map((shipment) => (
-              <div
-                key={shipment.id}
-                className="rounded-xl border border-border/40 p-3 hover:border-primary/30 hover:shadow-sm hover:bg-accent/30 transition-all duration-200"
-              >
+            {currentViewDriver?.shipments?.map((shipment) => (
+              <div key={shipment.id} className="rounded-xl border border-border/40 p-4 hover:border-primary/30 hover:shadow-sm transition-all duration-200">
                 <div
                   className="flex items-center justify-between gap-3 cursor-pointer"
                   onClick={() => {
@@ -182,17 +219,20 @@ export function DriverTrackerLoadsCard({
                   }}
                 >
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="size-8 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
-                      <Package className="size-4 text-primary" />
+                    <div className="size-10 rounded-xl bg-primary/5 flex items-center justify-center shrink-0">
+                      <Package className="size-5 text-primary" />
                     </div>
-                    <div className="min-w-0 space-y-0.5">
+                    <div className="min-w-0 space-y-1">
                       <p className="text-sm font-bold text-foreground">
                         {shipment.trackingNumber || shipment.id}
                       </p>
                       {(shipment.origin || shipment.destination) && (
-                        <p className="text-[10px] text-muted-foreground/60 truncate font-medium">
-                          {shipment.origin} → {shipment.destination}
-                        </p>
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <MapPin className="size-3 shrink-0" />
+                          <span className="truncate">{shipment.origin}</span>
+                          <ArrowRight className="size-3 shrink-0 text-muted-foreground/40" />
+                          <span className="truncate">{shipment.destination}</span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -205,12 +245,12 @@ export function DriverTrackerLoadsCard({
                 </div>
 
                 {(onRemoveLoad || onReassignLoad) && (
-                  <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/20">
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/20">
                     {onRemoveLoad && (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-6 px-2 text-[10px] font-semibold gap-1 text-destructive border-destructive/20 hover:bg-destructive/10"
+                        className="h-7 px-2.5 text-[10px] font-semibold gap-1 text-destructive border-destructive/20 hover:bg-destructive/10"
                         disabled={removing === shipment.id}
                         onClick={(e) => { e.stopPropagation(); handleRemove(shipment.id); }}
                       >
@@ -219,46 +259,111 @@ export function DriverTrackerLoadsCard({
                       </Button>
                     )}
                     {onReassignLoad && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-[10px] font-semibold gap-1 border-border/50 hover:bg-primary/5"
-                            disabled={reassigning === shipment.id}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {reassigning === shipment.id ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-                            Reassign
-                            <ChevronDown className="size-2.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-52">
-                          {activeDrivers.filter((d) => d.driver?.id !== viewDriver?.driver?.id).map((d) => (
-                            <DropdownMenuItem
-                              key={d.id}
-                              className="cursor-pointer gap-2"
-                              onClick={() => d.driver?.id && handleReassign(shipment.id, d.driver.id)}
-                            >
-                              <Avatar className="size-5 border border-border/50">
-                                {d.driver?.avatar && <AvatarImage src={d.driver.avatar} />}
-                                <AvatarFallback className="text-[8px] font-bold bg-primary/5 text-primary">
-                                  {d.driver?.name?.[0]?.toUpperCase() || "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-xs font-medium truncate">{d.driver?.name || "Unknown"}</span>
-                            </DropdownMenuItem>
-                          ))}
-                          {activeDrivers.filter((d) => d.driver?.id !== viewDriver?.driver?.id).length === 0 && (
-                            <div className="px-3 py-2 text-[10px] text-muted-foreground">No other drivers available</div>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 text-[10px] font-semibold gap-1 border-border/50 hover:bg-primary/5"
+                        disabled={reassigning === shipment.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReassignShipmentId(shipment.id);
+                          setDriverSearch("");
+                        }}
+                      >
+                        <RefreshCw className="size-3" />
+                        Reassign
+                      </Button>
                     )}
                   </div>
                 )}
               </div>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reassignShipmentId !== null} onOpenChange={(open) => { if (!open) setReassignShipmentId(null); }}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <RefreshCw className="size-4 text-primary" />
+              Reassign Load
+            </DialogTitle>
+            <p className="text-[11px] text-muted-foreground/60 font-medium">
+              Select a new driver to reassign this load
+            </p>
+          </DialogHeader>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/40" />
+            <Input
+              value={driverSearch}
+              onChange={(e) => setDriverSearch(e.target.value)}
+              placeholder="Search drivers..."
+              className="h-9 pl-9 text-xs rounded-lg border-border/40"
+            />
+          </div>
+
+          <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+            {reassignCandidates.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 gap-2">
+                <p className="text-xs text-muted-foreground">No other drivers available</p>
+              </div>
+            )}
+            {reassignCandidates.map((d) => {
+              const eq = d.equipment;
+              return (
+                <div
+                  key={d.id}
+                  className="flex items-center justify-between rounded-xl border border-border/40 p-3 gap-3 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
+                >
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <Avatar className="size-10 border-2 border-background shadow-sm shrink-0">
+                      {d.driver?.avatar && <AvatarImage src={d.driver.avatar} />}
+                      <AvatarFallback className="text-xs font-bold bg-primary/5 text-primary">
+                        {d.driver?.name?.[0]?.toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-sm font-bold truncate">{d.driver?.name || "Unknown"}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <span>{d.shipments?.length || 0} load{(d.shipments?.length || 0) !== 1 ? "s" : ""}</span>
+                        {eq?.truckMake && (
+                          <>
+                            <span className="text-muted-foreground/30">|</span>
+                            <span>{eq.truckMake} {eq.truckModel || ""}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {eq?.trailerType && (
+                          <Badge className="text-[9px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 gap-0.5">
+                            <Truck className="size-2.5" />{trailerLabel(eq.trailerType)}
+                          </Badge>
+                        )}
+                        {eq?.maxVehicleCapacity != null && eq.maxVehicleCapacity > 0 && (
+                          <Badge className="text-[9px] px-1.5 py-0 h-5 bg-indigo-500/10 text-indigo-600 border-indigo-200">
+                            Cap: {eq.maxVehicleCapacity}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-8 px-3 text-xs font-bold shrink-0 shadow-sm"
+                    disabled={reassigning !== null}
+                    onClick={() => d.driver?.id && reassignShipmentId && handleReassign(reassignShipmentId, d.driver.id)}
+                  >
+                    {reassigning === reassignShipmentId ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      "Reassign"
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Download, Loader2, FileText, TrendingUp, Clock, CheckCircle2 } from "lucide-react"
+import { Download, Loader2, FileText, TrendingUp, Clock, CheckCircle2, X } from "lucide-react"
 import { formatCurrency } from "@/utils/format"
 import { Payment } from "@/types/billing"
 import { DriverPayout } from "@/types/driver-payout"
@@ -116,7 +116,7 @@ function StatCard({
   icon: React.ReactNode
 }) {
   return (
-    <div className={`flex-1 min-w-[110px] rounded-lg border bg-card px-4 py-3 ${accent}`}>
+    <div className={`flex-1 min-w-27.5 rounded-lg border bg-card px-4 py-3 ${accent}`}>
       <div className="flex items-center justify-between mb-1.5">
         <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
         <span className="opacity-60">{icon}</span>
@@ -188,17 +188,17 @@ function DriverPreview({ shipments }: { shipments: Shipment[] }) {
           </div>
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
-            <div className="overflow-y-auto max-h-[340px]">
+            <div className="overflow-y-auto max-h-85">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/60 hover:bg-muted/60">
-                    <TableHead className="text-xs font-semibold w-[160px]">Driver</TableHead>
-                    <TableHead className="text-xs font-semibold w-[150px]">Vehicle</TableHead>
-                    <TableHead className="text-xs font-semibold w-[150px]">Customer</TableHead>
+                    <TableHead className="text-xs font-semibold w-40">Driver</TableHead>
+                    <TableHead className="text-xs font-semibold w-37.5">Vehicle</TableHead>
+                    <TableHead className="text-xs font-semibold w-37.5">Customer</TableHead>
                     <TableHead className="text-xs font-semibold">Route</TableHead>
-                    <TableHead className="text-xs font-semibold w-[90px]">Delivered</TableHead>
-                    <TableHead className="text-xs font-semibold w-[100px]">Status</TableHead>
-                    <TableHead className="text-xs font-semibold w-[90px]">Approval</TableHead>
+                    <TableHead className="text-xs font-semibold w-22.5">Delivered</TableHead>
+                    <TableHead className="text-xs font-semibold w-25">Status</TableHead>
+                    <TableHead className="text-xs font-semibold w-22.5">Approval</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -214,7 +214,7 @@ function DriverPreview({ shipments }: { shipments: Shipment[] }) {
                         {customerName(s)}
                       </TableCell>
                       <TableCell>
-                        <span className="inline-block max-w-[200px] truncate text-muted-foreground" title={`${s.origin} → ${s.destination}`}>
+                        <span className="inline-block max-w-50 truncate text-muted-foreground" title={`${s.origin} → ${s.destination}`}>
                           {s.origin} → {s.destination}
                         </span>
                       </TableCell>
@@ -302,22 +302,22 @@ function BillingPreview({ payments, payouts }: { payments: Payment[]; payouts: D
           </div>
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
-            <div className="overflow-y-auto max-h-[220px]">
+            <div className="overflow-y-auto max-h-55">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/60 hover:bg-muted/60">
                     <TableHead className="text-xs font-semibold">Customer</TableHead>
                     <TableHead className="text-xs font-semibold">Description</TableHead>
-                    <TableHead className="text-xs font-semibold w-[100px]">Amount</TableHead>
-                    <TableHead className="text-xs font-semibold w-[100px]">Status</TableHead>
-                    <TableHead className="text-xs font-semibold w-[110px]">Date</TableHead>
+                    <TableHead className="text-xs font-semibold w-25">Amount</TableHead>
+                    <TableHead className="text-xs font-semibold w-25">Status</TableHead>
+                    <TableHead className="text-xs font-semibold w-27.5">Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {payments.map(p => (
                     <TableRow key={p._id} className="text-xs hover:bg-muted/30">
                       <TableCell className="font-medium text-foreground">{p.customerName}</TableCell>
-                      <TableCell className="text-muted-foreground max-w-[180px]">
+                      <TableCell className="text-muted-foreground max-w-45">
                         <span className="truncate block" title={p.description}>{p.description}</span>
                       </TableCell>
                       <TableCell className="font-semibold text-foreground">
@@ -349,22 +349,22 @@ function BillingPreview({ payments, payouts }: { payments: Payment[]; payouts: D
           </div>
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
-            <div className="overflow-y-auto max-h-[220px]">
+            <div className="overflow-y-auto max-h-55">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/60 hover:bg-muted/60">
                     <TableHead className="text-xs font-semibold">Driver</TableHead>
                     <TableHead className="text-xs font-semibold">Description</TableHead>
-                    <TableHead className="text-xs font-semibold w-[100px]">Amount</TableHead>
-                    <TableHead className="text-xs font-semibold w-[100px]">Status</TableHead>
-                    <TableHead className="text-xs font-semibold w-[110px]">Date</TableHead>
+                    <TableHead className="text-xs font-semibold w-25">Amount</TableHead>
+                    <TableHead className="text-xs font-semibold w-25">Status</TableHead>
+                    <TableHead className="text-xs font-semibold w-27.5">Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {payouts.map(p => (
                     <TableRow key={p._id} className="text-xs hover:bg-muted/30">
                       <TableCell className="font-medium text-foreground">{p.driverName}</TableCell>
-                      <TableCell className="text-muted-foreground max-w-[180px]">
+                      <TableCell className="text-muted-foreground max-w-45">
                         <span className="truncate block" title={p.description || "—"}>{p.description || "—"}</span>
                       </TableCell>
                       <TableCell className="font-semibold text-foreground">
@@ -409,16 +409,22 @@ export function ReportPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={val => { if (!val) onClose() }}>
-      <DialogContent className="max-w-5xl w-full p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
+      <DialogContent
+        showCloseButton={false}
+        onEscapeKeyDown={event => {
+          event.preventDefault()
+          onClose()
+        }}
+        className="max-w-5xl w-full p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col"
+      >
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-border shrink-0">
           <div className="flex items-start gap-3">
-            <div className={`size-10 rounded-lg flex items-center justify-center border ${
-              isDriver
-                ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800"
-                : "bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800"
-            }`}>
+            <div className={`size-10 rounded-lg flex items-center justify-center border ${isDriver
+              ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800"
+              : "bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800"
+              }`}>
               <FileText className={`size-4.5 ${accentColor}`} />
             </div>
             <div>
@@ -430,17 +436,29 @@ export function ReportPreviewModal({
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            className="gap-1.5 text-xs font-medium shrink-0 mt-0.5"
-            onClick={onDownload}
-            disabled={isDownloading}
-          >
-            {isDownloading
-              ? <Loader2 className="size-3.5 animate-spin" />
-              : <Download className="size-3.5" />}
-            Download PDF
-          </Button>
+          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+            <Button
+              size="sm"
+              className="gap-1.5 text-xs font-medium"
+              onClick={onDownload}
+              disabled={isDownloading}
+            >
+              {isDownloading
+                ? <Loader2 className="size-3.5 animate-spin" />
+                : <Download className="size-3.5" />}
+              Download PDF
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Close report preview"
+              onClick={onClose}
+              className="size-8 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Body */}

@@ -128,17 +128,17 @@ export function ProfileHeroSection({
           </div>
 
           <div className="flex flex-row sm:flex-col gap-2">
-            <Button onClick={onChangePhoto} variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30 btn-hover-scale animate-button-entry" style={{ animationDelay: '0s' }}>
+            <Button onClick={onChangePhoto} variant="ghost" size="sm" className="bg-white/20 border border-white/30 text-white hover:bg-white/30 hover:text-white btn-hover-scale animate-button-entry" style={{ animationDelay: '0s' }}>
               <Camera className="size-4 mr-2" />
               <span className="hidden sm:inline">Change Photo</span>
             </Button>
             {profile?.avatar && (
-              <Button onClick={onRemovePhoto} variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-red-500/30 btn-hover-scale animate-button-entry" style={{ animationDelay: '0.05s' }} disabled={isSaving}>
+              <Button onClick={onRemovePhoto} variant="ghost" size="sm" className="bg-white/20 border border-white/30 text-white hover:bg-red-500/30 hover:text-white btn-hover-scale animate-button-entry" style={{ animationDelay: '0.05s' }} disabled={isSaving}>
                 <Trash2 className="size-4 mr-2" />
                 <span className="hidden sm:inline">Remove Photo</span>
               </Button>
             )}
-            <Button onClick={onLogout} variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30 btn-hover-scale animate-button-entry" style={{ animationDelay: '0.1s' }}>
+            <Button onClick={onLogout} variant="ghost" size="sm" className="bg-white/20 border border-white/30 text-white hover:bg-white/30 hover:text-white btn-hover-scale animate-button-entry" style={{ animationDelay: '0.1s' }}>
               <LogOut className="size-4 mr-2" />
               <span className="hidden sm:inline">Logout</span>
             </Button>

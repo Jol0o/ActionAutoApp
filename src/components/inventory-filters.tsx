@@ -30,6 +30,7 @@ interface InventoryFiltersProps {
     filters: any
     onFilterChange: (key: string, value: any) => void
     onClearFilters: () => void
+    apiPath?: string // New prop to allow context-specific filter endpoints
 }
 
 export function InventoryFilters({
@@ -37,6 +38,7 @@ export function InventoryFilters({
     onFilterChange,
     onBulkFilterChange,
     onClearFilters,
+    apiPath = "/api/vehicles/filters" // Default to staff-level filters
 }: InventoryFiltersProps & { onBulkFilterChange?: (newFilters: any) => void }) {
     const [filterOptions, setFilterOptions] = React.useState<FilterOptions | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
@@ -50,7 +52,7 @@ export function InventoryFilters({
         const fetchFilters = async () => {
             try {
                 const token = await getToken()
-                const response = await apiClient.get("/api/vehicles/filters", {
+                const response = await apiClient.get(apiPath, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
@@ -166,7 +168,7 @@ export function InventoryFilters({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Makes</SelectItem>
-                                        {filterOptions?.makes.map((make) => (
+                                        {(filterOptions?.makes ?? []).map((make) => (
                                             <SelectItem key={make} value={make}>
                                                 {make}
                                             </SelectItem>
@@ -188,7 +190,7 @@ export function InventoryFilters({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Models</SelectItem>
-                                        {filterOptions?.models
+                                        {(filterOptions?.models ?? [])
                                             .filter((model) => !pendingFilters.make || true)
                                             .map((model) => (
                                                 <SelectItem key={model} value={model}>
@@ -232,7 +234,7 @@ export function InventoryFilters({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Years</SelectItem>
-                                        {filterOptions?.years.map((year) => (
+                                        {(filterOptions?.years ?? []).map((year) => (
                                             <SelectItem key={year} value={String(year)}>
                                                 {year}
                                             </SelectItem>
@@ -301,7 +303,7 @@ export function InventoryFilters({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Styles</SelectItem>
-                                        {filterOptions?.bodyStyles.map((style) => (
+                                        {(filterOptions?.bodyStyles ?? []).map((style) => (
                                             <SelectItem key={style} value={style}>
                                                 {style}
                                             </SelectItem>
@@ -322,7 +324,7 @@ export function InventoryFilters({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Locations</SelectItem>
-                                        {filterOptions?.locations.map((loc) => (
+                                        {(filterOptions?.locations ?? []).map((loc) => (
                                             <SelectItem key={loc} value={loc}>
                                                 {loc}
                                             </SelectItem>

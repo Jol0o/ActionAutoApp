@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Car,
   ChevronRight,
@@ -17,7 +17,9 @@ import {
   MapPin,
   Gift,
   Wallet,
-} from "lucide-react"
+  LayoutGrid,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import {
   Sidebar,
@@ -47,6 +49,14 @@ import {
   User as UserIcon,
   Settings as SettingsIcon,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+type SidebarNavItem = {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  isNew?: boolean;
+};
 
 const data = {
   navMain: [
@@ -66,7 +76,13 @@ const data = {
       url: "/inventory",
       icon: Car,
     },
-  ],
+    {
+      title: "Plugins",
+      url: "/plugins",
+      icon: LayoutGrid,
+      isNew: true,
+    },
+  ] satisfies SidebarNavItem[],
 
   services: [
     {
@@ -89,7 +105,7 @@ const data = {
       url: "/billing",
       icon: CreditCard,
     },
-  ],
+  ] satisfies SidebarNavItem[],
   account: [
     {
       title: "Profile",
@@ -101,7 +117,7 @@ const data = {
       url: "/settings",
       icon: Settings,
     },
-  ],
+  ] satisfies SidebarNavItem[],
 };
 
 const customerData = {
@@ -126,25 +142,33 @@ const customerData = {
       url: "/dashboard/wallet",
       icon: Wallet,
     },
-  ]
+  ] satisfies SidebarNavItem[],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useUser();
   const { signOut } = useAuthActions();
 
-  const { isLoaded, isCustomer } = useOrg();
+  const { isCustomer } = useOrg();
   const { avatarUrl } = useProfileContext();
 
-  const activeNavMain = isCustomer ? customerData.navMain : data.navMain;
+  const activeNavMain: SidebarNavItem[] = isCustomer
+    ? customerData.navMain
+    : data.navMain;
+
+  React.useEffect(() => {
+    router.prefetch("/profile");
+    router.prefetch("/settings");
+  }, [router]);
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r" {...props}>
       <SidebarHeader className="h-16 border-b flex items-center px-6">
         <div className="flex items-center gap-2">
           <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-            <span className="font-bold text-sm tracking-tight uppercase truncate max-w-[140px]">
+            <span className="font-bold text-sm tracking-tight uppercase truncate max-w-35">
               ACTION AUTO UTAH
             </span>
             <span className="text-[9px] font-extrabold text-green-600 uppercase tracking-widest leading-tight">
@@ -160,11 +184,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuButton
                 asChild
                 tooltip={item.title}
-                isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
+                isActive={
+                  pathname === item.url || pathname.startsWith(item.url + "/")
+                }
+                className={
+                  item.isNew
+                    ? "bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary transition-colors"
+                    : ""
+                }
               >
                 <Link href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
+                  <item.icon className={item.isNew ? "animate-pulse" : ""} />
+                  <span className="font-medium">{item.title}</span>
+                  {item.isNew && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-auto text-[8px] h-4 px-1 leading-none uppercase tracking-tighter bg-primary text-primary-foreground border-none group-data-[collapsible=icon]:hidden"
+                    >
+                      New
+                    </Badge>
+                  )}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -183,7 +222,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuButton
                     asChild
                     tooltip={item.title}
-                    isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
+                    isActive={
+                      pathname === item.url ||
+                      pathname.startsWith(item.url + "/")
+                    }
                   >
                     <Link href={item.url}>
                       <item.icon />
@@ -217,15 +259,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t">
+      <SidebarFooter className="p-4 border-t group-data-[collapsible=icon]:p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="h-12 w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                  <Avatar className="h-8 w-8 rounded-lg">
+                <SidebarMenuButton
+                  size="lg"
+                  className="w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+                >
+                  <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
                     <AvatarImage
-                      src={resolveImageUrl(avatarUrl || user?.imageUrl)}
+                      src={resolveImageUrl(
+                        avatarUrl !== null ? avatarUrl : user?.imageUrl,
+                      )}
                       alt={user?.fullName || ""}
                     />
                     <AvatarFallback className="rounded-lg">
@@ -253,7 +300,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarImage
-                        src={resolveImageUrl(avatarUrl || user?.imageUrl)}
+                        src={resolveImageUrl(
+                          avatarUrl !== null ? avatarUrl : user?.imageUrl,
+                        )}
                         alt={user?.fullName || ""}
                       />
                       <AvatarFallback className="rounded-lg">
@@ -271,13 +320,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => (window.location.href = "/profile")}
-                >
+                <DropdownMenuItem onClick={() => router.push("/profile")}>
                   <UserIcon className="mr-2 size-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/settings")}>
                   <SettingsIcon className="mr-2 size-4" />
                   Settings
                 </DropdownMenuItem>

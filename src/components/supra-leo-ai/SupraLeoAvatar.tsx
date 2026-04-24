@@ -1,139 +1,406 @@
+'use client'
+
 import * as React from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 
-type SpeakState = 'speaking' | 'fetching' | 'sending' | 'listening' | 'listening-reply' | 'waiting-command' | 'error' | 'idle'
+export type LeoState =
+  | 'idle' | 'listening' | 'speaking' | 'thinking'
+  | 'reading' | 'waiting-command' | 'error'
 
-interface Props { state: SpeakState; onClick: () => void; size?: 'sm' | 'md' | 'lg' }
-
-const SIZE = {
-  sm: { btn: 'h-12 w-12', icon: 'text-xl', ring1: '-inset-1', ring2: '-inset-2.5' },
-  md: { btn: 'h-16 w-16', icon: 'text-3xl', ring1: '-inset-1.5', ring2: '-inset-3' },
-  lg: { btn: 'h-24 w-24', icon: 'text-5xl', ring1: '-inset-2', ring2: '-inset-4' },
+interface Props {
+  state?: LeoState
+  size?: number
+  onClick?: () => void
+  className?: string
+  style?: React.CSSProperties
+  animate?: boolean
 }
 
-export function SupraLeoAvatar({ state, onClick, size = 'md' }: Props) {
-  const isSpeaking  = state === 'speaking'
-  const isFetching  = state === 'fetching' || state === 'sending'
-  const isListening = state === 'listening' || state === 'listening-reply'
-  const isWaiting   = state === 'waiting-command'
-  const isError     = state === 'error'
-  const s = SIZE[size]
+// State → color config
+const STATE_COLORS: Record<LeoState, { primary: string; secondary: string; glow: string }> = {
+  idle:              { primary: '#3B82F6', secondary: '#1D4ED8', glow: 'rgba(59,130,246,0.4)' },
+  listening:         { primary: '#10B981', secondary: '#059669', glow: 'rgba(16,185,129,0.45)' },
+  speaking:          { primary: '#F59E0B', secondary: '#D97706', glow: 'rgba(245,158,11,0.45)' },
+  thinking:          { primary: '#8B5CF6', secondary: '#7C3AED', glow: 'rgba(139,92,246,0.45)' },
+  reading:           { primary: '#06B6D4', secondary: '#0891B2', glow: 'rgba(6,182,212,0.45)' },
+  'waiting-command': { primary: '#10B981', secondary: '#047857', glow: 'rgba(16,185,129,0.35)' },
+  error:             { primary: '#EF4444', secondary: '#DC2626', glow: 'rgba(239,68,68,0.45)' },
+}
 
-  const stateConfig = isError
-    ? { bg: 'from-red-500 via-rose-500 to-red-700', glow: 'shadow-red-500/50', border: 'border-red-400/60', ring: 'ring-red-400/40' }
-    : isListening
-    ? { bg: 'from-emerald-400 via-green-500 to-teal-600', glow: 'shadow-emerald-400/60', border: 'border-emerald-300/70', ring: 'ring-emerald-400/40' }
-    : isWaiting
-    ? { bg: 'from-green-400 via-emerald-500 to-green-700', glow: 'shadow-green-400/50', border: 'border-green-300/60', ring: 'ring-green-400/40' }
-    : isSpeaking
-    ? { bg: 'from-lime-400 via-green-500 to-emerald-700', glow: 'shadow-lime-400/60', border: 'border-lime-300/60', ring: 'ring-lime-400/40' }
-    : isFetching
-    ? { bg: 'from-teal-400 via-green-500 to-teal-700', glow: 'shadow-teal-400/50', border: 'border-teal-300/60', ring: 'ring-teal-400/40' }
-    : { bg: 'from-green-400 via-emerald-500 to-green-800', glow: 'shadow-green-500/40', border: 'border-green-300/50', ring: 'ring-green-400/30' }
+export function drawLionFace(
+  canvas: HTMLCanvasElement,
+  state: LeoState,
+  activityAmt: number,
+  pulseFrac: number,
+  dark: boolean,
+) {
+  const ctx = canvas.getContext('2d')!
+  const W = canvas.width, H = canvas.height
+  const cx = W / 2, cy = H / 2
+  const r = Math.min(W, H) * 0.46
+  ctx.clearRect(0, 0, W, H)
 
-  const icon = isError ? '⚠️' : isFetching ? '' : isListening ? '🎙️' : isWaiting ? '✅' : '🦁'
+  const col = STATE_COLORS[state]
+  const isActive = state !== 'idle' && state !== 'error'
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.clip()
+
+  // Background – dark vs light
+  const bgG = ctx.createRadialGradient(cx, cy * 0.5, 0, cx, cy, r * 1.1)
+  if (dark) {
+    bgG.addColorStop(0, '#0C1829')
+    bgG.addColorStop(0.55, '#070F1C')
+    bgG.addColorStop(1, '#030810')
+  } else {
+    bgG.addColorStop(0, '#EFF6FF')
+    bgG.addColorStop(0.55, '#DBEAFE')
+    bgG.addColorStop(1, '#BFDBFE')
+  }
+  ctx.fillStyle = bgG
+  ctx.fillRect(0, 0, W, H)
+
+  // HUD grid lines
+  ctx.save()
+  ctx.globalAlpha = dark ? 0.06 : 0.08
+  ctx.strokeStyle = dark ? '#4AABF0' : '#3B82F6'
+  ctx.lineWidth = 0.4
+  const gs = r * 0.22
+  for (let x = cx % gs; x < W; x += gs) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+  for (let y = cy % gs; y < H; y += gs) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+  ctx.globalAlpha = dark ? 0.08 : 0.1
+  for (let i = 0; i < 5; i++) {
+    const ly = cy + r * (0.45 + i * 0.12)
+    if (ly > H) break
+    const shrink = 1 - i * 0.15
+    ctx.beginPath()
+    ctx.moveTo(cx - r * shrink, ly)
+    ctx.lineTo(cx + r * shrink, ly)
+    const lg = ctx.createLinearGradient(cx - r, ly, cx + r, ly)
+    lg.addColorStop(0, 'transparent')
+    lg.addColorStop(0.3, col.primary)
+    lg.addColorStop(0.7, col.primary)
+    lg.addColorStop(1, 'transparent')
+    ctx.strokeStyle = lg
+    ctx.lineWidth = 0.5
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  // Ambient state glow
+  if (isActive) {
+    const glowG = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r)
+    glowG.addColorStop(0, 'transparent')
+    glowG.addColorStop(0.6, 'transparent')
+    glowG.addColorStop(1, col.glow.replace('0.4', dark ? '0.15' : '0.2'))
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fillStyle = glowG
+    ctx.fill()
+  }
+
+  // Pulse rings
+  if (isActive && pulseFrac > 0) {
+    for (let ring = 0; ring < 2; ring++) {
+      const ringR = r * (0.52 + ring * 0.15 + pulseFrac * 0.08)
+      const alpha = Math.max(0, (0.25 - ring * 0.08) * pulseFrac)
+      ctx.beginPath()
+      ctx.arc(cx, cy, ringR, 0, Math.PI * 2)
+      ctx.strokeStyle = `${col.primary}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`
+      ctx.lineWidth = 0.8
+      ctx.stroke()
+    }
+  }
+
+  // LED DRL headlight strips
+  const drlTopY = cy - r * 0.285
+  const drlBotY = cy - r * 0.185
+  const drlInner = r * 0.08
+  const drlOuter = r * 0.44
+  const drlBright = isActive ? 0.9 : (dark ? 0.55 : 0.7)
+
+  const drawDRL = (side: 1 | -1) => {
+    const sx = cx + side * drlInner
+    const ex = cx + side * drlOuter
+
+    ctx.save()
+    ctx.shadowColor = col.primary
+    ctx.shadowBlur = r * 0.12
+    ctx.beginPath()
+    ctx.moveTo(sx, drlTopY)
+    ctx.lineTo(ex, drlTopY)
+    const g1 = ctx.createLinearGradient(sx, 0, ex, 0)
+    g1.addColorStop(0, `${col.primary}${Math.floor(drlBright * 255).toString(16).padStart(2, '0')}`)
+    g1.addColorStop(0.7, `${col.primary}${Math.floor(drlBright * 0.9 * 255).toString(16).padStart(2, '0')}`)
+    g1.addColorStop(1, `${col.primary}20`)
+    if (side === -1) {
+      g1.addColorStop(0, `${col.primary}20`)
+      g1.addColorStop(0.3, `${col.primary}${Math.floor(drlBright * 0.9 * 255).toString(16).padStart(2, '0')}`)
+      g1.addColorStop(1, `${col.primary}${Math.floor(drlBright * 255).toString(16).padStart(2, '0')}`)
+    }
+    ctx.strokeStyle = g1
+    ctx.lineWidth = r * 0.028
+    ctx.lineCap = 'round'
+    ctx.stroke()
+
+    ctx.globalAlpha = 0.5
+    ctx.shadowBlur = r * 0.06
+    ctx.beginPath()
+    ctx.moveTo(sx + side * r * 0.04, drlBotY)
+    ctx.lineTo(ex - side * r * 0.06, drlBotY)
+    ctx.lineWidth = r * 0.014
+    ctx.stroke()
+    ctx.restore()
+
+    ctx.save()
+    ctx.globalAlpha = drlBright * 0.6
+    ctx.shadowColor = col.primary
+    ctx.shadowBlur = r * 0.06
+    ctx.beginPath()
+    ctx.moveTo(sx, drlTopY)
+    ctx.lineTo(sx, drlBotY + r * 0.04)
+    ctx.strokeStyle = col.primary
+    ctx.lineWidth = r * 0.018
+    ctx.lineCap = 'round'
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  drawDRL(1)
+  drawDRL(-1)
+
+  // Central emblem
+  const embR = r * 0.28
+  const embY = cy + r * 0.06
+
+  ctx.save()
+  if (isActive) {
+    ctx.shadowColor = col.primary
+    ctx.shadowBlur = r * 0.18 * pulseFrac
+  }
+
+  const embG = ctx.createRadialGradient(cx, embY - embR * 0.2, 0, cx, embY, embR)
+  if (dark) {
+    embG.addColorStop(0, '#1A2E4A')
+    embG.addColorStop(0.6, '#101D30')
+    embG.addColorStop(1, '#080F1E')
+  } else {
+    embG.addColorStop(0, '#EFF6FF')
+    embG.addColorStop(0.6, '#DBEAFE')
+    embG.addColorStop(1, '#BFDBFE')
+  }
+  ctx.beginPath()
+  ctx.arc(cx, embY, embR, 0, Math.PI * 2)
+  ctx.fillStyle = embG
+  ctx.fill()
+
+  const borderG = ctx.createLinearGradient(cx - embR, embY - embR, cx + embR, embY + embR)
+  borderG.addColorStop(0, dark ? 'rgba(160,200,240,0.7)' : 'rgba(59,130,246,0.8)')
+  borderG.addColorStop(0.25, col.primary)
+  borderG.addColorStop(0.5, dark ? 'rgba(80,130,190,0.5)' : 'rgba(37,99,235,0.6)')
+  borderG.addColorStop(0.75, col.secondary)
+  borderG.addColorStop(1, dark ? 'rgba(160,200,240,0.6)' : 'rgba(59,130,246,0.7)')
+  ctx.beginPath()
+  ctx.arc(cx, embY, embR, 0, Math.PI * 2)
+  ctx.strokeStyle = borderG
+  ctx.lineWidth = r * 0.022
+  ctx.stroke()
+  ctx.restore()
+
+  if (activityAmt > 0.02) {
+    ctx.save()
+    ctx.shadowColor = col.primary
+    ctx.shadowBlur = r * 0.08
+    const arcStart = -Math.PI * 0.8
+    const arcEnd = arcStart + Math.PI * 1.6 * activityAmt
+    ctx.beginPath()
+    ctx.arc(cx, embY, embR * 0.78, arcStart, arcEnd)
+    const arcG = ctx.createLinearGradient(cx - embR, embY, cx + embR, embY)
+    arcG.addColorStop(0, col.primary)
+    arcG.addColorStop(1, col.secondary)
+    ctx.strokeStyle = arcG
+    ctx.lineWidth = r * 0.018
+    ctx.lineCap = 'round'
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  ctx.save()
+  const fontSize = embR * 0.82
+  ctx.font = `700 ${fontSize}px "Rajdhani", "DM Sans", sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  if (isActive) {
+    ctx.shadowColor = col.primary
+    ctx.shadowBlur = r * 0.12
+  }
+  const textG = ctx.createLinearGradient(cx, embY - embR * 0.4, cx, embY + embR * 0.4)
+  if (dark) {
+    textG.addColorStop(0, 'rgba(200,225,255,0.95)')
+    textG.addColorStop(0.4, col.primary)
+    textG.addColorStop(1, col.secondary)
+  } else {
+    textG.addColorStop(0, col.primary)
+    textG.addColorStop(0.4, col.secondary)
+    textG.addColorStop(1, '#1D4ED8')
+  }
+  ctx.fillStyle = textG
+  ctx.fillText('A', cx, embY + fontSize * 0.03)
+  ctx.restore()
+
+  ctx.save()
+  ctx.globalAlpha = isActive ? 0.9 : 0.5
+  ctx.shadowColor = col.primary
+  ctx.shadowBlur = r * 0.05
+  ctx.beginPath()
+  ctx.arc(cx, embY - embR * 0.52, r * 0.022, 0, Math.PI * 2)
+  ctx.fillStyle = col.primary
+  ctx.fill()
+  ctx.restore()
+
+  // Car silhouette
+  const carY = cy + r * 0.72
+  const cW = r * 0.62
+  ctx.save()
+  ctx.globalAlpha = isActive ? 0.22 : (dark ? 0.12 : 0.18)
+  const carG = ctx.createLinearGradient(cx - cW, carY, cx + cW, carY)
+  carG.addColorStop(0, 'transparent')
+  carG.addColorStop(0.2, col.primary)
+  carG.addColorStop(0.8, col.primary)
+  carG.addColorStop(1, 'transparent')
+  ctx.fillStyle = carG
+
+  ctx.beginPath()
+  ctx.moveTo(cx - cW * 0.52, carY)
+  ctx.lineTo(cx - cW * 0.42, carY - r * 0.055)
+  ctx.bezierCurveTo(cx - cW * 0.32, carY - r * 0.055, cx - cW * 0.24, carY - r * 0.12, cx - cW * 0.14, carY - r * 0.13)
+  ctx.lineTo(cx + cW * 0.14, carY - r * 0.13)
+  ctx.bezierCurveTo(cx + cW * 0.24, carY - r * 0.12, cx + cW * 0.32, carY - r * 0.055, cx + cW * 0.42, carY - r * 0.055)
+  ctx.lineTo(cx + cW * 0.52, carY)
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
+
+  // Motion lines
+  ctx.save()
+  for (let i = 0; i < 3; i++) {
+    const ly = carY + r * (0.04 + i * 0.055)
+    if (ly > cy + r) break
+    const lw = cW * (0.6 - i * 0.15)
+    ctx.globalAlpha = (0.1 - i * 0.025) * (isActive ? 1.4 : 0.7)
+    const lg = ctx.createLinearGradient(cx - lw, ly, cx + lw, ly)
+    lg.addColorStop(0, 'transparent')
+    lg.addColorStop(0.4, col.primary)
+    lg.addColorStop(0.6, col.primary)
+    lg.addColorStop(1, 'transparent')
+    ctx.beginPath()
+    ctx.moveTo(cx - lw, ly)
+    ctx.lineTo(cx + lw, ly)
+    ctx.strokeStyle = lg
+    ctx.lineWidth = 0.7
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  ctx.restore() // end clip
+
+  // Outer metallic ring
+  const outerG = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r)
+  if (dark) {
+    outerG.addColorStop(0, 'rgba(160,200,240,0.5)')
+    outerG.addColorStop(0.2, `${col.primary}55`)
+    outerG.addColorStop(0.5, 'rgba(60,100,160,0.2)')
+    outerG.addColorStop(0.8, `${col.secondary}44`)
+    outerG.addColorStop(1, 'rgba(160,200,240,0.45)')
+  } else {
+    outerG.addColorStop(0, 'rgba(59,130,246,0.6)')
+    outerG.addColorStop(0.2, `${col.primary}88`)
+    outerG.addColorStop(0.5, 'rgba(37,99,235,0.4)')
+    outerG.addColorStop(0.8, `${col.secondary}66`)
+    outerG.addColorStop(1, 'rgba(59,130,246,0.55)')
+  }
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.strokeStyle = outerG
+  ctx.lineWidth = r * 0.025
+  if (isActive) {
+    ctx.shadowColor = col.primary
+    ctx.shadowBlur = r * 0.1
+  }
+  ctx.stroke()
+}
+
+export function SupraLeoAvatar({
+  state = 'idle',
+  size = 44,
+  onClick,
+  className = '',
+  style,
+  animate = true,
+}: Props) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const pulseRef = useRef(0)
+  const pulseDirRef = useRef(1)
+  const activityRef = useRef(0)
+  const rafRef = useRef<number>(0)
+  const tRef = useRef(0)
+  const darkRef = useRef(
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : true
+  )
+
+  const render = useCallback(() => {
+    if (!canvasRef.current) return
+    drawLionFace(canvasRef.current, state, activityRef.current, pulseRef.current, darkRef.current)
+  }, [state])
+
+  // Listen for system colour scheme changes and re-render
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => {
+      darkRef.current = e.matches
+      render()
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [render])
+
+  useEffect(() => {
+    if (!animate) { render(); return }
+    const loop = () => {
+      tRef.current += 0.016
+
+      pulseRef.current += pulseDirRef.current * 0.025
+      if (pulseRef.current >= 1) { pulseRef.current = 1; pulseDirRef.current = -1 }
+      if (pulseRef.current <= 0) { pulseRef.current = 0; pulseDirRef.current = 1 }
+
+      activityRef.current = state === 'speaking'
+        ? (Math.sin(tRef.current * 9) * 0.4 + 0.6) * 0.85
+        : state === 'thinking' || state === 'reading'
+          ? (Math.sin(tRef.current * 3) * 0.3 + 0.5) * 0.5
+          : Math.max(0, activityRef.current - 0.04)
+
+      render()
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    rafRef.current = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [state, animate, render])
 
   return (
-    <div className="relative inline-flex items-center justify-center">
-      {/* Outer ambient glow ring */}
-      {(isSpeaking || isListening) && (
-        <span className={`absolute ${s.ring2} rounded-full bg-gradient-to-br ${stateConfig.bg} opacity-20 animate-ping [animation-duration:1.8s]`} />
-      )}
-      {/* Mid pulse ring */}
-      {(isSpeaking || isListening || isWaiting) && (
-        <span className={`absolute ${s.ring1} rounded-full bg-gradient-to-br ${stateConfig.bg} opacity-30 animate-ping [animation-duration:1.2s] [animation-delay:0.2s]`} />
-      )}
-
-      <button
-        onClick={onClick}
-        aria-label="Supra Leo AI"
-        className={`
-          relative flex items-center justify-center rounded-full
-          bg-gradient-to-br ${stateConfig.bg}
-          border ${stateConfig.border}
-          shadow-xl ${stateConfig.glow}
-          ring-2 ${stateConfig.ring}
-          backdrop-blur-sm
-          transition-all duration-300 ease-out
-          hover:scale-105 hover:shadow-2xl active:scale-95
-          focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-300/60
-          select-none cursor-pointer
-          ${s.btn}
-        `}
-        style={{
-          boxShadow: `0 0 24px 4px rgba(52,211,153,0.25), 0 4px 16px rgba(0,0,0,0.3)`,
-        }}
-      >
-        {/* Inner gloss overlay */}
-        <span className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 via-transparent to-black/10 pointer-events-none" />
-
-        {/* Spinning fetch indicator */}
-        {isFetching && (
-          <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-white/90 border-r-white/40 animate-spin" />
-        )}
-
-        {/* Waiting gentle breathe */}
-        {isWaiting && (
-          <span className="absolute inset-0 rounded-full bg-white/10 animate-pulse [animation-duration:2s]" />
-        )}
-
-        {/* Icon */}
-        <span className={`relative z-10 leading-none drop-shadow-md ${s.icon}`}>
-          {isFetching
-            ? <span className="block h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-            : icon}
-        </span>
-      </button>
-
-      {/* Status dot */}
-      <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white/80 shadow-sm ${
-        isError ? 'bg-red-400' :
-        isListening ? 'bg-emerald-300 animate-pulse' :
-        isSpeaking ? 'bg-lime-300 animate-pulse' :
-        isFetching ? 'bg-teal-300 animate-pulse' :
-        isWaiting ? 'bg-green-300' :
-        'bg-green-400'
-      }`} />
-    </div>
+    <canvas
+      ref={canvasRef}
+      width={size}
+      height={size}
+      onClick={onClick}
+      className={className}
+      style={{ display: 'block', cursor: onClick ? 'pointer' : 'default', ...style }}
+    />
   )
 }
 
-// Demo
-export default function Demo() {
-  const states: SpeakState[] = ['idle', 'listening', 'speaking', 'fetching', 'waiting-command', 'error']
-  const [active, setActive] = React.useState<SpeakState>('idle')
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-12 bg-gray-950 font-sans">
-      <div className="text-center">
-        <p className="text-green-400/60 text-xs tracking-[0.3em] uppercase mb-2 font-mono">Supra Leo</p>
-        <SupraLeoAvatar state={active} onClick={() => {}} size="lg" />
-        <p className="mt-4 text-white/40 text-sm font-mono">{active}</p>
-      </div>
-
-      <div className="flex flex-wrap gap-3 justify-center">
-        {states.map(s => (
-          <button
-            key={s}
-            onClick={() => setActive(s)}
-            className={`px-4 py-1.5 rounded-full text-xs font-mono border transition-all duration-200
-              ${active === s
-                ? 'bg-green-500/20 border-green-400/60 text-green-300'
-                : 'bg-white/5 border-white/10 text-white/40 hover:border-green-500/40 hover:text-white/70'
-              }`}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex gap-6 items-end">
-        {(['sm', 'md', 'lg'] as const).map(sz => (
-          <div key={sz} className="flex flex-col items-center gap-2">
-            <SupraLeoAvatar state={active} onClick={() => {}} size={sz} />
-            <span className="text-white/20 text-xs font-mono">{sz}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+export default SupraLeoAvatar

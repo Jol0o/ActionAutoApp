@@ -4,15 +4,102 @@ import { AxiosError } from "axios";
 import { Vehicle, ShippingQuoteFormData } from "@/types/inventory";
 import { Shipment, Quote, ShipmentStats } from "@/types/transportation";
 import { useAuth } from "@/providers/AuthProvider";
+import { initializeSocket } from "@/lib/socket.client";
 
-const POLL_INTERVAL_MS = 30_000; // 30 seconds
+export interface TransportationPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
 
-export function useTransportationData() {
+export const PER_PAGE_OPTIONS = [3, 5, 7] as const;
+export type PerPageOption = (typeof PER_PAGE_OPTIONS)[number];
+
+interface TransportationFilters {
+  shipmentStatus?: string;
+}
+
+const SHIPMENTS_LIMIT_STORAGE_KEY = "transportation:shipments:limit";
+const QUOTES_LIMIT_STORAGE_KEY = "transportation:quotes:limit";
+
+function getPersistedLimit(
+  storageKey: string,
+  fallback: PerPageOption,
+): PerPageOption {
+  if (typeof window === "undefined") return fallback;
+  const rawValue = window.localStorage.getItem(storageKey);
+  const parsedValue = Number(rawValue);
+  return PER_PAGE_OPTIONS.includes(parsedValue as PerPageOption)
+    ? (parsedValue as PerPageOption)
+    : fallback;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function extractPaginatedItems<T>(
+  raw: any,
+  arrayKey?: string,
+): { items: T[]; pagination: TransportationPagination | null } {
+  if (raw && !Array.isArray(raw) && raw.pagination) {
+    const items: T[] =
+      (arrayKey ? raw[arrayKey] : null) || raw.data || raw.items || [];
+    const rawPagination = raw.pagination;
+    const total = Number(rawPagination.total ?? items.length ?? 0);
+    const page = Number(rawPagination.page ?? 1);
+    const limit = Number(rawPagination.limit ?? items.length ?? 0);
+    const totalPages = Number(
+      rawPagination.totalPages ??
+        rawPagination.pages ??
+        (limit > 0 ? Math.ceil(total / limit) : 1),
+    );
+    const hasMore =
+      typeof rawPagination.hasMore === "boolean"
+        ? rawPagination.hasMore
+        : page < totalPages;
+
+    return {
+      items,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasMore,
+      },
+    };
+  }
+  if (Array.isArray(raw)) {
+    return { items: raw, pagination: null };
+  }
+  return { items: [], pagination: null };
+}
+
+// ── Hook ───────────────────────────────────────────────────────────────────────
+
+export function useTransportationData(filters: TransportationFilters = {}) {
+  const shipmentStatus = filters.shipmentStatus || "all";
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSilentRefreshing, setIsSilentRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
   const [shipments, setShipments] = React.useState<Shipment[]>([]);
+  const [shipmentsPagination, setShipmentsPagination] =
+    React.useState<TransportationPagination | null>(null);
+  const [shipmentsPage, setShipmentsPage] = React.useState(1);
+  const [shipmentsLimit, setShipmentsLimit] = React.useState<PerPageOption>(
+    () => getPersistedLimit(SHIPMENTS_LIMIT_STORAGE_KEY, 5),
+  );
+
   const [quotes, setQuotes] = React.useState<Quote[]>([]);
+  const [quotesPagination, setQuotesPagination] =
+    React.useState<TransportationPagination | null>(null);
+  const [quotesPage, setQuotesPage] = React.useState(1);
+  const [quotesLimit, setQuotesLimit] = React.useState<PerPageOption>(() =>
+    getPersistedLimit(QUOTES_LIMIT_STORAGE_KEY, 5),
+  );
+
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
   const [stats, setStats] = React.useState<ShipmentStats>({
     all: 0,
@@ -27,30 +114,58 @@ export function useTransportationData() {
 
   const { getToken, isLoaded, isSignedIn } = useAuth();
 
-  // Track previous counts to detect new entries during background polls
-  const prevCountsRef = React.useRef<{ shipments: number; quotes: number } | null>(null);
+  // Keep current page/limit in refs so socket handler always sees latest values
+  const shipmentsPageRef = React.useRef(shipmentsPage);
+  const shipmentsLimitRef = React.useRef(shipmentsLimit);
+  const shipmentStatusRef = React.useRef(shipmentStatus);
+  const quotesPageRef = React.useRef(quotesPage);
+  const quotesLimitRef = React.useRef(quotesLimit);
+
+  React.useEffect(() => {
+    shipmentsPageRef.current = shipmentsPage;
+  }, [shipmentsPage]);
+  React.useEffect(() => {
+    shipmentsLimitRef.current = shipmentsLimit;
+  }, [shipmentsLimit]);
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        SHIPMENTS_LIMIT_STORAGE_KEY,
+        String(shipmentsLimit),
+      );
+    }
+  }, [shipmentsLimit]);
+  React.useEffect(() => {
+    shipmentStatusRef.current = shipmentStatus;
+  }, [shipmentStatus]);
+  React.useEffect(() => {
+    quotesPageRef.current = quotesPage;
+  }, [quotesPage]);
+  React.useEffect(() => {
+    quotesLimitRef.current = quotesLimit;
+  }, [quotesLimit]);
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        QUOTES_LIMIT_STORAGE_KEY,
+        String(quotesLimit),
+      );
+    }
+  }, [quotesLimit]);
+
   const isInitializedRef = React.useRef(false);
 
-  const extractData = React.useCallback((response: any) => {
-    if (response.data?.data !== undefined) {
-      return response.data.data;
-    }
-    return response.data;
-  }, []);
+  // ── Vehicle transform ──────────────────────────────────────────────────────
 
   const transformVehicles = React.useCallback(
     (vehicleData: any[]): Vehicle[] => {
       return vehicleData.map((v: any) => {
         let vehicleId: string;
-        if (typeof v._id === "object" && v._id !== null) {
+        if (typeof v._id === "object" && v._id !== null)
           vehicleId = v._id.toString();
-        } else if (v.id) {
-          vehicleId = String(v.id);
-        } else if (v._id) {
-          vehicleId = String(v._id);
-        } else {
-          vehicleId = `temp-${Math.random()}`;
-        }
+        else if (v.id) vehicleId = String(v.id);
+        else if (v._id) vehicleId = String(v._id);
+        else vehicleId = `temp-${Math.random()}`;
 
         return {
           id: vehicleId,
@@ -75,128 +190,283 @@ export function useTransportationData() {
     [],
   );
 
-  const fetchData = React.useCallback(async (options?: { silent?: boolean }) => {
-    if (!isSignedIn) return;
+  // ── Auth header helper ─────────────────────────────────────────────────────
 
-    const silent = options?.silent ?? false;
+  const getAuthConfig = React.useCallback(async () => {
+    const token = await getToken();
+    if (!token) return null;
+    return { headers: { Authorization: `Bearer ${token}` } };
+  }, [getToken]);
 
-    if (silent) {
-      setIsSilentRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-    setError(null);
+  // ── Fetch shipments (specific page+limit, no loading state) ───────────────
 
-    try {
-      const token = await getToken();
-      if (!token) {
-        if (!silent) setIsLoading(false);
-        else setIsSilentRefreshing(false);
-        return;
+  const fetchShipments = React.useCallback(
+    async (
+      page: number,
+      limit: number,
+      status: string = shipmentStatusRef.current,
+    ) => {
+      const config = await getAuthConfig();
+      if (!config) return;
+      const params: Record<string, string | number> = { page, limit };
+      if (status && status !== "all") {
+        params.status = status;
       }
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
+      const res = await apiClient.get("/api/shipments", { ...config, params });
+      const raw = res.data?.data ?? res.data;
+      const { items, pagination } = extractPaginatedItems<Shipment>(
+        raw,
+        "shipments",
+      );
+      setShipments(items);
+      setShipmentsPagination(pagination);
+    },
+    [getAuthConfig],
+  );
 
-      const [shipmentsRes, quotesRes, vehiclesRes, statsRes] =
-        await Promise.all([
-          apiClient.get("/api/shipments", config),
-          apiClient.get("/api/quotes", config),
-          apiClient.get("/api/vehicles", {
-            ...config,
-            params: {
-              status: "all",
-              page: 1,
-              limit: 1000,
-            },
-          }),
-          apiClient.get("/api/shipments/stats", config),
-        ]);
+  // ── Fetch quotes (specific page+limit, no loading state) ──────────────────
 
-      const shipmentsData = extractData(shipmentsRes) || [];
-      const quotesData = extractData(quotesRes) || [];
-      const vehiclesResponse = extractData(vehiclesRes);
-      const vehicleData = vehiclesResponse?.vehicles || vehiclesResponse || [];
-      const statsData = extractData(statsRes);
+  const fetchQuotes = React.useCallback(
+    async (page: number, limit: number) => {
+      const config = await getAuthConfig();
+      if (!config) return;
+      const res = await apiClient.get("/api/quotes", {
+        ...config,
+        params: { page, limit },
+      });
+      const raw = res.data?.data ?? res.data;
+      const { items, pagination } = extractPaginatedItems<Quote>(raw, "quotes");
+      setQuotes(items);
+      setQuotesPagination(pagination);
+    },
+    [getAuthConfig],
+  );
 
-      setShipments(shipmentsData);
-      setQuotes(quotesData);
-      setVehicles(transformVehicles(vehicleData));
+  // ── Core fetch (initial + full refresh) ───────────────────────────────────
 
-      if (statsData && typeof statsData === "object") {
-        setStats(statsData);
-      }
+  const fetchData = React.useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!isSignedIn) return;
+      const silent = options?.silent ?? false;
 
-      setLastUpdated(new Date());
+      if (silent) setIsSilentRefreshing(true);
+      else setIsLoading(true);
+      setError(null);
 
-      // Detect new entries during background polls (not on first load)
-      if (silent && isInitializedRef.current && prevCountsRef.current) {
-        if (
-          shipmentsData.length > prevCountsRef.current.shipments ||
-          quotesData.length > prevCountsRef.current.quotes
-        ) {
-          setHasNewEntries(true);
+      try {
+        const config = await getAuthConfig();
+        if (!config) return;
+
+        const [shipmentsRes, quotesRes, vehiclesRes, statsRes] =
+          await Promise.all([
+            apiClient.get("/api/shipments", {
+              ...config,
+              params: {
+                page: shipmentsPageRef.current,
+                limit: shipmentsLimitRef.current,
+                ...(shipmentStatusRef.current !== "all"
+                  ? { status: shipmentStatusRef.current }
+                  : {}),
+              },
+            }),
+            apiClient.get("/api/quotes", {
+              ...config,
+              params: {
+                page: quotesPageRef.current,
+                limit: quotesLimitRef.current,
+              },
+            }),
+            apiClient.get("/api/vehicles", {
+              ...config,
+              params: { status: "all", page: 1, limit: 1000 },
+            }),
+            apiClient.get("/api/shipments/stats", config),
+          ]);
+
+        const rawShipments = shipmentsRes.data?.data ?? shipmentsRes.data;
+        const rawQuotes = quotesRes.data?.data ?? quotesRes.data;
+
+        const { items: shipmentsData, pagination: shipsPag } =
+          extractPaginatedItems<Shipment>(rawShipments, "shipments");
+        const { items: quotesData, pagination: quotesPag } =
+          extractPaginatedItems<Quote>(rawQuotes, "quotes");
+
+        setShipments(shipmentsData);
+        setShipmentsPagination(shipsPag);
+        setQuotes(quotesData);
+        setQuotesPagination(quotesPag);
+
+        const vehiclesResponse = vehiclesRes.data?.data ?? vehiclesRes.data;
+        const vehicleData =
+          vehiclesResponse?.vehicles || vehiclesResponse || [];
+        setVehicles(transformVehicles(vehicleData));
+
+        const statsData = statsRes.data?.data ?? statsRes.data;
+        if (statsData && typeof statsData === "object") setStats(statsData);
+
+        setLastUpdated(new Date());
+        isInitializedRef.current = true;
+      } catch (err) {
+        const axiosError = err as AxiosError;
+        const msg =
+          (axiosError.response?.data as any)?.message ||
+          axiosError.message ||
+          "Failed to load data";
+        setError(msg);
+        if (!silent) {
+          setShipments([]);
+          setQuotes([]);
+          setVehicles([]);
         }
+      } finally {
+        if (silent) setIsSilentRefreshing(false);
+        else setIsLoading(false);
       }
+    },
+    [getAuthConfig, transformVehicles, isSignedIn],
+  );
 
-      prevCountsRef.current = { shipments: shipmentsData.length, quotes: quotesData.length };
-      isInitializedRef.current = true;
+  // ── Initial fetch ──────────────────────────────────────────────────────────
 
-    } catch (error) {
-      console.error("[TransportationData] Error fetching data:", error);
-      const axiosError = error as AxiosError;
-      const errorMessage =
-        (axiosError.response?.data as any)?.message ||
-        axiosError.message ||
-        "Failed to load data";
-      setError(errorMessage);
-
-      // Only clear data on non-silent failures to avoid wiping the list on a bad poll
-      if (!silent) {
-        setShipments([]);
-        setQuotes([]);
-        setVehicles([]);
-      }
-    } finally {
-      if (silent) {
-        setIsSilentRefreshing(false);
-      } else {
-        setIsLoading(false);
-      }
-    }
-  }, [extractData, transformVehicles, getToken, isSignedIn]);
-
-  // Initial fetch once auth is ready
   React.useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
-  // Background polling every 30 seconds
   React.useEffect(() => {
-    if (!isSignedIn || !isLoaded) return;
+    if (!isLoaded || !isSignedIn || !isInitializedRef.current) return;
+    setShipmentsPage(1);
+    fetchShipments(1, shipmentsLimitRef.current, shipmentStatus).catch(
+      () => {},
+    );
+  }, [shipmentStatus, isLoaded, isSignedIn, fetchShipments]);
 
-    const interval = setInterval(() => {
-      fetchData({ silent: true });
-    }, POLL_INTERVAL_MS);
+  // ── Socket realtime ────────────────────────────────────────────────────────
 
-    return () => clearInterval(interval);
-  }, [fetchData, isSignedIn, isLoaded]);
+  React.useEffect(() => {
+    if (!isSignedIn) return;
+    let cancelled = false;
 
-  const dismissNewEntries = React.useCallback(() => {
-    setHasNewEntries(false);
-  }, []);
+    const connectSocket = async () => {
+      try {
+        const token = await getToken();
+        if (cancelled || !token) return;
+        const sock = initializeSocket(token);
+
+        sock.on("shipment:change", () => {
+          if (cancelled) return;
+          setIsSilentRefreshing(true);
+          Promise.all([
+            fetchShipments(
+              shipmentsPageRef.current,
+              shipmentsLimitRef.current,
+              shipmentStatusRef.current,
+            ),
+            // also refresh stats
+            getAuthConfig().then((cfg) =>
+              cfg
+                ? apiClient.get("/api/shipments/stats", cfg).then((r) => {
+                    const d = r.data?.data ?? r.data;
+                    if (d && typeof d === "object") setStats(d);
+                  })
+                : null,
+            ),
+          ])
+            .catch(() => {})
+            .finally(() => {
+              if (!cancelled) setIsSilentRefreshing(false);
+              setLastUpdated(new Date());
+              setHasNewEntries(true);
+            });
+        });
+
+        sock.on("quote:change", () => {
+          if (cancelled) return;
+          setIsSilentRefreshing(true);
+          fetchQuotes(quotesPageRef.current, quotesLimitRef.current)
+            .catch(() => {})
+            .finally(() => {
+              if (!cancelled) setIsSilentRefreshing(false);
+              setLastUpdated(new Date());
+              setHasNewEntries(true);
+            });
+        });
+      } catch {}
+    };
+
+    connectSocket();
+
+    return () => {
+      cancelled = true;
+      const { getSocket } = require("@/lib/socket.client");
+      const sock = getSocket();
+      if (sock) {
+        sock.off("shipment:change");
+        sock.off("quote:change");
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn]);
+
+  const dismissNewEntries = React.useCallback(
+    () => setHasNewEntries(false),
+    [],
+  );
+
+  // ── Pagination setters — call fetch DIRECTLY (no extra render cycle) ───────
+
+  const changeShipmentsPage = React.useCallback(
+    async (page: number) => {
+      setShipmentsPage(page);
+      try {
+        await fetchShipments(page, shipmentsLimitRef.current);
+      } catch {}
+    },
+    [fetchShipments],
+  );
+
+  const changeShipmentsLimit = React.useCallback(
+    async (limit: PerPageOption) => {
+      setShipmentsPage(1);
+      setShipmentsLimit(limit);
+      shipmentsLimitRef.current = limit;
+      try {
+        await fetchShipments(1, limit);
+      } catch {}
+    },
+    [fetchShipments],
+  );
+
+  const changeQuotesPage = React.useCallback(
+    async (page: number) => {
+      setQuotesPage(page);
+      try {
+        await fetchQuotes(page, quotesLimitRef.current);
+      } catch {}
+    },
+    [fetchQuotes],
+  );
+
+  const changeQuotesLimit = React.useCallback(
+    async (limit: PerPageOption) => {
+      setQuotesPage(1);
+      setQuotesLimit(limit);
+      quotesLimitRef.current = limit;
+      try {
+        await fetchQuotes(1, limit);
+      } catch {}
+    },
+    [fetchQuotes],
+  );
+
+  // ── Mutation handlers ──────────────────────────────────────────────────────
 
   const handleCalculateQuote = React.useCallback(
     async (formData: ShippingQuoteFormData) => {
       try {
-
         const isValidMongoId =
           formData.vehicleId && /^[0-9a-fA-F]{24}$/.test(formData.vehicleId);
-
         const payload: any = {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -210,11 +480,7 @@ export function useTransportationData() {
           enclosedTrailer: formData.enclosedTrailer,
           vehicleInoperable: formData.vehicleInoperable,
         };
-
-        if (isValidMongoId) {
-          payload.vehicleId = formData.vehicleId;
-        }
-
+        if (isValidMongoId) payload.vehicleId = formData.vehicleId;
         if (formData.vehicleId) {
           const vehicle = vehicles.find((v) => v.id === formData.vehicleId);
           if (vehicle) {
@@ -225,204 +491,165 @@ export function useTransportationData() {
             payload.vehicleLocation = vehicle.location;
           }
         }
-
-        const token = await getToken();
-        const response = await apiClient.post("/api/quotes", payload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const config = await getAuthConfig();
+        const response = await apiClient.post(
+          "/api/quotes",
+          payload,
+          config ?? undefined,
+        );
         const data = response.data?.data || response.data;
-
-
-        await fetchData();
-
         return data;
-      } catch (error) {
-        console.error("[TransportationData] Error creating quote:", error);
-        const axiosError = error as AxiosError;
-        const errorMessage =
-          (axiosError.response?.data as any)?.message ||
-          axiosError.message ||
-          "Unknown error";
-        throw new Error("Failed to create quote: " + errorMessage);
+      } catch (err) {
+        const axiosError = err as AxiosError;
+        throw new Error(
+          "Failed to create quote: " +
+            ((axiosError.response?.data as any)?.message ||
+              axiosError.message ||
+              "Unknown error"),
+        );
       }
     },
-    [vehicles, fetchData, getToken],
+    [vehicles, getAuthConfig],
   );
 
   const handleCreateShipment = React.useCallback(
     async (quoteId: string) => {
       try {
-        const token = await getToken();
+        const config = await getAuthConfig();
         await apiClient.post(
           "/api/shipments",
-          {
-            quoteId,
-            requestedPickupDate: new Date(),
-            autoDeleteQuote: true,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
+          { quoteId, requestedPickupDate: new Date(), autoDeleteQuote: true },
+          config ?? undefined,
         );
-
         setQuotes((prev) => prev.filter((q) => q._id !== quoteId));
-
-
-        await fetchData();
-
         return true;
-      } catch (error) {
-        console.error("[TransportationData] Error creating shipment:", error);
-        const axiosError = error as AxiosError;
-        const errorMessage =
-          (axiosError.response?.data as any)?.message ||
-          axiosError.message ||
-          "Unknown error";
-        throw new Error("Failed to create shipment: " + errorMessage);
+      } catch (err) {
+        const axiosError = err as AxiosError;
+        throw new Error(
+          "Failed to create shipment: " +
+            ((axiosError.response?.data as any)?.message ||
+              axiosError.message ||
+              "Unknown error"),
+        );
       }
     },
-    [fetchData, getToken],
+    [getAuthConfig],
   );
 
   const handleDeleteQuote = React.useCallback(
     async (quoteId: string) => {
       try {
-        const token = await getToken();
-        await apiClient.delete(`/api/quotes/${quoteId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const config = await getAuthConfig();
+        await apiClient.delete(`/api/quotes/${quoteId}`, config ?? undefined);
         setQuotes((prev) => prev.filter((q) => q._id !== quoteId));
-
-
-      } catch (error) {
-        console.error("[TransportationData] Error deleting quote:", error);
-        const axiosError = error as AxiosError;
-        const errorMessage =
-          (axiosError.response?.data as any)?.message ||
-          axiosError.message ||
-          "Unknown error";
-        throw new Error("Failed to delete quote: " + errorMessage);
+      } catch (err) {
+        const axiosError = err as AxiosError;
+        throw new Error(
+          "Failed to delete quote: " +
+            ((axiosError.response?.data as any)?.message ||
+              axiosError.message ||
+              "Unknown error"),
+        );
       }
     },
-    [getToken],
+    [getAuthConfig],
   );
 
   const handleDeleteShipment = React.useCallback(
     async (shipmentId: string) => {
       try {
-        const token = await getToken();
-        await apiClient.delete(`/api/shipments/${shipmentId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
+        const config = await getAuthConfig();
+        await apiClient.delete(
+          `/api/shipments/${shipmentId}`,
+          config ?? undefined,
+        );
         setShipments((prev) => prev.filter((s) => s._id !== shipmentId));
-        setStats((prev) => ({
-          ...prev,
-          all: Math.max(0, prev.all - 1),
-        }));
-      } catch (error) {
-        console.error("[TransportationData] Error deleting shipment:", error);
-        const axiosError = error as AxiosError;
-        const errorMessage =
-          (axiosError.response?.data as any)?.message ||
-          axiosError.message ||
-          "Unknown error";
-        throw new Error("Failed to delete shipment: " + errorMessage);
+        setStats((prev) => ({ ...prev, all: Math.max(0, prev.all - 1) }));
+      } catch (err) {
+        const axiosError = err as AxiosError;
+        throw new Error(
+          "Failed to delete shipment: " +
+            ((axiosError.response?.data as any)?.message ||
+              axiosError.message ||
+              "Unknown error"),
+        );
       }
     },
-    [getToken],
+    [getAuthConfig],
   );
 
   const handleUpdateQuote = React.useCallback(
     async (quoteId: string, updatedQuote: Partial<Quote>) => {
       try {
-        const token = await getToken();
+        const config = await getAuthConfig();
         const response = await apiClient.put(
           `/api/quotes/${quoteId}`,
           updatedQuote,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
+          config ?? undefined,
         );
-        const data = extractData(response);
-
+        const data = response.data?.data ?? response.data;
         setQuotes((prev) =>
-          prev.map((quote) =>
-            quote._id === quoteId ? { ...quote, ...data } : quote,
-          ),
+          prev.map((q) => (q._id === quoteId ? { ...q, ...data } : q)),
         );
-
-
-        await fetchData();
-
         return data;
-      } catch (error) {
-        console.error("[TransportationData] Error updating quote:", error);
-        const axiosError = error as AxiosError;
-        const errorMessage =
-          (axiosError.response?.data as any)?.message ||
-          axiosError.message ||
-          "Unknown error";
-        throw new Error("Failed to update quote: " + errorMessage);
+      } catch (err) {
+        const axiosError = err as AxiosError;
+        throw new Error(
+          "Failed to update quote: " +
+            ((axiosError.response?.data as any)?.message ||
+              axiosError.message ||
+              "Unknown error"),
+        );
       }
     },
-    [extractData, fetchData, getToken],
+    [getAuthConfig],
   );
 
   const handleUpdateShipment = React.useCallback(
     async (shipmentId: string, updatedShipment: Partial<Shipment>) => {
       try {
-        const token = await getToken();
+        const config = await getAuthConfig();
         const response = await apiClient.put(
           `/api/shipments/${shipmentId}`,
           updatedShipment,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
+          config ?? undefined,
         );
-        const data = extractData(response);
-
+        const data = response.data?.data ?? response.data;
         setShipments((prev) =>
-          prev.map((shipment) =>
-            shipment._id === shipmentId ? { ...shipment, ...data } : shipment,
-          ),
+          prev.map((s) => (s._id === shipmentId ? { ...s, ...data } : s)),
         );
-
-
-        await fetchData();
-
         return data;
-      } catch (error) {
-        console.error("[TransportationData] Error updating shipment:", error);
-        const axiosError = error as AxiosError;
-        const errorMessage =
-          (axiosError.response?.data as any)?.message ||
-          axiosError.message ||
-          "Unknown error";
-        throw new Error("Failed to update shipment: " + errorMessage);
+      } catch (err) {
+        const axiosError = err as AxiosError;
+        throw new Error(
+          "Failed to update shipment: " +
+            ((axiosError.response?.data as any)?.message ||
+              axiosError.message ||
+              "Unknown error"),
+        );
       }
     },
-    [extractData, fetchData, getToken],
+    [getAuthConfig],
   );
+
+  // ── Return ─────────────────────────────────────────────────────────────────
 
   return {
     isLoading,
     isSilentRefreshing,
     error,
     shipments,
+    shipmentsPagination,
+    shipmentsPage,
+    shipmentsLimit,
+    changeShipmentsPage,
+    changeShipmentsLimit,
     quotes,
+    quotesPagination,
+    quotesPage,
+    quotesLimit,
+    changeQuotesPage,
+    changeQuotesLimit,
     vehicles,
     stats,
     lastUpdated,

@@ -24,6 +24,7 @@ import { ProfileProvider } from "@/context/ProfileContext";
 import { ProfileToastProvider } from "@/components/ProfileToast";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { driverNav } from "@/components/layout/mobile-nav-config";
+import { ThemeModeToggle } from "@/components/layout/ThemeModeToggle";
 
 function DriverLayoutContent({
   children,
@@ -73,6 +74,9 @@ function DriverLayoutContent({
     checkApproval();
   }, [isLoaded, isDriver, userRole, router, getToken]);
 
+  const { isSignedIn } = useAuth();
+  if (isLoaded && !isSignedIn) return null;
+
   // Show loading while guard is checking
   if (!guardPassed) {
     return (
@@ -96,6 +100,7 @@ function DriverLayoutContent({
             <SidebarTrigger className="-ml-1" />
           </div>
           <div className="flex items-center gap-3">
+            <ThemeModeToggle compact />
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -1,25 +1,59 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { useSignUp } from "@/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Check, X, Mail, Lock, User, ShieldCheck, AlertCircle } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Loader2,
+  ArrowLeft,
+  Check,
+  X,
+  Mail,
+  Lock,
+  User,
+  ShieldCheck,
+  AlertCircle,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 const passwordRules = [
-  { key: "length", label: "At least 8 characters", test: (p: string) => p.length >= 8 },
-  { key: "uppercase", label: "One uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+  {
+    key: "length",
+    label: "At least 8 characters",
+    test: (p: string) => p.length >= 8,
+  },
+  {
+    key: "uppercase",
+    label: "One uppercase letter",
+    test: (p: string) => /[A-Z]/.test(p),
+  },
   { key: "number", label: "One number", test: (p: string) => /[0-9]/.test(p) },
-  { key: "special", label: "One special character", test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+  {
+    key: "special",
+    label: "One special character",
+    test: (p: string) => /[^A-Za-z0-9]/.test(p),
+  },
 ];
 
 export function DriverAuthForm() {
-  const { signUp, setActive: setSignUpActive, isLoaded: isSignUpLoaded } = useSignUp();
+  const {
+    signUp,
+    setActive: setSignUpActive,
+    isLoaded: isSignUpLoaded,
+  } = useSignUp();
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -36,7 +70,10 @@ export function DriverAuthForm() {
     setError(null);
     const failedRules = passwordRules.filter((r) => !r.test(regPassword));
     if (failedRules.length > 0) {
-      setError('Password must have: ' + failedRules.map((r) => r.label.toLowerCase()).join(', '));
+      setError(
+        "Password must have: " +
+          failedRules.map((r) => r.label.toLowerCase()).join(", "),
+      );
       return;
     }
     if (regPassword !== regConfirmPassword) {
@@ -53,19 +90,22 @@ export function DriverAuthForm() {
         password: regPassword,
         firstName,
         lastName,
-        role: 'driver'
+        role: "driver",
       });
 
-      if (result?.status === 'complete') {
+      if (result?.status === "complete") {
         await setSignUpActive({ session: result.createdSessionId });
-        window.location.href = '/driver'; // Driver layout will redirect to pending if unapproved
+        window.location.href = "/driver"; // Driver layout will redirect to pending if unapproved
         return;
       }
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setPendingVerification(true);
     } catch (err: any) {
-      const msg = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || "Registration failed";
+      const msg =
+        err.errors?.[0]?.longMessage ||
+        err.errors?.[0]?.message ||
+        "Registration failed";
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -78,13 +118,18 @@ export function DriverAuthForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const result = await signUp.attemptEmailAddressVerification({ code: verificationCode });
+      const result = await signUp.attemptEmailAddressVerification({
+        code: verificationCode,
+      });
       if (result.status === "complete" && result.createdSessionId) {
         await setSignUpActive({ session: result.createdSessionId });
         window.location.href = "/driver/pending";
       }
     } catch (err: any) {
-      const msg = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || "Invalid verification code.";
+      const msg =
+        err.errors?.[0]?.longMessage ||
+        err.errors?.[0]?.message ||
+        "Invalid verification code.";
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -107,9 +152,13 @@ export function DriverAuthForm() {
               <ShieldCheck className="h-8 w-8 text-emerald-500" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight text-center">Driver Registration</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight text-center">
+            Driver Registration
+          </CardTitle>
           <CardDescription className="text-center text-muted-foreground">
-            {pendingVerification ? "Verify your email to continue" : "Join our fleet today"}
+            {pendingVerification
+              ? "Verify your email to continue"
+              : "Join our fleet today"}
           </CardDescription>
         </CardHeader>
 
@@ -124,11 +173,16 @@ export function DriverAuthForm() {
                 className="space-y-4"
               >
                 <div className="text-center text-sm text-muted-foreground mb-4">
-                  We sent a code to <span className="text-foreground font-medium">{regEmail}</span>
+                  We sent a code to{" "}
+                  <span className="text-foreground font-medium">
+                    {regEmail}
+                  </span>
                 </div>
                 <form onSubmit={handleVerifyEmail} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="code" className="sr-only">Verification Code</Label>
+                    <Label htmlFor="code" className="sr-only">
+                      Verification Code
+                    </Label>
                     <Input
                       id="code"
                       value={verificationCode}
@@ -145,13 +199,25 @@ export function DriverAuthForm() {
                       <span>{error}</span>
                     </div>
                   )}
-                  <Button type="submit" className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold" disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify & Start Working"}
+                  <Button
+                    type="submit"
+                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      "Verify & Start Working"
+                    )}
                   </Button>
                   <button
                     type="button"
                     className="text-xs text-muted-foreground hover:text-emerald-500 transition-colors w-full text-center"
-                    onClick={() => { setPendingVerification(false); setVerificationCode(""); setError(null); }}
+                    onClick={() => {
+                      setPendingVerification(false);
+                      setVerificationCode("");
+                      setError(null);
+                    }}
                   >
                     Wrong email? Go back
                   </button>
@@ -199,9 +265,8 @@ export function DriverAuthForm() {
                   <Label htmlFor="reg-password">Security Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
+                    <PasswordInput
                       id="reg-password"
-                      type="password"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       placeholder="••••••••"
@@ -214,8 +279,20 @@ export function DriverAuthForm() {
                       {passwordRules.map((rule) => {
                         const passed = rule.test(regPassword);
                         return (
-                          <div key={rule.key} className={cn("flex items-center gap-1.5 text-[10px] font-medium transition-colors", passed ? "text-emerald-500" : "text-muted-foreground")}>
-                            {passed ? <Check className="size-3.5" /> : <X className="size-3.5 opacity-50" />}
+                          <div
+                            key={rule.key}
+                            className={cn(
+                              "flex items-center gap-1.5 text-[10px] font-medium transition-colors",
+                              passed
+                                ? "text-emerald-500"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {passed ? (
+                              <Check className="size-3.5" />
+                            ) : (
+                              <X className="size-3.5 opacity-50" />
+                            )}
                             {rule.label}
                           </div>
                         );
@@ -227,9 +304,8 @@ export function DriverAuthForm() {
                   <Label htmlFor="reg-confirm">Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
+                    <PasswordInput
                       id="reg-confirm"
-                      type="password"
                       value={regConfirmPassword}
                       onChange={(e) => setRegConfirmPassword(e.target.value)}
                       placeholder="••••••••"
@@ -241,7 +317,8 @@ export function DriverAuthForm() {
 
                 <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
                   <p className="text-[10px] text-muted-foreground">
-                    After registration, a dealer admin will review and approve your account. You will be notified via email.
+                    After registration, a dealer admin will review and approve
+                    your account. You will be notified via email.
                   </p>
                 </div>
 
@@ -252,8 +329,16 @@ export function DriverAuthForm() {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-lg shadow-emerald-500/20" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="size-5 animate-spin" /> : "Apply as Driver"}
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-lg shadow-emerald-500/20"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="size-5 animate-spin" />
+                  ) : (
+                    "Apply as Driver"
+                  )}
                 </Button>
               </motion.form>
             )}
@@ -262,7 +347,10 @@ export function DriverAuthForm() {
         <CardFooter className="pt-0 pb-8 flex flex-col gap-4">
           <div className="text-sm text-center text-muted-foreground w-full">
             Not a driver?{" "}
-            <Link href="/sign-up" className="text-primary font-semibold hover:underline">
+            <Link
+              href="/sign-up"
+              className="text-primary font-semibold hover:underline"
+            >
               Standard Sign Up
             </Link>
           </div>

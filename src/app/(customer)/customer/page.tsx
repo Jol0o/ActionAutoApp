@@ -46,9 +46,9 @@ export default function MyGaragePage() {
     }, [vehicles, selectedVehicle])
 
     const { data: serviceHistory, isLoading: isLoadingHistory } = useQuery({
-        queryKey: ["serviceHistory", selectedVehicle?._id],
-        queryFn: () => fetchServiceHistory(selectedVehicle!._id),
-        enabled: !!selectedVehicle?._id
+        queryKey: ["serviceHistory", selectedVehicle?.id],
+        queryFn: () => fetchServiceHistory(selectedVehicle!.id),
+        enabled: !!selectedVehicle?.id
     })
 
     const queryClient = useQueryClient();
@@ -71,9 +71,9 @@ export default function MyGaragePage() {
     const handleDeleteVehicle = async (vehicle: OwnedVehicle) => {
         if (window.confirm(`Are you sure you want to remove your ${vehicle.year} ${vehicle.make} from your garage? This action cannot be undone.`)) {
             try {
-                await deleteVehicle(vehicle._id);
+                await deleteVehicle(vehicle.id);
                 queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-                if (selectedVehicle?._id === vehicle._id) {
+                if (selectedVehicle?.id === vehicle.id) {
                     setSelectedVehicle(null);
                 }
                 alert('Vehicle removed successfully.');
@@ -123,7 +123,7 @@ export default function MyGaragePage() {
                         const isServiceDueSoon = serviceProgress > 80
 
                         return (
-                            <div key={vehicle._id} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div key={vehicle.id} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 {/* Left Col: Image & Identity */}
                                 <div className="lg:col-span-2">
                                     <div className="relative overflow-hidden rounded-3xl bg-zinc-900 shadow-2xl group border border-zinc-800 h-full min-h-[350px]">

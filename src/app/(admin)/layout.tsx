@@ -8,23 +8,31 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { NotificationBell } from "@/components/notifications";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { adminNav } from "@/components/layout/mobile-nav-config";
+import { ThemeModeToggle } from "@/components/layout/ThemeModeToggle";
+import { useAuth } from "@/providers/AuthProvider";
 
 function AdminLayoutContent({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const { isLoaded, isSignedIn } = useAuth();
+    if (isLoaded && !isSignedIn) return null;
+
     return (
         <SidebarProvider>
             <AdminSidebar />
             <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 border-b px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b px-4 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
                     <div className="flex items-center gap-2">
                         <SidebarTrigger className="-ml-1" />
                         <Separator orientation="vertical" className="mr-2 h-4" />
                         <span className="font-medium">Admin Dashboard </span>
                     </div>
-                    <NotificationBell />
+                    <div className="flex items-center gap-2">
+                        <ThemeModeToggle compact />
+                        <NotificationBell />
+                    </div>
                 </header>
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-4 md:p-8 pb-24 md:pb-8">
                     {children}

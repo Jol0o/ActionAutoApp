@@ -5,12 +5,19 @@ import { Notification } from '@/types/notification';
 import { useAuth } from "@/providers/AuthProvider";
 import { getSocket } from '@/lib/socket.client';
 
+interface FetchNotificationsOptions {
+    limit?: number;
+    skip?: number;
+    isRead?: boolean;
+}
+
 interface NotificationContextType {
     notifications: Notification[];
     unreadCount: number;
+    totalCount: number;
     isLoading: boolean;
     error: string | null;
-    fetchNotifications: () => Promise<void>;
+    fetchNotifications: (options?: FetchNotificationsOptions) => Promise<void>;
     markAsRead: (id: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
     deleteNotification: (id: string) => Promise<void>;
@@ -22,19 +29,33 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const POLL_INTERVAL = 20000;
 const MAX_BACKOFF = 300000;
+const DEFAULT_FETCH_OPTIONS: FetchNotificationsOptions = { limit: 50, skip: 0 };
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const backoffRef = useRef(POLL_INTERVAL);
-    const fetchRef = useRef<(() => Promise<void>) | undefined>(undefined);
+    const fetchRef = useRef<((options?: FetchNotificationsOptions) => Promise<void>) | undefined>(undefined);
+    const activeFetchOptionsRef = useRef<FetchNotificationsOptions>(DEFAULT_FETCH_OPTIONS);
     const { getToken, isLoaded, isSignedIn } = useAuth();
 
-    const fetchNotifications = useCallback(async () => {
+    const fetchNotifications = useCallback(async (options?: FetchNotificationsOptions) => {
+        const nextOptions: FetchNotificationsOptions = { ...activeFetchOptionsRef.current };
+
+        if (options?.limit !== undefined) nextOptions.limit = options.limit;
+        if (options?.skip !== undefined) nextOptions.skip = options.skip;
+        if (options?.isRead !== undefined) nextOptions.isRead = options.isRead;
+
+        activeFetchOptionsRef.current = nextOptions;
+
         if (!isSignedIn) {
+            setNotifications([]);
+            setUnreadCount(0);
+            setTotalCount(0);
             setIsLoading(false);
             return;
         }
@@ -42,11 +63,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         try {
             const token = await getToken();
             if (!token) {
+                setNotifications([]);
+                setUnreadCount(0);
+                setTotalCount(0);
                 setIsLoading(false);
                 return;
             }
 
-            const res = await fetch(`${API_URL}/api/notifications`, {
+            const params = new URLSearchParams();
+            if (nextOptions.limit !== undefined) params.set('limit', String(nextOptions.limit));
+            if (nextOptions.skip !== undefined && nextOptions.skip > 0) params.set('skip', String(nextOptions.skip));
+            if (nextOptions.isRead !== undefined) params.set('isRead', String(nextOptions.isRead));
+
+            const endpoint = params.toString()
+                ? `${API_URL}/api/notifications?${params.toString()}`
+                : `${API_URL}/api/notifications`;
+
+            const res = await fetch(endpoint, {
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
@@ -55,8 +88,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
             if (res.ok) {
                 const data = await res.json();
-                setNotifications(data.data.notifications);
-                setUnreadCount(data.data.unreadCount);
+                const payload = data?.data ?? {};
+                const nextNotifications = Array.isArray(payload.notifications) ? payload.notifications : [];
+                const nextUnreadCount = typeof payload.unreadCount === 'number'
+                    ? payload.unreadCount
+                    : nextNotifications.filter((n: Notification) => !n.isRead).length;
+                const nextTotalCount = typeof payload.total === 'number'
+                    ? payload.total
+                    : nextNotifications.length;
+
+                setNotifications(nextNotifications);
+                setUnreadCount(nextUnreadCount);
+                setTotalCount(nextTotalCount);
                 setError(null);
                 backoffRef.current = POLL_INTERVAL;
             } else if (res.status === 401) {
@@ -64,6 +107,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             } else if (res.status === 404) {
                 setNotifications([]);
                 setUnreadCount(0);
+                setTotalCount(0);
                 setError(null);
             } else {
                 throw new Error(`HTTP ${res.status}`);
@@ -122,10 +166,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
         const snapshot = [...notifications];
         const prevCount = unreadCount;
+        const prevTotal = totalCount;
         const wasUnread = !target.isRead;
 
         setNotifications(prev => prev.filter(n => n._id !== id));
         if (wasUnread) setUnreadCount(prev => Math.max(0, prev - 1));
+        setTotalCount(prev => Math.max(0, prev - 1));
 
         try {
             const token = await getToken();
@@ -137,11 +183,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         } catch {
             setNotifications(snapshot);
             setUnreadCount(prevCount);
+            setTotalCount(prevTotal);
         }
-    }, [notifications, unreadCount, getToken]);
+    }, [notifications, unreadCount, totalCount, getToken]);
 
     const deleteAllRead = useCallback(async () => {
         const snapshot = [...notifications];
+        const prevCount = unreadCount;
+        const prevTotal = totalCount;
         setNotifications(prev => prev.filter(n => !n.isRead));
 
         try {
@@ -151,18 +200,34 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error();
+
+            const data = await res.json().catch(() => null);
+            const deletedCount = data?.data?.deletedCount;
+
+            if (typeof deletedCount === 'number') {
+                setTotalCount(Math.max(0, prevTotal - deletedCount));
+            } else {
+                const deletedInView = snapshot.length - snapshot.filter(n => !n.isRead).length;
+                setTotalCount(Math.max(0, prevTotal - deletedInView));
+            }
         } catch {
             setNotifications(snapshot);
+            setUnreadCount(prevCount);
+            setTotalCount(prevTotal);
         }
-    }, [notifications, getToken]);
+    }, [notifications, unreadCount, totalCount, getToken]);
 
     useEffect(() => {
         if (!isLoaded || !isSignedIn) {
+            setNotifications([]);
+            setUnreadCount(0);
+            setTotalCount(0);
+            activeFetchOptionsRef.current = DEFAULT_FETCH_OPTIONS;
             setIsLoading(false);
             return;
         }
 
-        fetchNotifications();
+        fetchNotifications(DEFAULT_FETCH_OPTIONS);
 
         const startPolling = () => {
             if (pollRef.current) clearInterval(pollRef.current);
@@ -197,19 +262,20 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                     if (prev.some(n => n._id === notification._id)) return prev;
                     return [notification, ...prev];
                 });
-                setUnreadCount(prev => prev + 1);
+                fetchRef.current?.();
             };
 
             const onRead = ({ notificationId }: { notificationId: string }) => {
                 setNotifications(prev =>
                     prev.map(n => n._id === notificationId ? { ...n, isRead: true } : n)
                 );
-                setUnreadCount(prev => Math.max(0, prev - 1));
+                fetchRef.current?.();
             };
 
             const onReadAll = () => {
                 setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
                 setUnreadCount(0);
+                fetchRef.current?.();
             };
 
             socket.on('notification:new', onNew);
@@ -254,6 +320,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             value={{
                 notifications,
                 unreadCount,
+                totalCount,
                 isLoading,
                 error,
                 fetchNotifications,

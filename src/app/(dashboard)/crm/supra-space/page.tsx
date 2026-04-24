@@ -6,8 +6,9 @@ import {
   Search, Plus, Users, MessageSquare, Send, Paperclip,
   X, ChevronLeft, MoreVertical, Download, FileText,
   Loader2, Check, CheckCheck, Hash, Reply, Trash2,
-  ArrowLeft, Zap, Radio, Sparkles, Bot, Video, PhoneOff,
-  Mic, MicOff, VideoOff, Maximize2,
+  ArrowLeft, Radio, Bot, Video, PhoneOff,
+  Mic, MicOff, VideoOff, Sun, Moon, Sparkles,
+  Settings, Bell, ChevronDown, Phone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,434 +19,610 @@ import { apiClient } from '@/lib/api-client';
 import { useSupraSpaceSocket, SSConversation, SSMessage } from '@/hooks/useSupraSpaceSocket';
 import { cn } from '@/lib/utils';
 
+const SS4_MAX_UPLOAD_FILES = 5;
+const SS4_MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024;
+const SS4_MAX_VIDEO_UPLOAD_SIZE_BYTES = 40 * 1024 * 1024;
+const SS4_VIDEO_EXTENSIONS = new Set([
+  '.mp4', '.mov', '.webm', '.m4v', '.avi', '.mkv', '.wmv', '.flv', '.3gp', '.mpeg', '.mpg', '.ogv',
+]);
+
 // ─── Font + Style Injection ──────────────────────────────────────────────────
-if (typeof document !== 'undefined' && !document.getElementById('ss3-styles')) {
+if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap';
+  link.href = 'https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;600;700;800&display=swap';
   document.head.appendChild(link);
 
   const s = document.createElement('style');
-  s.id = 'ss3-styles';
+  s.id = 'ss4-styles';
   s.textContent = `
-    :root {
-      --bg:          #070d07;
-      --bg2:         #0b120b;
-      --surface:     #111b11;
-      --surface2:    #162016;
-      --surface3:    #1c2a1c;
-      --border:      rgba(52,211,153,0.1);
-      --border2:     rgba(52,211,153,0.06);
-      --green:       #10b981;
-      --green2:      #34d399;
-      --green3:      #6ee7b7;
-      --green-dim:   rgba(16,185,129,0.12);
-      --green-glow:  rgba(16,185,129,0.2);
-      --green-deep:  #064e3b;
-      --slate:       #64748b;
-      --slate2:      #94a3b8;
-      --blue:        #38bdf8;
-      --blue-dim:    rgba(56,189,248,0.1);
-      --gold:        #f59e0b;
-      --gold-dim:    rgba(245,158,11,0.1);
-      --text-1:      rgba(236,253,245,0.95);
-      --text-2:      rgba(236,253,245,0.5);
-      --text-3:      rgba(236,253,245,0.22);
-      --text-4:      rgba(236,253,245,0.1);
-      --radius-sm:   8px;
-      --radius-md:   12px;
-      --radius-lg:   16px;
-      --radius-xl:   20px;
+    /* ── Token System ──────────────────────────────────── */
+    .ss4[data-theme="dark"] {
+      --bg-base:       #0e0f11;
+      --bg-elevated:   #141618;
+      --bg-overlay:    #1a1d21;
+      --bg-hover:      rgba(255,255,255,0.04);
+      --bg-active:     rgba(255,255,255,0.07);
+      --bg-subtle:     rgba(255,255,255,0.03);
+
+      --surface-1:     #1e2126;
+      --surface-2:     #252a31;
+      --surface-3:     #2d3340;
+
+      --border-1:      rgba(255,255,255,0.06);
+      --border-2:      rgba(255,255,255,0.10);
+      --border-3:      rgba(255,255,255,0.14);
+
+      --accent:        #5b7cf6;
+      --accent-muted:  rgba(91,124,246,0.15);
+      --accent-hover:  #6b8cf8;
+      --accent-text:   #a5b8ff;
+
+      --positive:      #34c97d;
+      --positive-muted:rgba(52,201,125,0.12);
+      --warning:       #f0a855;
+      --danger:        #f05c5c;
+      --danger-muted:  rgba(240,92,92,0.12);
+
+      --text-primary:  rgba(255,255,255,0.92);
+      --text-secondary:rgba(255,255,255,0.52);
+      --text-tertiary: rgba(255,255,255,0.28);
+      --text-disabled: rgba(255,255,255,0.16);
+
+      --bubble-own-bg: linear-gradient(145deg, #4a6cf0, #5b7cf6);
+      --bubble-own-shadow: 0 4px 20px rgba(91,124,246,0.25);
+      --bubble-other-bg: var(--surface-2);
+      --bubble-other-border: var(--border-2);
+
+      --sidebar-bg:    #111316;
+      --sidebar-border:rgba(255,255,255,0.055);
+
+      --input-bg:      var(--surface-1);
+      --input-border:  var(--border-2);
+      --input-focus:   rgba(91,124,246,0.35);
+
+      --scrollbar:     rgba(255,255,255,0.07);
+      --shadow-sm:     0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-md:     0 4px 16px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
+      --shadow-lg:     0 20px 60px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.4);
     }
 
-    .ss3 {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text-1);
+    .ss4[data-theme="light"] {
+      --bg-base:       #f4f5f7;
+      --bg-elevated:   #ffffff;
+      --bg-overlay:    #f9fafb;
+      --bg-hover:      rgba(0,0,0,0.03);
+      --bg-active:     rgba(91,124,246,0.08);
+      --bg-subtle:     rgba(0,0,0,0.02);
+
+      --surface-1:     #ffffff;
+      --surface-2:     #f4f5f7;
+      --surface-3:     #eaecf0;
+
+      --border-1:      rgba(0,0,0,0.06);
+      --border-2:      rgba(0,0,0,0.09);
+      --border-3:      rgba(0,0,0,0.14);
+
+      --accent:        #4a6cf0;
+      --accent-muted:  rgba(74,108,240,0.1);
+      --accent-hover:  #3a5ce0;
+      --accent-text:   #4a6cf0;
+
+      --positive:      #22b060;
+      --positive-muted:rgba(34,176,96,0.1);
+      --warning:       #e0922a;
+      --danger:        #dc3545;
+      --danger-muted:  rgba(220,53,69,0.08);
+
+      --text-primary:  rgba(0,0,0,0.87);
+      --text-secondary:rgba(0,0,0,0.50);
+      --text-tertiary: rgba(0,0,0,0.32);
+      --text-disabled: rgba(0,0,0,0.20);
+
+      --bubble-own-bg: linear-gradient(145deg, #4a6cf0, #5b7cf6);
+      --bubble-own-shadow: 0 3px 14px rgba(74,108,240,0.22);
+      --bubble-other-bg: #ffffff;
+      --bubble-other-border: rgba(0,0,0,0.09);
+
+      --sidebar-bg:    #1e2430;
+      --sidebar-border:rgba(255,255,255,0.06);
+
+      --input-bg:      #ffffff;
+      --input-border:  rgba(0,0,0,0.1);
+      --input-focus:   rgba(74,108,240,0.3);
+
+      --scrollbar:     rgba(0,0,0,0.1);
+      --shadow-sm:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md:     0 4px 16px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06);
+      --shadow-lg:     0 20px 60px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.1);
+    }
+
+    /* ── Base ──────────────────────────────────────────── */
+    .ss4 {
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    .ss3-hed { font-family: 'Syne', sans-serif; }
+    .ss4-display { font-family: 'Cabinet Grotesk', sans-serif; }
+    .ss4-mono { font-family: 'Geist Mono', monospace; }
 
-    /* Topbar */
-    .ss3-topbar {
-      background: rgba(7,13,7,0.9);
-      border-bottom: 1px solid var(--border2);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-    }
-
-    /* Sidebar */
-    .ss3-sidebar {
-      background: var(--bg2);
-      border-right: 1px solid var(--border2);
+    /* ── Topbar ────────────────────────────────────────── */
+    .ss4-topbar {
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-1);
     }
 
-    /* Logo */
-    .ss3-logo {
-      background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
-      box-shadow: 0 0 24px rgba(16,185,129,0.35), 0 0 48px rgba(16,185,129,0.1);
+    /* ── Sidebar ───────────────────────────────────────── */
+    .ss4-sidebar {
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
     }
 
-    /* Conversation item */
-    .ss3-conv {
-      border-radius: var(--radius-md);
-      border: 1px solid transparent;
-      transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+    /* Light sidebar overrides — stay dark for contrast */
+    .ss4[data-theme="light"] .ss4-sidebar {
+      background: #1e2430;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-section-label {
+      color: rgba(255,255,255,0.3);
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-conv-name {
+      color: rgba(255,255,255,0.85) !important;
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-conv-preview {
+      color: rgba(255,255,255,0.4) !important;
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-conv:hover {
+      background: rgba(255,255,255,0.06) !important;
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-conv-active {
+      background: rgba(91,124,246,0.2) !important;
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-icon-btn {
+      color: rgba(255,255,255,0.45);
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-icon-btn:hover {
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.85);
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-search-input {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.85);
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-search-input::placeholder {
+      color: rgba(255,255,255,0.25);
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-search-input:focus {
+      border-color: rgba(91,124,246,0.5);
+      background: rgba(255,255,255,0.08);
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-search-icon {
+      color: rgba(255,255,255,0.28);
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-logo-mark {
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 4px 16px rgba(91,124,246,0.25);
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-new-btn {
+      background: rgba(91,124,246,0.2);
+      border-color: rgba(91,124,246,0.3);
+      color: #a5b8ff;
+    }
+    .ss4[data-theme="light"] .ss4-sidebar .ss4-new-btn:hover {
+      background: rgba(91,124,246,0.3);
+    }
+
+    /* ── Conversation Items ─────────────────────────────── */
+    .ss4-conv {
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
       position: relative;
     }
-    .ss3-conv:hover {
-      background: rgba(16,185,129,0.04);
-      border-color: var(--border2);
+    .ss4-conv:hover {
+      background: rgba(255,255,255,0.05);
     }
-    .ss3-conv-active {
-      background: var(--green-dim) !important;
-      border-color: rgba(16,185,129,0.18) !important;
+    .ss4-conv-active {
+      background: rgba(91,124,246,0.18) !important;
     }
-    .ss3-conv-active::before {
+    .ss4-conv-active::before {
       content: '';
       position: absolute;
       left: 0;
-      top: 20%;
+      top: 50%;
+      transform: translateY(-50%);
       height: 60%;
       width: 3px;
-      background: linear-gradient(180deg, #10b981, #34d399);
+      background: var(--accent);
       border-radius: 0 3px 3px 0;
     }
 
-    /* Search */
-    .ss3-search {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      color: var(--text-1);
-      transition: all 0.18s ease;
+    /* ── Search Input ───────────────────────────────────── */
+    .ss4-search-input {
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: var(--text-primary);
+      border-radius: 8px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .ss3-search:focus {
-      background: var(--surface2);
-      border-color: rgba(16,185,129,0.3);
+    .ss4-search-input::placeholder { color: var(--text-tertiary); }
+    .ss4-search-input:focus {
       outline: none;
-      box-shadow: 0 0 0 3px rgba(16,185,129,0.06);
-    }
-    .ss3-search::placeholder { color: var(--text-3); }
-
-    /* Chat header */
-    .ss3-chat-header {
-      background: rgba(11,18,11,0.75);
-      border-bottom: 1px solid var(--border2);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--input-focus);
     }
 
-    /* Bubbles */
-    .ss3-bubble-own {
-      background: linear-gradient(145deg, #059669, #10b981);
-      box-shadow: 0 4px 20px rgba(16,185,129,0.22), 0 1px 4px rgba(0,0,0,0.3);
-      color: #ecfdf5;
-    }
-    .ss3-bubble-other {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text-1);
+    /* ── Chat Header ────────────────────────────────────── */
+    .ss4-chat-header {
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-1);
     }
 
-    /* Input area */
-    .ss3-input-wrap {
-      background: var(--surface);
-      border: 1px solid var(--border);
+    /* ── Message Bubbles ────────────────────────────────── */
+    .ss4-bubble-own {
+      background: var(--bubble-own-bg);
+      box-shadow: var(--bubble-own-shadow);
+      color: #fff;
+      border-radius: 18px 18px 4px 18px;
+    }
+    .ss4-bubble-other {
+      background: var(--bubble-other-bg);
+      border: 1px solid var(--bubble-other-border);
+      color: var(--text-primary);
+      border-radius: 18px 18px 18px 4px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ── Input area ─────────────────────────────────────── */
+    .ss4-input-wrap {
+      background: var(--input-bg);
+      border: 1.5px solid var(--input-border);
+      border-radius: 14px;
       transition: border-color 0.18s ease, box-shadow 0.18s ease;
     }
-    .ss3-input-wrap:focus-within {
-      border-color: rgba(16,185,129,0.35);
-      box-shadow: 0 0 0 3px rgba(16,185,129,0.06);
+    .ss4-input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--input-focus);
     }
 
-    /* Send button */
-    .ss3-send {
-      background: linear-gradient(135deg, #059669, #10b981);
-      box-shadow: 0 2px 12px rgba(16,185,129,0.3);
-      transition: all 0.18s ease;
+    /* ── Send Button ────────────────────────────────────── */
+    .ss4-send-btn {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 10px;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 8px rgba(91,124,246,0.3);
     }
-    .ss3-send:hover:not(:disabled) {
-      box-shadow: 0 4px 20px rgba(16,185,129,0.45);
+    .ss4-send-btn:hover:not(:disabled) {
+      background: var(--accent-hover);
       transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(91,124,246,0.4);
     }
-    .ss3-send:disabled {
-      background: var(--surface2);
+    .ss4-send-btn:disabled {
+      background: var(--surface-2);
       box-shadow: none;
       cursor: not-allowed;
     }
 
-    /* Supra Leo AI Button */
-    .ss3-ai-btn {
-      background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.06));
-      border: 1px solid rgba(245,158,11,0.2);
-      color: var(--gold);
-      transition: all 0.18s ease;
-      position: relative;
-      overflow: hidden;
+    /* ── Icon Buttons ───────────────────────────────────── */
+    .ss4-icon-btn {
+      border-radius: 8px;
+      color: var(--text-tertiary);
+      transition: all 0.15s ease;
+      display: flex; align-items: center; justify-content: center;
     }
-    .ss3-ai-btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(245,158,11,0.15), transparent);
-      opacity: 0;
-      transition: opacity 0.18s ease;
-    }
-    .ss3-ai-btn:hover::before { opacity: 1; }
-    .ss3-ai-btn:hover {
-      border-color: rgba(245,158,11,0.4);
-      box-shadow: 0 0 16px rgba(245,158,11,0.15);
-    }
-    .ss3-ai-btn-pulse {
-      animation: ss3-gold-pulse 2.5s ease-in-out infinite;
-    }
-    @keyframes ss3-gold-pulse {
-      0%, 100% { opacity: 0.6; }
-      50% { opacity: 1; }
+    .ss4-icon-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
     }
 
-    /* Sidebar per-conv video icon */
-    .ss3-conv-video {
-      opacity: 0;
-      background: rgba(56,189,248,0.08);
-      border: 1px solid rgba(56,189,248,0.15);
-      color: var(--blue);
+    /* ── Pill Buttons ───────────────────────────────────── */
+    .ss4-pill-btn {
+      border-radius: 8px;
+      border: 1px solid var(--border-2);
+      background: var(--bg-hover);
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+    .ss4-pill-btn:hover {
+      background: var(--bg-active);
+      border-color: var(--border-3);
+      color: var(--text-primary);
+    }
+
+    /* ── Video Button ───────────────────────────────────── */
+    .ss4-video-btn {
+      background: rgba(91,124,246,0.1);
+      border: 1px solid rgba(91,124,246,0.2);
+      color: var(--accent-text);
       border-radius: 8px;
       transition: all 0.15s ease;
-      flex-shrink: 0;
     }
-    .ss3-conv:hover .ss3-conv-video,
-    .ss3-conv-active .ss3-conv-video {
-      opacity: 1;
-    }
-    .ss3-conv-video:hover {
-      background: rgba(56,189,248,0.18);
-      border-color: rgba(56,189,248,0.35);
-      box-shadow: 0 0 10px rgba(56,189,248,0.15);
+    .ss4-video-btn:hover {
+      background: rgba(91,124,246,0.18);
+      border-color: rgba(91,124,246,0.35);
     }
 
-    /* Video call button */
-    .ss3-video-btn {
-      background: linear-gradient(135deg, rgba(56,189,248,0.12), rgba(56,189,248,0.06));
-      border: 1px solid rgba(56,189,248,0.2);
-      color: var(--blue);
-      transition: all 0.18s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .ss3-video-btn:hover {
-      background: linear-gradient(135deg, rgba(56,189,248,0.2), rgba(56,189,248,0.08));
-      border-color: rgba(56,189,248,0.45);
-      box-shadow: 0 0 16px rgba(56,189,248,0.18);
-    }
-
-    /* Video call modal */
-    .ss3-vcall-modal {
-      background: #080f08;
-      border: 1px solid rgba(56,189,248,0.12);
-      box-shadow: 0 32px 80px rgba(0,0,0,0.85), 0 0 0 1px rgba(56,189,248,0.06);
-    }
-    .ss3-vcall-screen {
-      background: linear-gradient(160deg, #0a1520 0%, #070d07 60%, #0a1a12 100%);
-      border: 1px solid rgba(56,189,248,0.08);
-      position: relative;
-      overflow: hidden;
-    }
-    .ss3-vcall-screen::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 50% 40%, rgba(56,189,248,0.04) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .ss3-vcall-ctrl {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.08);
-      transition: all 0.18s ease;
-    }
-    .ss3-vcall-ctrl:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: rgba(255,255,255,0.14);
-    }
-    .ss3-vcall-end {
-      background: linear-gradient(135deg, #dc2626, #ef4444);
-      box-shadow: 0 2px 16px rgba(220,38,38,0.35);
-      transition: all 0.18s ease;
-    }
-    .ss3-vcall-end:hover {
-      box-shadow: 0 4px 24px rgba(220,38,38,0.5);
-      transform: scale(1.05);
-    }
-    @keyframes ss3-vcall-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.3); }
-      50% { box-shadow: 0 0 0 8px rgba(56,189,248,0); }
-    }
-    .ss3-vcall-avatar-ring {
-      animation: ss3-vcall-pulse 2.5s ease-in-out infinite;
-    }
-    @keyframes ss3-vcall-dots {
-      0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
-      40% { opacity: 1; transform: translateY(-3px); }
-    }
-    .ss3-vcall-dot { animation: ss3-vcall-dots 1.4s ease-in-out infinite; }
-
-    /* FAB / action buttons */
-    .ss3-fab {
-      background: linear-gradient(135deg, #059669, #10b981);
-      box-shadow: 0 2px 12px rgba(16,185,129,0.25);
-      transition: all 0.18s ease;
-    }
-    .ss3-fab:hover {
-      box-shadow: 0 4px 20px rgba(16,185,129,0.4);
-      transform: translateY(-1px);
-    }
-
-    /* Icon button */
-    .ss3-icon-btn {
-      border-radius: var(--radius-sm);
+    /* ── AI Button ──────────────────────────────────────── */
+    .ss4-ai-btn {
+      background: linear-gradient(135deg, rgba(120,80,220,0.12), rgba(91,124,246,0.08));
+      border: 1px solid rgba(150,100,240,0.2);
+      color: #b49dff;
+      border-radius: 8px;
       transition: all 0.15s ease;
-      color: var(--text-3);
+      position: relative;
+      overflow: hidden;
     }
-    .ss3-icon-btn:hover {
-      background: rgba(16,185,129,0.07);
-      color: var(--green2);
+    .ss4-ai-btn:hover {
+      border-color: rgba(150,100,240,0.4);
+      box-shadow: 0 0 16px rgba(120,80,220,0.15);
     }
-
-    /* Online dot */
-    .ss3-online {
-      background: var(--green2);
-      box-shadow: 0 0 6px rgba(52,211,153,0.8);
-    }
-
-    /* Live badge */
-    .ss3-live {
-      background: var(--blue-dim);
-      border: 1px solid rgba(56,189,248,0.15);
-    }
-
-    /* Reply bar */
-    .ss3-reply-bar {
-      background: rgba(16,185,129,0.06);
-      border: 1px solid rgba(16,185,129,0.14);
-      border-left: 3px solid var(--green);
-    }
-    .ss3-reply-preview {
-      background: rgba(16,185,129,0.06);
-      border-left: 2px solid rgba(16,185,129,0.25);
-    }
-
-    /* Actions popup */
-    .ss3-actions {
-      background: rgba(18,28,18,0.97);
-      border: 1px solid var(--border);
-      backdrop-filter: blur(20px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
-    }
-
-    /* Overlay + modal */
-    .ss3-overlay { background: rgba(3,8,3,0.8); backdrop-filter: blur(16px); }
-    .ss3-modal {
-      background: #0d180d;
-      border: 1px solid rgba(16,185,129,0.12);
-      box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(16,185,129,0.06);
-    }
-
-    /* Tab */
-    .ss3-tab-active {
-      background: linear-gradient(135deg, #059669, #10b981);
-      box-shadow: 0 2px 10px rgba(16,185,129,0.25);
-    }
-
-    /* Avatars */
-    .ss3-ava-group {
-      background: linear-gradient(135deg, #0e4429, #059669);
-      border: 1px solid rgba(16,185,129,0.3);
-    }
-    .ss3-ava-dm {
-      background: linear-gradient(135deg, #1e3a5f, #38bdf8);
-      border: 1px solid rgba(56,189,248,0.2);
-    }
-
-    /* Scrollbar */
-    .ss3-scroll::-webkit-scrollbar { width: 3px; }
-    .ss3-scroll::-webkit-scrollbar-track { background: transparent; }
-    .ss3-scroll::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.12); border-radius: 2px; }
-
-    /* Separator */
-    .ss3-sep { background: rgba(52,211,153,0.07); }
-
-    /* Typing indicator */
-    .ss3-typing {
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-    }
-    @keyframes ss3-blink {
-      0%, 80%, 100% { opacity: 0.2; transform: scale(0.85); }
-      40% { opacity: 1; transform: scale(1.15); }
-    }
-    .ss3-dot { animation: ss3-blink 1.4s ease-in-out infinite; }
-
-    /* Empty state */
-    .ss3-empty-icon {
-      background: var(--green-dim);
-      border: 1px dashed rgba(16,185,129,0.2);
-    }
-
-    /* File attachment */
-    .ss3-file-own {
-      background: rgba(0,0,0,0.18);
-      border: 1px solid rgba(236,253,245,0.12);
-    }
-    .ss3-file-other {
-      background: var(--surface);
-      border: 1px solid var(--border);
-    }
-
-    /* Section label */
-    .ss3-section-label {
-      font-size: 9px;
-      letter-spacing: 0.28em;
-      text-transform: uppercase;
-      color: var(--text-3);
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-    }
-
-    /* Noise texture overlay */
-    .ss3-noise::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-      pointer-events: none;
-      opacity: 0.5;
-      border-radius: inherit;
-    }
-
-    /* Divider line */
-    .ss3-divider { 
-      height: 1px; 
-      background: linear-gradient(90deg, transparent, rgba(16,185,129,0.1), transparent);
-    }
-
-    @keyframes ss3-shimmer {
+    @keyframes ss4-shimmer {
       0% { background-position: -200% center; }
       100% { background-position: 200% center; }
     }
-    .ss3-ai-shimmer {
-      background: linear-gradient(90deg, rgba(245,158,11,0.6) 0%, rgba(245,158,11,1) 50%, rgba(245,158,11,0.6) 100%);
+    .ss4-ai-text {
+      background: linear-gradient(90deg, #b49dff 0%, #a5b8ff 40%, #c4a0ff 70%, #b49dff 100%);
       background-size: 200% auto;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      animation: ss3-shimmer 3s linear infinite;
+      animation: ss4-shimmer 3s linear infinite;
     }
+
+    /* ── Reply Bar ──────────────────────────────────────── */
+    .ss4-reply-bar {
+      background: var(--accent-muted);
+      border: 1px solid rgba(91,124,246,0.2);
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+    }
+
+    /* ── Modals / Overlays ──────────────────────────────── */
+    .ss4-overlay {
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .ss4-modal {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-2);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* ── Avatar styles ──────────────────────────────────── */
+    .ss4-ava-accent {
+      background: linear-gradient(140deg, #3a5ce0, #5b7cf6);
+    }
+    .ss4-ava-purple {
+      background: linear-gradient(140deg, #7038c0, #9b6fd6);
+    }
+    .ss4-ava-teal {
+      background: linear-gradient(140deg, #0e7c6a, #22b060);
+    }
+
+    /* ── Online Dot ─────────────────────────────────────── */
+    .ss4-online-dot {
+      background: var(--positive);
+      box-shadow: 0 0 0 2px var(--sidebar-bg), 0 0 6px rgba(52,201,125,0.6);
+    }
+    .ss4[data-theme="light"] .ss4-online-dot {
+      box-shadow: 0 0 0 2px #1e2430, 0 0 6px rgba(34,176,96,0.6);
+    }
+
+    /* ── Typing Indicator ───────────────────────────────── */
+    @keyframes ss4-dot-bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-4px); opacity: 1; }
+    }
+    .ss4-typing-dot {
+      animation: ss4-dot-bounce 1.4s ease-in-out infinite;
+    }
+
+    /* ── Status badge ───────────────────────────────────── */
+    .ss4-status-live {
+      background: rgba(91,124,246,0.12);
+      border: 1px solid rgba(91,124,246,0.2);
+      color: var(--accent-text);
+    }
+    .ss4-status-offline {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-1);
+      color: var(--text-tertiary);
+    }
+
+    /* ── Hover actions ──────────────────────────────────── */
+    .ss4-msg-actions {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-2);
+      border-radius: 10px;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ── Section label ──────────────────────────────────── */
+    .ss4-section-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      font-weight: 600;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────── */
+    .ss4-scroll::-webkit-scrollbar { width: 4px; }
+    .ss4-scroll::-webkit-scrollbar-track { background: transparent; }
+    .ss4-scroll::-webkit-scrollbar-thumb {
+      background: var(--scrollbar);
+      border-radius: 4px;
+    }
+
+    /* ── Date separator ─────────────────────────────────── */
+    .ss4-date-line {
+      height: 1px;
+      background: var(--border-1);
+    }
+    .ss4-date-chip {
+      background: var(--surface-2);
+      border: 1px solid var(--border-1);
+      border-radius: 20px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      padding: 3px 12px;
+      white-space: nowrap;
+    }
+
+    /* ── Video Call ─────────────────────────────────────── */
+    .ss4-vcall-modal {
+      background: #0d1117;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      box-shadow: var(--shadow-lg);
+    }
+    .ss4-vcall-screen {
+      background: radial-gradient(ellipse at 50% 30%, #141e3a 0%, #0a0d14 100%);
+      border-radius: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .ss4-vcall-screen::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 20%, rgba(91,124,246,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .ss4-vcall-ctrl {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+    .ss4-vcall-ctrl:hover {
+      background: rgba(255,255,255,0.14);
+    }
+    .ss4-vcall-end {
+      background: linear-gradient(145deg, #d93025, #e53e35);
+      border-radius: 50%;
+      box-shadow: 0 4px 20px rgba(217,48,37,0.4);
+      transition: all 0.2s ease;
+    }
+    .ss4-vcall-end:hover {
+      transform: scale(1.06);
+      box-shadow: 0 6px 28px rgba(217,48,37,0.5);
+    }
+    @keyframes ss4-call-ring {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(91,124,246,0.4); }
+      50% { box-shadow: 0 0 0 12px rgba(91,124,246,0); }
+    }
+    .ss4-calling-ring {
+      animation: ss4-call-ring 2s ease-in-out infinite;
+    }
+
+    /* ── Tab Switcher ───────────────────────────────────── */
+    .ss4-tab-bar {
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .ss4-tab {
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      transition: all 0.15s ease;
+      color: rgba(255,255,255,0.4);
+    }
+    .ss4-tab-active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(91,124,246,0.35);
+    }
+
+    /* ── Logo Mark ──────────────────────────────────────── */
+    .ss4-logo-mark {
+      background: linear-gradient(140deg, #3a5ce0, #5b7cf6);
+      box-shadow: 0 0 0 1px rgba(91,124,246,0.3), 0 4px 16px rgba(91,124,246,0.2);
+      border-radius: 10px;
+    }
+
+    /* ── New Message FAB ────────────────────────────────── */
+    .ss4-new-btn {
+      background: rgba(91,124,246,0.15);
+      border: 1px solid rgba(91,124,246,0.25);
+      border-radius: 8px;
+      color: var(--accent-text);
+      transition: all 0.15s ease;
+    }
+    .ss4-new-btn:hover {
+      background: rgba(91,124,246,0.25);
+    }
+
+    /* ── Theme Toggle ───────────────────────────────────── */
+    .ss4-theme-btn {
+      background: var(--bg-hover);
+      border: 1px solid var(--border-2);
+      border-radius: 8px;
+      color: var(--text-tertiary);
+      transition: all 0.15s ease;
+    }
+    .ss4-theme-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-3);
+    }
+
+    /* ── File attachment ────────────────────────────────── */
+    .ss4-file-own {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+    }
+    .ss4-file-other {
+      background: var(--surface-2);
+      border: 1px solid var(--border-1);
+      border-radius: 10px;
+    }
+
+    /* ── Unread badge ───────────────────────────────────── */
+    .ss4-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      border-radius: 10px;
+      min-width: 16px;
+      height: 16px;
+      line-height: 16px;
+      padding: 0 4px;
+      text-align: center;
+    }
+
+    /* ── Message load animation ─────────────────────────── */
+    @keyframes ss4-fade-up {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .ss4-msg-enter {
+      animation: ss4-fade-up 0.2s ease forwards;
+    }
+
+    /* ── Empty state icon ───────────────────────────────── */
+    .ss4-empty-icon {
+      background: var(--accent-muted);
+      border: 1px dashed rgba(91,124,246,0.25);
+      border-radius: 16px;
+    }
+
+    /* ── Divider ────────────────────────────────────────── */
+    .ss4-divider { height: 1px; background: var(--border-1); }
   `;
   document.head.appendChild(s);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 const ini = (n: string) => n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 const fmtTime = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 function fmtDate(d: string) {
@@ -457,37 +634,39 @@ function fmtDate(d: string) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 const fmtSize = (b: number) => b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`;
+const isVideoFileLike = (file: Pick<File, 'name' | 'type'>) => {
+  const extension = file.name.includes('.')
+    ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
+    : '';
+  return file.type.startsWith('video/') || SS4_VIDEO_EXTENSIONS.has(extension);
+};
+const isVideoAttachment = (attachment: SSMessage['attachments'][number]) => {
+  const extension = attachment.originalName.includes('.')
+    ? attachment.originalName.slice(attachment.originalName.lastIndexOf('.')).toLowerCase()
+    : '';
+  return attachment.mimeType.startsWith('video/') || SS4_VIDEO_EXTENSIONS.has(extension);
+};
 const getConvName = (c: SSConversation, uid: string) =>
   c.type === 'group' ? (c.name || 'Group') : (c.members.find(m => m._id !== uid)?.fullName || 'Unknown');
 const getConvAvatar = (c: SSConversation, uid: string) =>
   c.type === 'group' ? c.avatar : c.members.find(m => m._id !== uid)?.avatar;
 
-// ─── Date Separator ───────────────────────────────────────────────────────────
+// Deterministic avatar color per name
+const avaColors = ['ss4-ava-accent', 'ss4-ava-purple', 'ss4-ava-teal'];
+const getAvaColor = (name: string) => avaColors[name.charCodeAt(0) % avaColors.length];
 
+// ─── Date Separator ───────────────────────────────────────────────────────────
 function DateSep({ date }: { date: string }) {
   return (
-    <div className="flex items-center gap-3 my-5 px-6">
-      <div className="flex-1 ss3-divider" />
-      <span
-        className="ss3-hed px-3 py-1 rounded-full"
-        style={{
-          fontSize: 9,
-          letterSpacing: '0.25em',
-          textTransform: 'uppercase',
-          color: 'rgba(52,211,153,0.4)',
-          background: 'rgba(16,185,129,0.05)',
-          border: '1px solid rgba(16,185,129,0.1)',
-        }}
-      >
-        {fmtDate(date)}
-      </span>
-      <div className="flex-1 ss3-divider" />
+    <div className="flex items-center gap-3 my-6 px-5">
+      <div className="flex-1 ss4-date-line" />
+      <span className="ss4-date-chip">{fmtDate(date)}</span>
+      <div className="flex-1 ss4-date-line" />
     </div>
   );
 }
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
-
 function Bubble({ message, isOwn, showAvatar, onReply, onDelete }: {
   message: SSMessage; isOwn: boolean; showAvatar: boolean;
   onReply: (m: SSMessage) => void; onDelete: (id: string) => void;
@@ -496,102 +675,96 @@ function Bubble({ message, isOwn, showAvatar, onReply, onDelete }: {
 
   if (message.isDeleted) {
     return (
-      <div className={cn('flex gap-3 px-6', isOwn && 'flex-row-reverse')}>
+      <div className={cn('flex gap-2.5 px-5', isOwn && 'flex-row-reverse')}>
         <div className="w-8 shrink-0" />
-        <p className="text-xs italic py-1" style={{ color: 'rgba(52,211,153,0.2)' }}>
-          Message deleted
+        <p className="text-xs italic py-1" style={{ color: 'var(--text-disabled)' }}>
+          This message was deleted
         </p>
       </div>
     );
   }
 
+  const aColor = getAvaColor(message.sender.fullName);
+
   return (
     <div
-      className={cn('flex gap-3 px-6 relative group', isOwn && 'flex-row-reverse')}
+      className={cn('flex gap-2.5 px-5 relative ss4-msg-enter', isOwn && 'flex-row-reverse')}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
     >
+      {/* Avatar */}
       {showAvatar ? (
         <div className={cn(
-          'h-8 w-8 rounded-xl shrink-0 mt-0.5 flex items-center justify-center overflow-hidden',
-          isOwn ? 'ss3-ava-dm' : 'ss3-ava-group'
+          'h-8 w-8 rounded-full shrink-0 mt-0.5 flex items-center justify-center overflow-hidden',
+          aColor
         )}>
           {message.sender.avatar
             ? <img src={message.sender.avatar} alt="" className="w-full h-full object-cover" />
-            : <span className="ss3-hed text-white font-700" style={{ fontSize: 10 }}>{ini(message.sender.fullName)}</span>}
+            : <span className="text-white font-semibold" style={{ fontSize: 11 }}>{ini(message.sender.fullName)}</span>}
         </div>
       ) : (
         <div className="w-8 shrink-0" />
       )}
 
-      <div className={cn('flex flex-col gap-1.5 max-w-[70%]', isOwn && 'items-end')}>
+      <div className={cn('flex flex-col gap-1 max-w-[68%]', isOwn && 'items-end')}>
+        {/* Sender name */}
         {showAvatar && !isOwn && (
-          <span
-            className="ss3-hed font-600 px-1"
-            style={{ fontSize: 10, letterSpacing: '0.05em', color: 'rgba(52,211,153,0.5)' }}
-          >
+          <span className="px-1 font-semibold" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {message.sender.fullName}
           </span>
         )}
 
+        {/* Reply preview */}
         {message.replyTo && (
           <div
-            className={cn('ss3-reply-preview rounded-xl px-3 py-2 mb-1 max-w-full')}
-            style={isOwn ? {
-              borderRight: '2px solid rgba(16,185,129,0.3)',
-              borderLeft: 'none',
-              background: 'rgba(16,185,129,0.05)',
-            } : {}}
+            className="rounded-xl px-3 py-2 mb-1 max-w-full ss4-reply-bar"
           >
-            <p
-              className="ss3-hed font-700 truncate"
-              style={{ fontSize: 9, letterSpacing: '0.15em', color: 'rgba(52,211,153,0.7)' }}
-            >
-              {(message.replyTo as any).sender?.fullName?.toUpperCase()}
+            <p className="font-semibold truncate" style={{ fontSize: 10, letterSpacing: '0.05em', color: 'var(--accent-text)' }}>
+              {(message.replyTo as any).sender?.fullName}
             </p>
-            <p className="truncate mt-0.5" style={{ fontSize: 11, color: 'var(--text-3)' }}>
+            <p className="truncate mt-0.5" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
               {(message.replyTo as any).content || '📎 Attachment'}
             </p>
           </div>
         )}
 
+        {/* Bubble */}
         <div className={cn(
-          'rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words',
-          isOwn ? 'ss3-bubble-own rounded-tr-sm' : 'ss3-bubble-other rounded-tl-sm'
+          'px-4 py-2.5 text-sm leading-relaxed wrap-break-word',
+          isOwn ? 'ss4-bubble-own' : 'ss4-bubble-other'
         )}>
           {message.attachments.filter(a => a.mimeType.startsWith('image/')).map((att, i) => (
-            <a key={i} href={att.url} target="_blank" rel="noreferrer" className="block mb-2 last:mb-0">
-              <img
-                src={att.url}
-                alt={att.originalName}
-                className="rounded-xl object-cover"
-                style={{ maxHeight: 240, maxWidth: '100%' }}
-              />
+            <a key={`img-${i}`} href={att.url} target="_blank" rel="noreferrer" className="block mb-2 last:mb-0">
+              <img src={att.url} alt={att.originalName} className="rounded-xl object-cover" style={{ maxHeight: 220, maxWidth: '100%' }} />
             </a>
           ))}
-          {message.attachments.filter(a => !a.mimeType.startsWith('image/')).map((att, i) => (
-            <a
-              key={i}
-              href={att.url}
-              target="_blank"
-              rel="noreferrer"
-              className={cn(
-                'flex items-center gap-3 rounded-xl p-3 mb-2 last:mb-0 transition-opacity hover:opacity-80',
-                isOwn ? 'ss3-file-own' : 'ss3-file-other'
-              )}
-            >
-              <div
-                className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: isOwn ? 'rgba(236,253,245,0.1)' : 'rgba(16,185,129,0.1)' }}
+          {message.attachments.filter(isVideoAttachment).map((att, i) => (
+            <div key={`video-${i}`} className="mb-2 last:mb-0">
+              <video
+                controls
+                preload="metadata"
+                className="rounded-xl"
+                style={{ maxHeight: 260, maxWidth: '100%' }}
               >
-                <FileText
-                  className="h-4 w-4"
-                  style={{ color: isOwn ? 'rgba(236,253,245,0.7)' : 'var(--green2)' }}
-                />
+                <source src={att.url} type={att.mimeType || 'video/mp4'} />
+                Your browser does not support the video tag.
+              </video>
+              <a href={att.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 mt-1 text-[10px] opacity-60 hover:opacity-90">
+                <Download className="h-3 w-3" />
+                Open video
+              </a>
+            </div>
+          ))}
+          {message.attachments.filter(a => !a.mimeType.startsWith('image/') && !isVideoAttachment(a)).map((att, i) => (
+            <a key={`file-${i}`} href={att.url} target="_blank" rel="noreferrer"
+              className={cn('flex items-center gap-3 rounded-xl p-2.5 mb-2 last:mb-0 transition-opacity hover:opacity-80', isOwn ? 'ss4-file-own' : 'ss4-file-other')}
+            >
+              <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: isOwn ? 'rgba(255,255,255,0.12)' : 'var(--accent-muted)' }}>
+                <FileText className="h-4 w-4" style={{ color: isOwn ? 'rgba(255,255,255,0.8)' : 'var(--accent)' }} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold truncate">{att.originalName}</p>
-                <p className="mt-0.5 opacity-50" style={{ fontSize: 10 }}>{fmtSize(att.size)}</p>
+                <p className="mt-0.5 opacity-50 ss4-mono" style={{ fontSize: 10 }}>{fmtSize(att.size)}</p>
               </div>
               <Download className="h-3.5 w-3.5 shrink-0 opacity-40" />
             </a>
@@ -599,14 +772,15 @@ function Bubble({ message, isOwn, showAvatar, onReply, onDelete }: {
           {message.content && <p>{message.content}</p>}
         </div>
 
+        {/* Meta row */}
         <div className={cn('flex items-center gap-1.5 px-1', isOwn && 'flex-row-reverse')}>
-          <span className="tabular-nums" style={{ fontSize: 9, color: 'var(--text-3)' }}>
+          <span className="ss4-mono tabular-nums" style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
             {fmtTime(message.createdAt)}
           </span>
           {isOwn && (
             message.readBy.length > 1
-              ? <CheckCheck className="h-3 w-3" style={{ color: 'var(--green2)' }} />
-              : <Check className="h-3 w-3" style={{ color: 'var(--text-3)' }} />
+              ? <CheckCheck className="h-3 w-3" style={{ color: 'var(--positive)' }} />
+              : <Check className="h-3 w-3" style={{ color: 'var(--text-tertiary)' }} />
           )}
         </div>
       </div>
@@ -614,21 +788,19 @@ function Bubble({ message, isOwn, showAvatar, onReply, onDelete }: {
       {/* Hover actions */}
       {hov && (
         <div className={cn(
-          'ss3-actions absolute top-0 flex items-center gap-0.5 rounded-xl px-1 py-1 z-10',
+          'ss4-msg-actions absolute top-0 flex items-center gap-0.5 px-1 py-1 z-10',
           isOwn ? 'right-16' : 'left-16'
         )}>
-          <button
-            onClick={() => onReply(message)}
-            className="ss3-icon-btn p-1.5"
-            title="Reply"
-          >
+          <button onClick={() => onReply(message)} className="ss4-icon-btn p-1.5" title="Reply">
             <Reply className="h-3.5 w-3.5" />
           </button>
           {isOwn && (
             <button
               onClick={() => onDelete(message._id)}
-              className="p-1.5 rounded-lg transition-all hover:bg-red-500/10 hover:text-red-400"
-              style={{ color: 'var(--text-3)' }}
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: 'var(--text-tertiary)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-muted)'; e.currentTarget.style.color = 'var(--danger)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
               title="Delete"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -641,208 +813,113 @@ function Bubble({ message, isOwn, showAvatar, onReply, onDelete }: {
 }
 
 // ─── Video Call Modal ─────────────────────────────────────────────────────────
-
-function VideoCallModal({
-  conv,
-  uid,
-  onClose,
-}: {
-  conv: SSConversation;
-  uid: string;
-  onClose: () => void;
-}) {
+function VideoCallModal({ conv, uid, onClose }: { conv: SSConversation; uid: string; onClose: () => void }) {
   const [micOn, setMicOn] = React.useState(true);
   const [camOn, setCamOn] = React.useState(true);
-  const [callDuration, setCallDuration] = React.useState(0);
-  const [callState, setCallState] = React.useState<'calling' | 'connected'>('calling');
+  const [dur, setDur] = React.useState(0);
+  const [state, setState] = React.useState<'calling' | 'connected'>('calling');
 
   const name = getConvName(conv, uid);
   const avatar = getConvAvatar(conv, uid);
 
-  // Simulate connection after 2s
+  React.useEffect(() => { const t = setTimeout(() => setState('connected'), 2200); return () => clearTimeout(t); }, []);
   React.useEffect(() => {
-    const t = setTimeout(() => setCallState('connected'), 2000);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Timer once connected
-  React.useEffect(() => {
-    if (callState !== 'connected') return;
-    const t = setInterval(() => setCallDuration(d => d + 1), 1000);
+    if (state !== 'connected') return;
+    const t = setInterval(() => setDur(d => d + 1), 1000);
     return () => clearInterval(t);
-  }, [callState]);
+  }, [state]);
 
-  const fmtDuration = (s: number) => {
-    const m = Math.floor(s / 60).toString().padStart(2, '0');
-    const sec = (s % 60).toString().padStart(2, '0');
-    return `${m}:${sec}`;
-  };
+  const fmtDur = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="ss3-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="ss3-vcall-modal ss3 rounded-2xl w-full max-w-md overflow-hidden flex flex-col">
-
-        {/* Header bar */}
-        <div
-          className="flex items-center justify-between px-5 py-3.5 shrink-0"
-          style={{ borderBottom: '1px solid rgba(56,189,248,0.08)' }}
-        >
-          <div className="flex items-center gap-2">
-            <div
-              className="h-6 w-6 rounded-lg flex items-center justify-center"
-              style={{ background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.2)' }}
-            >
-              <Video className="h-3 w-3" style={{ color: 'var(--blue)' }} />
-            </div>
-            <span className="ss3-hed font-700" style={{ fontSize: 11, letterSpacing: '0.1em', color: 'var(--blue)' }}>
-              VIDEO CALL
-            </span>
+    <div className="ss4-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="ss4 ss4-vcall-modal w-full max-w-sm overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex items-center gap-2.5">
+            <Video className="h-4 w-4" style={{ color: 'var(--accent-text)' }} />
+            <span className="font-semibold" style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)' }}>Video Call</span>
           </div>
-          <div className="flex items-center gap-2">
-            {callState === 'connected' && (
-              <span
-                className="ss3-hed font-700 tabular-nums"
-                style={{ fontSize: 10, letterSpacing: '0.08em', color: 'rgba(56,189,248,0.6)' }}
-              >
-                {fmtDuration(callDuration)}
+          <div className="flex items-center gap-3">
+            {state === 'connected' && (
+              <span className="ss4-mono font-medium tabular-nums" style={{ fontSize: 12, color: 'var(--positive)' }}>
+                {fmtDur(dur)}
               </span>
             )}
-            <button
-              onClick={onClose}
-              className="ss3-icon-btn h-7 w-7 flex items-center justify-center"
-            >
+            <button onClick={onClose} className="h-7 w-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/10" style={{ color: 'rgba(255,255,255,0.5)' }}>
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Main video area */}
-        <div className="ss3-vcall-screen flex flex-col items-center justify-center" style={{ height: 280 }}>
-
-          {/* Remote participant */}
-          <div className="flex flex-col items-center gap-4">
-            {/* Avatar with ring */}
-            <div
-              className={cn(
-                'h-20 w-20 rounded-2xl flex items-center justify-center overflow-hidden',
-                conv.type === 'group' ? 'ss3-ava-group' : 'ss3-ava-dm',
-                callState === 'calling' && 'ss3-vcall-avatar-ring'
-              )}
-              style={{ border: '2px solid rgba(56,189,248,0.3)' }}
-            >
+        {/* Video area */}
+        <div className="ss4-vcall-screen flex flex-col items-center justify-center" style={{ height: 260 }}>
+          <div className="flex flex-col items-center gap-4 relative z-10">
+            <div className={cn(
+              'h-20 w-20 rounded-2xl flex items-center justify-center overflow-hidden',
+              getAvaColor(name),
+              state === 'calling' && 'ss4-calling-ring'
+            )}>
               {avatar
                 ? <img src={avatar} alt="" className="w-full h-full object-cover" />
                 : conv.type === 'group'
-                  ? <Hash className="h-7 w-7 text-white" style={{ opacity: 0.7 }} />
-                  : <span className="ss3-hed text-white" style={{ fontSize: 22, fontWeight: 700 }}>
-                      {ini(name)}
-                    </span>}
+                  ? <Hash className="h-7 w-7 text-white opacity-70" />
+                  : <span className="text-white font-bold" style={{ fontSize: 24 }}>{ini(name)}</span>}
             </div>
-
             <div className="flex flex-col items-center gap-1.5">
-              <p className="ss3-hed font-700" style={{ fontSize: 16, color: 'var(--text-1)' }}>
-                {name}
-              </p>
-
-              {callState === 'calling' ? (
-                <div className="flex items-center gap-1.5">
-                  <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Calling</span>
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map(i => (
-                      <span
-                        key={i}
-                        className="ss3-vcall-dot h-1 w-1 rounded-full"
-                        style={{ background: 'rgba(56,189,248,0.5)', animationDelay: `${i * 0.2}s` }}
-                      />
-                    ))}
-                  </div>
+              <p className="ss4-display font-bold" style={{ fontSize: 17, color: '#fff' }}>{name}</p>
+              {state === 'calling' ? (
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Calling</span>
+                  {[0, 1, 2].map(i => (
+                    <span key={i} className="ss4-typing-dot h-1 w-1 rounded-full inline-block"
+                      style={{ background: 'rgba(255,255,255,0.4)', animationDelay: `${i * 0.2}s` }} />
+                  ))}
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: 'var(--green2)', boxShadow: '0 0 6px rgba(52,211,153,0.8)' }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--green2)' }}>Connected</span>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--positive)', boxShadow: '0 0 6px rgba(52,201,125,0.8)' }} />
+                  <span style={{ fontSize: 12, color: 'var(--positive)' }}>Connected</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Self preview pip */}
-          <div
-            className="absolute bottom-4 right-4 h-16 w-24 rounded-xl overflow-hidden flex items-center justify-center"
-            style={{
-              background: 'rgba(7,13,7,0.9)',
-              border: '1px solid rgba(56,189,248,0.15)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-            }}
-          >
+          {/* Self PIP */}
+          <div className="absolute bottom-4 right-4 h-16 w-24 rounded-xl overflow-hidden flex items-center justify-center"
+            style={{ background: '#1a2035', border: '1px solid rgba(91,124,246,0.2)', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
             {camOn ? (
-              <div
-                className="w-full h-full flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #0a1a12, #070d07)' }}
-              >
-                <span className="ss3-hed text-white" style={{ fontSize: 13, fontWeight: 700, opacity: 0.4 }}>
-                  You
-                </span>
-              </div>
+              <span className="font-medium" style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>You</span>
             ) : (
               <div className="flex flex-col items-center gap-1">
-                <VideoOff className="h-4 w-4" style={{ color: 'rgba(56,189,248,0.4)' }} />
-                <span style={{ fontSize: 8, color: 'var(--text-3)', letterSpacing: '0.1em' }}>CAM OFF</span>
+                <VideoOff className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
               </div>
             )}
           </div>
         </div>
 
         {/* Controls */}
-        <div
-          className="flex items-center justify-center gap-3 px-5 py-4 shrink-0"
-          style={{ borderTop: '1px solid rgba(56,189,248,0.06)' }}
-        >
-          {/* Mic toggle */}
-          <button
-            onClick={() => setMicOn(v => !v)}
-            className="ss3-vcall-ctrl h-11 w-11 rounded-2xl flex items-center justify-center"
-            title={micOn ? 'Mute mic' : 'Unmute mic'}
-            style={!micOn ? { background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.2)' } : {}}
-          >
-            {micOn
-              ? <Mic className="h-4.5 w-4.5" style={{ color: 'var(--text-2)' }} />
-              : <MicOff className="h-4.5 w-4.5" style={{ color: '#ef4444' }} />}
+        <div className="flex items-center justify-center gap-4 px-5 py-5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <button onClick={() => setMicOn(v => !v)}
+            className="ss4-vcall-ctrl h-11 w-11 flex items-center justify-center"
+            style={!micOn ? { background: 'rgba(240,92,92,0.15)', borderColor: 'rgba(240,92,92,0.25)' } : {}}>
+            {micOn ? <Mic className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.7)' }} /> : <MicOff className="h-4 w-4" style={{ color: '#f05c5c' }} />}
           </button>
 
-          {/* End call */}
-          <button
-            onClick={onClose}
-            className="ss3-vcall-end h-13 w-13 rounded-2xl flex items-center justify-center"
-            style={{ height: 52, width: 52 }}
-            title="End call"
-          >
+          <button onClick={onClose} className="ss4-vcall-end h-14 w-14 flex items-center justify-center">
             <PhoneOff className="h-5 w-5" style={{ color: '#fff' }} />
           </button>
 
-          {/* Camera toggle */}
-          <button
-            onClick={() => setCamOn(v => !v)}
-            className="ss3-vcall-ctrl h-11 w-11 rounded-2xl flex items-center justify-center"
-            title={camOn ? 'Turn off camera' : 'Turn on camera'}
-            style={!camOn ? { background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.2)' } : {}}
-          >
-            {camOn
-              ? <Video className="h-4.5 w-4.5" style={{ color: 'var(--text-2)' }} />
-              : <VideoOff className="h-4.5 w-4.5" style={{ color: '#ef4444' }} />}
+          <button onClick={() => setCamOn(v => !v)}
+            className="ss4-vcall-ctrl h-11 w-11 flex items-center justify-center"
+            style={!camOn ? { background: 'rgba(240,92,92,0.15)', borderColor: 'rgba(240,92,92,0.25)' } : {}}>
+            {camOn ? <Video className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.7)' }} /> : <VideoOff className="h-4 w-4" style={{ color: '#f05c5c' }} />}
           </button>
         </div>
 
-        {/* Footer note */}
-        <div
-          className="px-5 pb-4 text-center"
-          style={{ borderTop: '1px solid rgba(56,189,248,0.04)' }}
-        >
-          <p style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.05em' }}>
-            Connect your video SDK (e.g. Daily, Agora, Livekit) to enable live video
+        <div className="pb-4 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.04em' }}>
+            Integrate Daily · Agora · LiveKit for live video
           </p>
         </div>
       </div>
@@ -851,7 +928,6 @@ function VideoCallModal({
 }
 
 // ─── New Conversation Modal ───────────────────────────────────────────────────
-
 interface CrmUser { _id: string; fullName: string; username: string; avatar?: string; role: string }
 
 function NewConvModal({ users, onClose, onStartDM, onCreateGroup }: {
@@ -871,91 +947,74 @@ function NewConvModal({ users, onClose, onStartDM, onCreateGroup }: {
   const toggle = (id: string) => setSel(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
   return (
-    <div className="ss3-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="ss3-modal ss3 rounded-2xl w-full max-w-sm overflow-hidden">
-        {/* Modal header */}
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid rgba(16,185,129,0.07)' }}
-        >
-          <h2 className="ss3-hed font-700" style={{ fontSize: 14, color: 'var(--text-1)' }}>
+    <div className="ss4-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="ss4-modal w-full max-w-sm overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border-1)' }}>
+          <h2 className="ss4-display font-bold" style={{ fontSize: 16, color: 'var(--text-primary)' }}>
             New Conversation
           </h2>
-          <button
-            onClick={onClose}
-            className="ss3-icon-btn h-7 w-7 flex items-center justify-center"
-          >
+          <button onClick={onClose} className="ss4-icon-btn h-7 w-7">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1.5 p-3" style={{ borderBottom: '1px solid rgba(16,185,129,0.06)' }}>
-          {(['dm', 'group'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={cn(
-                'flex-1 h-8 rounded-xl transition-all ss3-hed font-700',
-                t === tab ? 'ss3-tab-active' : 'hover:bg-[rgba(16,185,129,0.05)]'
-              )}
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: t === tab ? '#ecfdf5' : 'var(--text-2)',
-              }}
-            >
-              {t === 'dm' ? 'Direct' : 'Group'}
-            </button>
-          ))}
+        {/* Tab switcher */}
+        <div className="px-4 pt-4 pb-3">
+          <div className="ss4-tab-bar flex gap-1">
+            {(['dm', 'group'] as const).map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                className={cn('flex-1 h-7 ss4-tab', t === tab && 'ss4-tab-active')}>
+                {t === 'dm' ? 'Direct Message' : 'New Group'}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="p-4 space-y-3">
+        <div className="px-4 pb-4 space-y-3">
           {tab === 'group' && (
             <input
               value={groupName}
               onChange={e => setGroupName(e.target.value)}
               placeholder="Group name..."
-              className="w-full h-9 rounded-xl px-3 text-sm ss3-search"
+              className="w-full h-9 rounded-lg px-3 text-sm ss4-search-input"
+              style={{ fontFamily: 'Geist, sans-serif' }}
             />
           )}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--text-3)' }} />
+            <Search className="ss4-search-icon absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--text-tertiary)' }} />
             <input
               value={q}
               onChange={e => setQ(e.target.value)}
-              placeholder="Find someone..."
-              className="w-full h-9 rounded-xl pl-9 pr-3 text-sm ss3-search"
+              placeholder="Search people..."
+              className="w-full h-9 rounded-lg pl-9 pr-3 text-sm ss4-search-input"
+              style={{ fontFamily: 'Geist, sans-serif' }}
             />
           </div>
 
-          <div className="space-y-0.5 max-h-60 overflow-y-auto ss3-scroll">
+          <div className="space-y-0.5 max-h-56 overflow-y-auto ss4-scroll -mx-1 px-1">
             {list.map(u => {
               const active = sel.includes(u._id);
               return (
-                <button
-                  key={u._id}
+                <button key={u._id}
                   onClick={() => tab === 'dm' ? onStartDM(u._id) : toggle(u._id)}
                   className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left',
-                    active ? 'ss3-conv-active' : 'hover:bg-[rgba(16,185,129,0.04)]'
+                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left',
+                    active ? 'bg-(--accent-muted) border border-[rgba(91,124,246,0.2)]' : 'hover:bg-(--bg-hover)'
                   )}
                 >
-                  <div className="h-8 w-8 rounded-xl shrink-0 flex items-center justify-center overflow-hidden ss3-ava-dm">
+                  <div className={cn('h-8 w-8 rounded-full shrink-0 flex items-center justify-center overflow-hidden', getAvaColor(u.fullName))}>
                     {u.avatar
                       ? <img src={u.avatar} alt="" className="w-full h-full object-cover" />
-                      : <span className="ss3-hed text-white font-700" style={{ fontSize: 10 }}>{ini(u.fullName)}</span>}
+                      : <span className="text-white font-semibold" style={{ fontSize: 11 }}>{ini(u.fullName)}</span>}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-500 truncate" style={{ fontSize: 13, color: 'var(--text-1)' }}>{u.fullName}</p>
-                    <p className="truncate mt-0.5" style={{ fontSize: 10, color: 'var(--text-3)' }}>
-                      @{u.username} · {u.role}
-                    </p>
+                    <p className="font-medium truncate" style={{ fontSize: 13, color: 'var(--text-primary)' }}>{u.fullName}</p>
+                    <p className="truncate mt-0.5" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>@{u.username} · {u.role}</p>
                   </div>
                   {tab === 'group' && active && (
-                    <div className="h-5 w-5 rounded-full flex items-center justify-center ss3-fab shrink-0">
-                      <Check className="h-3 w-3" style={{ color: '#ecfdf5' }} />
+                    <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--accent)' }}>
+                      <Check className="h-3 w-3" style={{ color: '#fff' }} />
                     </div>
                   )}
                 </button>
@@ -967,17 +1026,11 @@ function NewConvModal({ users, onClose, onStartDM, onCreateGroup }: {
             <button
               onClick={() => groupName.trim() && onCreateGroup(groupName, sel)}
               disabled={!groupName.trim()}
-              className="w-full h-9 rounded-xl ss3-tab-active ss3-hed font-700 flex items-center justify-center gap-2"
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#ecfdf5',
-                opacity: !groupName.trim() ? 0.4 : 1,
-              }}
+              className="w-full h-9 rounded-lg ss4-send-btn font-semibold flex items-center justify-center gap-2"
+              style={{ fontSize: 13, opacity: !groupName.trim() ? 0.4 : 1 }}
             >
               <Users className="h-3.5 w-3.5" />
-              Create · {sel.length} {sel.length === 1 ? 'member' : 'members'}
+              Create Group · {sel.length} {sel.length === 1 ? 'member' : 'members'}
             </button>
           )}
         </div>
@@ -987,12 +1040,13 @@ function NewConvModal({ users, onClose, onStartDM, onCreateGroup }: {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-
 export default function SupraSpacePage() {
   const router = useRouter();
+  const uploadNoticeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [token, setToken] = React.useState('');
   const [uid, setUid] = React.useState('');
   const [loading, setLoading] = React.useState(true);
+  const [theme, setTheme] = React.useState<'dark' | 'light'>('dark');
 
   const [convos, setConvos] = React.useState<SSConversation[]>([]);
   const [activeId, setActiveId] = React.useState<string | null>(null);
@@ -1006,13 +1060,17 @@ export default function SupraSpacePage() {
   const [replyTo, setReplyTo] = React.useState<SSMessage | null>(null);
   const [sending, setSending] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
+  const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
+  const [uploadNotice, setUploadNotice] = React.useState<{ kind: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   const [showModal, setShowModal] = React.useState(false);
   const [allUsers, setAllUsers] = React.useState<CrmUser[]>([]);
   const [q, setQ] = React.useState('');
-
-  // ── Video call state — holds the conv being called (null = no call) ──
   const [videoCallConv, setVideoCallConv] = React.useState<SSConversation | null>(null);
+
+  const [supraLeoOpen, setSupraLeoOpen] = React.useState(false);
+  const [supraLeoLoading, setSupraLeoLoading] = React.useState(false);
+  const supraLeoRef = React.useRef<HTMLDivElement>(null);
 
   const endRef = React.useRef<HTMLDivElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -1021,16 +1079,14 @@ export default function SupraSpacePage() {
   const activeConv = convos.find(c => c._id === activeId);
   const activeMsgs = activeId ? (msgs[activeId] || []) : [];
 
-  const {
-    socket, isConnected, presence, typing,
-    joinConversation, leaveConversation,
-    sendTypingStart, sendTypingStop, markRead,
-  } = useSupraSpaceSocket(token || null);
+  const { socket, isConnected, presence, typing, joinConversation, leaveConversation, sendTypingStart, sendTypingStop, markRead } = useSupraSpaceSocket(token || null);
 
   React.useEffect(() => {
     const t = localStorage.getItem('crm_token');
     if (!t) { router.replace('/crm'); return; }
     setToken(t);
+    const savedTheme = localStorage.getItem('ss4_theme') as 'dark' | 'light' | null;
+    if (savedTheme) setTheme(savedTheme);
     const init = async () => {
       try {
         const [me, cv, us] = await Promise.all([
@@ -1048,95 +1104,167 @@ export default function SupraSpacePage() {
   }, [router]);
 
   React.useEffect(() => {
+    return () => {
+      if (uploadNoticeTimerRef.current) clearTimeout(uploadNoticeTimerRef.current);
+    };
+  }, []);
+
+  const showUploadNotice = React.useCallback((kind: 'success' | 'error' | 'info', text: string) => {
+    if (uploadNoticeTimerRef.current) clearTimeout(uploadNoticeTimerRef.current);
+    setUploadNotice({ kind, text });
+    uploadNoticeTimerRef.current = setTimeout(() => setUploadNotice(null), 3500);
+  }, []);
+
+  const appendMessageLocal = React.useCallback((conversationId: string, message: SSMessage) => {
+    setMsgs(p => {
+      const ex = p[conversationId] || [];
+      if (ex.find(m => m._id === message._id)) return p;
+      return { ...p, [conversationId]: [...ex, message] };
+    });
+    setConvos(p => p.map(c => c._id === conversationId
+      ? { ...c, lastMessage: message, lastMessageAt: message.createdAt } : c
+    ).sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()));
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('ss4_theme', next);
+  };
+
+  React.useEffect(() => {
     if (!socket) return;
     const onMsg = ({ conversationId, message }: { conversationId: string; message: SSMessage }) => {
-      setMsgs(p => {
-        const ex = p[conversationId] || [];
-        if (ex.find(m => m._id === message._id)) return p;
-        return { ...p, [conversationId]: [...ex, message] };
-      });
-      setConvos(p =>
-        p.map(c => c._id === conversationId
-          ? { ...c, lastMessage: message, lastMessageAt: message.createdAt }
-          : c
-        ).sort((a, b) =>
-          new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
-        )
-      );
+      appendMessageLocal(conversationId, message);
     };
     const onDel = ({ conversationId, messageId }: { conversationId: string; messageId: string }) => {
-      setMsgs(p => ({
-        ...p,
-        [conversationId]: (p[conversationId] || []).map(m =>
-          m._id === messageId ? { ...m, isDeleted: true, content: '', attachments: [] } : m
-        ),
-      }));
+      setMsgs(p => ({ ...p, [conversationId]: (p[conversationId] || []).map(m => m._id === messageId ? { ...m, isDeleted: true, content: '', attachments: [] } : m) }));
     };
     const onNew = (c: SSConversation) => setConvos(p => [c, ...p.filter(x => x._id !== c._id)]);
     socket.on('message:new', onMsg);
     socket.on('message:deleted', onDel);
     socket.on('conversation:new', onNew);
-    return () => {
-      socket.off('message:new', onMsg);
-      socket.off('message:deleted', onDel);
-      socket.off('conversation:new', onNew);
-    };
-  }, [socket]);
+    return () => { socket.off('message:new', onMsg); socket.off('message:deleted', onDel); socket.off('conversation:new', onNew); };
+  }, [socket, appendMessageLocal]);
 
-  React.useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeMsgs.length]);
+  React.useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [activeMsgs.length]);
 
   React.useEffect(() => {
     if (!activeId || !token) return;
     joinConversation(activeId);
     if (!msgs[activeId]) {
       setLoadingMsgs(true);
-      apiClient.get(`/api/supraspace/conversations/${activeId}/messages`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 40 },
-      }).then(r => {
-        const d = r.data?.data || [];
-        setMsgs(p => ({ ...p, [activeId]: d }));
-        setHasMore(p => ({ ...p, [activeId]: d.length === 40 }));
-      }).finally(() => setLoadingMsgs(false));
+      apiClient.get(`/api/supraspace/conversations/${activeId}/messages`, { headers: { Authorization: `Bearer ${token}` }, params: { limit: 40 } })
+        .then(r => {
+          const d = r.data?.data || [];
+          setMsgs(p => ({ ...p, [activeId]: d }));
+          setHasMore(p => ({ ...p, [activeId]: d.length === 40 }));
+        }).finally(() => setLoadingMsgs(false));
     }
     markRead(activeId);
     return () => leaveConversation(activeId);
   }, [activeId, token]); // eslint-disable-line
 
+  React.useEffect(() => {
+    setPendingFiles([]);
+    setUploadNotice(null);
+  }, [activeId]);
+
   const handleSend = async () => {
-    if (!input.trim() || !activeId || sending) return;
-    setSending(true);
-    sendTypingStop(activeId);
+    if (!activeId || sending) return;
+    const hasText = Boolean(input.trim());
+    const hasPendingFiles = pendingFiles.length > 0;
+    if (!hasText && !hasPendingFiles) return;
+
+    const conversationId = activeId;
     const content = input.trim();
-    const rId = replyTo?._id;
-    setInput('');
-    setReplyTo(null);
+    const replyMessageId = replyTo?._id;
+
+    setSending(true);
+    sendTypingStop(conversationId);
+
     try {
-      await apiClient.post(
-        `/api/supraspace/conversations/${activeId}/messages`,
-        { content, replyTo: rId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch { setInput(content); }
-    finally { setSending(false); }
+      if (hasPendingFiles) {
+        setUploading(true);
+        const fd = new FormData();
+        pendingFiles.forEach(f => fd.append('files', f));
+        if (content) fd.append('content', content);
+        if (replyMessageId) fd.append('replyTo', replyMessageId);
+
+        const uploadResponse = await apiClient.post(
+          `/api/supraspace/conversations/${conversationId}/upload`,
+          fd,
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+        );
+        const uploadedMessage = uploadResponse.data?.data as SSMessage | undefined;
+        if (uploadedMessage) appendMessageLocal(conversationId, uploadedMessage);
+
+        setPendingFiles([]);
+        setInput('');
+        setReplyTo(null);
+        showUploadNotice('success', pendingFiles.length === 1 ? 'Attachment sent.' : `${pendingFiles.length} attachments sent.`);
+      } else {
+        setInput('');
+        setReplyTo(null);
+        const sendResponse = await apiClient.post(
+          `/api/supraspace/conversations/${conversationId}/messages`,
+          { content, replyTo: replyMessageId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const sentMessage = sendResponse.data?.data as SSMessage | undefined;
+        if (sentMessage) appendMessageLocal(conversationId, sentMessage);
+      }
+    } catch (error: any) {
+      if (hasPendingFiles) {
+        const message = error?.response?.data?.message || 'Failed to send attachment. Please try again.';
+        showUploadNotice('error', message);
+      } else {
+        setInput(content);
+      }
+    } finally {
+      setSending(false);
+      setUploading(false);
+    }
   };
 
   const handleUpload = async (files: FileList | null) => {
-    if (!files || !activeId) return;
-    setUploading(true);
-    const fd = new FormData();
-    Array.from(files).forEach(f => fd.append('files', f));
-    if (replyTo) fd.append('replyTo', replyTo._id);
-    setReplyTo(null);
-    try {
-      await apiClient.post(
-        `/api/supraspace/conversations/${activeId}/upload`,
-        fd,
-        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
-      );
-    } catch {} finally { setUploading(false); }
+    if (!files) return;
+    if (!activeId) {
+      showUploadNotice('error', 'Select a conversation before attaching files.');
+      return;
+    }
+
+    const selectedFiles = Array.from(files);
+    if (selectedFiles.length === 0) return;
+
+    const totalFiles = pendingFiles.length + selectedFiles.length;
+    if (totalFiles > SS4_MAX_UPLOAD_FILES) {
+      showUploadNotice('error', `You can attach up to ${SS4_MAX_UPLOAD_FILES} files.`);
+      return;
+    }
+
+    for (const file of selectedFiles) {
+      if (file.size === 0) {
+        showUploadNotice('error', `${file.name} is empty and cannot be sent.`);
+        return;
+      }
+
+      const videoFile = isVideoFileLike(file);
+      const maxBytes = videoFile ? SS4_MAX_VIDEO_UPLOAD_SIZE_BYTES : SS4_MAX_UPLOAD_SIZE_BYTES;
+      if (file.size > maxBytes) {
+        showUploadNotice('error', `${file.name} exceeds ${videoFile ? '40 MB (video limit)' : '25 MB'}.`);
+        return;
+      }
+    }
+
+    setPendingFiles(prev => [...prev, ...selectedFiles]);
+    showUploadNotice('info', selectedFiles.length === 1
+      ? `${selectedFiles[0].name} attached. Press Send to deliver.`
+      : `${selectedFiles.length} files attached. Press Send to deliver.`);
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1149,164 +1277,170 @@ export default function SupraSpacePage() {
 
   const handleDelete = async (msgId: string) => {
     if (!activeId) return;
-    setMsgs(p => ({
-      ...p,
-      [activeId]: (p[activeId] || []).map(m =>
-        m._id === msgId ? { ...m, isDeleted: true, content: '', attachments: [] } : m
-      ),
-    }));
+    setMsgs(p => ({ ...p, [activeId]: (p[activeId] || []).map(m => m._id === msgId ? { ...m, isDeleted: true, content: '', attachments: [] } : m) }));
     try {
-      await apiClient.delete(
-        `/api/supraspace/messages/${msgId}`,
+      await apiClient.delete(`/api/supraspace/messages/${msgId}`, { headers: { Authorization: `Bearer ${token}` } });
+    } catch {
+      setMsgs(p => ({ ...p, [activeId]: (p[activeId] || []).map(m => m._id === msgId ? { ...m, isDeleted: false } : m) }));
+    }
+  };
+
+  // Close Supra Leo popover on outside click
+  React.useEffect(() => {
+    if (!supraLeoOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (supraLeoRef.current && !supraLeoRef.current.contains(e.target as Node)) {
+        setSupraLeoOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [supraLeoOpen]);
+
+  const handleSupraLeoAction = async (action: 'improve' | 'draft' | 'formal' | 'casual') => {
+    setSupraLeoOpen(false);
+    setSupraLeoLoading(true);
+
+    const recentContext = activeMsgs.slice(-10).map(m => `${m.sender?.fullName || 'User'}: ${m.content || '(attachment)'}`).join('\n');
+    const conversationName = activeConv?.name || 'this conversation';
+
+    const prompts: Record<string, string> = {
+      improve: input.trim()
+        ? `Improve this draft message for clarity and professionalism. Return only the improved message text, no explanation:\n\n"${input.trim()}"`
+        : 'No draft provided.',
+      draft: `You are helping compose a team message in Supra Space for conversation "${conversationName}". Based on the recent conversation context below, draft a brief, professional reply that would be appropriate to send next. Return only the message text, no explanation.\n\nRecent messages:\n${recentContext || '(no messages yet)'}`,
+      formal: input.trim()
+        ? `Rewrite this message in a more formal, professional tone. Return only the rewritten message text, no explanation:\n\n"${input.trim()}"`
+        : 'No draft provided.',
+      casual: input.trim()
+        ? `Rewrite this message in a friendly, casual tone suitable for internal team chat. Return only the rewritten message text, no explanation:\n\n"${input.trim()}"`
+        : 'No draft provided.',
+    };
+
+    const prompt = prompts[action];
+    if (prompt === 'No draft provided.') {
+      setSupraLeoLoading(false);
+      return;
+    }
+
+    try {
+      const res = await apiClient.post(
+        '/api/supraleo/chat',
+        { message: prompt, module: 'supraspace' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      const reply: string = res.data?.data?.message || '';
+      if (reply.trim()) setInput(reply.trim());
     } catch {
-      setMsgs(p => ({
-        ...p,
-        [activeId]: (p[activeId] || []).map(m =>
-          m._id === msgId ? { ...m, isDeleted: false } : m
-        ),
-      }));
+      // silent fail — button just returns to idle
+    } finally {
+      setSupraLeoLoading(false);
     }
   };
 
   const handleDM = async (targetId: string) => {
     setShowModal(false);
     try {
-      const r = await apiClient.post(
-        '/api/supraspace/conversations/direct',
-        { targetUserId: targetId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const r = await apiClient.post('/api/supraspace/conversations/direct', { targetUserId: targetId }, { headers: { Authorization: `Bearer ${token}` } });
       const c = r.data?.data;
       setConvos(p => p.find(x => x._id === c._id) ? p : [c, ...p]);
       setActiveId(c._id);
       setSideOpen(false);
-    } catch {}
+    } catch { }
   };
 
   const handleGroup = async (name: string, ids: string[]) => {
     setShowModal(false);
     try {
-      const r = await apiClient.post(
-        '/api/supraspace/conversations/group',
-        { name, memberIds: ids },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const r = await apiClient.post('/api/supraspace/conversations/group', { name, memberIds: ids }, { headers: { Authorization: `Bearer ${token}` } });
       setConvos(p => [r.data?.data, ...p]);
       setActiveId(r.data?.data._id);
       setSideOpen(false);
-    } catch {}
+    } catch { }
   };
 
   const loadMore = async () => {
     if (!activeId || !hasMore[activeId] || loadingMsgs) return;
     setLoadingMsgs(true);
     try {
-      const r = await apiClient.get(
-        `/api/supraspace/conversations/${activeId}/messages`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { before: activeMsgs[0]?.createdAt, limit: 40 },
-        }
-      );
+      const r = await apiClient.get(`/api/supraspace/conversations/${activeId}/messages`, { headers: { Authorization: `Bearer ${token}` }, params: { before: activeMsgs[0]?.createdAt, limit: 40 } });
       const d = r.data?.data || [];
       setMsgs(p => ({ ...p, [activeId]: [...d, ...(p[activeId] || [])] }));
       setHasMore(p => ({ ...p, [activeId]: d.length === 40 }));
-    } catch {} finally { setLoadingMsgs(false); }
+    } catch { } finally { setLoadingMsgs(false); }
   };
 
   const typers = activeId ? (typing[activeId] || []).filter(t => t.userId !== uid) : [];
-  const filtered = convos.filter(c =>
-    getConvName(c, uid).toLowerCase().includes(q.toLowerCase())
-  );
+  const filtered = convos.filter(c => getConvName(c, uid).toLowerCase().includes(q.toLowerCase()));
 
-  // ─── Loading Screen ───────────────────────────────────────────────────────
+  // ─── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="ss3 flex items-center justify-center min-h-screen">
-      <div className="flex flex-col items-center gap-5">
-        <div
-          className="h-16 w-16 rounded-2xl ss3-logo flex items-center justify-center relative"
-          style={{ position: 'relative' }}
-        >
-          <Radio className="h-7 w-7" style={{ color: '#ecfdf5' }} />
-          <div
-            style={{
-              position: 'absolute',
-              inset: -1,
-              borderRadius: 18,
-              background: 'transparent',
-              border: '1px solid rgba(52,211,153,0.3)',
-              animation: 'ss3-blink 2s ease-in-out infinite',
-            }}
-          />
+    <div className={cn('ss4 flex items-center justify-center min-h-screen')} data-theme={theme}>
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-14 w-14 ss4-logo-mark flex items-center justify-center">
+          <Radio className="h-6 w-6" style={{ color: '#fff' }} />
         </div>
         <div className="flex flex-col items-center gap-2">
-          <p className="ss3-hed font-700" style={{ fontSize: 15, color: 'var(--text-1)' }}>
-            Supra Space
-          </p>
-          <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'rgba(16,185,129,0.5)' }} />
+          <p className="ss4-display font-bold" style={{ fontSize: 16, color: 'var(--text-primary)' }}>Supra Space</p>
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <span key={i} className="ss4-typing-dot h-1.5 w-1.5 rounded-full"
+                style={{ background: 'var(--accent)', animationDelay: `${i * 0.2}s` }} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 
   return (
-    <div className="ss3 flex flex-col h-screen overflow-hidden">
+    <div className={cn('ss4 flex flex-col h-screen overflow-hidden')} data-theme={theme}>
 
       {/* ── Topbar ── */}
-      <header className="ss3-topbar shrink-0 z-40" style={{ height: 54 }}>
-        <div className="flex items-center justify-between h-full px-5">
+      <header className="ss4-topbar shrink-0 z-40" style={{ height: 52 }}>
+        <div className="flex items-center justify-between h-full px-4">
+          {/* Left */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/crm/dashboard')}
-              className="ss3-icon-btn h-8 w-8 flex items-center justify-center"
-            >
+            <button onClick={() => router.push('/crm/dashboard')} className="ss4-icon-btn h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <div className="w-px h-5" style={{ background: 'rgba(16,185,129,0.1)' }} />
+            <div className="h-5 w-px" style={{ background: 'var(--border-2)' }} />
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl ss3-logo flex items-center justify-center shrink-0">
-                <Radio className="h-3.5 w-3.5" style={{ color: '#ecfdf5' }} />
+              <div className="h-8 w-8 ss4-logo-mark flex items-center justify-center shrink-0">
+                <Radio className="h-3.5 w-3.5" style={{ color: '#fff' }} />
               </div>
               <div>
-                <p className="ss3-hed font-800 leading-none" style={{ fontSize: 14, color: 'var(--text-1)' }}>
+                <p className="ss4-display font-bold leading-none" style={{ fontSize: 14, color: 'var(--text-primary)' }}>
                   Supra Space
                 </p>
-                <p
-                  className="ss3-hed leading-none mt-0.5 font-700"
-                  style={{ fontSize: 7, letterSpacing: '0.25em', color: 'var(--green2)', opacity: 0.6 }}
-                >
-                  TEAM MESSAGING
+                <p className="leading-none mt-0.5 font-medium" style={{ fontSize: 9, letterSpacing: '0.18em', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                  Team Messaging
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Right: connection badge */}
-          <div className="flex items-center gap-3">
-            <div
-              className={cn('flex items-center gap-2 rounded-full px-3 py-1.5', isConnected ? 'ss3-live' : '')}
-              style={!isConnected ? {
-                background: 'rgba(52,211,153,0.03)',
-                border: '1px solid rgba(52,211,153,0.06)',
-              } : {}}
-            >
-              <span
-                className={cn('h-1.5 w-1.5 rounded-full', isConnected ? 'ss3-online' : '')}
-                style={!isConnected ? { background: 'rgba(52,211,153,0.15)' } : {}}
-              />
-              <span
-                className="ss3-hed font-700"
-                style={{
-                  fontSize: 8,
-                  letterSpacing: '0.2em',
-                  color: isConnected ? 'var(--blue)' : 'var(--text-3)',
-                }}
-              >
-                {isConnected ? 'LIVE' : 'OFFLINE'}
+          {/* Right */}
+          <div className="flex items-center gap-2">
+            {/* Live/Offline badge */}
+            <div className={cn('flex items-center gap-1.5 rounded-full px-2.5 py-1', isConnected ? 'ss4-status-live' : 'ss4-status-offline')}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: isConnected ? 'var(--positive)' : 'var(--text-disabled)', boxShadow: isConnected ? '0 0 6px rgba(52,201,125,0.7)' : 'none' }} />
+              <span className="font-semibold" style={{ fontSize: 10, letterSpacing: '0.1em' }}>
+                {isConnected ? 'Live' : 'Offline'}
               </span>
             </div>
+
+            {/* Theme toggle */}
+            <button onClick={toggleTheme} className="ss4-theme-btn h-8 w-8 flex items-center justify-center" title="Toggle theme">
+              {theme === 'dark'
+                ? <Sun className="h-3.5 w-3.5" />
+                : <Moon className="h-3.5 w-3.5" />}
+            </button>
+
+            {/* Notifications */}
+            <button className="ss4-icon-btn h-8 w-8" title="Notifications">
+              <Bell className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
@@ -1316,102 +1450,92 @@ export default function SupraSpacePage() {
         {/* ── Sidebar ── */}
         <aside
           className={cn(
-            'ss3-sidebar shrink-0 flex flex-col transition-all duration-300 overflow-hidden',
+            'ss4-sidebar shrink-0 flex flex-col transition-all duration-300 overflow-hidden',
             'absolute z-30 w-full sm:w-72',
             'lg:relative lg:inset-auto lg:z-auto lg:w-72 lg:flex',
             (!sideOpen && activeId) ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'
           )}
-          style={{ top: 54, bottom: 0 }}
+          style={{ top: 52, bottom: 0 }}
         >
           {/* Sidebar header */}
           <div className="px-4 pt-5 pb-3 shrink-0 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="ss3-section-label">Messages</span>
-              <button
-                onClick={() => setShowModal(true)}
-                className="ss3-fab h-7 w-7 rounded-lg flex items-center justify-center"
-                title="New conversation"
-              >
-                <Plus className="h-3.5 w-3.5" style={{ color: '#ecfdf5' }} />
+              <span className="ss4-section-label">Messages</span>
+              <button onClick={() => setShowModal(true)}
+                className="ss4-new-btn h-7 px-2.5 flex items-center gap-1.5"
+                title="New conversation">
+                <Plus className="h-3 w-3" style={{ color: 'var(--accent-text)' }} />
+                <span className="font-semibold" style={{ fontSize: 11, color: 'var(--accent-text)' }}>New</span>
               </button>
             </div>
             <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5"
-                style={{ color: 'var(--text-3)' }}
-              />
+              <Search className="ss4-search-icon absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" />
               <input
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 placeholder="Search conversations..."
-                className="w-full h-9 rounded-xl pl-9 pr-3 text-xs ss3-search"
+                className="w-full h-9 rounded-lg pl-9 pr-3 text-xs ss4-search-input"
+                style={{ fontFamily: 'Geist, sans-serif' }}
               />
             </div>
           </div>
 
-          <div className="ss3-divider mx-4" />
+          <div className="mx-4 ss4-divider" />
 
-          {/* Conv list */}
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5 ss3-scroll">
+          {/* Conversation list */}
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5 ss4-scroll">
             {filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center h-40 gap-3">
-                <div className="h-10 w-10 rounded-xl ss3-empty-icon flex items-center justify-center">
-                  <MessageSquare className="h-4 w-4" style={{ color: 'var(--green)' }} />
+                <div className="h-10 w-10 rounded-xl ss4-empty-icon flex items-center justify-center">
+                  <MessageSquare className="h-4 w-4" style={{ color: 'var(--accent)' }} />
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-3)' }}>No conversations yet</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>No conversations yet</p>
               </div>
             )}
             {filtered.map(conv => {
               const isAct = conv._id === activeId;
               const other = conv.members.find(m => m._id !== uid);
               const online = other ? presence[other._id] === 'online' : false;
+              const cName = getConvName(conv, uid);
+              const cAvatar = getConvAvatar(conv, uid);
               return (
                 <div
                   key={conv._id}
-                  className={cn('ss3-conv w-full flex items-center gap-3 px-3 py-2.5', isAct && 'ss3-conv-active')}
+                  className={cn('ss4-conv flex items-center gap-3 px-3 py-2.5', isAct && 'ss4-conv-active')}
+                  onClick={() => { setActiveId(conv._id); setSideOpen(false); }}
                 >
-                  {/* Clickable body — opens conversation */}
-                  <div
-                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                    onClick={() => { setActiveId(conv._id); setSideOpen(false); }}
-                  >
-                    <div className="relative shrink-0">
-                      <div className={cn(
-                        'h-9 w-9 rounded-xl flex items-center justify-center overflow-hidden',
-                        conv.type === 'group' ? 'ss3-ava-group' : 'ss3-ava-dm'
-                      )}>
-                        {getConvAvatar(conv, uid)
-                          ? <img src={getConvAvatar(conv, uid)} alt="" className="w-full h-full object-cover" />
-                          : conv.type === 'group'
-                            ? <Hash className="h-4 w-4 text-white" style={{ opacity: 0.7 }} />
-                            : <span className="ss3-hed text-white font-700" style={{ fontSize: 10 }}>
-                                {ini(getConvName(conv, uid))}
-                              </span>}
-                      </div>
-                      {conv.type === 'direct' && online && (
-                        <span
-                          className="ss3-online absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full"
-                          style={{ border: '2px solid var(--bg2)' }}
-                        />
-                      )}
+                  <div className="relative shrink-0">
+                    <div className={cn('h-9 w-9 rounded-full flex items-center justify-center overflow-hidden', conv.type === 'group' ? 'ss4-ava-purple' : getAvaColor(cName))}>
+                      {cAvatar
+                        ? <img src={cAvatar} alt="" className="w-full h-full object-cover" />
+                        : conv.type === 'group'
+                          ? <Hash className="h-4 w-4 text-white opacity-70" />
+                          : <span className="text-white font-semibold" style={{ fontSize: 11 }}>{ini(cName)}</span>}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-600 truncate" style={{ fontSize: 13, color: 'var(--text-1)' }}>
-                        {getConvName(conv, uid)}
-                      </p>
-                      <p className="truncate mt-0.5" style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                        {conv.lastMessage?.isDeleted
-                          ? 'Message deleted'
-                          : conv.lastMessage?.content || (conv.lastMessage?.attachments?.length ? '📎 Attachment' : 'No messages yet')}
-                      </p>
-                    </div>
+                    {conv.type === 'direct' && online && (
+                      <span className="ss4-online-dot absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full" />
+                    )}
                   </div>
 
-                  {/* Always-visible video call button */}
+                  <div className="min-w-0 flex-1">
+                    <p className="ss4-conv-name font-semibold truncate" style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>
+                      {cName}
+                    </p>
+                    <p className="ss4-conv-preview truncate mt-0.5" style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                      {conv.lastMessage?.isDeleted
+                        ? 'Message deleted'
+                        : conv.lastMessage?.content || (conv.lastMessage?.attachments?.length ? '📎 Attachment' : 'No messages yet')}
+                    </p>
+                  </div>
+
+                  {/* Video icon on hover */}
                   <button
                     onClick={e => { e.stopPropagation(); setVideoCallConv(conv); }}
-                    className="ss3-conv-video h-7 w-7 flex items-center justify-center"
-                    title={`Video call ${getConvName(conv, uid)}`}
+                    className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                    style={{ color: 'rgba(255,255,255,0.3)', display: isAct ? 'flex' : undefined }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(91,124,246,0.15)'; e.currentTarget.style.color = 'var(--accent-text)'; e.currentTarget.style.opacity = '1'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; if (!isAct) e.currentTarget.style.opacity = '0'; }}
+                    title="Video call"
                   >
                     <Video className="h-3.5 w-3.5" />
                   </button>
@@ -1422,29 +1546,26 @@ export default function SupraSpacePage() {
         </aside>
 
         {/* ── Chat area ── */}
-        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ background: 'var(--bg-base)' }}>
 
           {/* Empty state */}
           {!activeId && (
             <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
-              <div
-                className="h-20 w-20 rounded-2xl ss3-empty-icon flex items-center justify-center"
-                style={{ boxShadow: '0 0 40px rgba(16,185,129,0.08)' }}
-              >
-                <MessageSquare className="h-8 w-8" style={{ color: 'var(--green)' }} />
+              <div className="h-20 w-20 ss4-empty-icon flex items-center justify-center">
+                <MessageSquare className="h-8 w-8" style={{ color: 'var(--accent)' }} />
               </div>
               <div>
-                <p className="ss3-hed font-700" style={{ fontSize: 16, color: 'var(--text-2)' }}>
-                  No conversation open
+                <p className="ss4-display font-bold" style={{ fontSize: 18, color: 'var(--text-primary)' }}>
+                  No conversation selected
                 </p>
-                <p className="mt-2" style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                  Select one from the list or start a new one
+                <p className="mt-2" style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+                  Pick a conversation or start a new one
                 </p>
               </div>
               <button
                 onClick={() => setShowModal(true)}
-                className="ss3-fab ss3-hed font-700 h-10 px-6 rounded-xl flex items-center gap-2"
-                style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ecfdf5' }}
+                className="ss4-send-btn font-semibold h-9 px-5 flex items-center gap-2"
+                style={{ fontSize: 13 }}
               >
                 <Plus className="h-3.5 w-3.5" />
                 New Message
@@ -1455,92 +1576,61 @@ export default function SupraSpacePage() {
           {activeId && activeConv && (
             <>
               {/* Chat header */}
-              <div className="ss3-chat-header shrink-0 flex items-center gap-3 px-4 py-3">
-                <button
-                  className="lg:hidden ss3-icon-btn h-8 w-8 flex items-center justify-center"
-                  onClick={() => setSideOpen(true)}
-                >
+              <div className="ss4-chat-header shrink-0 flex items-center gap-3 px-4 py-3">
+                <button className="lg:hidden ss4-icon-btn h-8 w-8" onClick={() => setSideOpen(true)}>
                   <ChevronLeft className="h-4 w-4" />
                 </button>
 
                 <div className="relative">
-                  <div className={cn(
-                    'h-9 w-9 rounded-xl flex items-center justify-center overflow-hidden',
-                    activeConv.type === 'group' ? 'ss3-ava-group' : 'ss3-ava-dm'
-                  )}>
+                  <div className={cn('h-9 w-9 rounded-full flex items-center justify-center overflow-hidden', activeConv.type === 'group' ? 'ss4-ava-purple' : getAvaColor(getConvName(activeConv, uid)))}>
                     {getConvAvatar(activeConv, uid)
                       ? <img src={getConvAvatar(activeConv, uid)} alt="" className="w-full h-full object-cover" />
                       : activeConv.type === 'group'
-                        ? <Hash className="h-3.5 w-3.5 text-white" style={{ opacity: 0.7 }} />
-                        : <span className="ss3-hed text-white font-700" style={{ fontSize: 10 }}>
-                            {ini(getConvName(activeConv, uid))}
-                          </span>}
+                        ? <Hash className="h-3.5 w-3.5 text-white opacity-70" />
+                        : <span className="text-white font-semibold" style={{ fontSize: 11 }}>{ini(getConvName(activeConv, uid))}</span>}
                   </div>
                   {activeConv.type === 'direct' && (() => {
                     const o = activeConv.members.find(m => m._id !== uid);
                     return o && presence[o._id] === 'online'
-                      ? <span className="ss3-online absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full"
-                          style={{ border: '2px solid var(--bg)' }} />
+                      ? <span className="ss4-online-dot absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full" style={{ boxShadow: '0 0 0 2px var(--bg-elevated)' }} />
                       : null;
                   })()}
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="ss3-hed font-700 leading-none truncate" style={{ fontSize: 14, color: 'var(--text-1)' }}>
+                  <p className="ss4-display font-bold leading-none truncate" style={{ fontSize: 14, color: 'var(--text-primary)' }}>
                     {getConvName(activeConv, uid)}
                   </p>
-                  <p className="mt-1 leading-none" style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                  <p className="mt-1 leading-none" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                     {activeConv.type === 'group'
                       ? `${activeConv.members.length} members`
                       : (() => {
-                          const o = activeConv.members.find(m => m._id !== uid);
-                          if (!o) return '';
-                          return presence[o._id] === 'online'
-                            ? <span style={{ color: 'var(--green2)' }}>● Online</span>
-                            : 'Offline';
-                        })()}
+                        const o = activeConv.members.find(m => m._id !== uid);
+                        if (!o) return '';
+                        return presence[o._id] === 'online'
+                          ? <span style={{ color: 'var(--positive)' }}>● Active now</span>
+                          : 'Offline';
+                      })()}
                   </p>
                 </div>
 
-                {/* ── Right-side header actions ── */}
+                {/* Right actions */}
                 <div className="flex items-center gap-1.5">
-
-                  {/* Video Call Button */}
-                  <button
-                    onClick={() => setVideoCallConv(activeConv)}
-                    className="ss3-video-btn h-8 px-3 rounded-xl flex items-center gap-1.5"
-                    title="Start video call"
-                  >
-                    <Video className="h-3.5 w-3.5" style={{ color: 'var(--blue)' }} />
-                    <span
-                      className="ss3-hed font-700 hidden sm:inline"
-                      style={{
-                        fontSize: 9,
-                        letterSpacing: '0.12em',
-                        textTransform: 'uppercase',
-                        color: 'var(--blue)',
-                      }}
-                    >
-                      Video
-                    </span>
+                  <button onClick={() => setVideoCallConv(activeConv)} className="ss4-video-btn h-8 px-3 flex items-center gap-1.5" title="Start video call">
+                    <Video className="h-3.5 w-3.5" />
+                    <span className="font-semibold hidden sm:inline" style={{ fontSize: 11 }}>Video</span>
                   </button>
 
                   {activeConv.type === 'group' && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="ss3-icon-btn h-8 w-8 flex items-center justify-center">
+                        <button className="ss4-icon-btn h-8 w-8">
                           <MoreVertical className="h-4 w-4" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-44 rounded-xl"
-                        style={{ background: '#0d180d', border: '1px solid rgba(16,185,129,0.1)' }}
-                      >
-                        <DropdownMenuItem
-                          className="text-xs gap-2 rounded-lg cursor-pointer"
-                          style={{ color: 'var(--text-2)' }}
-                        >
+                      <DropdownMenuContent align="end" className="w-44 rounded-xl"
+                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-2)' }}>
+                        <DropdownMenuItem className="text-xs gap-2 rounded-lg cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
                           <Users className="h-3.5 w-3.5" /> View Members
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -1550,31 +1640,24 @@ export default function SupraSpacePage() {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto py-4 space-y-1 ss3-scroll">
+              <div className="flex-1 overflow-y-auto py-4 space-y-1 ss4-scroll">
                 {hasMore[activeId] && (
-                  <div className="flex justify-center pb-2">
+                  <div className="flex justify-center pb-3">
                     <button
                       onClick={loadMore}
-                      className="ss3-hed font-700 transition-all"
-                      style={{
-                        fontSize: 9,
-                        letterSpacing: '0.2em',
-                        textTransform: 'uppercase',
-                        color: 'rgba(52,211,153,0.35)',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.color = 'rgba(52,211,153,0.8)')}
-                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(52,211,153,0.35)')}
+                      className="font-medium transition-all px-4 py-1.5 rounded-full"
+                      style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'var(--bg-hover)' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-text)'; e.currentTarget.style.background = 'var(--accent-muted)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
                     >
-                      {loadingMsgs
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : '↑ Load earlier messages'}
+                      {loadingMsgs ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '↑ Load earlier messages'}
                     </button>
                   </div>
                 )}
 
                 {loadingMsgs && activeMsgs.length === 0 && (
                   <div className="flex justify-center py-12">
-                    <Loader2 className="h-5 w-5 animate-spin" style={{ color: 'rgba(16,185,129,0.3)' }} />
+                    <Loader2 className="h-5 w-5 animate-spin" style={{ color: 'var(--accent)' }} />
                   </div>
                 )}
 
@@ -1585,32 +1668,23 @@ export default function SupraSpacePage() {
                   return (
                     <React.Fragment key={msg._id}>
                       {showDate && <DateSep date={msg.createdAt} />}
-                      <Bubble
-                        message={msg}
-                        isOwn={msg.sender._id === uid}
-                        showAvatar={showAvatar}
-                        onReply={setReplyTo}
-                        onDelete={handleDelete}
-                      />
+                      <Bubble message={msg} isOwn={msg.sender._id === uid} showAvatar={showAvatar} onReply={setReplyTo} onDelete={handleDelete} />
                     </React.Fragment>
                   );
                 })}
 
                 {/* Typing indicator */}
                 {typers.length > 0 && (
-                  <div className="flex gap-3 px-6 py-1">
+                  <div className="flex gap-2.5 px-5 py-1">
                     <div className="w-8" />
-                    <div className="ss3-typing rounded-2xl rounded-tl-sm px-4 py-2.5 flex items-center gap-2">
-                      <span className="italic" style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl rounded-tl-sm" style={{ background: 'var(--bubble-other-bg)', border: '1px solid var(--bubble-other-border)' }}>
+                      <span className="italic" style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                         {typers.map(t => t.fullName).join(', ')} {typers.length === 1 ? 'is' : 'are'} typing
                       </span>
                       <div className="flex gap-1">
                         {[0, 1, 2].map(i => (
-                          <span
-                            key={i}
-                            className="ss3-dot h-1 w-1 rounded-full"
-                            style={{ background: 'var(--green2)', animationDelay: `${i * 0.2}s` }}
-                          />
+                          <span key={i} className="ss4-typing-dot h-1.5 w-1.5 rounded-full"
+                            style={{ background: 'var(--accent)', animationDelay: `${i * 0.2}s` }} />
                         ))}
                       </div>
                     </div>
@@ -1624,114 +1698,202 @@ export default function SupraSpacePage() {
               <div className="shrink-0 px-4 pb-4 space-y-2">
                 {/* Reply bar */}
                 {replyTo && (
-                  <div className="ss3-reply-bar flex items-center gap-2 rounded-xl px-3 py-2">
-                    <Reply className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--green)' }} />
+                  <div className="ss4-reply-bar flex items-center gap-2 px-3 py-2.5">
+                    <Reply className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--accent)' }} />
                     <div className="min-w-0 flex-1">
-                      <p
-                        className="ss3-hed font-700"
-                        style={{ fontSize: 9, letterSpacing: '0.15em', color: 'rgba(52,211,153,0.8)' }}
-                      >
-                        {replyTo.sender.fullName.toUpperCase()}
+                      <p className="font-semibold" style={{ fontSize: 11, color: 'var(--accent-text)' }}>
+                        {replyTo.sender.fullName}
                       </p>
-                      <p className="truncate mt-0.5" style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                      <p className="truncate mt-0.5" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                         {replyTo.content || '📎 Attachment'}
                       </p>
                     </div>
-                    <button
-                      onClick={() => setReplyTo(null)}
-                      className="ss3-icon-btn p-1 flex items-center justify-center"
-                    >
+                    <button onClick={() => setReplyTo(null)} className="ss4-icon-btn p-1 h-6 w-6">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 )}
 
-                {/* Toolbar + textarea row */}
-                <div className="ss3-input-wrap rounded-2xl flex flex-col">
-                  {/* Text area */}
-                  <div className="flex items-end gap-2 px-3 pt-3 pb-2">
+                {pendingFiles.length > 0 && (
+                  <div className="ss4-reply-bar flex flex-col gap-2 px-3 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold" style={{ fontSize: 11, color: 'var(--accent-text)' }}>
+                        {pendingFiles.length} attachment{pendingFiles.length === 1 ? '' : 's'} ready
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setPendingFiles([])}
+                        className="ss4-icon-btn h-6 px-2"
+                        style={{ fontSize: 10, color: 'var(--text-tertiary)' }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {pendingFiles.map((file, index) => (
+                        <div
+                          key={`${file.name}-${file.size}-${index}`}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1"
+                          style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-1)' }}
+                        >
+                          {isVideoFileLike(file)
+                            ? <Video className="h-3.5 w-3.5" style={{ color: 'var(--accent)' }} />
+                            : <FileText className="h-3.5 w-3.5" style={{ color: 'var(--accent)' }} />}
+                          <span className="max-w-32 truncate" style={{ fontSize: 11, color: 'var(--text-primary)' }}>
+                            {file.name}
+                          </span>
+                          <span className="ss4-mono" style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                            {fmtSize(file.size)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removePendingFile(index)}
+                            className="ss4-icon-btn h-5 w-5"
+                            title="Remove attachment"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Input wrapper */}
+                <div className="ss4-input-wrap flex flex-col">
+                  <div className="flex items-end gap-2 px-3.5 pt-3 pb-2">
                     <textarea
                       value={input}
                       onChange={handleTyping}
                       onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSend();
-                        }
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                       }}
-                      placeholder="Write a message..."
+                      placeholder="Message..."
                       rows={1}
-                      className="flex-1 resize-none bg-transparent text-sm focus:outline-none max-h-32 min-h-[32px] py-1"
-                      style={{
-                        fontFamily: 'DM Sans, sans-serif',
-                        lineHeight: '1.5',
-                        color: 'var(--text-1)',
-                        caretColor: 'var(--green2)',
-                      }}
+                      className="flex-1 resize-none bg-transparent text-sm focus:outline-none max-h-36 min-h-7 py-0.5"
+                      style={{ fontFamily: 'Geist, sans-serif', lineHeight: '1.55', color: 'var(--text-primary)', caretColor: 'var(--accent)' }}
                     />
                   </div>
 
-                  {/* Bottom toolbar */}
-                  <div
-                    className="flex items-center justify-between px-3 pb-2.5 pt-1"
-                    style={{ borderTop: '1px solid rgba(16,185,129,0.06)' }}
-                  >
-                    {/* Left tools */}
+                  {/* Toolbar */}
+                  <div className="flex items-center justify-between px-3 pb-2.5 pt-1.5" style={{ borderTop: '1px solid var(--border-1)' }}>
                     <div className="flex items-center gap-1">
-                      {/* Attach files */}
-                      <button
-                        onClick={() => fileRef.current?.click()}
-                        disabled={uploading}
-                        className="ss3-icon-btn h-8 w-8 flex items-center justify-center"
-                        title="Attach files"
-                      >
+                      {/* Attach */}
+                      <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading || sending} className="ss4-icon-btn h-7 w-7" title="Attach files">
                         {uploading
-                          ? <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--green2)' }} />
+                          ? <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--accent)' }} />
                           : <Paperclip className="h-4 w-4" />}
                       </button>
                       <input
+                        id="ss4-file-upload"
                         ref={fileRef}
                         type="file"
                         multiple
-                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
-                        className="hidden"
-                        onChange={e => handleUpload(e.target.files)}
+                        accept="*/*"
+                        className="sr-only"
+                        onChange={e => {
+                          const selected = e.target.files;
+                          void handleUpload(selected);
+                          e.currentTarget.value = '';
+                        }}
                       />
 
-                      {/* Supra Leo AI button */}
-                      <button
-                        className="ss3-ai-btn h-8 rounded-xl px-3 flex items-center gap-1.5"
-                        title="Supra Leo AI"
-                        onClick={() => {/* TODO: open AI panel */}}
-                      >
-                        <span
-                          className="ss3-hed font-700 ss3-ai-shimmer"
-                          style={{ fontSize: 10, letterSpacing: '0.08em' }}
+                      {/* Supra Leo AI */}
+                      <div className="relative" ref={supraLeoRef}>
+                        <button
+                          onClick={() => !supraLeoLoading && setSupraLeoOpen(v => !v)}
+                          disabled={supraLeoLoading}
+                          className="ss4-ai-btn h-7 px-2.5 flex items-center gap-1.5"
+                          title="Supra Leo AI"
                         >
-                          Supra Leo AI
-                        </span>
-                      </button>
+                          {supraLeoLoading
+                            ? <Loader2 className="h-3 w-3 animate-spin" style={{ color: '#b49dff' }} />
+                            : <Sparkles className="h-3 w-3" style={{ color: '#b49dff' }} />}
+                          <span className="ss4-ai-text font-semibold" style={{ fontSize: 11 }}>Supra Leo</span>
+                        </button>
+
+                        {supraLeoOpen && (
+                          <div
+                            className="absolute bottom-full left-0 mb-2 z-50 rounded-xl overflow-hidden shadow-lg"
+                            style={{
+                              background: 'var(--surface-2)',
+                              border: '1px solid var(--border-2)',
+                              minWidth: 190,
+                              boxShadow: 'var(--shadow-md)',
+                            }}
+                          >
+                            <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--border-1)' }}>
+                              <p className="font-semibold" style={{ fontSize: 10, color: '#b49dff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                Supra Leo AI
+                              </p>
+                            </div>
+                            <div className="py-1">
+                              {input.trim() ? (
+                                <>
+                                  <button
+                                    onClick={() => handleSupraLeoAction('improve')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-(--bg-hover)"
+                                    style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                                  >
+                                    <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: '#b49dff' }} />
+                                    Improve draft
+                                  </button>
+                                  <button
+                                    onClick={() => handleSupraLeoAction('formal')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-(--bg-hover)"
+                                    style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                                  >
+                                    <Bot className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                                    Make formal
+                                  </button>
+                                  <button
+                                    onClick={() => handleSupraLeoAction('casual')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-(--bg-hover)"
+                                    style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                                  >
+                                    <Bot className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                                    Make casual
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => handleSupraLeoAction('draft')}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-(--bg-hover)"
+                                  style={{ fontSize: 12, color: 'var(--text-primary)' }}
+                                >
+                                  <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: '#b49dff' }} />
+                                  Draft a reply
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Send button */}
-                    <button
-                      onClick={handleSend}
-                      disabled={!input.trim() || sending}
-                      className="ss3-send h-8 w-8 rounded-xl flex items-center justify-center"
-                    >
-                      {sending
-                        ? <Loader2
-                            className="h-3.5 w-3.5 animate-spin"
-                            style={{ color: input.trim() ? '#ecfdf5' : 'var(--text-3)' }}
-                          />
-                        : <Send
-                            className="h-3.5 w-3.5"
-                            style={{
-                              color: input.trim() ? '#ecfdf5' : 'var(--text-3)',
-                              opacity: input.trim() ? 1 : 0.4,
-                            }}
-                          />}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {uploadNotice && (
+                        <span
+                          className="max-w-50 truncate ss4-mono"
+                          style={{
+                            fontSize: 10,
+                            color: uploadNotice.kind === 'error'
+                              ? 'var(--danger)'
+                              : uploadNotice.kind === 'success'
+                                ? 'var(--positive)'
+                                : 'var(--text-tertiary)',
+                          }}
+                        >
+                          {uploadNotice.text}
+                        </span>
+                      )}
+                      <span className="ss4-mono" style={{ fontSize: 10, color: 'var(--text-disabled)' }}>⏎ Send</span>
+                      <button onClick={handleSend} disabled={(!input.trim() && pendingFiles.length === 0) || sending || uploading} className="ss4-send-btn h-7 w-7 flex items-center justify-center">
+                        {(sending || uploading)
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#fff' }} />
+                          : <Send className="h-3.5 w-3.5" style={{ color: '#fff', opacity: (input.trim() || pendingFiles.length > 0) ? 1 : 0.5 }} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1742,20 +1904,10 @@ export default function SupraSpacePage() {
 
       {/* ── Modals ── */}
       {showModal && (
-        <NewConvModal
-          users={allUsers}
-          onClose={() => setShowModal(false)}
-          onStartDM={handleDM}
-          onCreateGroup={handleGroup}
-        />
+        <NewConvModal users={allUsers} onClose={() => setShowModal(false)} onStartDM={handleDM} onCreateGroup={handleGroup} />
       )}
-
       {videoCallConv && (
-        <VideoCallModal
-          conv={videoCallConv}
-          uid={uid}
-          onClose={() => setVideoCallConv(null)}
-        />
+        <VideoCallModal conv={videoCallConv} uid={uid} onClose={() => setVideoCallConv(null)} />
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import { ProfileProvider } from "@/context/ProfileContext"
 import { ProfileToastProvider } from "@/components/ProfileToast"
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav"
 import { customerNav } from "@/components/layout/mobile-nav-config"
+import { ThemeModeToggle } from "@/components/layout/ThemeModeToggle"
 import { useRouter } from "next/navigation"
 import { useAuthActions, useUser } from "@/providers/AuthProvider"
 import { useOrg } from "@/hooks/useOrg"
@@ -57,6 +58,7 @@ function CustomerLayoutContent({ children }: { children: React.ReactNode }) {
                         </div>
 
                         <div className="flex items-center gap-4">
+                            <ThemeModeToggle compact />
                             <NotificationBell />
 
                             <DropdownMenu>

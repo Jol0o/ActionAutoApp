@@ -6,6 +6,14 @@ const enableSwInDev = process.env.NEXT_PUBLIC_ENABLE_SW_DEV === "true";
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  async rewrites() {
+    return [
+      {
+        source: '/api/supraleo/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/supraleo/:path*`,
+      },
+    ]
+  },
   experimental: {
     serverActions: {
       allowedOrigins: [

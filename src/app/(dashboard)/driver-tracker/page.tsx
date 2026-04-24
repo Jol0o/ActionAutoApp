@@ -1,27 +1,54 @@
 "use client";
 
 import * as React from "react";
-import { MapPin, Clock, Users, Radio, Truck, Package } from "lucide-react";
+import Link from "next/link";
+import {
+  MapPin,
+  Clock,
+  Users,
+  Radio,
+  Truck,
+  Package,
+  ChevronRight,
+  Bell,
+  LayoutGrid,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUser } from "@/providers/AuthProvider";
 import { DriverTrackingItem, DriverStatus } from "@/types/driver-tracking";
 import { Shipment } from "@/types/transportation";
+
+export interface AvailableItem {
+  _id: string;
+  __docType: "shipment" | "load";
+  trackingNumber?: string;
+  origin?: string;
+  destination?: string;
+  status: string;
+  trailerTypeRequired?: string;
+  vehicleCount?: number;
+  carrierPayAmount?: number;
+  requestedPickupDate?: string;
+  isPostedToBoard?: boolean;
+}
 import { DriverTrackerMap } from "@/components/driver-tracker/DriverTrackerMap";
 import { DriverTrackerShareCard } from "@/components/driver-tracker/DriverTrackerShareCard";
 import { DriverTrackerLoadsCard } from "@/components/driver-tracker/DriverTrackerLoadsCard";
 import { DriverTrackerListCard } from "@/components/driver-tracker/DriverTrackerListCard";
 import { DriverAssignLoadModal } from "@/components/driver-tracker/DriverAssignLoadModal";
 import { DriverTrackerAvailableLoadsCard } from "@/components/driver-tracker/DriverTrackerAvailableLoadsCard";
-import { Input } from "@/components/ui/input";
+import { DriverTrackerRequestsCard } from "@/components/driver-tracker/DriverTrackerRequestsCard";
 import { toast } from "sonner";
-import { initializeSocket, getSocket, disconnectSocket } from "@/lib/socket.client";
-
-type FilterKey = "all" | "active" | "offline";
+import {
+  initializeSocket,
+  getSocket,
+  disconnectSocket,
+} from "@/lib/socket.client";
 
 const statusLabel: Record<DriverStatus, string> = {
   "on-route": "On Route",
@@ -62,8 +89,6 @@ export default function DriverTrackerPage() {
   const { getToken, isSignedIn } = useAuth();
   const { user } = useUser();
   const isDriver = user?.role === "driver";
-  const [filter, setFilter] = React.useState<FilterKey>("all");
-  const [driverQuery, setDriverQuery] = React.useState("");
   const [drivers, setDrivers] = React.useState<DriverTrackingItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -74,12 +99,20 @@ export default function DriverTrackerPage() {
   const [lastShareAt, setLastShareAt] = React.useState<string | null>(null);
   const [mapNotice, setMapNotice] = React.useState<string | null>(null);
   const [availableShipments, setAvailableShipments] = React.useState<
-    Shipment[]
+    AvailableItem[]
   >([]);
   const [shipmentsLoading, setShipmentsLoading] = React.useState(false);
   const [assignModalOpen, setAssignModalOpen] = React.useState(false);
   const [assigningTo, setAssigningTo] =
     React.useState<DriverTrackingItem | null>(null);
+  const [loadRequests, setLoadRequests] = React.useState<any[]>([]);
+  const [loadRequestsLoading, setLoadRequestsLoading] = React.useState(false);
+  const [approvingId, setApprovingId] = React.useState<string | null>(null);
+  const [rejectingId, setRejectingId] = React.useState<string | null>(null);
+  const [loadsTab, setLoadsTab] = React.useState("assigned");
+  const [mapFilter, setMapFilter] = React.useState<
+    "all" | "sharing" | "on-route" | "with-loads"
+  >("all");
 
   const mapRef = React.useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = React.useRef<any>(null);
@@ -94,43 +127,21 @@ export default function DriverTrackerPage() {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const normalizedToken = mapboxToken?.trim();
 
-  const filteredDrivers = React.useMemo(() => {
-    const query = driverQuery.trim().toLowerCase();
-    const matchesQuery = (driver: DriverTrackingItem) => {
-      if (!query) return true;
-      const name = driver.driver?.name?.toLowerCase() || "";
-      const tracking =
-        driver.shipments
-          ?.map((s) => s.trackingNumber?.toLowerCase() || "")
-          .join(" ") || "";
-      return name.includes(query) || tracking.includes(query);
-    };
-    if (filter === "offline") {
-      return drivers.filter(
-        (driver) => driver.status === "offline" && matchesQuery(driver),
-      );
-    }
-    if (filter === "active") {
-      return drivers.filter(
-        (driver) => driver.status !== "offline" && matchesQuery(driver),
-      );
-    }
-    return drivers.filter(matchesQuery);
-  }, [drivers, filter, driverQuery]);
+  const activeDrivers = React.useMemo(
+    () => drivers.filter((d) => d.status !== "offline"),
+    [drivers],
+  );
 
-  const activeDrivers = React.useMemo(() => {
-    const query = driverQuery.trim().toLowerCase();
-    const matchesQuery = (driver: DriverTrackingItem) => {
-      if (!query) return true;
-      const name = driver.driver?.name?.toLowerCase() || "";
-      const tracking =
-        driver.shipments
-          ?.map((s) => s.trackingNumber?.toLowerCase() || "")
-          .join(" ") || "";
-      return name.includes(query) || tracking.includes(query);
-    };
-    return drivers.filter((d) => d.status !== "offline" && matchesQuery(d));
-  }, [drivers, driverQuery]);
+  const mapDrivers = React.useMemo(() => {
+    if (mapFilter === "all") return drivers;
+    if (mapFilter === "sharing")
+      return drivers.filter((d) => d.status !== "offline");
+    if (mapFilter === "on-route")
+      return drivers.filter((d) => d.status === "on-route");
+    if (mapFilter === "with-loads")
+      return drivers.filter((d) => d.shipments && d.shipments.length > 0);
+    return drivers;
+  }, [drivers, mapFilter]);
 
   const driversWithLoads = React.useMemo(
     () => drivers.filter((d) => d.shipments && d.shipments.length > 0),
@@ -143,7 +154,6 @@ export default function DriverTrackerPage() {
     if (!isSignedIn) return;
     if (!initialLoadDone.current) setIsLoading(true);
     setError(null);
-
     try {
       const token = await getToken();
       const response = await apiClient.get("/api/driver-tracking/active", {
@@ -155,10 +165,12 @@ export default function DriverTrackerPage() {
         data.map((item: DriverTrackingItem) => ({
           ...item,
           shipments: Array.isArray(item.shipments) ? item.shipments : [],
-        }))
+        })),
       );
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to load drivers");
+      setError(
+        err.response?.data?.message || err.message || "Failed to load drivers",
+      );
     } finally {
       initialLoadDone.current = true;
       setIsLoading(false);
@@ -170,33 +182,71 @@ export default function DriverTrackerPage() {
     setShipmentsLoading(true);
     try {
       const token = await getToken();
-      const response = await apiClient.get("/api/shipments", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const all: Shipment[] = response.data?.data || response.data || [];
-      setAvailableShipments(
-        all.filter(
+      const headers = { Authorization: `Bearer ${token}` };
+      const [shipmentsRes, loadsRes] = await Promise.all([
+        apiClient.get("/api/shipments", { headers }),
+        apiClient.get("/api/loads", {
+          headers,
+          params: { status: "Posted", limit: 50 },
+        }),
+      ]);
+      const allShipments: Shipment[] = shipmentsRes.data?.data?.shipments || [];
+      const allLoads: any[] = loadsRes.data?.data?.loads || [];
+
+      const mappedShipments: AvailableItem[] = allShipments
+        .filter(
           (s) => s.status === "Available for Pickup" && !s.assignedDriverId,
-        ),
-      );
+        )
+        .map((s) => ({
+          _id: s._id,
+          __docType: "shipment" as const,
+          trackingNumber: s.trackingNumber,
+          origin: s.origin,
+          destination: s.destination,
+          status: s.status,
+          trailerTypeRequired: s.trailerTypeRequired,
+          vehicleCount: s.vehicleCount,
+          carrierPayAmount: s.carrierPayAmount,
+          requestedPickupDate: s.requestedPickupDate,
+          isPostedToBoard: s.isPostedToBoard,
+        }));
+
+      const mappedLoads: AvailableItem[] = allLoads
+        .filter((l) => l.status === "Posted" && !l.assignedDriverId)
+        .map((l) => ({
+          _id: l._id,
+          __docType: "load" as const,
+          trackingNumber: l.loadNumber,
+          origin: `${l.pickupLocation?.city || ""}${l.pickupLocation?.state ? `, ${l.pickupLocation.state}` : ""}`,
+          destination: `${l.deliveryLocation?.city || ""}${l.deliveryLocation?.state ? `, ${l.deliveryLocation.state}` : ""}`,
+          status: l.status,
+          trailerTypeRequired: l.vehicles?.[0]?.trailerType,
+          vehicleCount: l.vehicles?.length || 0,
+          carrierPayAmount: l.pricing?.carrierPayAmount,
+          requestedPickupDate: l.dates?.firstAvailable,
+          isPostedToBoard: false,
+        }));
+
+      setAvailableShipments([...mappedShipments, ...mappedLoads]);
     } catch {
-      // non-critical — silent fail
     } finally {
       setShipmentsLoading(false);
     }
   }, [getToken, isSignedIn]);
 
   const handleAssignLoad = React.useCallback(
-    async (shipmentId: string) => {
+    async (item: AvailableItem) => {
       if (!assigningTo?.driver?.id || !isSignedIn) return;
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/assign-load",
-          { shipmentId, driverId: assigningTo.driver.id },
+          { shipmentId: item._id, driverId: assigningTo.driver.id },
           { headers: { Authorization: `Bearer ${token}` } },
         );
-        toast.success(`Load assigned to ${assigningTo.driver.name || "driver"}`);
+        toast.success(
+          `Load assigned to ${assigningTo.driver.name || "driver"}`,
+        );
         fetchDrivers();
         fetchAvailableShipments();
       } catch (err: any) {
@@ -207,13 +257,13 @@ export default function DriverTrackerPage() {
   );
 
   const handleAssignFromAvailable = React.useCallback(
-    async (shipmentId: string, driverId: string) => {
+    async (item: AvailableItem, driverId: string) => {
       if (!isSignedIn) return;
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/assign-load",
-          { shipmentId, driverId },
+          { shipmentId: item._id, driverId },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load assigned successfully");
@@ -266,6 +316,75 @@ export default function DriverTrackerPage() {
     [getToken, isSignedIn, fetchDrivers, fetchAvailableShipments],
   );
 
+  const fetchLoadRequests = React.useCallback(async () => {
+    if (!isSignedIn || isDriver) return;
+    setLoadRequestsLoading(true);
+    try {
+      const token = await getToken();
+      const res = await apiClient.get("/api/driver-tracking/load-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLoadRequests(res.data?.data || []);
+    } catch {
+    } finally {
+      setLoadRequestsLoading(false);
+    }
+  }, [getToken, isSignedIn, isDriver]);
+
+  const handleApproveRequest = React.useCallback(
+    async (
+      shipmentId: string | undefined,
+      driverId: string,
+      loadId?: string,
+    ) => {
+      const key = `${loadId || shipmentId}-${driverId}`;
+      setApprovingId(key);
+      try {
+        const token = await getToken();
+        await apiClient.post(
+          "/api/driver-tracking/approve-request",
+          loadId ? { loadId, driverId } : { shipmentId, driverId },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        toast.success("Load request approved — driver dispatched");
+        fetchLoadRequests();
+        fetchDrivers();
+        fetchAvailableShipments();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to approve request");
+      } finally {
+        setApprovingId(null);
+      }
+    },
+    [getToken, fetchLoadRequests, fetchDrivers, fetchAvailableShipments],
+  );
+
+  const handleRejectRequest = React.useCallback(
+    async (
+      shipmentId: string | undefined,
+      driverId: string,
+      loadId?: string,
+    ) => {
+      const key = `${loadId || shipmentId}-${driverId}`;
+      setRejectingId(key);
+      try {
+        const token = await getToken();
+        await apiClient.post(
+          "/api/driver-tracking/reject-request",
+          loadId ? { loadId, driverId } : { shipmentId, driverId },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        toast.success("Load request rejected");
+        fetchLoadRequests();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to reject request");
+      } finally {
+        setRejectingId(null);
+      }
+    },
+    [getToken, fetchLoadRequests],
+  );
+
   React.useEffect(() => {
     fetchDrivers();
     const interval = setInterval(fetchDrivers, LOCATION_INTERVAL_MS);
@@ -277,49 +396,85 @@ export default function DriverTrackerPage() {
   }, [fetchAvailableShipments]);
 
   React.useEffect(() => {
+    fetchLoadRequests();
+  }, [fetchLoadRequests]);
+
+  const socketRef = React.useRef<ReturnType<typeof getSocket>>(null);
+
+  React.useEffect(() => {
     if (!isSignedIn) return;
-    let socket = getSocket();
+    let cancelled = false;
 
     const connectSocket = async () => {
       try {
         const token = await getToken();
-        if (!token) return;
-        socket = initializeSocket(token);
+        if (cancelled || !token) return;
+        const sock = initializeSocket(token);
+        socketRef.current = sock;
 
-        socket.on("driver:location_update", (data: {
-          driverId: string;
-          coords: { lat: number; lng: number };
-          status: DriverStatus;
-          lastSeenAt: string;
-        }) => {
-          setDrivers((prev) => {
-            const idx = prev.findIndex((d) => d.driver?.id === data.driverId);
-            if (idx === -1) return prev;
-            const updated = [...prev];
-            updated[idx] = {
-              ...updated[idx],
-              coords: data.coords,
-              status: data.status,
-              lastSeenAt: data.lastSeenAt,
-            };
-            return updated;
-          });
+        sock.on(
+          "driver:location_update",
+          (data: {
+            driverId: string;
+            coords: { lat: number; lng: number };
+            status: DriverStatus;
+            lastSeenAt: string;
+          }) => {
+            setDrivers((prev) => {
+              const idx = prev.findIndex((d) => d.driver?.id === data.driverId);
+              if (idx === -1) return prev;
+              const updated = [...prev];
+              updated[idx] = {
+                ...updated[idx],
+                coords: data.coords,
+                status: data.status,
+                lastSeenAt: data.lastSeenAt,
+              };
+              return updated;
+            });
+          },
+        );
+
+        sock.on("driver:loads_updated", () => {
+          fetchDrivers();
+          fetchAvailableShipments();
+          fetchLoadRequests();
         });
 
-        socket.on("driver:loads_updated", () => {
+        sock.on("driver:load_requested", () => {
+          fetchLoadRequests();
+          fetchAvailableShipments();
+        });
+
+        sock.on("driver:load_request_updated", () => {
+          fetchLoadRequests();
           fetchDrivers();
           fetchAvailableShipments();
         });
-      } catch { }
+
+        sock.on("load:change", () => {
+          fetchAvailableShipments();
+        });
+
+        sock.on("shipment:change", () => {
+          fetchAvailableShipments();
+        });
+      } catch {}
     };
 
     connectSocket();
 
     return () => {
-      socket?.off("driver:location_update");
-      socket?.off("driver:loads_updated");
+      cancelled = true;
+      socketRef.current?.off("driver:location_update");
+      socketRef.current?.off("driver:loads_updated");
+      socketRef.current?.off("driver:load_requested");
+      socketRef.current?.off("driver:load_request_updated");
+      socketRef.current?.off("load:change");
+      socketRef.current?.off("shipment:change");
+      socketRef.current = null;
     };
-  }, [isSignedIn, getToken]);
+  }, [isSignedIn]);
 
   React.useEffect(() => {
     if (!normalizedToken || !mapRef.current || mapInstanceRef.current) return;
@@ -331,12 +486,16 @@ export default function DriverTrackerPage() {
       if (cancelled || !mapRef.current) return;
 
       if (!normalizedToken.startsWith("pk.")) {
-        setMapNotice("Invalid Mapbox token. Use a public token starting with pk.");
+        setMapNotice(
+          "Invalid Mapbox token. Use a public token starting with pk.",
+        );
         return;
       }
 
       if (!mapboxgl.supported()) {
-        setMapNotice("Mapbox requires WebGL. Please enable hardware acceleration.");
+        setMapNotice(
+          "Mapbox requires WebGL. Please enable hardware acceleration.",
+        );
         return;
       }
 
@@ -402,19 +561,28 @@ export default function DriverTrackerPage() {
     const updateMarkers = async () => {
       const mapboxgl = (await import("mapbox-gl")).default;
 
-      filteredDrivers.forEach((driver) => {
-        if (!driver.coords) return;
-        const position = [driver.coords.lng, driver.coords.lat] as [number, number];
+      if (!map.isStyleLoaded()) {
+        map.once("idle", () => updateMarkers());
+        return;
+      }
+
+      mapDrivers.forEach((driver) => {
+        if (!driver.coords || driver.status === "offline") return;
+        const position = [driver.coords.lng, driver.coords.lat] as [
+          number,
+          number,
+        ];
 
         const coordKey = `${driver.coords.lat.toFixed(2)},${driver.coords.lng.toFixed(2)}`;
         const cachedLocation = locationNamesRef.current.get(coordKey);
 
         const buildPopupHtml = (locationName?: string) => `
-          <div style="font-size:12px;line-height:1.5;padding:2px 4px;min-width:130px;color:#111827">
-            <div style="font-weight:600;margin-bottom:2px;color:#111827">${driver.driver?.name || "Unknown Driver"}</div>
-            <div style="color:${mapPinColor[driver.status]};margin-bottom:2px">${statusLabel[driver.status]}</div>
-            ${locationName ? `<div style="color:#374151;font-size:11px;margin-bottom:1px">${locationName}</div>` : ""}
-            ${driver.shipments.length > 0 ? `<div style="color:#6b7280;font-size:11px">${driver.shipments.length} load${driver.shipments.length !== 1 ? "s" : ""}</div>` : ""}
+          <div style="font-size:12px;line-height:1.5;padding:2px 4px;min-width:140px;color:#111827">
+            <div style="font-weight:700;margin-bottom:3px;color:#111827">${driver.driver?.name || "Unknown Driver"}</div>
+            <div style="color:${mapPinColor[driver.status]};margin-bottom:3px;font-weight:600">${statusLabel[driver.status]}</div>
+            ${locationName ? `<div style="color:#374151;font-size:11px;margin-bottom:2px">${locationName}</div>` : ""}
+            ${driver.shipments.length > 0 ? `<div style="color:#6b7280;font-size:11px">${driver.shipments.length} load${driver.shipments.length !== 1 ? "s" : ""} assigned</div>` : ""}
+            ${driver.equipment?.trailerType ? `<div style="color:#7c3aed;font-size:10px;margin-top:3px;font-weight:600">${driver.equipment.trailerType.replace(/_/g, " ")}</div>` : ""}
           </div>`;
 
         const popupHtml = buildPopupHtml(cachedLocation);
@@ -466,10 +634,12 @@ export default function DriverTrackerPage() {
               const locationName = raw.split(",").slice(0, 2).join(",").trim();
               if (locationName) {
                 locationNamesRef.current.set(coordKey, locationName);
-                popupsRef.current.get(driverId)?.setHTML(buildPopupHtml(locationName));
+                popupsRef.current
+                  .get(driverId)
+                  ?.setHTML(buildPopupHtml(locationName));
               }
             })
-            .catch(() => { });
+            .catch(() => {});
         }
       });
 
@@ -484,7 +654,7 @@ export default function DriverTrackerPage() {
     };
 
     updateMarkers();
-  }, [filteredDrivers]);
+  }, [mapDrivers]);
 
   const sendLocationUpdate = React.useCallback(
     async (
@@ -500,11 +670,7 @@ export default function DriverTrackerPage() {
           lng: coords.lng,
           status: statusOverride ?? shareStatus,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+        { headers: { Authorization: `Bearer ${token}` } },
       );
     },
     [getToken, isSignedIn, shareStatus],
@@ -555,8 +721,8 @@ export default function DriverTrackerPage() {
         } catch (err: any) {
           setShareError(
             err.response?.data?.message ||
-            err.message ||
-            "Failed to send location",
+              err.message ||
+              "Failed to send location",
           );
         }
       },
@@ -576,18 +742,12 @@ export default function DriverTrackerPage() {
     toast.success("Location sharing stopped");
     if (lastCoordsRef.current) {
       try {
-        await sendLocationUpdate(
-          {
-            lat: lastCoordsRef.current.lat,
-            lng: lastCoordsRef.current.lng,
-          },
-          "offline",
-        );
+        await sendLocationUpdate(lastCoordsRef.current, "offline");
       } catch (err: any) {
         setShareError(
           err.response?.data?.message ||
-          err.message ||
-          "Failed to update status",
+            err.message ||
+            "Failed to update status",
         );
       }
     }
@@ -596,8 +756,7 @@ export default function DriverTrackerPage() {
   const zoomMap = (delta: number) => {
     const map = mapInstanceRef.current;
     if (!map) return;
-    const nextZoom = map.getZoom() + delta;
-    map.setZoom(Math.max(2, Math.min(18, nextZoom)));
+    map.setZoom(Math.max(2, Math.min(18, map.getZoom() + delta)));
   };
 
   const centerOnMe = () => {
@@ -617,91 +776,154 @@ export default function DriverTrackerPage() {
     return () => clearInterval(tick);
   }, []);
 
-  const totalDrivers = drivers.length;
-  const activeCount = drivers.filter((d) => d.status !== "offline").length;
-  const onRouteCount = drivers.filter((d) => d.status === "on-route").length;
-  const totalLoads = drivers.reduce((sum, d) => sum + (d.shipments?.length || 0), 0);
+  const totalLoads = drivers.reduce(
+    (sum, d) => sum + (d.shipments?.length || 0),
+    0,
+  );
 
   const kpis = [
-    { label: "Total Drivers", value: totalDrivers, icon: <Users className="size-8 text-primary/30" />, description: "All tracked drivers" },
-    { label: "Active Now", value: activeCount, icon: <Radio className="size-8 text-emerald-500/30" />, description: "Currently sharing GPS", color: "text-emerald-500" },
-    { label: "On Route", value: onRouteCount, icon: <Truck className="size-8 text-amber-500/30" />, description: "Delivering loads", color: "text-amber-500" },
-    { label: "Loads Assigned", value: totalLoads, icon: <Package className="size-8 text-blue-500/30" />, description: "Active shipments", color: "text-blue-500" },
+    {
+      label: "Total Drivers",
+      value: drivers.length,
+      icon: <Users className="size-7 text-primary" />,
+      description: "All tracked drivers",
+    },
+    {
+      label: "Active Now",
+      value: activeDrivers.length,
+      icon: <Radio className="size-7 text-emerald-600 dark:text-emerald-400" />,
+      description: "Currently sharing GPS",
+      color: "text-emerald-500",
+    },
+    {
+      label: "On Route",
+      value: drivers.filter((d) => d.status === "on-route").length,
+      icon: <Truck className="size-7 text-amber-600 dark:text-amber-400" />,
+      description: "Delivering loads",
+      color: "text-amber-500",
+    },
+    {
+      label: "Loads Assigned",
+      value: totalLoads,
+      icon: <Package className="size-7 text-blue-600 dark:text-blue-400" />,
+      description: "Active shipments",
+      color: "text-blue-500",
+    },
   ];
 
   return (
-    <div className="p-4 sm:p-8 space-y-6 container mx-auto min-h-screen">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 container mx-auto min-h-screen">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[10px] font-bold tracking-widest uppercase px-2 py-0.5">
-              Driver Tracker
-            </Badge>
-            <div className="size-1 rounded-full bg-border" />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              <Clock className="size-3" />
-              {currentTime.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
-              <span className="text-primary/60 font-black">{currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
+          <nav className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground mb-2">
+            <Link href="/" className="hover:text-foreground transition-colors">
+              Dashboard
+            </Link>
+            <ChevronRight className="size-3" />
+            <Link
+              href="/transportation"
+              className="hover:text-foreground transition-colors"
+            >
+              Transportation
+            </Link>
+            <ChevronRight className="size-3" />
+            <span className="text-foreground font-bold">Driver Tracker</span>
+          </nav>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">
             Driver Tracker
           </h1>
+          <p className="text-xs text-muted-foreground/60 font-medium mt-1">
+            Real-time driver tracking, load assignment, and fleet management
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 rounded-full bg-muted/60 p-1 w-fit">
-            {(
-              [
-                { key: "all", label: "All Drivers" },
-                { key: "active", label: "Active" },
-                { key: "offline", label: "Offline" },
-              ] as { key: FilterKey; label: string }[]
-            ).map((item) => (
-              <Button
-                key={item.key}
-                size="sm"
-                variant={filter === item.key ? "default" : "ghost"}
-                className={
-                  filter === item.key
-                    ? "h-7 rounded-full px-3 text-[10px] font-bold shadow-sm"
-                    : "h-7 rounded-full px-3 text-[10px] font-bold text-muted-foreground"
-                }
-                onClick={() => setFilter(item.key)}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </div>
-          <Input
-            value={driverQuery}
-            onChange={(event) => setDriverQuery(event.target.value)}
-            placeholder="Search driver or load..."
-            className="h-8 w-full sm:w-48 text-[11px] rounded-full border-border/40"
-          />
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <Clock className="size-3" />
+            {currentTime.toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              timeZone: "America/Denver",
+            })}
+            <span className="text-primary/60 font-black">
+              {currentTime.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                timeZone: "America/Denver",
+              })}{" "}
+              MST
+            </span>
+            <span className="text-muted-foreground/40 font-medium normal-case">
+              (
+              {currentTime.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+              local)
+            </span>
+          </span>
+          {loadRequests.length > 0 && (
+            <Badge
+              className="bg-amber-500/10 text-amber-600 border-amber-200 text-[10px] font-bold gap-1 cursor-pointer"
+              onClick={() => setLoadsTab("requests")}
+            >
+              <Bell className="size-3" />
+              {loadRequests.length} request
+              {loadRequests.length !== 1 ? "s" : ""}
+            </Badge>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="p-0 border-border/50 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden bg-card/80 backdrop-blur-sm border">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <Card
+            key={kpi.label}
+            className="p-0 border-border/50 shadow-sm hover:shadow-md transition-all duration-200 group relative overflow-hidden"
+          >
+            <div className="absolute top-3 right-3 p-1.5 rounded-lg bg-muted/40 dark:bg-muted/30 opacity-100 transition-opacity">
               {kpi.icon}
             </div>
-            <CardContent className="p-4 sm:p-5">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{kpi.label}</p>
+            <CardContent className="p-4">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                {kpi.label}
+              </p>
               {isLoading ? (
-                <Skeleton className="h-8 w-16 mb-1" />
+                <Skeleton className="h-7 w-14 mb-1" />
               ) : (
-                <h3 className={`text-2xl sm:text-3xl font-black tracking-tighter ${kpi.color || "text-foreground"}`}>{kpi.value}</h3>
+                <h3
+                  className={`text-2xl font-black tracking-tighter ${kpi.color || "text-foreground"}`}
+                >
+                  {kpi.value}
+                </h3>
               )}
-              <p className="text-[10px] text-muted-foreground/60 font-medium mt-0.5">{kpi.description}</p>
+              <p className="text-[10px] text-muted-foreground/60 font-medium mt-0.5">
+                {kpi.description}
+              </p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+      {isDriver && (
+        <DriverTrackerShareCard
+          shareStatus={shareStatus}
+          onStatusChange={setShareStatus}
+          isSharing={isSharing}
+          onToggleSharing={() =>
+            isSharing ? handleStopSharing() : setIsSharing(true)
+          }
+          lastShareAt={lastShareAt}
+          shareError={shareError}
+          hasActiveLoad={drivers.some(
+            (d) => d.driver?.id === user?.id && (d.shipments?.length ?? 0) > 0,
+          )}
+        />
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4">
         <DriverTrackerMap
           mapboxToken={normalizedToken}
           mapRef={mapRef}
@@ -709,24 +931,103 @@ export default function DriverTrackerPage() {
           onZoomOut={() => zoomMap(-1)}
           onCenter={centerOnMe}
           mapNotice={mapNotice}
-          activeCount={activeCount}
+          activeCount={activeDrivers.length}
+          mapFilter={mapFilter}
+          onMapFilterChange={setMapFilter}
         />
 
-        <div className="space-y-4">
-          {isDriver && (
-            <DriverTrackerShareCard
-              shareStatus={shareStatus}
-              onStatusChange={setShareStatus}
-              isSharing={isSharing}
-              onToggleSharing={() =>
-                isSharing ? handleStopSharing() : setIsSharing(true)
-              }
-              lastShareAt={lastShareAt}
-              shareError={shareError}
-              hasActiveLoad={drivers.some((d) => d.driver?.id === user?.id && (d.shipments?.length ?? 0) > 0)}
-            />
-          )}
+        <DriverTrackerListCard
+          drivers={drivers}
+          isLoading={isLoading}
+          error={error}
+          statusLabel={statusLabel}
+          statusStyles={statusStyles}
+          statusText={statusText}
+          onDriverClick={(driver) => {
+            const map = mapInstanceRef.current;
+            if (!map || !driver.coords) return;
+            map.flyTo({
+              center: [driver.coords.lng, driver.coords.lat],
+              zoom: 15,
+              essential: true,
+            });
+          }}
+          onAssignLoad={(driver) => {
+            setAssigningTo(driver);
+            setAssignModalOpen(true);
+          }}
+        />
+      </div>
 
+      <Card className="border-border/50 shadow-sm p-0 gap-0 overflow-hidden">
+        <CardHeader className="py-3 px-5 border-b border-border/30 space-y-3">
+          <CardTitle className="text-base font-black flex items-center gap-2">
+            <LayoutGrid className="size-4.5 text-primary" />
+            Load Management
+          </CardTitle>
+          <div className="flex gap-1 p-1 rounded-lg bg-muted/30 border border-border/40">
+            {(
+              [
+                {
+                  key: "assigned",
+                  label: "Assigned",
+                  icon: <Package className="size-3 text-emerald-400" />,
+                  count: driversWithLoads.length,
+                  activeClass: "bg-emerald-500/20 border-emerald-500/40",
+                  badgeClass: "bg-emerald-500/20 text-emerald-400",
+                },
+                {
+                  key: "available",
+                  label: "Available",
+                  icon: <Truck className="size-3 text-blue-400" />,
+                  count: availableShipments.length,
+                  activeClass: "bg-blue-500/20 border-blue-500/40",
+                  badgeClass: "bg-blue-500/20 text-blue-400",
+                },
+                {
+                  key: "requests",
+                  label: "Requests",
+                  icon: <Bell className="size-3 text-amber-400" />,
+                  count: loadRequests.length,
+                  activeClass: "bg-amber-500/20 border-amber-500/40",
+                  badgeClass: "bg-amber-500/20 text-amber-400",
+                },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setLoadsTab(tab.key)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md flex-1 transition-all ${
+                  loadsTab === tab.key
+                    ? `${tab.activeClass} border shadow-sm`
+                    : "border border-transparent hover:bg-muted/50"
+                }`}
+              >
+                {tab.icon}
+                <span
+                  className={`text-[11px] font-bold flex-1 text-left ${
+                    loadsTab === tab.key
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </span>
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    loadsTab === tab.key
+                      ? tab.badgeClass
+                      : "bg-muted/50 text-muted-foreground/60"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </CardHeader>
+
+        {loadsTab === "assigned" && (
           <DriverTrackerLoadsCard
             drivers={driversWithLoads}
             isLoading={isLoading}
@@ -735,37 +1036,41 @@ export default function DriverTrackerPage() {
             onRemoveLoad={handleRemoveLoad}
             onReassignLoad={handleReassignLoad}
           />
+        )}
 
+        {loadsTab === "available" && (
           <DriverTrackerAvailableLoadsCard
             shipments={availableShipments}
             isLoading={shipmentsLoading}
             activeDrivers={activeDrivers}
             onAssign={handleAssignFromAvailable}
           />
+        )}
 
-          <DriverTrackerListCard
-            drivers={activeDrivers}
-            isLoading={isLoading}
-            error={error}
-            statusLabel={statusLabel}
-            statusStyles={statusStyles}
-            statusText={statusText}
-            onDriverClick={(driver) => {
-              const map = mapInstanceRef.current;
-              if (!map || !driver.coords) return;
-              map.flyTo({
-                center: [driver.coords.lng, driver.coords.lat],
-                zoom: 15,
-                essential: true,
-              });
-            }}
-            onAssignLoad={(driver) => {
-              setAssigningTo(driver);
-              setAssignModalOpen(true);
-            }}
-          />
-        </div>
-      </div>
+        {loadsTab === "requests" &&
+          (!loadRequestsLoading && loadRequests.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="size-14 rounded-2xl bg-muted/40 flex items-center justify-center">
+                <Bell className="size-7 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">
+                No pending requests
+              </p>
+              <p className="text-[11px] text-muted-foreground/60">
+                Driver load requests will appear here
+              </p>
+            </div>
+          ) : (
+            <DriverTrackerRequestsCard
+              requests={loadRequests}
+              isLoading={loadRequestsLoading}
+              onApprove={handleApproveRequest}
+              onReject={handleRejectRequest}
+              approvingId={approvingId}
+              rejectingId={rejectingId}
+            />
+          ))}
+      </Card>
 
       <DriverAssignLoadModal
         open={assignModalOpen}
