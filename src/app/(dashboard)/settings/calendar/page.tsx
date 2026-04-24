@@ -12,10 +12,7 @@ export default function CalendarSettings() {
         </p>
       </div>
 
-      <GoogleCalendarConnect 
-        title="Dealership Calendar"
-        description="Sync appointments and customer bookings with your official Google account."
-      />
+   <GoogleCalendarConnect />
     </div>
   )
 }
