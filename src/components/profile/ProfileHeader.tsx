@@ -49,11 +49,18 @@ interface ProfileHeaderProps {
   onlineStatus: OnlineStatus;
   customStatus: string;
   triggerRefresh: () => void;
-  setAvatarUrl: (url: string) => void;
+  setAvatarUrl: (url: string | null) => void;
   getToken: () => Promise<string | null>;
   setShowStatusDialog: (show: boolean) => void;
   onEditProfile?: () => void;
 }
+
+const normalizeAvatarValue = (value?: string | null) => {
+  const normalized = (value || "").trim();
+  if (!normalized) return "";
+  if (normalized === "null" || normalized === "undefined") return "";
+  return normalized;
+};
 
 const roleBadgeConfig: Record<
   string,
@@ -94,6 +101,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   onEditProfile,
 }) => {
   const [isCropperOpen, setIsCropperOpen] = React.useState(false);
+  const [avatarLoadFailed, setAvatarLoadFailed] = React.useState(false);
   const currentStatus =
     onlineStatusOptions.find((s) => s.value === onlineStatus) ||
     onlineStatusOptions[0];
@@ -160,10 +168,18 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     authUser?.firstName ||
     "User";
 
-  const avatarSrc =
+  const avatarSource =
     avatarUrl !== null
       ? avatarUrl
       : profile?.avatarUrl || profile?.avatar || authUser?.imageUrl;
+  const avatarSrc = normalizeAvatarValue(avatarSource);
+  const resolvedAvatarSrc = resolveImageUrl(avatarSrc);
+  const showAvatarImage = Boolean(resolvedAvatarSrc) && !avatarLoadFailed;
+
+  React.useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [avatarSrc]);
+
   const initialGradient = getInitialColor(displayName);
 
   return (
@@ -322,11 +338,12 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-2xl sm:rounded-3xl overflow-hidden ring-[3px] ring-white/20 dark:ring-white/10 shadow-2xl transition-all duration-300 group-hover/avatar:ring-emerald-400/50 cursor-pointer"
             onClick={() => setIsCropperOpen(true)}
           >
-            {avatarSrc ? (
+            {showAvatarImage ? (
               <img
-                src={resolveImageUrl(avatarSrc)}
+                src={resolvedAvatarSrc}
                 alt="Profile"
                 className="w-full h-full object-cover"
+                onError={() => setAvatarLoadFailed(true)}
               />
             ) : (
               <div
@@ -350,9 +367,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             onClose={() => setIsCropperOpen(false)}
             onSave={handleSaveAvatar}
             onRemove={handleRemoveAvatar}
-            currentImage={resolveImageUrl(
-              profile?.avatarUrl || profile?.avatar || authUser?.imageUrl,
-            )}
+            currentImage={showAvatarImage ? resolvedAvatarSrc : undefined}
           />
 
           <button
