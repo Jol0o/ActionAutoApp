@@ -416,8 +416,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 <Globe className="size-3 text-cyan-400/60" />
                 {profile?.personalInfo?.language
                   ? languageOptions.find(
-                    (l) => l.code === profile?.personalInfo?.language,
-                  )?.name
+                      (l) => l.code === profile?.personalInfo?.language,
+                    )?.name
                   : "English"}
               </span>
             </div>
@@ -425,26 +425,6 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         </div>
 
         <div className="shrink-0 flex items-center gap-2">
-          {onEditProfile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium hidden sm:inline-flex"
-              onClick={onEditProfile}
-            >
-              <Pencil className="size-3.5 mr-1.5" />
-              Edit Profile
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium"
-            onClick={() => setShowStatusDialog(true)}
-          >
-            <CircleDot className="size-3.5 mr-1.5" />
-            Status
-          </Button>
           <Button
             variant="ghost"
             size="sm"
