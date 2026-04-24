@@ -17,6 +17,7 @@ import { NotificationProvider } from "@/context/NotificationContext";
 
 import { ProfileProvider, useProfileContext } from "@/context/ProfileContext";
 import { ProfileToastProvider } from "@/components/ProfileToast";
+import { resolveImageUrl } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -193,7 +194,9 @@ function DashboardLayoutContent({
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage
-                        src={avatarUrl !== null ? avatarUrl : user?.imageUrl}
+                        src={resolveImageUrl(
+                          avatarUrl !== null ? avatarUrl : user?.imageUrl,
+                        )}
                         alt={user?.fullName || ""}
                       />
                       <AvatarFallback>
@@ -214,14 +217,10 @@ function DashboardLayoutContent({
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => router.push("/profile")}
-                  >
+                  <DropdownMenuItem onClick={() => router.push("/profile")}>
                     Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => router.push("/settings")}
-                  >
+                  <DropdownMenuItem onClick={() => router.push("/settings")}>
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

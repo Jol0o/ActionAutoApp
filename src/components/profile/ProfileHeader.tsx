@@ -50,6 +50,7 @@ interface ProfileHeaderProps {
   customStatus: string;
   triggerRefresh: () => void;
   setAvatarUrl: (url: string | null) => void;
+  refreshAuthUser?: () => Promise<void> | void;
   getToken: () => Promise<string | null>;
   setShowStatusDialog: (show: boolean) => void;
   onEditProfile?: () => void;
@@ -96,6 +97,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   customStatus,
   triggerRefresh,
   setAvatarUrl,
+  refreshAuthUser,
   getToken,
   setShowStatusDialog,
   onEditProfile,
@@ -128,6 +130,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       }
       const cacheBustedUrl = `${newUrl}${newUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
       setAvatarUrl(cacheBustedUrl);
+      await refreshAuthUser?.();
       triggerRefresh();
       toast.success("Profile picture updated");
     } catch (error: any) {
@@ -143,6 +146,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         headers: { Authorization: `Bearer ${token}` },
       });
       setAvatarUrl("");
+      await refreshAuthUser?.();
       triggerRefresh();
       toast.success("Profile picture removed");
     } catch (error: any) {

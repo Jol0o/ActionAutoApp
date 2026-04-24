@@ -381,7 +381,7 @@ function MarketplacePluginCard({
             <span className="size-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
           )}
         </CardTitle>
-        <CardDescription className="text-xs text-muted-foreground/80 font-medium line-clamp-2 mt-2 leading-relaxed">
+        <CardDescription className="text-xs text-muted-foreground/80 font-medium line-clamp-2 mt-2 leading-relaxed not-italic">
           {plugin.description}
         </CardDescription>
       </CardHeader>
@@ -492,7 +492,7 @@ function PluginDetailView({
                   <h2 className="text-3xl sm:text-4xl xl:text-5xl font-black tracking-tight uppercase leading-none">
                     {plugin.name}
                   </h2>
-                  <p className="text-base sm:text-lg text-foreground/85 leading-relaxed max-w-3xl">
+                  <p className="text-base sm:text-lg text-foreground/85 leading-relaxed max-w-3xl not-italic">
                     {plugin.description}
                   </p>
                 </div>
