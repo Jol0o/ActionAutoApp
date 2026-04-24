@@ -18,6 +18,93 @@ interface VehicleDetailViewProps {
     isPublic?: boolean
 }
 
+// Helper to standardise comment formatting without removing content
+function cleanVehicleDescription(text: string, vehicleInfo?: { year?: number, make?: string, model?: string, modelName?: string }) {
+    if (!text) return "";
+
+    let cleaned = text
+        // Only remove internal system placeholders
+        .replace(/\{Equipment Bulleted\}/gi, "")
+        // INJECT Line Breaks to handle "wall of text" issues from raw data
+        .replace(/(Come in TODAY|call or text anytime|We have customers from|Utah county|Salt Lake county|visit us at any of our locations|LEHI:|OREM:|Phone \(Call or Text\):|Email:|PLEASE CALL TO SCHEDULE|View the Carketa condition|Action Auto Utah believes|Action Auto Utah is an award-winning|Disclaimer:|Pre-owned vehicle pricing|\*Pre-owned vehicle pricing|ALL PRICES ARE FINAL|CALL DEALER FOR MORE INFORMATION|Extended Warranty)/gi, "\n\n$1")
+        // Ensure dash bullets start on new lines (e.g. "stated- Low" becomes "stated\n- Low")
+        // Improved regex: Must follow punctuation/lowercase AND be followed by a Capital letter (avoiding phone numbers)
+        .replace(/([a-z\.\!\?\)\]\*])\s?-\s?([A-Z])/g, "$1\n- $2")
+        // Normalize whitespace and handle paragraph markers
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n') // Collapse excessive newlines
+        .trim();
+
+    // Redundancy check: If the comment is just the vehicle name again with nothing else
+    const vYear = vehicleInfo?.year;
+    const vMake = vehicleInfo?.make;
+    const vModel = vehicleInfo?.model || vehicleInfo?.modelName;
+
+    if (vYear && vMake && vModel) {
+        const namePattern = new RegExp(`^${vYear}\\s+${vMake}\\s+${vModel}(\\s+with)?$`, 'i');
+        if (namePattern.test(cleaned)) {
+            return "";
+        }
+    }
+
+    return cleaned.length < 5 ? "" : cleaned;
+}
+
+// Sub-component for truncation and formatting
+function ExpandableText({ text, limit = 350, vehicle }: { text: string, limit?: number, vehicle?: Vehicle }) {
+    const [isExpanded, setIsExpanded] = React.useState(false);
+
+    const cleanedText = React.useMemo(() => cleanVehicleDescription(text, vehicle), [text, vehicle]);
+
+    if (!cleanedText) return null;
+
+    const needsTruncation = cleanedText.length > limit;
+    const displayText = isExpanded ? cleanedText : cleanedText.slice(0, limit);
+
+    // Format paragraphs and simple bullet points
+    const lines = displayText.split('\n').filter(line => line.trim().length > 0);
+
+    return (
+        <div className="space-y-3">
+            <div className="text-sm text-muted-foreground leading-relaxed text-left">
+                {lines.map((line, idx) => {
+                    const trimmedLine = line.trim();
+                    const isLastLine = idx === lines.length - 1;
+
+                    if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
+                        return (
+                            <div key={idx} className="flex gap-2 ml-2 mt-1">
+                                <span className="text-primary font-bold">•</span>
+                                <div className="flex-1">
+                                    {trimmedLine.replace(/^[-•]\s*/, '')}
+                                    {isLastLine && !isExpanded && needsTruncation && "..."}
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <p key={idx} className="mb-3">
+                            {line}
+                            {isLastLine && !isExpanded && needsTruncation && "..."}
+                        </p>
+                    );
+                })}
+            </div>
+
+            {needsTruncation && (
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="text-sm font-bold text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-1 mt-1"
+                >
+                    {isExpanded ? "Show Less" : "Read More"}
+                </button>
+            )}
+        </div>
+    );
+}
+
+
 export function VehicleDetailView({
     vehicle,
     onInquiryClick,
@@ -126,25 +213,35 @@ export function VehicleDetailView({
                             <div className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider flex items-center gap-1.5 mb-1">
                                 <Gauge className="w-3 h-3" /> Mileage
                             </div>
-                            <div className="font-semibold text-sm">{vehicle.mileage?.toLocaleString()} mi</div>
+                            <div className="font-semibold text-sm">
+                                {vehicle.mileage !== undefined && vehicle.mileage !== null
+                                    ? `${vehicle.mileage.toLocaleString()} mi`
+                                    : 'N/A'}
+                            </div>
                         </div>
                         <div className="bg-background p-3 rounded-lg border shadow-sm">
                             <div className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider flex items-center gap-1.5 mb-1">
                                 <Fuel className="w-3 h-3" /> Engine
                             </div>
-                            <div className="font-semibold text-sm truncate" title={vehicle.fuelType}>{vehicle.fuelType || 'Gas'}</div>
+                            <div className="font-semibold text-sm truncate" title={vehicle.fuelType || (vehicle as any).engine}>
+                                {vehicle.fuelType || (vehicle as any).engine || 'Standard'}
+                            </div>
                         </div>
                         <div className="bg-background p-3 rounded-lg border shadow-sm">
                             <div className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider flex items-center gap-1.5 mb-1">
                                 <FileText className="w-3 h-3" /> Transmission
                             </div>
-                            <div className="font-semibold text-sm truncate" title={vehicle.transmission}>{vehicle.transmission || 'Auto'}</div>
+                            <div className="font-semibold text-sm truncate" title={vehicle.transmission}>
+                                {vehicle.transmission || 'Standard'}
+                            </div>
                         </div>
                         <div className="bg-background p-3 rounded-lg border shadow-sm">
                             <div className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider flex items-center gap-1.5 mb-1">
                                 <Share2 className="w-3 h-3" /> Drivetrain
                             </div>
-                            <div className="font-semibold text-sm truncate">{vehicle.driveTrain || 'FWD'}</div>
+                            <div className="font-semibold text-sm truncate">
+                                {vehicle.driveTrain || (['HARLEY DAVIDSON', 'INDIAN', 'DUCATI', 'HONDA MOTORCYCLE'].includes(vehicle.make?.toUpperCase() || '') ? 'RWD' : 'Standard')}
+                            </div>
                         </div>
                     </div>
 
@@ -153,15 +250,20 @@ export function VehicleDetailView({
                         <h3 className="font-semibold text-sm flex items-center gap-2">
                             Vehicle Overview
                         </h3>
-                        {vehicle.comments ? (
-                            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                {vehicle.comments}
-                            </div>
+                        {vehicle.comments && cleanVehicleDescription(vehicle.comments, vehicle).length > 0 ? (
+                            <ExpandableText text={vehicle.comments} vehicle={vehicle} />
                         ) : (
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                This {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.trim} is finished in a {vehicle.exteriorColor || 'stunning'} exterior.
-                                Currently located in {vehicle.location}, it has been inspected and is {vehicle.status?.toLowerCase() || 'ready'}.
-                            </p>
+                            <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
+                                <p>
+                                    This {vehicle.year} {vehicle.make} {vehicle.model}{vehicle.trim ? ` ${vehicle.trim}` : ''} is finished in a {vehicle.exteriorColor || vehicle.color || 'stunning'} exterior.
+                                </p>
+                                <p>
+                                    {vehicle.location && vehicle.location !== 'Unknown'
+                                        ? `Currently located at our ${vehicle.location} dealership, this vehicle `
+                                        : 'This vehicle '}
+                                    is professionally inspected and {vehicle.status?.toLowerCase() === 'ready' ? 'ready for immediate delivery' : 'is currently available'}.
+                                </p>
+                            </div>
                         )}
                         <div className="grid grid-cols-2 gap-y-2 gap-x-8 pt-2 text-xs text-muted-foreground">
                             <div className="flex justify-between border-b pb-1">
