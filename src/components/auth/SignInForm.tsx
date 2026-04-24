@@ -5,11 +5,22 @@ import { useSignIn } from "@/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Mail, Lock, Chrome, ArrowRight, AlertCircle, Facebook } from "lucide-react";
+import { Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+
+type SignInResult = {
+    status: string;
+    targetUrl?: string;
+};
+
+type SignInError = {
+    errors?: Array<{
+        longMessage?: string;
+    }>;
+};
 
 export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
     const { signIn, isLoaded } = useSignIn();
@@ -18,6 +29,7 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +41,11 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
         setError(null);
 
         try {
-            const result = await (signIn as any).create({
+            const signInResource = signIn as unknown as {
+                create: (params: { identifier: string; password: string }) => Promise<SignInResult>;
+            };
+
+            const result = await signInResource.create({
                 identifier: email,
                 password: password,
             });
@@ -37,13 +53,14 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
             if (result.status === "complete") {
                 toast.success("Welcome back to Action Auto!");
                 const searchParamRedirect = searchParams.get("redirect_url");
-                const finalUrl = searchParamRedirect || (result as any).targetUrl || "/";
+                const finalUrl = searchParamRedirect || result.targetUrl || "/";
                 window.location.href = finalUrl;
             } else if (result.status === "needs_upgrade") {
                 router.push(`/upgrade?email=${encodeURIComponent(email)}`);
             }
-        } catch (err: any) {
-            const errorMessage = err.errors?.[0]?.longMessage || "Invalid email or password";
+        } catch (err: unknown) {
+            const errorMessage =
+                ((err as SignInError)?.errors?.[0]?.longMessage) || "Invalid email or password";
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {
@@ -108,13 +125,26 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
                         <div className="relative group">
                             <Input
                                 id="password"
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 placeholder="At least 8 characters"
-                                className="h-12 bg-white/[0.03] border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all rounded-xl placeholder:text-zinc-700"
+                                className="h-12 pr-12 bg-white/[0.03] border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all rounded-xl placeholder:text-zinc-700"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
+                            <button
+                                type="button"
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                aria-pressed={showPassword}
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-zinc-500 transition-colors hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded-r-xl"
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="h-4 w-4" />
+                                ) : (
+                                    <Eye className="h-4 w-4" />
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>

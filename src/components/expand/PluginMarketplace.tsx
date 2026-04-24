@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
   Zap,
@@ -14,7 +14,7 @@ import {
   TrendingUp,
   XCircle,
 } from "lucide-react";
-import { marketplacePlugins, Plugin, CATEGORIES } from "@/data/plugins";
+import { marketplacePlugins, Plugin } from "@/data/plugins";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +28,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -37,19 +43,80 @@ export default function PluginMarketplace() {
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
   const [plugins, setPlugins] = useState<Plugin[]>(marketplacePlugins);
 
-  const filteredPlugins = useMemo(() => {
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  const searchMatchedPlugins = useMemo(() => {
+    if (!normalizedSearchQuery) return plugins;
+
     return plugins.filter((p) => {
-      const matchesSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const haystack = `${p.name} ${p.description} ${p.category}`.toLowerCase();
+      return haystack.includes(normalizedSearchQuery);
+    });
+  }, [plugins, normalizedSearchQuery]);
+
+  const baseCategoryIds = useMemo(() => {
+    return Array.from(new Set(plugins.map((p) => p.category))).sort((a, b) =>
+      a.localeCompare(b),
+    );
+  }, [plugins]);
+
+  const categories = useMemo(() => {
+    const searchCategoryCount = new Map<string, number>();
+
+    for (const plugin of searchMatchedPlugins) {
+      searchCategoryCount.set(
+        plugin.category,
+        (searchCategoryCount.get(plugin.category) ?? 0) + 1,
+      );
+    }
+
+    const installedCount = searchMatchedPlugins.filter(
+      (p) => p.status === "active",
+    ).length;
+
+    return [
+      { id: "all", name: "All Plugins", count: searchMatchedPlugins.length },
+      { id: "installed", name: "Installed Plugins", count: installedCount },
+      ...baseCategoryIds.map((id) => ({
+        id,
+        name: id,
+        count: searchCategoryCount.get(id) ?? 0,
+      })),
+    ];
+  }, [baseCategoryIds, searchMatchedPlugins]);
+
+  useEffect(() => {
+    const isSelectedCategoryVisible = categories.some(
+      (category) => category.id === selectedCategory,
+    );
+
+    if (!isSelectedCategoryVisible) {
+      setSelectedCategory("all");
+    }
+  }, [categories, selectedCategory]);
+
+  const filteredPlugins = useMemo(() => {
+    return searchMatchedPlugins.filter((p) => {
       const matchesCategory =
         selectedCategory === "all" ||
         (selectedCategory === "installed"
           ? p.status === "active"
           : p.category === selectedCategory);
-      return matchesSearch && matchesCategory;
+      return matchesCategory;
     });
-  }, [plugins, searchQuery, selectedCategory]);
+  }, [searchMatchedPlugins, selectedCategory]);
+
+  const hasSearchQuery = normalizedSearchQuery.length > 0;
+
+  const emptyStateMessage = hasSearchQuery
+    ? selectedCategory === "all"
+      ? `No plugins found for "${searchQuery.trim()}"`
+      : `No plugins found for "${searchQuery.trim()}" in ${selectedCategory}`
+    : selectedCategory === "all"
+      ? "No plugins found"
+      : selectedCategory === "installed"
+        ? "No installed plugins found"
+        : `No plugins found in ${selectedCategory}`;
 
   const handleEnroll = (pluginId: string) => {
     setPlugins((prev) =>
@@ -67,6 +134,11 @@ export default function PluginMarketplace() {
       });
       toast.success("Plugin Activated", {
         description: `${plugins.find((p) => p.id === pluginId)?.name} is now ready for use.`,
+        descriptionClassName: "!text-zinc-800 dark:!text-zinc-200 !opacity-100",
+        classNames: {
+          title: "text-zinc-900 dark:text-zinc-100",
+          description: "text-zinc-800 dark:text-zinc-200 opacity-100",
+        },
       });
     }, 2000);
   };
@@ -78,6 +150,11 @@ export default function PluginMarketplace() {
     setSelectedPlugin(null);
     toast.error("Plugin Deactivated", {
       description: "Billing has been stopped for this cycle.",
+      descriptionClassName: "!text-zinc-800 dark:!text-zinc-200 !opacity-100",
+      classNames: {
+        title: "text-zinc-900 dark:text-zinc-100",
+        description: "text-zinc-800 dark:text-zinc-200 opacity-100",
+      },
     });
   };
 
@@ -90,8 +167,12 @@ export default function PluginMarketplace() {
             <Zap className="size-4" />
           </div>
           <div>
-            <h1 className="text-lg font-extrabold tracking-tight uppercase">Plugins</h1>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Marketplace</p>
+            <h1 className="text-lg font-extrabold tracking-tight uppercase">
+              Plugins
+            </h1>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+              Marketplace
+            </p>
           </div>
         </div>
 
@@ -134,7 +215,7 @@ export default function PluginMarketplace() {
               <p className="px-3 text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-3 opacity-50">
                 Filter by Category
               </p>
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
@@ -168,9 +249,9 @@ export default function PluginMarketplace() {
         {/* Main Content Pane */}
         <main className="flex-1 relative bg-muted/5">
           <ScrollArea className="h-full">
-            <div className="p-10 max-w-375 mx-auto">
-              <div className="mb-10 space-y-2">
-                <h2 className="text-3xl font-black tracking-tighter uppercase">
+            <div className="p-6 sm:p-8 lg:p-10 max-w-screen-2xl mx-auto">
+              <div className="mb-8 lg:mb-10 space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
                   Power-Ups Library
                 </h2>
                 <p className="text-sm text-muted-foreground font-medium">
@@ -179,7 +260,7 @@ export default function PluginMarketplace() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
                 {filteredPlugins.map((plugin) => (
                   <MarketplacePluginCard
                     key={plugin.id}
@@ -195,7 +276,7 @@ export default function PluginMarketplace() {
                     <Search className="size-10 text-muted-foreground/30" />
                   </div>
                   <p className="text-lg font-bold text-muted-foreground">
-                    No plugins found for "{searchQuery}"
+                    {emptyStateMessage}
                   </p>
                   <Button
                     variant="ghost"
@@ -218,7 +299,7 @@ export default function PluginMarketplace() {
               onClick={() => setSelectedPlugin(null)}
             >
               <Card
-                className="w-full max-w-2xl h-[calc(100dvh-2rem)] sm:h-[calc(100dvh-4rem)] max-h-230 overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border-primary/20 flex flex-col"
+                className="w-full max-w-[min(1180px,96vw)] h-[calc(100dvh-2rem)] sm:h-[calc(100dvh-4rem)] max-h-230 overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border-primary/20 flex flex-col"
                 onClick={(event) => event.stopPropagation()}
               >
                 <PluginDetailView
@@ -249,7 +330,7 @@ function MarketplacePluginCard({
   return (
     <Card
       className={cn(
-        "group relative h-full flex flex-col bg-card border-border/40 hover:border-primary/40 transition-all duration-500 cursor-pointer overflow-hidden transform-gpu",
+        "group relative h-full w-full flex flex-col bg-card border-border/40 hover:border-primary/40 transition-all duration-500 cursor-pointer overflow-hidden transform-gpu",
         isInstalled
           ? "ring-2 ring-primary/10 shadow-lg"
           : "hover:shadow-2xl hover:-translate-y-2",
@@ -307,37 +388,42 @@ function MarketplacePluginCard({
 
       <div
         className={cn(
-          "mt-auto p-6 pt-3 flex items-center justify-between border-t transition-colors",
+          "mt-auto p-4 pt-3 flex flex-col gap-3 border-t transition-colors",
           isInstalled
             ? "bg-primary/5 border-primary/10"
             : "bg-muted/10 group-hover:bg-muted/30 border-border/20",
         )}
       >
-        {isInstalled ? (
-          <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
-            <TrendingUp className="size-3.5" />
-            Manage Scale
-          </div>
-        ) : (
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">
-              Pricing
-            </span>
-            <span className="text-sm font-black text-primary">
-              {plugin.price}
-            </span>
-          </div>
-        )}
+        <div className="w-full flex items-center justify-between min-h-6">
+          {isInstalled ? (
+            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest min-w-0">
+              <TrendingUp className="size-3.5 shrink-0" />
+              <span className="truncate">Manage Scale</span>
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">
+                Pricing
+              </span>
+              <span className="text-sm font-black text-primary">
+                {plugin.price}
+              </span>
+            </div>
+          )}
+        </div>
+
         <Button
           variant={isInstalled ? "default" : "ghost"}
           size="sm"
           className={cn(
-            "h-8 text-[10px] font-black uppercase tracking-widest gap-2 shadow-none rounded-lg",
+            "w-full h-8 text-[10px] font-black uppercase tracking-widest gap-2 shadow-none rounded-lg min-w-0",
             !isInstalled && "hover:bg-primary hover:text-primary-foreground",
           )}
         >
-          {isInstalled ? "Control Panel" : "View Specs"}{" "}
-          <Info className="size-3.5" />
+          <span className="truncate">
+            {isInstalled ? "Control Panel" : "View Specs"}
+          </span>
+          <Info className="size-3.5 shrink-0" />
         </Button>
       </div>
     </Card>
@@ -361,7 +447,7 @@ function PluginDetailView({
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-card">
-      <div className="p-4 border-b flex items-center justify-between bg-muted/20">
+      <div className="p-4 sm:p-6 border-b flex flex-wrap items-center justify-between gap-3 bg-muted/20">
         <Button
           variant="ghost"
           size="sm"
@@ -389,110 +475,111 @@ function PluginDetailView({
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-6 sm:p-10 space-y-10">
-          <div className="flex gap-8 items-start">
-            <div className="size-24 rounded-4xl bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-inner group relative">
-              <Icon className="size-12 group-hover:scale-110 transition-transform duration-500" />
-              {isInstalled && (
-                <div className="absolute -top-2 -right-2 size-8 bg-green-500 rounded-full flex items-center justify-center text-white border-4 border-background shadow-lg shadow-green-500/20">
-                  <CheckCircle2 className="size-4" />
+        <div className="p-5 sm:p-8 xl:p-10 space-y-8 xl:space-y-10">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-8 xl:gap-10 items-start">
+            <section className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start">
+                <div className="size-20 sm:size-24 rounded-4xl bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-inner group relative">
+                  <Icon className="size-10 sm:size-12 group-hover:scale-110 transition-transform duration-500" />
+                  {isInstalled && (
+                    <div className="absolute -top-2 -right-2 size-8 bg-green-500 rounded-full flex items-center justify-center text-white border-4 border-background shadow-lg shadow-green-500/20">
+                      <CheckCircle2 className="size-4" />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="space-y-4 pt-2">
-              <h2 className="text-4xl font-black tracking-tighter uppercase italic">
-                {plugin.name}
-              </h2>
-              <div className="p-4 rounded-2xl bg-primary/5 border-l-4 border-primary/40">
-                <p className="text-sm font-bold text-foreground/80 leading-relaxed italic">
-                  "{plugin.description}"
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border/50" />
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground whitespace-nowrap">
-                Technical Capabilities
-              </h4>
-              <div className="h-px flex-1 bg-border/50" />
-            </div>
-            <p className="text-base leading-relaxed text-muted-foreground font-medium">
-              {plugin.longDescription}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-3xl bg-muted/40 border border-border/50 flex flex-col justify-between hover:border-primary/20 transition-all cursor-default">
-              <div className="space-y-1">
-                <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-widest">
-                  Billing Tier
-                </p>
-                <p className="text-2xl font-black text-primary">
-                  {plugin.price}
-                </p>
-              </div>
-              <div className="mt-6 flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground">
-                <CreditCard className="size-3.5" /> Post-Paid Monthly
-              </div>
-            </div>
-            <div className="p-6 rounded-3xl bg-muted/40 border border-border/50 space-y-4 hover:border-primary/20 transition-all cursor-default">
-              <div className="flex justify-between items-end">
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-widest">
-                    Real-time Usage
-                  </p>
-                  <p className="text-2xl font-black tracking-tighter">
-                    {isInstalled ? "420" : "0"}{" "}
-                    <span className="text-sm text-muted-foreground font-bold">
-                      / 5,000 unit
-                    </span>
+                <div className="space-y-3 sm:space-y-4 pt-1">
+                  <h2 className="text-3xl sm:text-4xl xl:text-5xl font-black tracking-tight uppercase leading-none">
+                    {plugin.name}
+                  </h2>
+                  <p className="text-base sm:text-lg text-foreground/85 leading-relaxed max-w-3xl">
+                    {plugin.description}
                   </p>
                 </div>
-                <Badge
-                  variant="outline"
-                  className="text-[8px] font-black tracking-tighter mb-1 border-primary/20 text-primary"
-                >
-                  8% Capacity
-                </Badge>
               </div>
-              <Progress
-                value={isInstalled ? 8 : 0}
-                className="h-2 bg-muted-foreground/10 rounded-full overflow-hidden"
-              />
-            </div>
+
+              <div className="rounded-2xl border border-border/60 bg-muted/30 p-5 sm:p-6 space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-[0.16em] text-muted-foreground">
+                  Technical Capabilities
+                </h4>
+                <p className="text-sm sm:text-base leading-relaxed text-foreground/80">
+                  {plugin.longDescription}
+                </p>
+              </div>
+            </section>
+
+            <aside className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4 xl:gap-5">
+              <div className="p-6 rounded-3xl bg-muted/40 border border-border/50 flex flex-col justify-between hover:border-primary/20 transition-all cursor-default min-h-42.5">
+                <div className="space-y-1.5">
+                  <p className="text-[11px] uppercase font-black text-muted-foreground/65 tracking-widest">
+                    Billing Tier
+                  </p>
+                  <p className="text-3xl font-black text-primary tracking-tight">
+                    {plugin.price}
+                  </p>
+                </div>
+                <div className="mt-6 flex items-center gap-2 text-[11px] font-semibold uppercase text-muted-foreground">
+                  <CreditCard className="size-3.5" /> Post-Paid Monthly
+                </div>
+              </div>
+
+              <div className="p-6 rounded-3xl bg-muted/40 border border-border/50 space-y-4 hover:border-primary/20 transition-all cursor-default min-h-42.5">
+                <div className="flex justify-between items-end gap-3">
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] uppercase font-black text-muted-foreground/65 tracking-widest">
+                      Real-time Usage
+                    </p>
+                    <p className="text-3xl font-black tracking-tight">
+                      {isInstalled ? "420" : "0"}{" "}
+                      <span className="text-sm text-muted-foreground font-semibold">
+                        / 5,000 unit
+                      </span>
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] font-bold tracking-wide mb-1 border-primary/20 text-primary"
+                  >
+                    8% Capacity
+                  </Badge>
+                </div>
+                <Progress
+                  value={isInstalled ? 8 : 0}
+                  className="h-2 bg-muted-foreground/10 rounded-full overflow-hidden"
+                />
+              </div>
+            </aside>
           </div>
 
-          <div className="bg-primary/5 p-8 rounded-4xl border border-primary/10 space-y-8 shadow-inner shadow-primary/5">
-            <h4 className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary flex items-center gap-3">
+          <div className="bg-primary/5 p-6 sm:p-8 rounded-4xl border border-primary/10 space-y-6 shadow-inner shadow-primary/5">
+            <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-[0.18em] text-primary flex items-center gap-3">
               <Settings className="size-4 animate-spin-slow" /> Management
               Control Panel
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2 p-5 rounded-2xl bg-card border border-primary/10 hover:border-primary/30 hover:shadow-xl transition-all cursor-pointer group transform-gpu active:scale-95">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2.5 p-5 rounded-2xl bg-card border border-primary/10 hover:border-primary/30 hover:shadow-xl transition-all cursor-pointer group transform-gpu active:scale-95">
                 <div className="flex items-center justify-between">
                   <TrendingUp className="size-5 text-primary" />
                   <Badge
                     variant="secondary"
-                    className="text-[8px] font-black tracking-widest bg-primary/10 text-primary"
+                    className="text-[9px] font-bold tracking-wide bg-primary/10 text-primary"
                   >
                     Pro Feature
                   </Badge>
                 </div>
-                <div className="space-y-1 mt-2">
-                  <span className="text-xs font-black uppercase tracking-widest group-hover:text-primary transition-colors">
+                <div className="space-y-1.5 mt-1">
+                  <span className="text-sm font-bold uppercase tracking-wide group-hover:text-primary transition-colors">
                     Scale Infrastructure
                   </span>
-                  <p className="text-[10px] font-bold text-muted-foreground tracking-tight">
-                    Upgrade or Downgrade your plan instantly based on drift.
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Upgrade or downgrade your plan instantly based on current
+                    operational demand.
                   </p>
                 </div>
               </div>
               <div
                 className={cn(
-                  "flex flex-col gap-2 p-5 rounded-2xl bg-card border border-destructive/10 hover:border-destructive/30 hover:shadow-xl transition-all cursor-pointer group transform-gpu active:scale-95",
+                  "flex flex-col gap-2.5 p-5 rounded-2xl bg-card border border-destructive/10 hover:border-destructive/30 hover:shadow-xl transition-all cursor-pointer group transform-gpu active:scale-95",
                   !isInstalled && "opacity-50 grayscale cursor-not-allowed",
                 )}
                 onClick={() => isInstalled && onDeactivate()}
@@ -501,18 +588,17 @@ function PluginDetailView({
                   <XCircle className="size-5 text-destructive" />
                   <Badge
                     variant="outline"
-                    className="text-[8px] font-black tracking-widest border-destructive/20 text-destructive uppercase"
+                    className="text-[9px] font-bold tracking-wide border-destructive/20 text-destructive uppercase"
                   >
                     Security First
                   </Badge>
                 </div>
-                <div className="space-y-1 mt-2">
-                  <span className="text-xs font-black uppercase tracking-widest group-hover:text-destructive transition-colors">
+                <div className="space-y-1.5 mt-1">
+                  <span className="text-sm font-bold uppercase tracking-wide group-hover:text-destructive transition-colors">
                     Instant Deactivation
                   </span>
-                  <p className="text-[10px] font-bold text-muted-foreground tracking-tight italic">
-                    {" "}
-                    billing stops at the end of the current cycle. No lock-in.
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Billing stops at the end of the current cycle. No lock-in.
                   </p>
                 </div>
               </div>
@@ -521,7 +607,7 @@ function PluginDetailView({
         </div>
       </ScrollArea>
 
-      <div className="p-4 sm:p-8 border-t bg-card mt-auto flex items-center gap-4">
+      <div className="p-4 sm:p-6 xl:p-7 border-t bg-card mt-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
         {isInstalled ? (
           <Button
             variant="outline"
@@ -546,13 +632,37 @@ function PluginDetailView({
               : "Activate Risk-Free Enrollment"}
           </Button>
         )}
-        <Button
-          variant="outline"
-          className="h-14 w-14 p-0 rounded-[1.25rem] border-primary/20 hover:border-primary/50 transition-all group"
-          onClick={onClose}
-        >
-          <Info className="size-6 text-muted-foreground group-hover:text-primary transition-colors" />
-        </Button>
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-14 w-14 p-0 rounded-[1.25rem] border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+              >
+                <Info className="size-6 text-muted-foreground group-hover:text-primary transition-colors" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              align="end"
+              className="max-w-65 p-4 rounded-2xl space-y-2 border border-primary/20 bg-card shadow-xl"
+            >
+              <p className="text-[11px] font-black uppercase tracking-widest text-primary">
+                Risk-Free Enrollment
+              </p>
+              <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                You won&apos;t be charged until the end of your first billing
+                cycle. Cancel anytime — no lock-in, no penalties.
+              </p>
+              <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                <CheckCircle2 className="size-3.5 text-green-500 shrink-0" />
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  Billed post-usage, monthly
+                </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );

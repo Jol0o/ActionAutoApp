@@ -68,7 +68,7 @@ function quoteStatusBadgeClass(status: string) {
 
 function StatCard({ label, value, accent, icon }: { label: string; value: string | number; accent: string; icon: React.ReactNode }) {
   return (
-    <div className={`flex-1 min-w-[110px] rounded-lg border bg-card px-4 py-3 ${accent}`}>
+    <div className={`flex-1 min-w-27.5unded-lg border bg-card px-4 py-3 ${accent}`}>
       <div className="flex items-center justify-between mb-1.5">
         <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
         <span className="opacity-60">{icon}</span>
@@ -130,20 +130,20 @@ function ShipmentPreview({ shipments }: { shipments: Shipment[] }) {
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="overflow-x-auto">
-              <div className="overflow-y-auto max-h-[420px]">
+              <div className="overflow-y-auto max-h-105">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/60 hover:bg-muted/60">
-                      <TableHead className="text-xs font-semibold w-[100px]">Tracking #</TableHead>
-                      <TableHead className="text-xs font-semibold w-[90px]">Status</TableHead>
-                      <TableHead className="text-xs font-semibold w-[110px]">Customer</TableHead>
-                      <TableHead className="text-xs font-semibold w-[120px]">Vehicle</TableHead>
-                      <TableHead className="text-xs font-semibold w-[120px]">VIN</TableHead>
-                      <TableHead className="text-xs font-semibold w-[90px]">Origin</TableHead>
-                      <TableHead className="text-xs font-semibold w-[90px]">Destination</TableHead>
-                      <TableHead className="text-xs font-semibold w-[70px]">Type</TableHead>
-                      <TableHead className="text-xs font-semibold w-[80px]">Rate</TableHead>
-                      <TableHead className="text-xs font-semibold w-[100px]">Driver</TableHead>
+                      <TableHead className="text-xs font-semibold w-25">Tracking #</TableHead>
+                      <TableHead className="text-xs font-semibold w-22.5">Status</TableHead>
+                      <TableHead className="text-xs font-semibold w-27.5">Customer</TableHead>
+                      <TableHead className="text-xs font-semibold w-30">Vehicle</TableHead>
+                      <TableHead className="text-xs font-semibold w-30">VIN</TableHead>
+                      <TableHead className="text-xs font-semibold w-22.5">Origin</TableHead>
+                      <TableHead className="text-xs font-semibold w-22.5">Destination</TableHead>
+                      <TableHead className="text-xs font-semibold w-17.5">Type</TableHead>
+                      <TableHead className="text-xs font-semibold w-20">Rate</TableHead>
+                      <TableHead className="text-xs font-semibold w-25">Driver</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -152,7 +152,7 @@ function ShipmentPreview({ shipments }: { shipments: Shipment[] }) {
                         <TableCell className="font-mono text-[11px] text-foreground">{s.trackingNumber || "—"}</TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] font-medium ${statusBadgeClass(s.status)}`}>{s.status}</Badge></TableCell>
                         <TableCell className="font-medium text-foreground">{shipmentCustomer(s)}</TableCell>
-                        <TableCell className="text-muted-foreground truncate max-w-[120px]">{shipmentVehicle(s)}</TableCell>
+                        <TableCell className="text-muted-foreground truncate max-w-30">{shipmentVehicle(s)}</TableCell>
                         <TableCell className="font-mono text-[10px] text-muted-foreground">{shipmentVin(s)}</TableCell>
                         <TableCell className="text-muted-foreground">{s.origin || "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{s.destination || "—"}</TableCell>
@@ -214,27 +214,27 @@ function QuotePreview({ quotes }: { quotes: Quote[] }) {
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="overflow-x-auto">
-              <div className="overflow-y-auto max-h-[420px]">
+              <div className="overflow-y-auto max-h-105">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/60 hover:bg-muted/60">
-                      <TableHead className="text-xs font-semibold w-[110px]">Customer</TableHead>
-                      <TableHead className="text-xs font-semibold w-[120px]">Vehicle</TableHead>
-                      <TableHead className="text-xs font-semibold w-[100px]">From</TableHead>
-                      <TableHead className="text-xs font-semibold w-[100px]">To</TableHead>
-                      <TableHead className="text-xs font-semibold w-[70px]">Miles</TableHead>
-                      <TableHead className="text-xs font-semibold w-[80px]">Rate</TableHead>
-                      <TableHead className="text-xs font-semibold w-[60px]">ETA</TableHead>
-                      <TableHead className="text-xs font-semibold w-[70px]">Type</TableHead>
-                      <TableHead className="text-xs font-semibold w-[50px]">Units</TableHead>
-                      <TableHead className="text-xs font-semibold w-[80px]">Status</TableHead>
+                      <TableHead className="text-xs font-semibold w-27.5">Customer</TableHead>
+                      <TableHead className="text-xs font-semibold w-30">Vehicle</TableHead>
+                      <TableHead className="text-xs font-semibold w-25">From</TableHead>
+                      <TableHead className="text-xs font-semibold w-25">To</TableHead>
+                      <TableHead className="text-xs font-semibold w-17.5">Miles</TableHead>
+                      <TableHead className="text-xs font-semibold w-20">Rate</TableHead>
+                      <TableHead className="text-xs font-semibold w-15">ETA</TableHead>
+                      <TableHead className="text-xs font-semibold w-17.5">Type</TableHead>
+                      <TableHead className="text-xs font-semibold w-12.5">Units</TableHead>
+                      <TableHead className="text-xs font-semibold w-20">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {quotes.map(q => (
                       <TableRow key={q._id} className="text-xs hover:bg-muted/30">
                         <TableCell className="font-medium text-foreground">{quoteCustomer(q)}</TableCell>
-                        <TableCell className="text-muted-foreground truncate max-w-[120px]">{quoteVehicle(q)}</TableCell>
+                        <TableCell className="text-muted-foreground truncate max-w-30">{quoteVehicle(q)}</TableCell>
                         <TableCell className="text-muted-foreground">{quoteFromAddr(q)}</TableCell>
                         <TableCell className="text-muted-foreground">{quoteToAddr(q)}</TableCell>
                         <TableCell className="text-muted-foreground">{fmtNumber(q.miles || 0)}</TableCell>

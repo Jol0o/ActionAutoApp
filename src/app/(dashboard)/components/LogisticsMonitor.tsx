@@ -32,7 +32,7 @@ export function LogisticsMonitor({ data, isLoading }: LogisticsMonitorProps) {
     <div className="space-y-6">
       {/* Driver Availability Heatmap */}
       <Card className="border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden p-0">
-        <CardHeader className="py-4 border-b border-border/10">
+        <CardHeader className="py-5 px-6 border-b border-border/10 min-h-22">
           <CardTitle className="text-sm font-black flex items-center gap-2">
             <Users className="h-4 w-4 text-primary" />
             VOD Network Health

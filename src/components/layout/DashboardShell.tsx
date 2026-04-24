@@ -40,6 +40,7 @@ function DashboardShellContent({ children }: DashboardShellProps) {
   const { signOut } = useAuthActions();
   const { avatarUrl } = useProfileContext();
   const { organization, isLoaded, isSuperAdmin, userRole } = useOrg();
+  const router = useRouter();
   const { isImpersonating } = adminStore.useStore();
 
   return (
@@ -120,14 +121,10 @@ function DashboardShellContent({ children }: DashboardShellProps) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => (window.location.href = "/profile")}
-                  >
+                  <DropdownMenuItem onClick={() => router.push("/profile")}>
                     Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => (window.location.href = "/settings")}
-                  >
+                  <DropdownMenuItem onClick={() => router.push("/settings")}>
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

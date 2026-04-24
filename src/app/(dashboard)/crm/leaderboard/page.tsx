@@ -95,31 +95,31 @@ function ini(n: string) {
 }
 
 const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  lead_created:          { label: "Lead Created",        icon: <Star className="h-3 w-3" />,         color: "text-emerald-500" },
-  lead_contacted:        { label: "Lead Contacted",      icon: <Phone className="h-3 w-3" />,         color: "text-blue-500" },
-  lead_converted:        { label: "Lead Converted",      icon: <CheckCircle2 className="h-3 w-3" />,  color: "text-emerald-600" },
-  lead_replied:          { label: "Replied to Lead",     icon: <MessageSquare className="h-3 w-3" />, color: "text-indigo-500" },
-  appointment_completed: { label: "Appointment Done",    icon: <Calendar className="h-3 w-3" />,      color: "text-purple-500" },
-  appointment_created:   { label: "Appointment Set",     icon: <Calendar className="h-3 w-3" />,      color: "text-violet-500" },
-  call_made:             { label: "Call Made",           icon: <Phone className="h-3 w-3" />,         color: "text-cyan-500" },
-  message_sent:          { label: "Message Sent",        icon: <MessageSquare className="h-3 w-3" />, color: "text-sky-500" },
-  follow_up_sent:        { label: "Follow-up Sent",      icon: <RefreshCw className="h-3 w-3" />,     color: "text-amber-500" },
-  transaction_completed: { label: "Transaction Closed",  icon: <Zap className="h-3 w-3" />,           color: "text-yellow-500" },
-  onboarding_completed:  { label: "Onboarding Complete", icon: <UserCheck className="h-3 w-3" />,     color: "text-teal-500" },
-  time_in:               { label: "Clocked In",          icon: <Clock className="h-3 w-3" />,         color: "text-muted-foreground" },
-  time_out:              { label: "Clocked Out",         icon: <Clock className="h-3 w-3" />,         color: "text-muted-foreground" },
+  lead_created: { label: "Lead Created", icon: <Star className="h-3 w-3" />, color: "text-emerald-500" },
+  lead_contacted: { label: "Lead Contacted", icon: <Phone className="h-3 w-3" />, color: "text-blue-500" },
+  lead_converted: { label: "Lead Converted", icon: <CheckCircle2 className="h-3 w-3" />, color: "text-emerald-600" },
+  lead_replied: { label: "Replied to Lead", icon: <MessageSquare className="h-3 w-3" />, color: "text-indigo-500" },
+  appointment_completed: { label: "Appointment Done", icon: <Calendar className="h-3 w-3" />, color: "text-purple-500" },
+  appointment_created: { label: "Appointment Set", icon: <Calendar className="h-3 w-3" />, color: "text-violet-500" },
+  call_made: { label: "Call Made", icon: <Phone className="h-3 w-3" />, color: "text-cyan-500" },
+  message_sent: { label: "Message Sent", icon: <MessageSquare className="h-3 w-3" />, color: "text-sky-500" },
+  follow_up_sent: { label: "Follow-up Sent", icon: <RefreshCw className="h-3 w-3" />, color: "text-amber-500" },
+  transaction_completed: { label: "Transaction Closed", icon: <Zap className="h-3 w-3" />, color: "text-yellow-500" },
+  onboarding_completed: { label: "Onboarding Complete", icon: <UserCheck className="h-3 w-3" />, color: "text-teal-500" },
+  time_in: { label: "Clocked In", icon: <Clock className="h-3 w-3" />, color: "text-muted-foreground" },
+  time_out: { label: "Clocked Out", icon: <Clock className="h-3 w-3" />, color: "text-muted-foreground" },
 }
 
 const BADGE_META: Record<string, { name: string; icon: string; color: string }> = {
-  first_lead:         { name: "First Contact",     icon: "🌱", color: "from-emerald-500/20 to-green-500/10 border-emerald-500/30" },
-  lead_machine:       { name: "Lead Machine",      icon: "⚡", color: "from-yellow-500/20 to-amber-500/10 border-yellow-500/30" },
-  converter:          { name: "The Converter",     icon: "🎯", color: "from-orange-500/20 to-red-500/10 border-orange-500/30" },
-  speed_demon:        { name: "Speed Demon",       icon: "🚀", color: "from-blue-500/20 to-cyan-500/10 border-blue-500/30" },
-  onboarding_hero:    { name: "Onboarding Hero",   icon: "🏆", color: "from-amber-500/20 to-yellow-500/10 border-amber-500/30" },
-  appointment_setter: { name: "Appt. Setter",      icon: "📅", color: "from-purple-500/20 to-violet-500/10 border-purple-500/30" },
-  top_weekly:         { name: "Weekly Champion",   icon: "👑", color: "from-rose-500/20 to-pink-500/10 border-rose-500/30" },
-  follow_up_king:     { name: "Follow-Up King",    icon: "📞", color: "from-teal-500/20 to-emerald-500/10 border-teal-500/30" },
-  transaction_titan:  { name: "Transaction Titan", icon: "💰", color: "from-green-500/20 to-emerald-500/10 border-green-500/30" },
+  first_lead: { name: "First Contact", icon: "🌱", color: "from-emerald-500/20 to-green-500/10 border-emerald-500/30" },
+  lead_machine: { name: "Lead Machine", icon: "⚡", color: "from-yellow-500/20 to-amber-500/10 border-yellow-500/30" },
+  converter: { name: "The Converter", icon: "🎯", color: "from-orange-500/20 to-red-500/10 border-orange-500/30" },
+  speed_demon: { name: "Speed Demon", icon: "🚀", color: "from-blue-500/20 to-cyan-500/10 border-blue-500/30" },
+  onboarding_hero: { name: "Onboarding Hero", icon: "🏆", color: "from-amber-500/20 to-yellow-500/10 border-amber-500/30" },
+  appointment_setter: { name: "Appt. Setter", icon: "📅", color: "from-purple-500/20 to-violet-500/10 border-purple-500/30" },
+  top_weekly: { name: "Weekly Champion", icon: "👑", color: "from-rose-500/20 to-pink-500/10 border-rose-500/30" },
+  follow_up_king: { name: "Follow-Up King", icon: "📞", color: "from-teal-500/20 to-emerald-500/10 border-teal-500/30" },
+  transaction_titan: { name: "Transaction Titan", icon: "💰", color: "from-green-500/20 to-emerald-500/10 border-green-500/30" },
 }
 
 const RANK_ICONS = [
@@ -194,9 +194,8 @@ function LeaderboardRow({ entry, onClick, isMe }: {
   return (
     <div
       onClick={onClick}
-      className={`group flex items-center gap-4 rounded-2xl border px-5 py-4 cursor-pointer transition-all duration-200 hover:border-emerald-500/25 hover:bg-emerald-500/[0.02] ${
-        isMe ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/40 bg-card"
-      } ${isTop3 ? "ring-1 ring-inset ring-border/0 hover:ring-emerald-500/15" : ""}`}
+      className={`group flex items-center gap-4 rounded-2xl border px-5 py-4 cursor-pointer transition-all duration-200 hover:border-emerald-500/25 hover:bg-emerald-500/2 ${isMe ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/40 bg-card"
+        } ${isTop3 ? "ring-1 ring-inset ring-border/0 hover:ring-emerald-500/15" : ""}`}
     >
       {/* Rank */}
       <div className="w-10 flex flex-col items-center gap-1 shrink-0">
@@ -238,7 +237,7 @@ function LeaderboardRow({ entry, onClick, isMe }: {
           { label: "Leads", value: entry.kpis.leadsCreated },
           { label: "Conv%", value: `${entry.kpis.conversionRate}%` },
           { label: "Appts", value: entry.kpis.appointmentsCompleted },
-          { label: "Txns",  value: entry.kpis.transactionsCompleted },
+          { label: "Txns", value: entry.kpis.transactionsCompleted },
         ].map(item => (
           <div key={item.label} className="w-12">
             <p className="text-base font-bold tabular-nums">{item.value}</p>
@@ -264,9 +263,8 @@ function MemberRow({ orgUser, badges, isMe }: {
 }) {
   return (
     <div
-      className={`flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-200 ${
-        isMe ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/40 bg-card"
-      }`}
+      className={`flex items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-200 ${isMe ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/40 bg-card"
+        }`}
     >
       {/* Rank placeholder — keeps alignment with LeaderboardRow */}
       <div className="w-10 flex items-center justify-center shrink-0">
@@ -286,9 +284,9 @@ function MemberRow({ orgUser, badges, isMe }: {
           {isMe && <Badge className="text-[9px] h-4 px-1.5 bg-emerald-500/15 text-emerald-600 border-0">You</Badge>}
           <span className="text-[10px] text-muted-foreground/30 font-mono">{orgUser.username}</span>
           <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full capitalize
-            ${orgUser.role === "admin"   ? "bg-rose-500/10 text-rose-500" :
+            ${orgUser.role === "admin" ? "bg-rose-500/10 text-rose-500" :
               orgUser.role === "manager" ? "bg-blue-500/10 text-blue-500" :
-              "bg-muted/50 text-muted-foreground/40"}`}
+                "bg-muted/50 text-muted-foreground/40"}`}
           >
             {orgUser.role}
           </span>
@@ -448,7 +446,7 @@ export default function LeaderboardPage() {
     try {
       const res = await apiClient.get(`/api/analytics/overview?periodType=${periodType}`, { headers: authHeaders })
       setOverview(res.data?.data || null)
-    } catch {}
+    } catch { }
   }, [token, periodType, authHeaders, user?.role])
 
   // ── Fetch my stats ───────────────────────────────────────────────────────
@@ -457,7 +455,7 @@ export default function LeaderboardPage() {
     try {
       const res = await apiClient.get("/api/analytics/my-stats", { headers: authHeaders })
       setMyStats(res.data?.data?.stats || null)
-    } catch {}
+    } catch { }
   }, [token, authHeaders])
 
   // ── Fetch activity feed ──────────────────────────────────────────────────
@@ -466,7 +464,7 @@ export default function LeaderboardPage() {
     try {
       const res = await apiClient.get("/api/analytics/activity-feed?limit=40", { headers: authHeaders })
       setActivityFeed(res.data?.data?.logs || [])
-    } catch {}
+    } catch { }
   }, [token, authHeaders])
 
   React.useEffect(() => {
@@ -562,23 +560,23 @@ export default function LeaderboardPage() {
         </div>
       </header>
 
-      <main className="max-w-screen-xl mx-auto px-6 py-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
 
         {/* ── My Stats Strip ── */}
         {statPeriod && (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] px-6 py-4">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/3 px-6 py-4">
             <p className="text-[10px] uppercase tracking-widest text-emerald-500/60 font-bold mb-3 flex items-center gap-1.5">
               <Sparkles className="h-3 w-3" /> My Performance — {periodType === "daily" ? "Today" : periodType === "weekly" ? "This Week" : "This Month"}
             </p>
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-4">
               {[
-                { label: "Score",   value: Math.round(statPeriod.totalScore), highlight: true },
-                { label: "Leads",   value: statPeriod.leadsCreated },
-                { label: "Conv%",   value: `${statPeriod.conversionRate}%` },
-                { label: "Appts",   value: statPeriod.appointmentsCompleted },
-                { label: "Calls",   value: statPeriod.callsMade },
-                { label: "Msgs",    value: statPeriod.messagesSent },
-                { label: "Txns",    value: statPeriod.transactionsCompleted },
+                { label: "Score", value: Math.round(statPeriod.totalScore), highlight: true },
+                { label: "Leads", value: statPeriod.leadsCreated },
+                { label: "Conv%", value: `${statPeriod.conversionRate}%` },
+                { label: "Appts", value: statPeriod.appointmentsCompleted },
+                { label: "Calls", value: statPeriod.callsMade },
+                { label: "Msgs", value: statPeriod.messagesSent },
+                { label: "Txns", value: statPeriod.transactionsCompleted },
                 { label: "Onboard", value: statPeriod.onboardingsCompleted },
               ].map(item => (
                 <div key={item.label} className={`text-center rounded-xl px-3 py-2 ${item.highlight ? "bg-emerald-500/10" : "bg-muted/20"}`}>
@@ -597,10 +595,10 @@ export default function LeaderboardPage() {
         }}>
           <TabsList className="rounded-2xl border border-border/40 bg-muted/20 p-1 h-auto gap-1">
             {[
-              { value: "leaderboard", label: "Leaderboard",   icon: <Trophy className="h-3.5 w-3.5" /> },
-              { value: "overview",    label: "Analytics",     icon: <BarChart3 className="h-3.5 w-3.5" />, adminOnly: true },
-              { value: "activity",    label: "Activity Feed", icon: <Activity className="h-3.5 w-3.5" /> },
-              { value: "badges",      label: "Badges",        icon: <Award className="h-3.5 w-3.5" /> },
+              { value: "leaderboard", label: "Leaderboard", icon: <Trophy className="h-3.5 w-3.5" /> },
+              { value: "overview", label: "Analytics", icon: <BarChart3 className="h-3.5 w-3.5" />, adminOnly: true },
+              { value: "activity", label: "Activity Feed", icon: <Activity className="h-3.5 w-3.5" /> },
+              { value: "badges", label: "Badges", icon: <Award className="h-3.5 w-3.5" /> },
             ]
               .filter(t => !t.adminOnly || user?.role !== "employee")
               .map(t => (
@@ -678,16 +676,16 @@ export default function LeaderboardPage() {
             ) : (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  <StatCard label="Active Users"    value={overview.totals.activeUsers          || 0} icon={<Users className="h-4 w-4 text-blue-500" />} />
-                  <StatCard label="Leads Created"   value={overview.totals.totalLeadsCreated    || 0} icon={<Star className="h-4 w-4 text-emerald-500" />} />
-                  <StatCard label="Leads Converted" value={overview.totals.totalLeadsConverted  || 0} icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} />
-                  <StatCard label="Appointments"    value={overview.totals.totalAppointments    || 0} icon={<Calendar className="h-4 w-4 text-purple-500" />} />
-                  <StatCard label="Transactions"    value={overview.totals.totalTransactions    || 0} icon={<Zap className="h-4 w-4 text-yellow-500" />} />
-                  <StatCard label="Calls Made"      value={overview.totals.totalCalls           || 0} icon={<Phone className="h-4 w-4 text-cyan-500" />} />
-                  <StatCard label="Messages Sent"   value={overview.totals.totalMessages        || 0} icon={<MessageSquare className="h-4 w-4 text-sky-500" />} />
-                  <StatCard label="Onboardings"     value={overview.totals.totalOnboardings     || 0} icon={<UserCheck className="h-4 w-4 text-teal-500" />} />
-                  <StatCard label="Avg Conv. Rate"  value={`${Math.round(overview.totals.avgConversionRate || 0)}%`} icon={<Target className="h-4 w-4 text-orange-500" />} />
-                  <StatCard label="Avg Response"    value={`${Math.round(overview.totals.avgResponseTime || 0)}m`} icon={<Clock className="h-4 w-4 text-amber-500" />} sub="minutes" />
+                  <StatCard label="Active Users" value={overview.totals.activeUsers || 0} icon={<Users className="h-4 w-4 text-blue-500" />} />
+                  <StatCard label="Leads Created" value={overview.totals.totalLeadsCreated || 0} icon={<Star className="h-4 w-4 text-emerald-500" />} />
+                  <StatCard label="Leads Converted" value={overview.totals.totalLeadsConverted || 0} icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} />
+                  <StatCard label="Appointments" value={overview.totals.totalAppointments || 0} icon={<Calendar className="h-4 w-4 text-purple-500" />} />
+                  <StatCard label="Transactions" value={overview.totals.totalTransactions || 0} icon={<Zap className="h-4 w-4 text-yellow-500" />} />
+                  <StatCard label="Calls Made" value={overview.totals.totalCalls || 0} icon={<Phone className="h-4 w-4 text-cyan-500" />} />
+                  <StatCard label="Messages Sent" value={overview.totals.totalMessages || 0} icon={<MessageSquare className="h-4 w-4 text-sky-500" />} />
+                  <StatCard label="Onboardings" value={overview.totals.totalOnboardings || 0} icon={<UserCheck className="h-4 w-4 text-teal-500" />} />
+                  <StatCard label="Avg Conv. Rate" value={`${Math.round(overview.totals.avgConversionRate || 0)}%`} icon={<Target className="h-4 w-4 text-orange-500" />} />
+                  <StatCard label="Avg Response" value={`${Math.round(overview.totals.avgResponseTime || 0)}m`} icon={<Clock className="h-4 w-4 text-amber-500" />} sub="minutes" />
                 </div>
 
                 {overview.trend.length > 0 && (
@@ -700,7 +698,7 @@ export default function LeaderboardPage() {
                         return (
                           <div key={d._id} className="flex-1 group relative flex flex-col items-center justify-end gap-1" title={`${d._id}: ${d.count} actions`}>
                             <div
-                              className="w-full rounded-t-sm bg-emerald-500/30 group-hover:bg-emerald-500/60 transition-colors duration-150 min-h-[2px]"
+                              className="w-full rounded-t-sm bg-emerald-500/30 group-hover:bg-emerald-500/60 transition-colors duration-150 min-h-0.5"
                               style={{ height: `${pct}%` }}
                             />
                             {i % 7 === 0 && (
@@ -770,18 +768,18 @@ export default function LeaderboardPage() {
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40 mb-5">All Badges & Achievements</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {Object.entries(BADGE_META).map(([id, meta]) => {
-                    const rankedBadges   = leaderboard.flatMap(e => e.badges)
+                    const rankedBadges = leaderboard.flatMap(e => e.badges)
                     const unrankedBadges = Object.values(orgUserBadges).flat()
-                    const allBadges      = [...rankedBadges, ...unrankedBadges]
-                    const isEarned       =
+                    const allBadges = [...rankedBadges, ...unrankedBadges]
+                    const isEarned =
                       leaderboard.find(e => e.user._id === user?._id)?.badges.includes(id) ||
                       (orgUserBadges[user?._id] || []).includes(id)
-                    const earnedCount    = allBadges.filter(b => b === id).length
+                    const earnedCount = allBadges.filter(b => b === id).length
 
                     return (
                       <div
                         key={id}
-                        className={`rounded-2xl border p-4 bg-gradient-to-br transition-opacity ${meta.color} ${isEarned ? "" : "opacity-40 grayscale"}`}
+                        className={`rounded-2xl border p-4 bg-linear-to-br transition-opacity ${meta.color} ${isEarned ? "" : "opacity-40 grayscale"}`}
                       >
                         <div className="flex items-start gap-3">
                           <span className="text-2xl leading-none">{meta.icon}</span>
@@ -837,15 +835,15 @@ export default function LeaderboardPage() {
             <div className="space-y-2.5">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 font-bold">KPI Breakdown</p>
               {[
-                { label: "Leads Created",          value: selectedEntry.kpis.leadsCreated,          max: 30 },
-                { label: "Leads Converted",        value: selectedEntry.kpis.leadsConverted,         max: 15 },
-                { label: "Conversion Rate",        value: selectedEntry.kpis.conversionRate,         max: 100 },
-                { label: "Appointments Completed", value: selectedEntry.kpis.appointmentsCompleted,  max: 30 },
-                { label: "Calls Made",             value: selectedEntry.kpis.callsMade,              max: 100 },
-                { label: "Messages Sent",          value: selectedEntry.kpis.messagesSent,           max: 200 },
-                { label: "Follow-ups",             value: selectedEntry.kpis.followUpsSent,          max: 50 },
-                { label: "Transactions",           value: selectedEntry.kpis.transactionsCompleted,  max: 10 },
-                { label: "Onboardings",            value: selectedEntry.kpis.onboardingsCompleted,   max: 15 },
+                { label: "Leads Created", value: selectedEntry.kpis.leadsCreated, max: 30 },
+                { label: "Leads Converted", value: selectedEntry.kpis.leadsConverted, max: 15 },
+                { label: "Conversion Rate", value: selectedEntry.kpis.conversionRate, max: 100 },
+                { label: "Appointments Completed", value: selectedEntry.kpis.appointmentsCompleted, max: 30 },
+                { label: "Calls Made", value: selectedEntry.kpis.callsMade, max: 100 },
+                { label: "Messages Sent", value: selectedEntry.kpis.messagesSent, max: 200 },
+                { label: "Follow-ups", value: selectedEntry.kpis.followUpsSent, max: 50 },
+                { label: "Transactions", value: selectedEntry.kpis.transactionsCompleted, max: 10 },
+                { label: "Onboardings", value: selectedEntry.kpis.onboardingsCompleted, max: 15 },
               ].map(item => (
                 <KpiBar key={item.label} label={item.label} value={item.value} max={item.max} />
               ))}
@@ -860,7 +858,7 @@ export default function LeaderboardPage() {
                     return meta ? (
                       <span
                         key={b}
-                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold bg-gradient-to-r ${meta.color}`}
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold bg-linear-to-r ${meta.color}`}
                       >
                         {meta.icon} {meta.name}
                       </span>

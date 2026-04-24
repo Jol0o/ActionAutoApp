@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Truck,
@@ -57,6 +57,7 @@ const accountItems = [
 
 export function DriverSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useUser();
   const { signOut } = useAuthActions();
   const { organization } = useOrg();
@@ -117,7 +118,7 @@ export function DriverSidebar({ ...props }: React.ComponentProps<typeof Sidebar>
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t">
+      <SidebarFooter className="p-4 border-t group-data-[collapsible=icon]:p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -164,11 +165,11 @@ export function DriverSidebar({ ...props }: React.ComponentProps<typeof Sidebar>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => (window.location.href = "/driver/profile")}>
+                <DropdownMenuItem onClick={() => router.push("/driver/profile")}>
                   <UserIcon className="mr-2 size-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => (window.location.href = "/driver/settings")}>
+                <DropdownMenuItem onClick={() => router.push("/driver/settings")}>
                   <SettingsIcon className="mr-2 size-4" />
                   Settings
                 </DropdownMenuItem>

@@ -55,6 +55,10 @@ interface FileEntry {
     url?: string
 }
 
+type ShareTarget =
+    | { type: "reports-area" }
+    | { type: "file"; file: FileEntry }
+
 type SettingsSection = "account" | "locations" | "security" | "notifications" | "integrations"
 
 const SETTINGS_NAV_ITEMS: Array<{
@@ -101,6 +105,7 @@ export default function UtilitiesPage() {
     const [deleteTarget, setDeleteTarget] = React.useState<FileEntry | null>(null)
     const [isDeleting, setIsDeleting] = React.useState(false)
     const [activeCategory, setActiveCategory] = React.useState<ReportCategory | null>(null)
+    const [shareTarget, setShareTarget] = React.useState<ShareTarget>({ type: "reports-area" })
 
     const visibleFiles = activeCategory ? files.filter(f => f.category === activeCategory) : files
 
@@ -122,6 +127,15 @@ export default function UtilitiesPage() {
             .replace(/'/g, "&#39;")
 
     const openShareAccessDialog = () => {
+        setShareTarget({ type: "reports-area" })
+        setShareRecipients("")
+        setShareNote("")
+        setSharePermission("view")
+        setIsShareAccessOpen(true)
+    }
+
+    const openFileShareDialog = (file: FileEntry) => {
+        setShareTarget({ type: "file", file })
         setShareRecipients("")
         setShareNote("")
         setSharePermission("view")
@@ -135,10 +149,17 @@ export default function UtilitiesPage() {
     }
 
     const handleCopyShareAccessLink = async () => {
-        const shareUrl = `${window.location.origin}/settings?tab=reports`
+        const shareUrl =
+            shareTarget.type === "file"
+                ? (shareTarget.file.url || `${window.location.origin}/reports/${shareTarget.file.id}`)
+                : `${window.location.origin}/settings?tab=reports`
         try {
             await navigator.clipboard.writeText(shareUrl)
-            toast.success("Report access link copied to clipboard.")
+            toast.success(
+                shareTarget.type === "file"
+                    ? `Link copied for ${shareTarget.file.name}.`
+                    : "Report access link copied to clipboard."
+            )
         } catch {
             toast.error("Unable to copy link. Please try again.")
         }
@@ -160,14 +181,22 @@ export default function UtilitiesPage() {
         }
 
         setIsSharingAccess(true)
-        toast.loading("Sharing report access…", { id: "share-reports-access" })
+        toast.loading("Sharing report access...", { id: "share-reports-access" })
         try {
             // Replace with real API call when endpoint is available.
             await new Promise((resolve) => setTimeout(resolve, 800))
-            toast.success(
-                `Shared ${sharePermission === "view" ? "view" : "manage"} access with ${recipients.length} recipient${recipients.length === 1 ? "" : "s"}.`,
-                { id: "share-reports-access" }
-            )
+            const permissionLabel = sharePermission === "view" ? "view" : "manage"
+            if (shareTarget.type === "file") {
+                toast.success(
+                    `Shared ${permissionLabel} access to ${shareTarget.file.name} with ${recipients.length} recipient${recipients.length === 1 ? "" : "s"}.`,
+                    { id: "share-reports-access" }
+                )
+            } else {
+                toast.success(
+                    `Shared ${permissionLabel} access with ${recipients.length} recipient${recipients.length === 1 ? "" : "s"}.`,
+                    { id: "share-reports-access" }
+                )
+            }
             setIsShareAccessOpen(false)
         } catch {
             toast.error("Failed to share access. Please try again.", { id: "share-reports-access" })
@@ -308,18 +337,8 @@ export default function UtilitiesPage() {
         }
     }
 
-    const handleShare = async (file: FileEntry) => {
-        const shareUrl = file.url || `${window.location.origin}/reports/${file.id}`
-        try {
-            if (navigator.share) {
-                await navigator.share({ title: file.name, url: shareUrl })
-            } else {
-                await navigator.clipboard.writeText(shareUrl)
-                toast.success("Link copied to clipboard")
-            }
-        } catch {
-            // User cancelled share or clipboard failed
-        }
+    const handleShare = (file: FileEntry) => {
+        openFileShareDialog(file)
     }
 
     const handleDeleteConfirm = async () => {
@@ -359,10 +378,13 @@ export default function UtilitiesPage() {
                 <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <Share2 className="size-5 text-primary" /> Share Report Access
+                            <Share2 className="size-5 text-primary" />
+                            {shareTarget.type === "file" ? "Share Report" : "Share Report Access"}
                         </DialogTitle>
                         <DialogDescription>
-                            Invite team members to access the Reports area and choose their permission level.
+                            {shareTarget.type === "file"
+                                ? `Invite team members to access ${shareTarget.file.name} and choose their permission level.`
+                                : "Invite team members to access the Reports area and choose their permission level."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -404,17 +426,17 @@ export default function UtilitiesPage() {
                                 id="share-note"
                                 value={shareNote}
                                 onChange={(event) => setShareNote(event.target.value)}
-                                placeholder="Monthly reporting access"
+                                placeholder={shareTarget.type === "file" ? "Sharing this report for your review" : "Monthly reporting access"}
                             />
                         </div>
                     </div>
 
                     <DialogFooter className="gap-2">
                         <Button type="button" variant="outline" onClick={handleCopyShareAccessLink}>
-                            Copy Access Link
+                            Copy Link
                         </Button>
                         <Button type="button" onClick={handleShareAccess} disabled={isSharingAccess} className="bg-primary">
-                            {isSharingAccess ? "Sharing…" : "Share Access"}
+                            {isSharingAccess ? "Sharing..." : "Share Access"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
