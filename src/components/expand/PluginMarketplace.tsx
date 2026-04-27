@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Search,
   Zap,
@@ -9,8 +9,6 @@ import {
   CreditCard,
   Settings,
   CheckCircle2,
-  Phone,
-  MessageSquare,
   TrendingUp,
   XCircle,
 } from "lucide-react";
@@ -18,9 +16,7 @@ import { marketplacePlugins, Plugin } from "@/data/plugins";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -42,6 +38,10 @@ export default function PluginMarketplace() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
   const [plugins, setPlugins] = useState<Plugin[]>(marketplacePlugins);
+  const showPluginMarketplaceCatalog = true;
+  const showPluginDevControls =
+    process.env.NODE_ENV !== "production" &&
+    process.env.NEXT_PUBLIC_ENABLE_PLUGIN_DEV_CONTROLS === "true";
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -85,38 +85,43 @@ export default function PluginMarketplace() {
     ];
   }, [baseCategoryIds, searchMatchedPlugins]);
 
-  useEffect(() => {
-    const isSelectedCategoryVisible = categories.some(
-      (category) => category.id === selectedCategory,
-    );
-
-    if (!isSelectedCategoryVisible) {
-      setSelectedCategory("all");
-    }
-  }, [categories, selectedCategory]);
+  const safeSelectedCategory = categories.some(
+    (category) => category.id === selectedCategory,
+  )
+    ? selectedCategory
+    : "all";
 
   const filteredPlugins = useMemo(() => {
     return searchMatchedPlugins.filter((p) => {
       const matchesCategory =
-        selectedCategory === "all" ||
-        (selectedCategory === "installed"
+        safeSelectedCategory === "all" ||
+        (safeSelectedCategory === "installed"
           ? p.status === "active"
-          : p.category === selectedCategory);
+          : p.category === safeSelectedCategory);
       return matchesCategory;
     });
-  }, [searchMatchedPlugins, selectedCategory]);
+  }, [searchMatchedPlugins, safeSelectedCategory]);
+
+  const installedPlugins = useMemo(
+    () => plugins.filter((plugin) => plugin.status === "active"),
+    [plugins],
+  );
+
+  const visiblePlugins = showPluginMarketplaceCatalog
+    ? filteredPlugins
+    : installedPlugins;
 
   const hasSearchQuery = normalizedSearchQuery.length > 0;
 
   const emptyStateMessage = hasSearchQuery
-    ? selectedCategory === "all"
+    ? safeSelectedCategory === "all"
       ? `No plugins found for "${searchQuery.trim()}"`
-      : `No plugins found for "${searchQuery.trim()}" in ${selectedCategory}`
-    : selectedCategory === "all"
+      : `No plugins found for "${searchQuery.trim()}" in ${safeSelectedCategory}`
+    : safeSelectedCategory === "all"
       ? "No plugins found"
-      : selectedCategory === "installed"
+      : safeSelectedCategory === "installed"
         ? "No installed plugins found"
-        : `No plugins found in ${selectedCategory}`;
+        : `No plugins found in ${safeSelectedCategory}`;
 
   const handleEnroll = (pluginId: string) => {
     setPlugins((prev) =>
@@ -176,75 +181,79 @@ export default function PluginMarketplace() {
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 bg-secondary/50 px-3 py-1.5 rounded-full border border-secondary transition-all hover:border-primary/30 group cursor-help">
-            <CreditCard className="size-3.5 text-primary group-hover:scale-110 transition-transform" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Credits:
-            </span>
-            <span className="text-xs font-black text-primary">$50.00</span>
+        {showPluginDevControls && (
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 bg-secondary/50 px-3 py-1.5 rounded-full border border-secondary transition-all hover:border-primary/30 group cursor-help">
+              <CreditCard className="size-3.5 text-primary group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Credits:
+              </span>
+              <span className="text-xs font-black text-primary">$50.00</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2 text-xs font-bold uppercase tracking-widest border-primary/20 hover:bg-primary/5 hover:text-primary transition-all"
+            >
+              <Settings className="size-3.5" />
+              Billing Logic
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-2 text-xs font-bold uppercase tracking-widest border-primary/20 hover:bg-primary/5 hover:text-primary transition-all"
-          >
-            <Settings className="size-3.5" />
-            Billing Logic
-          </Button>
-        </div>
+        )}
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar Pane */}
-        <aside className="w-64 border-r bg-card/30 flex flex-col shrink-0">
-          <div className="p-4 border-b">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tools..."
-                className="pl-9 h-9 text-xs bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary/50"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+        {showPluginMarketplaceCatalog && (
+          <aside className="w-64 border-r bg-card/30 flex flex-col shrink-0">
+            <div className="p-4 border-b">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search tools..."
+                  className="pl-9 h-9 text-xs bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
 
-          <ScrollArea className="flex-1 py-4">
-            <div className="px-3 space-y-1">
-              <p className="px-3 text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-3 opacity-50">
-                Filter by Category
-              </p>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={cn(
-                    "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[11px] font-bold tracking-tight transition-all group",
-                    selectedCategory === cat.id
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 translate-x-1"
-                      : "hover:bg-primary/5 text-muted-foreground hover:text-primary",
-                  )}
-                >
-                  <span>{cat.name}</span>
-                  <Badge
-                    variant={
-                      selectedCategory === cat.id ? "outline" : "secondary"
-                    }
+            <ScrollArea className="flex-1 py-4">
+              <div className="px-3 space-y-1">
+                <p className="px-3 text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-3 opacity-50">
+                  Filter by Category
+                </p>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
                     className={cn(
-                      "text-[9px] h-4 px-1.5 leading-none border-none font-black",
-                      selectedCategory === cat.id
-                        ? "bg-white/20 text-white"
-                        : "text-muted-foreground/60",
+                      "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[11px] font-bold tracking-tight transition-all group",
+                      safeSelectedCategory === cat.id
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 translate-x-1"
+                        : "hover:bg-primary/5 text-muted-foreground hover:text-primary",
                     )}
                   >
-                    {cat.count}
-                  </Badge>
-                </button>
-              ))}
-            </div>
-          </ScrollArea>
-        </aside>
+                    <span>{cat.name}</span>
+                    <Badge
+                      variant={
+                        safeSelectedCategory === cat.id ? "outline" : "secondary"
+                      }
+                      className={cn(
+                        "text-[9px] h-4 px-1.5 leading-none border-none font-black",
+                        safeSelectedCategory === cat.id
+                          ? "bg-white/20 text-white"
+                          : "text-muted-foreground/60",
+                      )}
+                    >
+                      {cat.count}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </aside>
+        )}
 
         {/* Main Content Pane */}
         <main className="flex-1 relative bg-muted/5">
@@ -252,16 +261,19 @@ export default function PluginMarketplace() {
             <div className="p-6 sm:p-8 lg:p-10 max-w-screen-2xl mx-auto">
               <div className="mb-8 lg:mb-10 space-y-2">
                 <h2 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
-                  Power-Ups Library
+                  {showPluginMarketplaceCatalog
+                    ? "Power-Ups Library"
+                    : "Installed Plugins"}
                 </h2>
                 <p className="text-sm text-muted-foreground font-medium">
-                  Browse, enroll, and manage professional-grade tools for your
-                  IDE environment.
+                  {showPluginMarketplaceCatalog
+                    ? "Browse, enroll, and manage professional-grade tools for your IDE environment."
+                    : "Only active and functional plugins are shown in this environment."}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
-                {filteredPlugins.map((plugin) => (
+                {visiblePlugins.map((plugin) => (
                   <MarketplacePluginCard
                     key={plugin.id}
                     plugin={plugin}
@@ -270,23 +282,27 @@ export default function PluginMarketplace() {
                 ))}
               </div>
 
-              {filteredPlugins.length === 0 && (
+              {visiblePlugins.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                   <div className="size-20 rounded-full bg-muted flex items-center justify-center">
                     <Search className="size-10 text-muted-foreground/30" />
                   </div>
                   <p className="text-lg font-bold text-muted-foreground">
-                    {emptyStateMessage}
+                    {showPluginMarketplaceCatalog
+                      ? emptyStateMessage
+                      : "No active plugins are available."}
                   </p>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedCategory("all");
-                    }}
-                  >
-                    Reset Filters
-                  </Button>
+                  {showPluginMarketplaceCatalog && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedCategory("all");
+                      }}
+                    >
+                      Reset Filters
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -299,7 +315,7 @@ export default function PluginMarketplace() {
               onClick={() => setSelectedPlugin(null)}
             >
               <Card
-                className="w-full max-w-[min(1180px,96vw)] h-[calc(100dvh-2rem)] sm:h-[calc(100dvh-4rem)] max-h-230 overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border-primary/20 flex flex-col"
+                className="w-full max-w-[min(980px,94vw)] h-[calc(100dvh-2rem)] sm:h-[min(86dvh,760px)] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border-primary/20 flex flex-col"
                 onClick={(event) => event.stopPropagation()}
               >
                 <PluginDetailView
@@ -475,8 +491,8 @@ function PluginDetailView({
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-5 sm:p-8 xl:p-10 space-y-8 xl:space-y-10">
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-8 xl:gap-10 items-start">
+        <div className="p-5 sm:p-6 lg:p-7 space-y-6 lg:space-y-7">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-6 lg:gap-7 items-start">
             <section className="space-y-6">
               <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start">
                 <div className="size-20 sm:size-24 rounded-4xl bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-inner group relative">
@@ -489,7 +505,7 @@ function PluginDetailView({
                 </div>
 
                 <div className="space-y-3 sm:space-y-4 pt-1">
-                  <h2 className="text-3xl sm:text-4xl xl:text-5xl font-black tracking-tight uppercase leading-none">
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight uppercase leading-none">
                     {plugin.name}
                   </h2>
                   <p className="text-base sm:text-lg text-foreground/85 leading-relaxed max-w-3xl not-italic">
@@ -508,8 +524,8 @@ function PluginDetailView({
               </div>
             </section>
 
-            <aside className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4 xl:gap-5">
-              <div className="p-6 rounded-3xl bg-muted/40 border border-border/50 flex flex-col justify-between hover:border-primary/20 transition-all cursor-default min-h-42.5">
+            <aside className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4">
+              <div className="p-5 sm:p-6 rounded-3xl bg-muted/40 border border-border/50 flex flex-col justify-between hover:border-primary/20 transition-all cursor-default min-h-36">
                 <div className="space-y-1.5">
                   <p className="text-[11px] uppercase font-black text-muted-foreground/65 tracking-widest">
                     Billing Tier
@@ -523,7 +539,7 @@ function PluginDetailView({
                 </div>
               </div>
 
-              <div className="p-6 rounded-3xl bg-muted/40 border border-border/50 space-y-4 hover:border-primary/20 transition-all cursor-default min-h-42.5">
+              <div className="p-5 sm:p-6 rounded-3xl bg-muted/40 border border-border/50 space-y-4 hover:border-primary/20 transition-all cursor-default min-h-36">
                 <div className="flex justify-between items-end gap-3">
                   <div className="space-y-1.5">
                     <p className="text-[11px] uppercase font-black text-muted-foreground/65 tracking-widest">
@@ -551,7 +567,7 @@ function PluginDetailView({
             </aside>
           </div>
 
-          <div className="bg-primary/5 p-6 sm:p-8 rounded-4xl border border-primary/10 space-y-6 shadow-inner shadow-primary/5">
+          <div className="bg-primary/5 p-5 sm:p-6 rounded-4xl border border-primary/10 space-y-5 shadow-inner shadow-primary/5">
             <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-[0.18em] text-primary flex items-center gap-3">
               <Settings className="size-4 animate-spin-slow" /> Management
               Control Panel
@@ -607,7 +623,7 @@ function PluginDetailView({
         </div>
       </ScrollArea>
 
-      <div className="p-4 sm:p-6 xl:p-7 border-t bg-card mt-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+      <div className="p-4 sm:p-5 lg:p-6 border-t bg-card mt-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
         {isInstalled ? (
           <Button
             variant="outline"

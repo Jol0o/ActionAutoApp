@@ -40,7 +40,6 @@ import { AlertDialog } from "@/components/AlertDialog"
 import { OrganizationMembersSettings } from "@/components/settings/org-members-settings"
 import { DriverRequestsSettings } from "@/components/settings/driver-requests-settings"
 import { DriverVerificationPanel } from "@/components/settings/driver-verification-panel"
-import { BulkInviteDialog } from "@/components/admin/BulkInviteDialog"
 import { Truck } from "lucide-react"
 
 type ReportCategory = "transportation" | "driver" | "billings"
@@ -853,11 +852,11 @@ export default function UtilitiesPage() {
 
                 <TabsContent value="drivers" className="m-0">
                     <Card className="border-none shadow-sm bg-card p-0 overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b py-4">
+                        <CardHeader className="bg-muted/30 border-b pt-4 pb-3">
                             <CardTitle className="text-lg font-bold">Driver Management</CardTitle>
                             <CardDescription>Review and manage driver access requests.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-4 sm:p-6 min-h-100 space-y-8">
+                        <CardContent className="px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 min-h-100 space-y-6">
                             <DriverRequestsSettings />
                             <Separator />
                             <DriverVerificationPanel />

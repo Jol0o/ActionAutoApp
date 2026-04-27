@@ -28,16 +28,27 @@ function PasswordInput({
       />
       <button
         type="button"
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => setShowPassword((prev) => !prev)}
         aria-label={showPassword ? "Hide password" : "Show password"}
+        aria-pressed={showPassword}
         disabled={disabled}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+        className="absolute right-3 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center text-zinc-500 dark:text-zinc-400 transition-opacity disabled:opacity-50"
       >
-        {showPassword ? (
-          <EyeOff className="h-4 w-4" />
-        ) : (
-          <Eye className="h-4 w-4" />
-        )}
+        <span className="relative block h-4 w-4">
+          <Eye
+            className={cn(
+              "absolute inset-0 h-4 w-4 transition-opacity",
+              showPassword ? "opacity-0" : "opacity-100"
+            )}
+          />
+          <EyeOff
+            className={cn(
+              "absolute inset-0 h-4 w-4 transition-opacity",
+              showPassword ? "opacity-100" : "opacity-0"
+            )}
+          />
+        </span>
       </button>
     </div>
   );

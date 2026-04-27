@@ -65,7 +65,7 @@ export function LeaderboardPro() {
   if (isLoading) {
     return (
       <Card className="border-border/40 bg-card/50 backdrop-blur-sm h-full font-sans p-0 overflow-hidden">
-        <CardHeader className="py-5 px-6 border-b border-border/10 min-h-22">
+        <CardHeader className="h-24! py-5! px-6! border-b! border-border/10! flex! flex-col! justify-center! gap-1!">
           <CardTitle className="text-xl font-black">Intelligence Ledger</CardTitle>
           <CardDescription className="text-xs">Connecting to team stream...</CardDescription>
         </CardHeader>
@@ -81,8 +81,8 @@ export function LeaderboardPro() {
   return (
     <>
       <Card className="border-border/40 bg-card/50 backdrop-blur-sm h-137.5 overflow-hidden flex flex-col font-sans p-0">
-        <CardHeader className="py-5 px-6 border-b border-border/10 min-h-22">
-          <div className="flex items-center justify-between">
+        <CardHeader className="h-24! py-5! px-6! border-b! border-border/10! flex! flex-col! justify-center! gap-1!">
+          <div className="flex w-full items-center justify-between gap-3">
             <div>
               <CardTitle className="text-xl font-black tracking-tight">Intelligence Ledger</CardTitle>
               <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
