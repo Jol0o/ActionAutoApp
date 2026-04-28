@@ -272,7 +272,7 @@ export default function PluginMarketplace() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6">
                 {visiblePlugins.map((plugin) => (
                   <MarketplacePluginCard
                     key={plugin.id}
@@ -311,11 +311,11 @@ export default function PluginMarketplace() {
           {/* Plugin Detail Overlay (Management & Enrollment) */}
           {selectedPlugin && (
             <div
-              className="fixed inset-0 z-50 bg-background/60 backdrop-blur-xl flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-300"
+              className="fixed inset-0 z-50 bg-background/60 backdrop-blur-xl flex items-center justify-center px-4 sm:px-6 py-0 animate-in fade-in duration-300"
               onClick={() => setSelectedPlugin(null)}
             >
               <Card
-                className="w-full max-w-[min(980px,94vw)] h-[calc(100dvh-2rem)] sm:h-[min(86dvh,760px)] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border-primary/20 flex flex-col"
+                className="w-full max-w-[min(860px,92vw)] h-dvh sm:h-dvh overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] border-primary/20 flex flex-col"
                 onClick={(event) => event.stopPropagation()}
               >
                 <PluginDetailView
@@ -353,17 +353,17 @@ function MarketplacePluginCard({
       )}
       onClick={onClick}
     >
-      <CardHeader className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-6">
+      <CardHeader className="p-4 pb-3">
+        <div className="flex items-start justify-between mb-4">
           <div
             className={cn(
-              "size-14 rounded-2xl flex items-center justify-center transition-all duration-700 ring-4 ring-transparent shrink-0",
+              "size-12 rounded-2xl flex items-center justify-center transition-all duration-700 ring-4 ring-transparent shrink-0",
               isInstalled
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                 : "bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-xl group-hover:shadow-primary/20",
             )}
           >
-            <Icon className="size-7" />
+            <Icon className="size-6" />
           </div>
           <div className="flex flex-col items-end gap-2">
             {isInstalled && (
@@ -378,7 +378,7 @@ function MarketplacePluginCard({
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[10px] uppercase tracking-widest px-2 h-6 font-black border-none shadow-sm",
+                  "text-[9px] uppercase tracking-widest px-2 h-5 font-black border-none shadow-sm",
                   plugin.badge === "Plus"
                     ? "bg-purple-500/10 text-purple-600"
                     : plugin.badge === "Essentials"
@@ -391,20 +391,20 @@ function MarketplacePluginCard({
             )}
           </div>
         </div>
-        <CardTitle className="text-xl font-black tracking-tight group-hover:text-primary transition-colors flex items-center gap-2">
+        <CardTitle className="text-lg font-black tracking-tight group-hover:text-primary transition-colors flex items-center gap-2">
           {plugin.name}
           {isInstalled && (
             <span className="size-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
           )}
         </CardTitle>
-        <CardDescription className="text-xs text-muted-foreground/80 font-medium line-clamp-2 mt-2 leading-relaxed not-italic">
+        <CardDescription className="text-xs text-muted-foreground/80 font-medium line-clamp-2 mt-1.5 leading-relaxed not-italic">
           {plugin.description}
         </CardDescription>
       </CardHeader>
 
       <div
         className={cn(
-          "mt-auto p-4 pt-3 flex flex-col gap-3 border-t transition-colors",
+          "mt-auto p-3 pt-2.5 flex flex-col gap-2.5 border-t transition-colors",
           isInstalled
             ? "bg-primary/5 border-primary/10"
             : "bg-muted/10 group-hover:bg-muted/30 border-border/20",
@@ -432,7 +432,7 @@ function MarketplacePluginCard({
           variant={isInstalled ? "default" : "ghost"}
           size="sm"
           className={cn(
-            "w-full h-8 text-[10px] font-black uppercase tracking-widest gap-2 shadow-none rounded-lg min-w-0",
+            "w-full h-7 text-[9px] font-black uppercase tracking-widest gap-2 shadow-none rounded-lg min-w-0",
             !isInstalled && "hover:bg-primary hover:text-primary-foreground",
           )}
         >

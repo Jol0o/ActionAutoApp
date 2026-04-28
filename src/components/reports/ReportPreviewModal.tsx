@@ -343,9 +343,9 @@ function BillingPreview({
           </div>
         ) : (
           <div className="rounded-xl border border-border/70 bg-card/30 p-2 sm:p-3">
-            <div className="custom-scrollbar overflow-y-auto overflow-x-auto max-h-[22rem] rounded-md [scrollbar-gutter:stable_both-edges]">
-              <Table className="w-full table-auto min-w-[640px] md:min-w-0">
-                <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
+            <div className="custom-scrollbar overflow-y-auto overflow-x-auto max-h-88 rounded-md [scrollbar-gutter:stable_both-edges]">
+              <Table className="w-full table-auto min-w-160 md:min-w-0">
+                <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur supports-backdrop-filter:bg-muted/70">
                   <TableRow className="bg-transparent hover:bg-transparent">
                     <TableHead className="text-xs font-semibold">
                       Customer
@@ -367,10 +367,10 @@ function BillingPreview({
                 <TableBody>
                   {payments.map((p) => (
                     <TableRow key={p._id} className="text-xs hover:bg-muted/30">
-                      <TableCell className="font-medium text-foreground whitespace-normal break-words">
+                      <TableCell className="font-medium text-foreground whitespace-normal wrap-break-word">
                         {p.customerName}
                       </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-normal break-words">
+                      <TableCell className="text-muted-foreground whitespace-normal wrap-break-word">
                         <span className="block" title={p.description}>
                           {p.description}
                         </span>
@@ -407,9 +407,9 @@ function BillingPreview({
           </div>
         ) : (
           <div className="rounded-xl border border-border/70 bg-card/30 p-2 sm:p-3">
-            <div className="custom-scrollbar overflow-y-auto overflow-x-auto max-h-[22rem] rounded-md [scrollbar-gutter:stable_both-edges]">
-              <Table className="w-full table-auto min-w-[640px] md:min-w-0">
-                <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur supports-[backdrop-filter]:bg-muted/70">
+            <div className="custom-scrollbar overflow-y-auto overflow-x-auto max-h-88 rounded-md [scrollbar-gutter:stable_both-edges]">
+              <Table className="w-full table-auto min-w-160 md:min-w-0">
+                <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur supports-backdrop-filter:bg-muted/70">
                   <TableRow className="bg-transparent hover:bg-transparent">
                     <TableHead className="text-xs font-semibold">
                       Driver
@@ -431,10 +431,10 @@ function BillingPreview({
                 <TableBody>
                   {payouts.map((p) => (
                     <TableRow key={p._id} className="text-xs hover:bg-muted/30">
-                      <TableCell className="font-medium text-foreground whitespace-normal break-words">
+                      <TableCell className="font-medium text-foreground whitespace-normal wrap-break-word">
                         {p.driverName}
                       </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-normal break-words">
+                      <TableCell className="text-muted-foreground whitespace-normal wrap-break-word">
                         <span className="block" title={p.description || "—"}>
                           {p.description || "—"}
                         </span>
@@ -498,17 +498,16 @@ export function ReportPreviewModal({
           event.preventDefault();
           onClose();
         }}
-        className="w-[96vw] max-w-[1200px] sm:max-w-[min(96vw,1200px)] p-0 gap-0 overflow-hidden max-h-[92dvh] min-h-[62dvh] flex flex-col rounded-2xl border-border/60 bg-background/95 shadow-2xl"
+        className="w-[96vw] max-w-300 sm:max-w-[min(96vw,1200px)] p-0 gap-0 overflow-hidden max-h-[92dvh] min-h-[62dvh] flex flex-col rounded-2xl border-border/60 bg-background/95 shadow-2xl"
       >
         {/* Header */}
         <div className="flex items-start justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border shrink-0">
           <div className="flex items-start gap-3">
             <div
-              className={`size-10 rounded-lg flex items-center justify-center border ${
-                isDriver
+              className={`size-10 rounded-lg flex items-center justify-center border ${isDriver
                   ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800"
                   : "bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800"
-              }`}
+                }`}
             >
               <FileText className={`size-4.5 ${accentColor}`} />
             </div>

@@ -29,6 +29,8 @@ export interface SupraLeoMessage {
 
 interface PanelProps {
   state: SpeakState
+  module: string
+  fromPath: string
   email: SupraLeoEmail | null
   message: SupraLeoMessage | null
   errorMsg: string | null
@@ -158,6 +160,7 @@ export const UPDATED_PANEL_CSS = `
   flex-direction: column;
   position: relative;
   max-height: min(620px, calc(100vh - 100px));
+  max-height: min(620px, calc(100dvh - 100px));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -672,6 +675,30 @@ export const UPDATED_PANEL_CSS = `
 .axp-reminder-item.warn { border-color: rgba(245,158,11,.25); background: rgba(245,158,11,.04); }
 .axp-reminder-item.info { border-color: rgba(59,130,246,.2); background: rgba(59,130,246,.04); }
 .axp-reminder-item.success { border-color: rgba(16,185,129,.2); background: rgba(16,185,129,.04); }
+
+@media (max-width: 767px) {
+  .axp-panel {
+    width: min(380px, calc(100vw - 24px));
+    max-height: calc(100vh - var(--supra-leo-bottom, 7rem) - 16px);
+    max-height: calc(100dvh - var(--supra-leo-bottom, 7rem) - 16px);
+    border-radius: 14px;
+  }
+
+  .axp-hdr,
+  .axp-mod-sel,
+  .axp-reply,
+  .axp-actions {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .axp-body,
+  .axp-chat-scroll,
+  .axp-reminder-body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
 `
 
 function injectPanelCSS() {
@@ -679,22 +706,22 @@ function injectPanelCSS() {
   if (document.getElementById('ax-panel-v2')) return
   const el = document.createElement('style')
   el.id = 'ax-panel-v2'
- el.textContent = UPDATED_PANEL_CSS
+  el.textContent = UPDATED_PANEL_CSS
   document.head.appendChild(el)
 }
 
 // ─── Status maps ──────────────────────────────────────────────────────────────
 const STATUS_MAP: Record<SpeakState, { label: string; dotColor: string; pulse: boolean }> = {
-  idle:              { label: 'Standby',   dotColor: 'rgba(59,130,246,.35)', pulse: false },
-  fetching:          { label: 'Fetching…', dotColor: '#8B5CF6',             pulse: true  },
-  speaking:          { label: 'Speaking',  dotColor: '#F59E0B',             pulse: true  },
-  paused:            { label: 'Paused',    dotColor: 'rgba(59,130,246,.35)',pulse: false },
-  'waiting-command': { label: 'Awaiting',  dotColor: '#10B981',             pulse: false },
-  listening:         { label: 'Listening', dotColor: '#10B981',             pulse: true  },
-  'listening-reply': { label: 'Dictating', dotColor: '#10B981',             pulse: true  },
-  sending:           { label: 'Sending…',  dotColor: '#F59E0B',             pulse: true  },
-  done:              { label: 'Complete',  dotColor: '#10B981',             pulse: false },
-  error:             { label: 'Error',     dotColor: '#EF4444',             pulse: false },
+  idle: { label: 'Standby', dotColor: 'rgba(59,130,246,.35)', pulse: false },
+  fetching: { label: 'Fetching…', dotColor: '#8B5CF6', pulse: true },
+  speaking: { label: 'Speaking', dotColor: '#F59E0B', pulse: true },
+  paused: { label: 'Paused', dotColor: 'rgba(59,130,246,.35)', pulse: false },
+  'waiting-command': { label: 'Awaiting', dotColor: '#10B981', pulse: false },
+  listening: { label: 'Listening', dotColor: '#10B981', pulse: true },
+  'listening-reply': { label: 'Dictating', dotColor: '#10B981', pulse: true },
+  sending: { label: 'Sending…', dotColor: '#F59E0B', pulse: true },
+  done: { label: 'Complete', dotColor: '#10B981', pulse: false },
+  error: { label: 'Error', dotColor: '#EF4444', pulse: false },
 }
 
 const LEO_STATE: Record<SpeakState, LeoState> = {
@@ -705,21 +732,21 @@ const LEO_STATE: Record<SpeakState, LeoState> = {
 
 // ─── Reminder modules ─────────────────────────────────────────────────────────
 const REMINDER_MODULES = [
-  { id: 'appointments', label: 'Appts',  icon: <Calendar className="h-3 w-3" /> },
-  { id: 'timeproof',    label: 'Time',   icon: <Clock className="h-3 w-3" /> },
-  { id: 'supraspace',   label: 'Space',  icon: <MessageSquare className="h-3 w-3" /> },
-  { id: 'biometrics',   label: 'Bio',    icon: <Fingerprint className="h-3 w-3" /> },
-  { id: 'feeds',        label: 'Feeds',  icon: <Rss className="h-3 w-3" /> },
+  { id: 'appointments', label: 'Appts', icon: <Calendar className="h-3 w-3" /> },
+  { id: 'timeproof', label: 'Time', icon: <Clock className="h-3 w-3" /> },
+  { id: 'supraspace', label: 'Space', icon: <MessageSquare className="h-3 w-3" /> },
+  { id: 'biometrics', label: 'Bio', icon: <Fingerprint className="h-3 w-3" /> },
+  { id: 'feeds', label: 'Feeds', icon: <Rss className="h-3 w-3" /> },
 ]
 
 // ─── Quick prompts ────────────────────────────────────────────────────────────
 const QUICK_PROMPTS: Record<string, string[]> = {
   appointments: ['Summarize my leads today', 'Draft a follow-up email', "What's on my schedule?"],
-  timeproof:    ['Hours worked this week?', 'Am I on track with attendance?', 'Generate my timeproof summary'],
-  supraspace:   ['Messages needing attention?', 'Draft a team announcement', 'Summarize unread threads'],
-  biometrics:   ['Explain biometric login', 'SSH key best practices', 'Review my security status'],
-  feeds:        ['What did the team post?', 'Write a motivational post', 'Summarize team activity'],
-  general:      ['Help with a lead follow-up', 'Draft a professional email', 'What should I prioritize?'],
+  timeproof: ['Hours worked this week?', 'Am I on track with attendance?', 'Generate my timeproof summary'],
+  supraspace: ['Messages needing attention?', 'Draft a team announcement', 'Summarize unread threads'],
+  biometrics: ['Explain biometric login', 'SSH key best practices', 'Review my security status'],
+  feeds: ['What did the team post?', 'Write a motivational post', 'Summarize team activity'],
+  general: ['Help with a lead follow-up', 'Draft a professional email', 'What should I prioritize?'],
 }
 
 // ─── Waveform ─────────────────────────────────────────────────────────────────
@@ -763,8 +790,8 @@ function ChatTab({ activeModule = 'general' }: { activeModule?: string }) {
     const uid = Date.now().toString()
     const lid = (Date.now() + 1).toString()
     setMessages(prev => [...prev,
-      { id: uid, role: 'user', text },
-      { id: lid, role: 'leo', text: '', streaming: true },
+    { id: uid, role: 'user', text },
+    { id: lid, role: 'leo', text: '', streaming: true },
     ])
     setInput('')
     setLoading(true)
@@ -796,7 +823,7 @@ function ChatTab({ activeModule = 'general' }: { activeModule?: string }) {
             } else if (p.type === 'done') {
               setMessages(prev => prev.map(m => m.id === lid ? { ...m, streaming: false } : m))
             }
-          } catch {}
+          } catch { }
         }
       }
     } catch (err: any) {
@@ -937,9 +964,9 @@ function ReminderTab() {
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
               {[
                 { label: `${counts?.todayAppointments || 0} Today`, bg: 'rgba(16,185,129,.08)', bd: 'rgba(16,185,129,.25)', c: 'var(--p-green)' },
-                { label: `${counts?.upcomingThisWeek || 0} Week`,   bg: 'rgba(59,130,246,.08)',  bd: 'rgba(59,130,246,.25)',  c: 'var(--p-acc)' },
-                { label: `${counts?.newLeads || 0} New`,            bg: 'rgba(139,92,246,.08)', bd: 'rgba(139,92,246,.25)', c: 'var(--p-purple)' },
-                { label: `${counts?.pendingLeads || 0} Pending`,    bg: 'rgba(245,158,11,.08)', bd: 'rgba(245,158,11,.25)', c: 'var(--p-amber)' },
+                { label: `${counts?.upcomingThisWeek || 0} Week`, bg: 'rgba(59,130,246,.08)', bd: 'rgba(59,130,246,.25)', c: 'var(--p-acc)' },
+                { label: `${counts?.newLeads || 0} New`, bg: 'rgba(139,92,246,.08)', bd: 'rgba(139,92,246,.25)', c: 'var(--p-purple)' },
+                { label: `${counts?.pendingLeads || 0} Pending`, bg: 'rgba(245,158,11,.08)', bd: 'rgba(245,158,11,.25)', c: 'var(--p-amber)' },
               ].map(c => (
                 <span key={c.label} className="axp-chip" style={{ background: c.bg, borderColor: c.bd, color: c.c }}>{c.label}</span>
               ))}
@@ -1285,7 +1312,7 @@ function AssistantTab({
   onStop, onPause, onResume, onReplay,
   onStartListeningForCommand, onStartReplyListening,
   onSetTranscript, onSendReply,
-}: Omit<PanelProps, 'email' | 'onClose'>) {
+}: Omit<PanelProps, 'email' | 'onClose' | 'module' | 'fromPath'>) {
   const [reply, setReply] = React.useState('')
   const [editing, setEditing] = React.useState(false)
   const [editText, setEditText] = React.useState('')
@@ -1501,7 +1528,7 @@ function AssistantTab({
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 export function SupraLeoPanel({
-  state, email, message, errorMsg, voiceName, transcript,
+  state, module, fromPath, email, message, errorMsg, voiceName, transcript,
   onStop, onPause, onResume, onClose, onReplay,
   onStartListeningForCommand, onStartReplyListening,
   onSetTranscript, onSendReply,
@@ -1547,7 +1574,18 @@ export function SupraLeoPanel({
               <Waveform active={waveActive} />
             </div>
           </div>
-          <button className="axp-icon-btn" onClick={() => router.push('/crm/supra-leo')} title="Expand">
+          <button
+            className="axp-icon-btn"
+            onClick={() => {
+              onClose()
+              const params = new URLSearchParams({
+                module,
+                from: fromPath || '/crm/dashboard',
+              })
+              router.push(`/crm/supra-leo?${params.toString()}`)
+            }}
+            title="Expand"
+          >
             <Maximize2 size={11} />
           </button>
           <button className="axp-icon-btn close" onClick={onClose}>

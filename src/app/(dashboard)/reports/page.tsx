@@ -230,7 +230,7 @@ async function generateDriverReportPdf(data: ReportData, monthLabel: string): Pr
         const pendingRows = assigned
             .filter(s => s.proofOfDelivery?.submittedAt && !s.proofOfDelivery?.confirmedAt)
             .map(s => [driverName(s), customerName(s), s.preservedQuoteData?.vehicleName || "—",
-                `${s.origin} → ${s.destination}`, fmtDate(s.proofOfDelivery?.submittedAt), s.status])
+            `${s.origin} → ${s.destination}`, fmtDate(s.proofOfDelivery?.submittedAt), s.status])
 
         autoTable(doc, {
             startY: lastY2 + 15,
@@ -527,9 +527,9 @@ export default function ReportsPage() {
     const visibleIds = activeTab === "ALL"
         ? ["driver-report", "billing-report", "shipment-report", "quote-report"]
         : activeTab === "Driver Reports" ? ["driver-report"]
-        : activeTab === "Billings" ? ["billing-report"]
-        : activeTab === "Transportation" ? ["shipment-report", "quote-report"]
-        : []
+            : activeTab === "Billings" ? ["billing-report"]
+                : activeTab === "Transportation" ? ["shipment-report", "quote-report"]
+                    : []
 
     const isAllSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id))
     const selectedCount = selected.size
@@ -660,16 +660,19 @@ export default function ReportsPage() {
             </div>
 
             {/* ── Tabs ── */}
-            <div className="border-b border-border">
-                <div className="flex">
+            <div className="rounded-2xl border border-border/50 bg-card p-1.5 shadow-sm">
+                <div className="grid w-full grid-cols-4 gap-1 rounded-xl bg-muted/40 p-1">
                     {TABS.map(tab => (
-                        <button key={tab} onClick={() => setActiveTab(tab)}
-                            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                                activeTab === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 whitespace-nowrap ${activeTab === tab
+                                    ? "bg-background text-emerald-600 shadow-sm shadow-emerald-500/10 ring-1 ring-emerald-500/15"
+                                    : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                                }`}
                         >
                             <TabIcon tab={tab} />
-                            {tab}
+                            <span className="truncate">{tab}</span>
                         </button>
                     ))}
                 </div>
@@ -758,114 +761,7 @@ export default function ReportsPage() {
                         rawQuotes={rawQuotes}
                         monthLabel={monthLabel}
                     />
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <ReportCard
-                        title="Shipment Report"
-                        subtitle={monthLabel}
-                        description="Complete shipment tracking, delivery performance, route analysis, and revenue breakdown"
-                        category="Transportation"
-                        categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                        stats={[
-                            { icon: <Truck className="size-3" />, label: `${shipmentSummary.total} shipments` },
-                            { icon: <MapPin className="size-3" />, label: `${fmtNumber(shipmentSummary.totalMiles)} mi` },
-                            { icon: <Calendar className="size-3" />, label: monthLabel },
-                        ]}
-                        highlights={[
-                            { label: "Delivered", value: shipmentSummary.delivered, color: "text-emerald-600 dark:text-emerald-400" },
-                            { label: "Revenue", value: transportFmtCurrency(shipmentSummary.totalRate), color: "text-blue-600 dark:text-blue-400" },
-                        ]}
-                        isSelected={selected.has("shipment-report")}
-                        isDownloading={downloading === "shipment-report"}
-                        onToggle={() => toggleSelect("shipment-report")}
-                        onDownload={() => downloadReport("shipment-report")}
-                        onPreview={() => setTransportPreview("shipment")}
-                    />
-                    <ReportCard
-                        title="Quotes & Drafts Report"
-                        subtitle={monthLabel}
-                        description="Quote volume, conversion rates, pricing analysis, and service type breakdown"
-                        category="Transportation"
-                        categoryClass="bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                        stats={[
-                            { icon: <FileText className="size-3" />, label: `${quoteSummary.total} quotes` },
-                            { icon: <Database className="size-3" />, label: `${quoteSummary.conversionRate}% converted` },
-                            { icon: <Calendar className="size-3" />, label: monthLabel },
-                        ]}
-                        highlights={[
-                            { label: "Booked", value: quoteSummary.booked, color: "text-emerald-600 dark:text-emerald-400" },
-                            { label: "Pending", value: quoteSummary.pending, color: "text-amber-600 dark:text-amber-400" },
-                        ]}
-                        isSelected={selected.has("quote-report")}
-                        isDownloading={downloading === "quote-report"}
-                        onToggle={() => toggleSelect("quote-report")}
-                        onDownload={() => downloadReport("quote-report")}
-                        onPreview={() => setTransportPreview("quote")}
-                    />
-                </div>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {activeTab === "ALL" && (
-                        <ReportsAnalytics
-                            shipments={reportData.shipments}
-                            rawPayments={rawPayments}
-                            monthLabel={monthLabel}
-                        />
-                    )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                    {/* Driver Report Card */}
-                    {showDriver && (
-                        <ReportCard
-                            title={`Driver Reports`}
-                            subtitle={monthLabel}
-                            description="All driver assignments, delivery outcomes, per-driver performance, and dealer approval status"
-                            category="Driver Reports"
-                            categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                            stats={[
-                                { icon: <Users className="size-3" />, label: `${uniqueDrivers} drivers` },
-                                { icon: <Database className="size-3" />, label: `${assignedLoads.length} loads` },
-                                { icon: <Calendar className="size-3" />, label: monthLabel },
-                            ]}
-                            highlights={[
-                                { label: "Delivered", value: deliveredCount, color: "text-emerald-600 dark:text-emerald-400" },
-                                { label: "Pending Approval", value: pendingApprovalCount, color: "text-amber-600 dark:text-amber-400" },
-                            ]}
-                            isSelected={selected.has("driver-report")}
-                            isDownloading={downloading === "driver-report"}
-                            onToggle={() => toggleSelect("driver-report")}
-                            onDownload={() => downloadReport("driver-report")}
-                            onPreview={() => setPreview("driver")}
-                        />
-                    )}
-
-                    {/* Billing Report Card */}
-                    {showBilling && (
-                        <ReportCard
-                            title={`Billing Report`}
-                            subtitle={monthLabel}
-                            description="Customer payments to dealer, driver payouts, and full transaction history for the period"
-                            category="Billings"
-                            categoryClass="bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
-                            stats={[
-                                { icon: <CreditCard className="size-3" />, label: `${filteredData.payments.length} payments` },
-                                { icon: <Database className="size-3" />, label: `${filteredData.payouts.length} payouts` },
-                                { icon: <Calendar className="size-3" />, label: monthLabel },
-                            ]}
-                            highlights={[
-                                { label: "Revenue", value: formatCurrency(totalRevenue), color: "text-emerald-600 dark:text-emerald-400" },
-                                { label: "Paid to Drivers", value: formatCurrency(totalPaidOut), color: "text-blue-600 dark:text-blue-400" },
-                            ]}
-                            isSelected={selected.has("billing-report")}
-                            isDownloading={downloading === "billing-report"}
-                            onToggle={() => toggleSelect("billing-report")}
-                            onDownload={() => downloadReport("billing-report")}
-                            onPreview={() => setPreview("billing")}
-                        />
-                    )}
-
-                    {showTransportation && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <ReportCard
                             title="Shipment Report"
                             subtitle={monthLabel}
@@ -887,9 +783,6 @@ export default function ReportsPage() {
                             onDownload={() => downloadReport("shipment-report")}
                             onPreview={() => setTransportPreview("shipment")}
                         />
-                    )}
-
-                    {showTransportation && (
                         <ReportCard
                             title="Quotes & Drafts Report"
                             subtitle={monthLabel}
@@ -911,8 +804,118 @@ export default function ReportsPage() {
                             onDownload={() => downloadReport("quote-report")}
                             onPreview={() => setTransportPreview("quote")}
                         />
-                    )}
+                    </div>
                 </div>
+            ) : (
+                <div className="space-y-4">
+                    {activeTab === "ALL" && (
+                        <ReportsAnalytics
+                            shipments={reportData.shipments}
+                            rawPayments={rawPayments}
+                            monthLabel={monthLabel}
+                        />
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                        {/* Driver Report Card */}
+                        {showDriver && (
+                            <ReportCard
+                                title={`Driver Reports`}
+                                subtitle={monthLabel}
+                                description="All driver assignments, delivery outcomes, per-driver performance, and dealer approval status"
+                                category="Driver Reports"
+                                categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                stats={[
+                                    { icon: <Users className="size-3" />, label: `${uniqueDrivers} drivers` },
+                                    { icon: <Database className="size-3" />, label: `${assignedLoads.length} loads` },
+                                    { icon: <Calendar className="size-3" />, label: monthLabel },
+                                ]}
+                                highlights={[
+                                    { label: "Delivered", value: deliveredCount, color: "text-emerald-600 dark:text-emerald-400" },
+                                    { label: "Pending Approval", value: pendingApprovalCount, color: "text-amber-600 dark:text-amber-400" },
+                                ]}
+                                isSelected={selected.has("driver-report")}
+                                isDownloading={downloading === "driver-report"}
+                                onToggle={() => toggleSelect("driver-report")}
+                                onDownload={() => downloadReport("driver-report")}
+                                onPreview={() => setPreview("driver")}
+                            />
+                        )}
+
+                        {/* Billing Report Card */}
+                        {showBilling && (
+                            <ReportCard
+                                title={`Billing Report`}
+                                subtitle={monthLabel}
+                                description="Customer payments to dealer, driver payouts, and full transaction history for the period"
+                                category="Billings"
+                                categoryClass="bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
+                                stats={[
+                                    { icon: <CreditCard className="size-3" />, label: `${filteredData.payments.length} payments` },
+                                    { icon: <Database className="size-3" />, label: `${filteredData.payouts.length} payouts` },
+                                    { icon: <Calendar className="size-3" />, label: monthLabel },
+                                ]}
+                                highlights={[
+                                    { label: "Revenue", value: formatCurrency(totalRevenue), color: "text-emerald-600 dark:text-emerald-400" },
+                                    { label: "Paid to Drivers", value: formatCurrency(totalPaidOut), color: "text-blue-600 dark:text-blue-400" },
+                                ]}
+                                isSelected={selected.has("billing-report")}
+                                isDownloading={downloading === "billing-report"}
+                                onToggle={() => toggleSelect("billing-report")}
+                                onDownload={() => downloadReport("billing-report")}
+                                onPreview={() => setPreview("billing")}
+                            />
+                        )}
+
+                        {showTransportation && (
+                            <ReportCard
+                                title="Shipment Report"
+                                subtitle={monthLabel}
+                                description="Complete shipment tracking, delivery performance, route analysis, and revenue breakdown"
+                                category="Transportation"
+                                categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                stats={[
+                                    { icon: <Truck className="size-3" />, label: `${shipmentSummary.total} shipments` },
+                                    { icon: <MapPin className="size-3" />, label: `${fmtNumber(shipmentSummary.totalMiles)} mi` },
+                                    { icon: <Calendar className="size-3" />, label: monthLabel },
+                                ]}
+                                highlights={[
+                                    { label: "Delivered", value: shipmentSummary.delivered, color: "text-emerald-600 dark:text-emerald-400" },
+                                    { label: "Revenue", value: transportFmtCurrency(shipmentSummary.totalRate), color: "text-blue-600 dark:text-blue-400" },
+                                ]}
+                                isSelected={selected.has("shipment-report")}
+                                isDownloading={downloading === "shipment-report"}
+                                onToggle={() => toggleSelect("shipment-report")}
+                                onDownload={() => downloadReport("shipment-report")}
+                                onPreview={() => setTransportPreview("shipment")}
+                            />
+                        )}
+
+                        {showTransportation && (
+                            <ReportCard
+                                title="Quotes & Drafts Report"
+                                subtitle={monthLabel}
+                                description="Quote volume, conversion rates, pricing analysis, and service type breakdown"
+                                category="Transportation"
+                                categoryClass="bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                                stats={[
+                                    { icon: <FileText className="size-3" />, label: `${quoteSummary.total} quotes` },
+                                    { icon: <Database className="size-3" />, label: `${quoteSummary.conversionRate}% converted` },
+                                    { icon: <Calendar className="size-3" />, label: monthLabel },
+                                ]}
+                                highlights={[
+                                    { label: "Booked", value: quoteSummary.booked, color: "text-emerald-600 dark:text-emerald-400" },
+                                    { label: "Pending", value: quoteSummary.pending, color: "text-amber-600 dark:text-amber-400" },
+                                ]}
+                                isSelected={selected.has("quote-report")}
+                                isDownloading={downloading === "quote-report"}
+                                onToggle={() => toggleSelect("quote-report")}
+                                onDownload={() => downloadReport("quote-report")}
+                                onPreview={() => setTransportPreview("quote")}
+                            />
+                        )}
+                    </div>
                 </div>
             )}
 
