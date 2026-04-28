@@ -28,6 +28,13 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_LINK_CLASS,
+  AUTH_PANEL_CLASS,
+  AUTH_PRIMARY_BUTTON_CLASS,
+} from "./theme";
 
 const passwordRules = [
   {
@@ -142,7 +149,7 @@ export function DriverAuthForm() {
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-md mx-auto"
     >
-      <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+      <Card className={AUTH_PANEL_CLASS}>
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -152,10 +159,10 @@ export function DriverAuthForm() {
               <ShieldCheck className="h-8 w-8 text-emerald-500" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight text-center">
+          <CardTitle className="text-2xl font-bold tracking-tight text-center text-zinc-100">
             Driver Registration
           </CardTitle>
-          <CardDescription className="text-center text-muted-foreground">
+          <CardDescription className="text-center text-zinc-400">
             {pendingVerification
               ? "Verify your email to continue"
               : "Join our fleet today"}
@@ -188,7 +195,7 @@ export function DriverAuthForm() {
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value)}
                       placeholder="XXXXXX"
-                      className="text-center text-2xl tracking-[0.5em] font-mono h-14 bg-background/50"
+                      className={`text-center text-2xl tracking-[0.5em] font-mono h-14 ${AUTH_INPUT_CLASS}`}
                       maxLength={6}
                       required
                     />
@@ -201,7 +208,7 @@ export function DriverAuthForm() {
                   )}
                   <Button
                     type="submit"
-                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold"
+                    className={`${AUTH_PRIMARY_BUTTON_CLASS} h-11`}
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
@@ -212,7 +219,7 @@ export function DriverAuthForm() {
                   </Button>
                   <button
                     type="button"
-                    className="text-xs text-muted-foreground hover:text-emerald-500 transition-colors w-full text-center"
+                    className={`text-xs ${AUTH_LINK_CLASS} w-full text-center`}
                     onClick={() => {
                       setPendingVerification(false);
                       setVerificationCode("");
@@ -233,7 +240,9 @@ export function DriverAuthForm() {
                 className="space-y-4"
               >
                 <div className="space-y-2">
-                  <Label htmlFor="reg-name">Full Name</Label>
+                  <Label htmlFor="reg-name" className={AUTH_LABEL_CLASS}>
+                    Full Name
+                  </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -241,13 +250,15 @@ export function DriverAuthForm() {
                       value={regName}
                       onChange={(e) => setRegName(e.target.value)}
                       placeholder="John Doe"
-                      className="pl-10 h-11 bg-background/50"
+                      className={`pl-10 h-11 ${AUTH_INPUT_CLASS}`}
                       required
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-email">Email Address</Label>
+                  <Label htmlFor="reg-email" className={AUTH_LABEL_CLASS}>
+                    Email Address
+                  </Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -256,13 +267,15 @@ export function DriverAuthForm() {
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                       placeholder="driver@example.com"
-                      className="pl-10 h-11 bg-background/50"
+                      className={`pl-10 h-11 ${AUTH_INPUT_CLASS}`}
                       required
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-password">Security Password</Label>
+                  <Label htmlFor="reg-password" className={AUTH_LABEL_CLASS}>
+                    Security Password
+                  </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <PasswordInput
@@ -270,7 +283,7 @@ export function DriverAuthForm() {
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="pl-10 h-11 bg-background/50"
+                      className={`pl-10 h-11 ${AUTH_INPUT_CLASS}`}
                       required
                     />
                   </div>
@@ -301,7 +314,9 @@ export function DriverAuthForm() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-confirm">Confirm Password</Label>
+                  <Label htmlFor="reg-confirm" className={AUTH_LABEL_CLASS}>
+                    Confirm Password
+                  </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <PasswordInput
@@ -309,14 +324,14 @@ export function DriverAuthForm() {
                       value={regConfirmPassword}
                       onChange={(e) => setRegConfirmPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="pl-10 h-11 bg-background/50"
+                      className={`pl-10 h-11 ${AUTH_INPUT_CLASS}`}
                       required
                     />
                   </div>
                 </div>
 
-                <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
-                  <p className="text-[10px] text-muted-foreground">
+                <div className="p-3 bg-white/[0.02] rounded-lg border border-white/10">
+                  <p className="text-[10px] text-zinc-400">
                     After registration, a dealer admin will review and approve
                     your account. You will be notified via email.
                   </p>
@@ -331,7 +346,7 @@ export function DriverAuthForm() {
 
                 <Button
                   type="submit"
-                  className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-lg shadow-emerald-500/20"
+                  className={`${AUTH_PRIMARY_BUTTON_CLASS} h-11`}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
@@ -347,10 +362,7 @@ export function DriverAuthForm() {
         <CardFooter className="pt-0 pb-8 flex flex-col gap-4">
           <div className="text-sm text-center text-muted-foreground w-full">
             Not a driver?{" "}
-            <Link
-              href="/sign-up"
-              className="text-primary font-semibold hover:underline"
-            >
+            <Link href="/sign-up" className={AUTH_LINK_CLASS}>
               Standard Sign Up
             </Link>
           </div>

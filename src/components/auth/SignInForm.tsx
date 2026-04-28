@@ -19,16 +19,23 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_LINK_CLASS,
+  AUTH_PRIMARY_BUTTON_CLASS,
+  AUTH_SECONDARY_BUTTON_CLASS,
+} from "./theme";
 
 type SignInResult = {
-    status: string;
-    targetUrl?: string;
+  status: string;
+  targetUrl?: string;
 };
 
 type SignInError = {
-    errors?: Array<{
-        longMessage?: string;
-    }>;
+  errors?: Array<{
+    longMessage?: string;
+  }>;
 };
 
 export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
@@ -107,10 +114,7 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label
-              htmlFor="email"
-              className="text-zinc-400 text-sm font-medium ml-1"
-            >
+            <Label htmlFor="email" className={AUTH_LABEL_CLASS}>
               Email
             </Label>
             <div className="relative group">
@@ -118,7 +122,7 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
                 id="email"
                 type="email"
                 placeholder="Example@email.com"
-                className="h-12 bg-white/[0.03] border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all rounded-xl placeholder:text-zinc-700"
+                className={AUTH_INPUT_CLASS}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -130,13 +134,13 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
             <div className="flex items-center justify-between ml-1">
               <Label
                 htmlFor="password"
-                className="text-zinc-400 text-sm font-medium"
+                className={AUTH_LABEL_CLASS.replace(" ml-1", "")}
               >
                 Password
               </Label>
               <Link
                 href="/forgot-password"
-                className="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors"
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
               >
                 Forgot Password?
               </Link>
@@ -145,7 +149,7 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
               <PasswordInput
                 id="password"
                 placeholder="At least 8 characters"
-                className="h-12 bg-white/[0.03] border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all rounded-xl placeholder:text-zinc-700"
+                className={AUTH_INPUT_CLASS}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -170,7 +174,7 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
 
         <Button
           type="submit"
-          className="w-full h-14 bg-[#1b252b] hover:bg-[#25323a] text-white font-bold transition-all active:scale-[0.98] rounded-xl text-lg border border-white/5"
+          className={`${AUTH_PRIMARY_BUTTON_CLASS} h-14 text-lg transition-all active:scale-[0.98]`}
           disabled={isLoading}
         >
           {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Sign In"}
@@ -192,7 +196,7 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
         <Button
           variant="outline"
           type="button"
-          className="h-12 bg-white/[0.03] border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all rounded-xl font-medium flex items-center justify-center gap-3 text-zinc-300"
+          className={`h-12 transition-all font-medium flex items-center justify-center gap-3 ${AUTH_SECONDARY_BUTTON_CLASS}`}
           onClick={handleGoogleLogin}
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -220,10 +224,7 @@ export function SignInForm({ onToggleMode }: { onToggleMode?: () => void }) {
       <div className="text-center pt-4">
         <p className="text-zinc-500 text-sm font-light">
           Don&apos;t you have an account?{" "}
-          <button
-            onClick={onToggleMode}
-            className="text-blue-500 font-bold hover:underline ml-1"
-          >
+          <button onClick={onToggleMode} className={`${AUTH_LINK_CLASS} ml-1`}>
             Sign up
           </button>
         </p>

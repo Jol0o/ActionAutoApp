@@ -26,6 +26,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
+import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_LINK_CLASS,
+  AUTH_PANEL_CLASS,
+  AUTH_PRIMARY_BUTTON_CLASS,
+} from "./theme";
 
 export function UpgradeForm() {
   const router = useRouter();
@@ -103,16 +110,16 @@ export function UpgradeForm() {
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-md mx-auto"
     >
-      <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl overflow-hidden">
-        <div className="bg-primary/10 p-6 flex items-center justify-center border-b border-border/50">
+      <Card className={AUTH_PANEL_CLASS}>
+        <div className="bg-emerald-500/10 p-6 flex items-center justify-center border-b border-white/10">
           <ShieldCheck className="h-12 w-12 text-primary" />
         </div>
 
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">
+          <CardTitle className="text-2xl font-bold text-center text-zinc-100">
             Secure Your Account
           </CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription className="text-center text-zinc-400">
             {step === "request"
               ? "Enter your email to start the account upgrade process."
               : "Verify your email and set a new password."}
@@ -131,14 +138,16 @@ export function UpgradeForm() {
                 className="space-y-4"
               >
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email" className={AUTH_LABEL_CLASS}>
+                    Email Address
+                  </Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="email"
                       type="email"
                       placeholder="name@example.com"
-                      className="pl-10 h-11"
+                      className={`pl-10 h-11 ${AUTH_INPUT_CLASS}`}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -152,7 +161,7 @@ export function UpgradeForm() {
                 )}
                 <Button
                   type="submit"
-                  className="w-full h-11"
+                  className={`${AUTH_PRIMARY_BUTTON_CLASS} h-11`}
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -172,11 +181,13 @@ export function UpgradeForm() {
                 className="space-y-4"
               >
                 <div className="space-y-2">
-                  <Label htmlFor="code">Verification Code</Label>
+                  <Label htmlFor="code" className={AUTH_LABEL_CLASS}>
+                    Verification Code
+                  </Label>
                   <Input
                     id="code"
                     placeholder="123456"
-                    className="text-center text-xl font-mono tracking-widest h-12"
+                    className={`text-center text-xl font-mono tracking-widest h-12 ${AUTH_INPUT_CLASS}`}
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     maxLength={6}
@@ -185,13 +196,15 @@ export function UpgradeForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
+                  <Label htmlFor="new-password" className={AUTH_LABEL_CLASS}>
+                    New Password
+                  </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <PasswordInput
                       id="new-password"
                       placeholder="Create a secure password"
-                      className="pl-10 h-11"
+                      className={`pl-10 h-11 ${AUTH_INPUT_CLASS}`}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
@@ -200,13 +213,18 @@ export function UpgradeForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Label
+                    htmlFor="confirm-password"
+                    className={AUTH_LABEL_CLASS}
+                  >
+                    Confirm Password
+                  </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <PasswordInput
                       id="confirm-password"
                       placeholder="Repeat your password"
-                      className="pl-10 h-11"
+                      className={`pl-10 h-11 ${AUTH_INPUT_CLASS}`}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
@@ -222,7 +240,7 @@ export function UpgradeForm() {
 
                 <Button
                   type="submit"
-                  className="w-full h-11"
+                  className={`${AUTH_PRIMARY_BUTTON_CLASS} h-11`}
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -235,7 +253,7 @@ export function UpgradeForm() {
                 <button
                   type="button"
                   onClick={() => setStep("request")}
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors text-center w-full"
+                  className={`text-xs ${AUTH_LINK_CLASS} text-center w-full`}
                 >
                   Didn't get a code? Try again
                 </button>
@@ -243,8 +261,8 @@ export function UpgradeForm() {
             )}
           </AnimatePresence>
         </CardContent>
-        <CardFooter className="bg-muted/50 p-4">
-          <p className="text-[10px] text-muted-foreground text-center w-full">
+        <CardFooter className="bg-white/[0.02] p-4 border-t border-white/10">
+          <p className="text-[10px] text-zinc-400 text-center w-full">
             For security, upgrading your account requires email verification.
             This ensures your data remains protected during our system update.
           </p>
