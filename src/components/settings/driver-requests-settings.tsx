@@ -95,33 +95,41 @@ export function DriverRequestsSettings() {
   const pendingCount = requests.filter((r) => r.status === "pending").length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold">Driver Requests</h3>
+    <div className="space-y-4 rounded-xl border border-border/70 bg-gradient-to-b from-background to-muted/20 p-3 sm:p-4 shadow-xs">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <UserPlus className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold leading-none">Driver Requests</h3>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Review incoming access requests and respond quickly.
+            </p>
+          </div>
           {pendingCount > 0 && (
-            <Badge variant="destructive" className="text-xs h-5 px-1.5">
+            <Badge variant="destructive" className="text-[10px] h-5 px-1.5 ml-1">
               {pendingCount} pending
             </Badge>
           )}
         </div>
-        <div className="flex gap-1 bg-muted rounded-md p-0.5">
+        <div className="flex gap-1 bg-muted/70 rounded-lg p-0.5 shrink-0 border border-border/50">
           <button
             onClick={() => setFilter("pending")}
-            className={`px-2.5 py-1 text-xs rounded transition-colors ${
+            className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
               filter === "pending"
-                ? "bg-background shadow-sm font-medium"
-                : "text-muted-foreground"
+                ? "bg-background shadow-sm font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Pending
           </button>
           <button
             onClick={() => setFilter("all")}
-            className={`px-2.5 py-1 text-xs rounded transition-colors ${
+            className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
               filter === "all"
-                ? "bg-background shadow-sm font-medium"
-                : "text-muted-foreground"
+                ? "bg-background shadow-sm font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             All
@@ -154,7 +162,7 @@ export function DriverRequestsSettings() {
             return (
               <div
                 key={request._id}
-                className="flex items-center justify-between p-3 rounded-lg border gap-3"
+                className="flex items-center justify-between p-3 rounded-lg border border-border/70 gap-3 bg-card/75 hover:bg-card transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar className="h-9 w-9 shrink-0">

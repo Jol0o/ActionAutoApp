@@ -37,7 +37,7 @@ import { containsCurseWord } from "./profile-constants";
 
 export const ProfileView: React.FC = () => {
   const { user: authUser } = useUser();
-  const { signOut, openUserProfile } = useAuthActions();
+  const { signOut, openUserProfile, refreshUser } = useAuthActions();
   const { getToken } = useAuth();
   const { avatarUrl, setAvatarUrl, triggerRefresh, refreshKey } =
     useProfileContext();
@@ -386,6 +386,7 @@ export const ProfileView: React.FC = () => {
         customStatus={customStatus}
         triggerRefresh={triggerRefresh}
         setAvatarUrl={setAvatarUrl}
+        refreshAuthUser={refreshUser}
         getToken={getToken}
         setShowStatusDialog={setShowStatusDialog}
         onEditProfile={() => {

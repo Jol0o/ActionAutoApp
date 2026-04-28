@@ -449,11 +449,21 @@ export default function CrmLoginPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
-                    className="absolute right-0 top-0 h-10 w-10 flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                    disabled={isLoading}
+                    className="absolute right-0 top-0 h-10 w-10 flex items-center justify-center text-zinc-500 dark:text-zinc-400 transition-opacity disabled:opacity-50"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <span className="relative block h-4 w-4">
+                      <Eye
+                        className={`absolute inset-0 h-4 w-4 transition-opacity ${showPassword ? "opacity-0" : "opacity-100"}`}
+                      />
+                      <EyeOff
+                        className={`absolute inset-0 h-4 w-4 transition-opacity ${showPassword ? "opacity-100" : "opacity-0"}`}
+                      />
+                    </span>
                   </button>
                 </div>
               </div>
@@ -768,8 +778,23 @@ export default function CrmLoginPage() {
                       disabled={forgotLoading}
                       className="h-10 rounded-xl text-sm border-border/50 pr-10 focus-visible:ring-emerald-500/30"
                     />
-                    <button type="button" onClick={() => setShowNewPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground/70">
-                      {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => setShowNewPw((prev) => !prev)}
+                      aria-label={showNewPw ? "Hide password" : "Show password"}
+                      aria-pressed={showNewPw}
+                      disabled={forgotLoading}
+                      className="absolute right-3 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center text-zinc-500 dark:text-zinc-400 transition-opacity disabled:opacity-50"
+                    >
+                      <span className="relative block h-4 w-4">
+                        <Eye
+                          className={`absolute inset-0 h-4 w-4 transition-opacity ${showNewPw ? "opacity-0" : "opacity-100"}`}
+                        />
+                        <EyeOff
+                          className={`absolute inset-0 h-4 w-4 transition-opacity ${showNewPw ? "opacity-100" : "opacity-0"}`}
+                        />
+                      </span>
                     </button>
                   </div>
                 </div>

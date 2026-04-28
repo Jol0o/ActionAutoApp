@@ -94,7 +94,7 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="notification-scrollbar flex-1 overflow-y-auto min-h-0">
         <NotificationList
           notifications={notifications}
           isLoading={isLoading}

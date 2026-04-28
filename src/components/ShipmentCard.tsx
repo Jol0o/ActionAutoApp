@@ -623,12 +623,17 @@ export function ShipmentCard({
   const handleExportPDF = React.useCallback(async () => {
     setIsGeneratingPDF(true);
     try {
-      await generateShipmentPDF(shipment);
-      showAlert({
-        type: "success",
-        title: "PDF Generated",
-        message: "Shipment documentation has been downloaded successfully.",
-      });
+      const result = await generateShipmentPDF(shipment);
+
+      if (result === "saved") {
+        showAlert({
+          type: "success",
+          title: "PDF Generated",
+          message: "Shipment documentation has been downloaded successfully.",
+        });
+      } else if (result === "initiated") {
+        toast.success("PDF export started.");
+      }
     } catch (error) {
       console.error("Error generating PDF:", error);
       showAlert({

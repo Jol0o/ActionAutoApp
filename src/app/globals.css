@@ -260,6 +260,42 @@ body.app-fullscreen .main-content {
   @apply bg-zinc-400 dark:bg-zinc-700 border-2 border-transparent bg-clip-padding;
 }
 
+/* Dedicated scrollbar style for compact notification overlays */
+.notification-scrollbar {
+  --notification-scrollbar-track: color-mix(in oklab, var(--muted) 60%, transparent);
+  --notification-scrollbar-thumb: color-mix(in oklab, var(--muted-foreground) 42%, transparent);
+  --notification-scrollbar-thumb-hover: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+  scrollbar-width: thin;
+  scrollbar-color: var(--notification-scrollbar-thumb) var(--notification-scrollbar-track);
+}
+
+.dark .notification-scrollbar {
+  --notification-scrollbar-track: color-mix(in oklab, var(--card) 75%, black 25%);
+  --notification-scrollbar-thumb: color-mix(in oklab, var(--foreground) 32%, transparent);
+  --notification-scrollbar-thumb-hover: color-mix(in oklab, var(--foreground) 48%, transparent);
+}
+
+.notification-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-scrollbar::-webkit-scrollbar-track {
+  background-color: var(--notification-scrollbar-track);
+  border-radius: 9999px;
+}
+
+.notification-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--notification-scrollbar-thumb);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
+}
+
+.notification-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--notification-scrollbar-thumb-hover);
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
