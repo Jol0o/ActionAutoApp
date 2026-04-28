@@ -6,6 +6,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from '@/lib/api-client';
 import { Loader2 } from 'lucide-react';
 import { MonitoringShell } from '@/components/admin/monitoring/MonitoringShell';
+import { BroadcastPushCard } from '@/components/admin/dashboard/BroadcastPushCard';
 
 interface SystemStats {
     organizations: number;
@@ -66,8 +67,8 @@ export default function AdminDashboardPage() {
     }
 
     return (
-        <MonitoringShell 
-            initialData={{ systemStats, financials }} 
+        <MonitoringShell
+            initialData={{ systemStats, financials }}
         />
     );
 }

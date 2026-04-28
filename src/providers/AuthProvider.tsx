@@ -11,6 +11,7 @@ import React, {
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
+import { UpdateProfileRequest } from "@/types/user";
 
 // --- TYPES & INTERFACES (Action Auto Security) ---
 export interface AuthUser {
@@ -91,8 +92,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const setAccessToken = useCallback((token: string | null) => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       (window as any).__AUTH_TOKEN__ = token;
+
+      // Sync to IndexedDB for Service Worker access
+      try {
+        const request = indexedDB.open('action-auto-auth', 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains('tokens')) {
+            db.createObjectStore('tokens');
+          }
+        };
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction('tokens', 'readwrite');
+          const store = tx.objectStore('tokens');
+          if (token) {
+            store.put(token, 'accessToken');
+          } else {
+            store.delete('accessToken');
+          }
+        };
+      } catch (e) {
+        console.warn('[Auth] IndexedDB sync failed', e);
+      }
     }
     setAccessTokenState(token);
   }, []);
@@ -399,31 +423,31 @@ export function useUser() {
   // Standardized User object structure
   const userProxy = context.user
     ? {
-        id: context.user._id,
-        primaryEmailAddress: { emailAddress: context.user.email },
-        emailAddresses: [{ emailAddress: context.user.email }],
-        fullName: context.user.name,
-        firstName:
-          context.user.firstName || context.user.name?.split(" ")[0] || "",
-        lastName:
-          context.user.lastName ||
-          context.user.name?.split(" ").slice(1).join(" ") ||
-          "",
-        imageUrl:
-          context.user.avatar ||
-          context.user.avatarUrl ||
-          "/placeholder-avatar.png",
-        role: context.user.role,
-        onboardingCompleted: context.user.onboardingCompleted,
-        theme: context.user.theme,
-        publicMetadata: {},
-        unsafeMetadata: {},
-        update: async (data: any) => {
-          const res = await apiClient.patch("/api/users/me", data);
-          context.refreshUser();
-          return res.data;
-        },
-      }
+      id: context.user._id,
+      primaryEmailAddress: { emailAddress: context.user.email },
+      emailAddresses: [{ emailAddress: context.user.email }],
+      fullName: context.user.name,
+      firstName:
+        context.user.firstName || context.user.name?.split(" ")[0] || "",
+      lastName:
+        context.user.lastName ||
+        context.user.name?.split(" ").slice(1).join(" ") ||
+        "",
+      imageUrl:
+        context.user.avatar ||
+        context.user.avatarUrl ||
+        "/placeholder-avatar.png",
+      role: context.user.role,
+      onboardingCompleted: context.user.onboardingCompleted,
+      theme: context.user.theme,
+      publicMetadata: {},
+      unsafeMetadata: {},
+      update: async (data: UpdateProfileRequest) => {
+        const res = await apiClient.patch("/api/users/me", data);
+        context.refreshUser();
+        return res.data;
+      },
+    }
     : null;
 
   return {
@@ -593,7 +617,6 @@ export function useSignUp() {
  */
 export function useSignIn() {
   const context = useContext(AuthContext);
-  const router = useRouter();
 
   const signIn = {
     create: async (data: any) => {
@@ -644,6 +667,6 @@ export function useSignIn() {
   return {
     isLoaded: true,
     signIn,
-    setActive: async () => {},
+    setActive: async () => { },
   };
 }

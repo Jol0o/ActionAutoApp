@@ -17,6 +17,7 @@ import {
     Printer,
     ArrowRight,
     X,
+    Loader2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -73,10 +74,10 @@ const SETTINGS_NAV_ITEMS: Array<{
     ]
 
 const INITIAL_FILES: FileEntry[] = [
-    { id: "1", name: "Shipment_Report_April_2026.pdf",        date: "12 mins ago",  size: "2.4 MB", type: "PDF",  category: "transportation" },
-    { id: "2", name: "Quotes_Drafts_Report_April_2026.pdf",   date: "2 hours ago",  size: "1.8 MB", type: "PDF",  category: "transportation" },
-    { id: "3", name: "Driver_Reports_April_2026.pdf",         date: "Yesterday",    size: "1.2 MB", type: "PDF",  category: "driver" },
-    { id: "4", name: "Billing_Report_April_2026.pdf",         date: "Jan 12, 2026", size: "3.1 MB", type: "PDF",  category: "billings" },
+    { id: "1", name: "Shipment_Report_April_2026.pdf", date: "12 mins ago", size: "2.4 MB", type: "PDF", category: "transportation" },
+    { id: "2", name: "Quotes_Drafts_Report_April_2026.pdf", date: "2 hours ago", size: "1.8 MB", type: "PDF", category: "transportation" },
+    { id: "3", name: "Driver_Reports_April_2026.pdf", date: "Yesterday", size: "1.2 MB", type: "PDF", category: "driver" },
+    { id: "4", name: "Billing_Report_April_2026.pdf", date: "Jan 12, 2026", size: "3.1 MB", type: "PDF", category: "billings" },
 ]
 
 const CATEGORY_LABELS: Record<ReportCategory, string> = {
@@ -85,7 +86,7 @@ const CATEGORY_LABELS: Record<ReportCategory, string> = {
     billings: "Billings",
 }
 
-export default function UtilitiesPage() {
+function SettingsContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const defaultTab = searchParams.get('tab') || 'reports';
@@ -868,6 +869,18 @@ export default function UtilitiesPage() {
     )
 }
 
+export default function UtilitiesPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="p-4 md:p-6 flex items-center justify-center min-h-screen">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <SettingsContent />
+        </React.Suspense>
+    )
+}
+
 function ReportCard({
     title, description, count, icon, active, onClick, onViewAll,
 }: {
@@ -882,11 +895,10 @@ function ReportCard({
     return (
         <Card
             onClick={onClick}
-            className={`border shadow-sm transition-all cursor-pointer bg-card p-0 md:p-4 group ${
-                active
+            className={`border shadow-sm transition-all cursor-pointer bg-card p-0 md:p-4 group ${active
                     ? "border-primary/50 ring-2 ring-primary/20 bg-primary/5"
                     : "border-border/50 hover:border-primary/30 hover:ring-1 hover:ring-primary/20 hover:shadow-md"
-            }`}
+                }`}
         >
             <CardContent className="p-2 md:p-6">
                 <div className="flex gap-2 md:items-center justify-between mb-4">

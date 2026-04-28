@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import {
     Bell,
     BellRing,
@@ -11,8 +12,10 @@ import {
     AlertCircle,
     XCircle,
     Loader2,
+    SmartphoneNfc,
     ExternalLink
 } from 'lucide-react';
+import { useWebPush } from '@/hooks/useWebPush';
 import { NotificationPreferences } from '@/types/notification';
 import { UserProfile } from '@/types/user';
 import { cn } from '@/lib/utils';
@@ -45,6 +48,8 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
     handlePreferenceChange,
     getNotificationStats,
 }) => {
+    const { isSupported, isSubscribed, subscribe, unsubscribe, isLoading: isPushLoading } = useWebPush();
+
     const router = useRouter();
 
     if (!preferences) return null;
@@ -130,8 +135,54 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
                     </Button>
                 </div>
 
-                <div className="space-y-3">
-                    {getNotificationCategoriesByRole(profile?.role).map((category) => {
+                <div className="space-y-6">
+                    {/* --- WEB PUSH DEVICE SETTINGS --- */}
+                    <div className="p-5 rounded-2xl border-2 border-emerald-100 bg-emerald-50/30 dark:border-emerald-900/40 dark:bg-emerald-950/20 animate-slide-up">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                                    <SmartphoneNfc className="size-6 text-white" />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <h3 className="font-bold text-base flex items-center gap-2">
+                                        Push Notifications
+                                        {isSupported && (
+                                            <Badge variant="outline" className={cn(
+                                                "text-[10px] h-4 px-1.5 font-bold uppercase tracking-tight",
+                                                isSubscribed
+                                                    ? "border-emerald-500 text-emerald-600 bg-emerald-50"
+                                                    : "border-gray-300 text-gray-500 bg-gray-50 dark:bg-gray-800"
+                                            )}>
+                                                {isSubscribed ? "Active on this device" : "Inactive"}
+                                            </Badge>
+                                        )}
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground max-w-[400px]">
+                                        {isSupported
+                                            ? "Enable real-time alerts on this browser to receive instant updates even when the app is closed."
+                                            : "Your browser does not support Web Push notifications. Please use a modern browser like Chrome, Safari, or Edge."}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                {isPushLoading && <Loader2 className="size-5 animate-spin text-emerald-600" />}
+                                <Switch
+                                    checked={isSubscribed}
+                                    disabled={!isSupported || isPushLoading}
+                                    onCheckedChange={(checked) => {
+                                        if (checked) subscribe();
+                                        else unsubscribe();
+                                    }}
+                                    className="data-[state=checked]:bg-emerald-600 data-[state=checked]:shadow-emerald-500/40"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-gray-100 dark:bg-gray-800 mx-1" />
+
+                    {getNotificationCategoriesByRole(profile?.role).map((category, categoryIndex) => {
                         const CategoryIcon = category.icon;
                         const categoryEnabled = category.items.filter(
                             item => preferences[item.key as keyof NotificationPreferences]
