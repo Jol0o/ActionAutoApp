@@ -22,6 +22,13 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_LINK_CLASS,
+  AUTH_PRIMARY_BUTTON_CLASS,
+  AUTH_SECONDARY_BUTTON_CLASS,
+} from "./theme";
 
 type SignUpStep = "details" | "identity";
 type UserRole = "customer" | "driver" | "dealership";
@@ -154,38 +161,32 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
             <form onSubmit={handleNextStep} className="space-y-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-zinc-400 text-xs uppercase tracking-widest font-bold ml-1">
-                    Full Name
-                  </Label>
+                  <Label className={AUTH_LABEL_CLASS}>Full Name</Label>
                   <Input
                     type="text"
                     placeholder="John Doe"
-                    className="h-14 bg-white/[0.03] border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all rounded-2xl placeholder:text-zinc-700"
+                    className={`${AUTH_INPUT_CLASS} h-14 rounded-2xl`}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-400 text-xs uppercase tracking-widest font-bold ml-1">
-                    Email Address
-                  </Label>
+                  <Label className={AUTH_LABEL_CLASS}>Email Address</Label>
                   <Input
                     type="email"
                     placeholder="name@example.com"
-                    className="h-14 bg-white/[0.03] border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all rounded-2xl placeholder:text-zinc-700"
+                    className={`${AUTH_INPUT_CLASS} h-14 rounded-2xl`}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-400 text-xs uppercase tracking-widest font-bold ml-1">
-                    Password
-                  </Label>
+                  <Label className={AUTH_LABEL_CLASS}>Password</Label>
                   <PasswordInput
                     placeholder="Minimum 8 characters"
-                    className="h-14 bg-white/[0.03] border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/20 transition-all rounded-2xl placeholder:text-zinc-700"
+                    className={`${AUTH_INPUT_CLASS} h-14 rounded-2xl`}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -196,7 +197,7 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
 
               <Button
                 type="submit"
-                className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all active:scale-[0.98] rounded-2xl text-lg shadow-[0_20px_40px_-10px_rgba(16,185,129,0.3)]"
+                className={`${AUTH_PRIMARY_BUTTON_CLASS} h-14 rounded-2xl text-lg transition-all active:scale-[0.98] shadow-[0_20px_40px_-10px_rgba(16,185,129,0.3)]`}
               >
                 <span className="flex items-center gap-2">
                   Select Account Type <ArrowRight className="h-5 w-5" />
@@ -279,10 +280,7 @@ export function SignUpForm({ onToggleMode }: { onToggleMode?: () => void }) {
       <div className="text-center pt-8">
         <p className="text-zinc-500 text-sm font-light">
           Already have an account?{" "}
-          <button
-            onClick={onToggleMode}
-            className="text-blue-500 font-bold hover:underline ml-1"
-          >
+          <button onClick={onToggleMode} className={`${AUTH_LINK_CLASS} ml-1`}>
             Sign in
           </button>
         </p>
@@ -326,7 +324,7 @@ function IdentityCard({
           variant="outline"
           onClick={onGoogleClick}
           disabled={disabled}
-          className="w-full h-10 bg-white/[0.03] border-white/5 hover:bg-white/[0.1] text-xs font-semibold gap-2 rounded-xl"
+          className={`w-full h-10 text-xs font-semibold gap-2 ${AUTH_SECONDARY_BUTTON_CLASS}`}
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24">
             <path

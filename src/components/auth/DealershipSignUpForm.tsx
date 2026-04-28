@@ -27,6 +27,14 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_LINK_CLASS,
+  AUTH_PANEL_CLASS,
+  AUTH_PRIMARY_BUTTON_CLASS,
+  AUTH_SECONDARY_BUTTON_CLASS,
+} from "./theme";
 
 export function DealershipSignUpForm() {
   const { signUp, isLoaded } = useSignUp();
@@ -91,17 +99,17 @@ export function DealershipSignUpForm() {
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-lg mx-auto"
     >
-      <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+      <Card className={AUTH_PANEL_CLASS}>
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
         <CardHeader className="space-y-1 pb-8 text-center">
           <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4 text-primary">
             <Building2 className="h-6 w-6" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">
+          <CardTitle className="text-3xl font-bold tracking-tight text-zinc-100">
             Register Dealership
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-zinc-400">
             Create your organization and admin account
           </CardDescription>
 
@@ -128,13 +136,15 @@ export function DealershipSignUpForm() {
                 className="space-y-4"
               >
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name" className={AUTH_LABEL_CLASS}>
+                    Full Name
+                  </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="name"
                       placeholder="John Doe"
-                      className="pl-10 bg-background/50"
+                      className={`pl-10 ${AUTH_INPUT_CLASS}`}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
@@ -142,14 +152,16 @@ export function DealershipSignUpForm() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Work Email</Label>
+                  <Label htmlFor="email" className={AUTH_LABEL_CLASS}>
+                    Work Email
+                  </Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="email"
                       type="email"
                       placeholder="admin@dealership.com"
-                      className="pl-10 bg-background/50"
+                      className={`pl-10 ${AUTH_INPUT_CLASS}`}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -157,13 +169,15 @@ export function DealershipSignUpForm() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className={AUTH_LABEL_CLASS}>
+                    Password
+                  </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <PasswordInput
                       id="password"
                       placeholder="••••••••"
-                      className="pl-10 bg-background/50"
+                      className={`pl-10 ${AUTH_INPUT_CLASS}`}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -172,7 +186,7 @@ export function DealershipSignUpForm() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full h-11 bg-primary hover:bg-primary/90"
+                  className={`${AUTH_PRIMARY_BUTTON_CLASS} h-11`}
                 >
                   Continue to Dealership Details{" "}
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -188,13 +202,15 @@ export function DealershipSignUpForm() {
                 className="space-y-4"
               >
                 <div className="space-y-2">
-                  <Label htmlFor="dealershipName">Dealership Name</Label>
+                  <Label htmlFor="dealershipName" className={AUTH_LABEL_CLASS}>
+                    Dealership Name
+                  </Label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="dealershipName"
                       placeholder="Action Auto Utah"
-                      className="pl-10 bg-background/50"
+                      className={`pl-10 ${AUTH_INPUT_CLASS}`}
                       value={dealershipName}
                       onChange={(e) => {
                         setDealershipName(e.target.value);
@@ -207,13 +223,15 @@ export function DealershipSignUpForm() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dealershipSlug">Dealership URL Slug</Label>
+                  <Label htmlFor="dealershipSlug" className={AUTH_LABEL_CLASS}>
+                    Dealership URL Slug
+                  </Label>
                   <div className="relative">
                     <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="dealershipSlug"
                       placeholder="action-auto-utah"
-                      className="pl-10 bg-background/50"
+                      className={`pl-10 ${AUTH_INPUT_CLASS}`}
                       value={dealershipSlug}
                       onChange={(e) =>
                         setDealershipSlug(generateSlug(e.target.value))
@@ -237,7 +255,7 @@ export function DealershipSignUpForm() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-1/3"
+                    className={`w-1/3 ${AUTH_SECONDARY_BUTTON_CLASS}`}
                     onClick={() => setStep(1)}
                     disabled={isLoading}
                   >
@@ -245,7 +263,7 @@ export function DealershipSignUpForm() {
                   </Button>
                   <Button
                     type="submit"
-                    className="w-2/3 h-11 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+                    className={`w-2/3 ${AUTH_PRIMARY_BUTTON_CLASS} h-11`}
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -263,10 +281,7 @@ export function DealershipSignUpForm() {
         <CardFooter className="pt-2 pb-8 flex flex-col space-y-4">
           <div className="text-sm text-center text-muted-foreground">
             Already have an account?{" "}
-            <Link
-              href="/sign-in"
-              className="text-primary font-semibold hover:underline"
-            >
+            <Link href="/sign-in" className={AUTH_LINK_CLASS}>
               Sign In
             </Link>
           </div>
