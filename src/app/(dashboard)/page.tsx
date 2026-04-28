@@ -87,15 +87,15 @@ export default function Dashboard() {
         </div>
 
         {/* Live Active Reps List */}
-        <div className="flex items-center gap-3 bg-card/40 p-2 pl-4 rounded-2xl border border-border/20 backdrop-blur-md">
+        <div className="flex items-center gap-2 bg-card/40 py-1.5 px-3 rounded-2xl border border-border/20 backdrop-blur-md">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 mr-2">
             Active Reps
           </p>
-          <div className="flex -space-x-2 mr-2">
+          <div className="flex -space-x-1.5 mr-1">
             {metrics?.activeReps?.map((rep: any) => (
               <Avatar
                 key={rep.name}
-                className="border-2 border-background lg:size-10 md:size-8 size-6 shadow-xl transition-all hover:scale-110 hover:-translate-y-1 cursor-pointer ring-1 ring-primary/10"
+                className="border-2 border-background lg:size-8 md:size-7 size-6 shadow-lg transition-all hover:scale-105 hover:-translate-y-0.5 cursor-pointer ring-1 ring-primary/10"
               >
                 <AvatarImage src={rep.avatar} />
                 <AvatarFallback className="text-xs bg-muted font-bold">
