@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import {
     Bell,
     BellRing,
@@ -11,7 +12,8 @@ import {
     AlertCircle,
     XCircle,
     Loader2,
-    SmartphoneNfc
+    SmartphoneNfc,
+    ExternalLink
 } from 'lucide-react';
 import { useWebPush } from '@/hooks/useWebPush';
 import { NotificationPreferences } from '@/types/notification';

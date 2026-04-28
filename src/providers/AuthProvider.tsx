@@ -11,6 +11,7 @@ import React, {
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
+import { UpdateProfileRequest } from "@/types/user";
 
 // --- TYPES & INTERFACES (Action Auto Security) ---
 export interface AuthUser {
@@ -441,7 +442,7 @@ export function useUser() {
       theme: context.user.theme,
       publicMetadata: {},
       unsafeMetadata: {},
-      update: async (data: any) => {
+      update: async (data: UpdateProfileRequest) => {
         const res = await apiClient.patch("/api/users/me", data);
         context.refreshUser();
         return res.data;
@@ -616,7 +617,6 @@ export function useSignUp() {
  */
 export function useSignIn() {
   const context = useContext(AuthContext);
-  const router = useRouter();
 
   const signIn = {
     create: async (data: any) => {

@@ -45,7 +45,7 @@ export function useDashboardStats(period: string = '1Y', month?: string) {
         };
     }, [getToken]);
 
-    return useQuery({
+    return useQuery<DashboardMetrics>({
         queryKey: ['dashboard-metrics', period, month],
         queryFn: async () => {
             const headers = await getAuthHeaders();

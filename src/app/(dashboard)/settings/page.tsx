@@ -17,6 +17,7 @@ import {
     Printer,
     ArrowRight,
     X,
+    Loader2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -86,7 +87,7 @@ const CATEGORY_LABELS: Record<ReportCategory, string> = {
     billings: "Billings",
 }
 
-export default function UtilitiesPage() {
+function SettingsContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const defaultTab = searchParams.get('tab') || 'reports';

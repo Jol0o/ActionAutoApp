@@ -92,7 +92,7 @@ export default function Dashboard() {
             Active Reps
           </p>
           <div className="flex -space-x-2 mr-2">
-            {metrics?.activeReps?.map((rep: any) => (
+            {metrics?.activeReps?.map((rep) => (
               <Avatar
                 key={rep.name}
                 className="border-2 border-background lg:size-10 md:size-8 size-6 shadow-xl transition-all hover:scale-110 hover:-translate-y-1 cursor-pointer ring-1 ring-primary/10"

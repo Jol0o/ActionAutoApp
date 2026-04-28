@@ -412,6 +412,20 @@ class ApiClient {
     return this.post("/api/customer/leads/finance", data, config);
   }
 
+  async broadcastPush(
+    data: {
+      roleTarget: string;
+      title: string;
+      body: string;
+      url?: string;
+      image?: string;
+      icon?: string;
+    },
+    config?: AxiosRequestConfig,
+  ) {
+    return this.post("/api/admin/broadcast-push", data, config);
+  }
+
   setOnAuthFailure(callback: () => void) {
     this.onAuthFailure = callback;
   }

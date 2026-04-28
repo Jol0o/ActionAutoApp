@@ -38,11 +38,25 @@ self.addEventListener("push", (event: any) => {
     if (event.data) {
         try {
             const data = event.data.json();
+
+            // 1. HANDLE SILENT SYNC (DISMISSAL)
+            // If the backend says this is a sync action to dismiss, close the notification
+            if (data.isSyncAction && data.action === "dismiss") {
+                event.waitUntil(
+                    (self as any).registration.getNotifications({ tag: data.tag }).then((notifications: any[]) => {
+                        notifications.forEach((notification) => notification.close());
+                    })
+                );
+                return;
+            }
+
+            // 2. STANDARD NOTIFICATION DISPLAY
             const options = {
                 body: data.body,
                 icon: data.icon || DEFAULT_NOTIFICATION_ICON,
                 image: data.image || undefined, // Rich hero image for marketing
                 badge: DEFAULT_NOTIFICATION_ICON,
+                tag: data.tag, // Matches the preferenceKey (inventory_update, etc.) for grouping
                 data: {
                     url: data.data?.url || "/",
                     driverRequestId: data.data?.driverRequestId,
