@@ -62,6 +62,7 @@ export const ProfileView: React.FC = () => {
   const [savingPreference, setSavingPreference] = useState<string | null>(null);
 
   const [activities, setActivities] = useState<RecentActivity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
 
   const [onlineStatus, setOnlineStatus] = useState<OnlineStatus>("online");
   const [customStatus, setCustomStatus] = useState("");
@@ -95,7 +96,7 @@ export const ProfileView: React.FC = () => {
       setPhoneCountryCode(data.personalInfo?.phoneCountryCode || "+1");
       setSocialLinks(data.personalInfo?.socialLinks || []);
       setPreferences(data.notificationPreferences);
-      setActivities(data.recentActivity || []);
+      setActivities(data.recentActivities || data.recentActivity || []);
       setOnlineStatus(data.onlineStatus || "online");
       setCustomStatus(data.customStatus || "");
 
@@ -105,11 +106,27 @@ export const ProfileView: React.FC = () => {
           ? `${resolvedAvatar}${resolvedAvatar.includes("?") ? "&" : "?"}v=${Date.now()}`
           : "",
       );
+
+      try {
+        setActivitiesLoading(true);
+        const activityRes = await apiClient.get("/api/profile/activities", {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 30 },
+        });
+        const latestActivities = activityRes?.data?.data;
+        if (Array.isArray(latestActivities)) {
+          setActivities(latestActivities);
+        }
+      } catch {
+      } finally {
+        setActivitiesLoading(false);
+      }
     } catch {
       if (!toastShownRef.current) {
         toastShownRef.current = true;
         toast.error("Failed to load profile data");
       }
+      setActivitiesLoading(false);
     } finally {
       setIsLoading(false);
     }
@@ -459,7 +476,11 @@ export const ProfileView: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="activity">
-          <ActivityTab activities={activities} fetchProfile={fetchProfile} />
+          <ActivityTab
+            activities={activities}
+            fetchProfile={fetchProfile}
+            isLoading={activitiesLoading}
+          />
         </TabsContent>
 
         <TabsContent value="support">
