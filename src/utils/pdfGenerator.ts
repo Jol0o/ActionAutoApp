@@ -21,16 +21,18 @@ export const generateShipmentPDF = async (
     ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
     : quote?.vehicleName || "N/A";
 
-  // Professional color palette
+  // Updated color system aligned with dashboard
   const colors = {
-    primary: "#16a34a", // Green (matching logo)
-    darkGreen: "#15803d", // Dark green
-    navy: "#1e3a8a", // Navy blue
-    darkGray: "#1f2937", // Dark gray
-    mediumGray: "#6b7280", // Medium gray
-    lightGray: "#f3f4f6", // Light gray
-    success: "#10b981", // Success green
-    text: "#111827", // Near black
+    page: "#f8fafc",
+    card: "#ffffff",
+    border: "#dbe3ee",
+    headerDark: "#0f172a",
+    headerTone: "#132339",
+    brand: "#22c55e",
+    brandDark: "#16a34a",
+    text: "#111827",
+    textMuted: "#6b7280",
+    textSoft: "#94a3b8",
   };
 
   // Helper function to format dates
@@ -61,110 +63,180 @@ export const generateShipmentPDF = async (
     }
   };
 
-  let yPosition = 20;
+  const marginX = 14;
+  const contentWidth = pageWidth - marginX * 2;
+  let yPosition = 12;
+  const generatedAt = new Date();
 
-  // ============================================
-  // PROFESSIONAL HEADER WITH LOGO
-  // ============================================
-
-  // Green header bar
-  pdf.setFillColor(22, 163, 74); // Primary green
-  pdf.rect(0, 0, pageWidth, 45, "F");
-
-  // Company name
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(18);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("ACTION AUTO UTAH", 15, 20);
-
-  // Tagline
-  pdf.setFontSize(8);
-  pdf.setFont("helvetica", "normal");
-  pdf.text("POWERED BY SUPRA AI", 15, 25);
-
-  // Divider line
-  pdf.setDrawColor(255, 255, 255);
-  pdf.setLineWidth(0.3);
-  pdf.line(15, 32, pageWidth - 15, 32);
-
-  // Document title
-  pdf.setFontSize(11);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("SHIPMENT DOCUMENTATION", 15, 39);
-
-  // Document date - Right aligned
-  pdf.setFontSize(8);
-  pdf.setFont("helvetica", "normal");
-  const currentDate = new Date().toLocaleDateString("en-US", {
+  const currentDate = generatedAt.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
-  pdf.text(`Issue Date: ${currentDate}`, pageWidth - 15, 39, {
-    align: "right",
-  });
 
-  yPosition = 55;
+  const drawPageBackground = () => {
+    const bg = hexToRgb(colors.page);
+    pdf.setFillColor(bg.r, bg.g, bg.b);
+    pdf.rect(0, 0, pageWidth, pageHeight, "F");
+  };
 
-  // ============================================
-  // TRACKING & STATUS SECTION
-  // ============================================
-  pdf.setFillColor(243, 244, 246); // Light gray background
-  pdf.rect(15, yPosition, pageWidth - 30, 20, "F");
+  const drawHeader = (isContinuation = false) => {
+    drawPageBackground();
 
-  // Tracking number
-  pdf.setTextColor(31, 41, 55);
-  pdf.setFontSize(9);
+    const dark = hexToRgb(colors.headerDark);
+    const tone = hexToRgb(colors.headerTone);
+    const brand = hexToRgb(colors.brand);
+
+    pdf.setFillColor(dark.r, dark.g, dark.b);
+    pdf.rect(0, 0, pageWidth, 34, "F");
+    pdf.setFillColor(tone.r, tone.g, tone.b);
+    pdf.rect(pageWidth * 0.62, 0, pageWidth * 0.38, 34, "F");
+    pdf.setFillColor(brand.r, brand.g, brand.b);
+    pdf.rect(0, 0, 5, 34, "F");
+
+    pdf.setFillColor(brand.r, brand.g, brand.b);
+    pdf.roundedRect(marginX, 8, 10, 10, 2, 2, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+    pdf.text("AA", marginX + 5, 14.5, { align: "center" });
+
+    pdf.setFontSize(14);
+    pdf.text("ACTION AUTO UTAH", marginX + 14, 13);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+    pdf.text("Powered by Supra AI", marginX + 14, 17.5);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10.5);
+    pdf.text("Shipment Documentation", pageWidth - marginX, 12.5, {
+      align: "right",
+    });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+    pdf.text(`Issue Date: ${currentDate}`, pageWidth - marginX, 17, {
+      align: "right",
+    });
+    pdf.text(`Report Type: Shipment Document`, pageWidth - marginX, 21, {
+      align: "right",
+    });
+
+    pdf.setDrawColor(46, 58, 77);
+    pdf.setLineWidth(0.3);
+    pdf.line(marginX, 26.5, pageWidth - marginX, 26.5);
+
+    if (isContinuation) {
+      pdf.setTextColor(188, 199, 215);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.2);
+      pdf.text("Continued", pageWidth - marginX, 30.5, { align: "right" });
+    }
+
+    yPosition = 42;
+  };
+
+  const ensureSpace = (neededHeight: number) => {
+    if (yPosition + neededHeight <= pageHeight - 26) return;
+    pdf.addPage();
+    drawHeader(true);
+  };
+
+  const drawSectionTitle = (title: string) => {
+    pdf.setTextColor(17, 24, 39);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10.5);
+    pdf.text(title, marginX, yPosition);
+
+    const lineStart = marginX + pdf.getTextWidth(title) + 3;
+    pdf.setDrawColor(198, 208, 222);
+    pdf.setLineWidth(0.35);
+    pdf.line(lineStart, yPosition - 0.8, pageWidth - marginX, yPosition - 0.8);
+    yPosition += 5;
+  };
+
+  const drawCard = (x: number, y: number, width: number, height: number) => {
+    const card = hexToRgb(colors.card);
+    pdf.setFillColor(card.r, card.g, card.b);
+    pdf.setDrawColor(216, 225, 237);
+    pdf.setLineWidth(0.35);
+    pdf.roundedRect(x, y, width, height, 2.2, 2.2, "FD");
+  };
+
+  const drawKeyValueRows = (
+    rows: Array<{ label: string; value: string }>,
+    valueX: number,
+    rowHeight = 8.5,
+  ) => {
+    rows.forEach((row, index) => {
+      const rowY = yPosition + index * rowHeight;
+      if (index % 2 === 1) {
+        pdf.setFillColor(250, 252, 255);
+        pdf.rect(marginX + 1.2, rowY - 4.8, contentWidth - 2.4, rowHeight, "F");
+      }
+
+      pdf.setTextColor(100, 116, 139);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(7.8);
+      pdf.text(row.label.toUpperCase(), marginX + 5, rowY);
+
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.7);
+      pdf.text(row.value || "N/A", valueX, rowY);
+    });
+
+    yPosition += rows.length * rowHeight + 2;
+  };
+
+  drawHeader(false);
+
+  // Hero: Tracking / Vehicle / Status
+  ensureSpace(27);
+  drawCard(marginX, yPosition, contentWidth, 23);
+
+  pdf.setTextColor(100, 116, 139);
   pdf.setFont("helvetica", "bold");
-  pdf.text("TRACKING NUMBER:", 20, yPosition + 7);
+  pdf.setFontSize(8);
+  pdf.text("Tracking Number", marginX + 5, yPosition + 7);
 
-  pdf.setFontSize(14);
+  pdf.setTextColor(17, 24, 39);
   pdf.setFont("helvetica", "bold");
-  pdf.text((shipment as any).trackingNumber || "Not Assigned", 20, yPosition + 14);
-
-  // Status badge - Right side
-  const statusColor = getStatusColor(shipment.status);
-  const statusRgb = hexToRgb(statusColor);
-  pdf.setFillColor(statusRgb.r, statusRgb.g, statusRgb.b);
-
-  const statusText = shipment.status.toUpperCase();
-  const statusWidth = pdf.getTextWidth(statusText) + 10;
-  pdf.roundedRect(
-    pageWidth - 15 - statusWidth,
-    yPosition + 5,
-    statusWidth,
-    10,
-    2,
-    2,
-    "F",
+  pdf.setFontSize(13);
+  pdf.text(
+    shipment.trackingNumber || "Not Assigned",
+    marginX + 5,
+    yPosition + 14.5,
   );
 
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(8);
+  pdf.setTextColor(100, 116, 139);
   pdf.setFont("helvetica", "bold");
-  pdf.text(statusText, pageWidth - 15 - statusWidth / 2, yPosition + 11.5, {
+  pdf.setFontSize(7.8);
+  pdf.text("Vehicle", marginX + 5, yPosition + 19.5);
+  pdf.setTextColor(36, 52, 76);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8.3);
+  pdf.text(vehicleName, marginX + 25, yPosition + 19.5);
+
+  const statusColor = getStatusColor(shipment.status);
+  const statusRgb = hexToRgb(statusColor);
+  const statusText = (shipment.status || "Unknown").toUpperCase();
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8);
+  const statusWidth = Math.max(42, pdf.getTextWidth(statusText) + 16);
+  const statusX = pageWidth - marginX - statusWidth;
+  pdf.setFillColor(statusRgb.r, statusRgb.g, statusRgb.b);
+  pdf.roundedRect(statusX, yPosition + 5.2, statusWidth, 8.4, 4, 4, "F");
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(statusText, statusX + statusWidth / 2, yPosition + 10.9, {
     align: "center",
   });
 
   yPosition += 30;
 
-  // ============================================
-  // CUSTOMER INFORMATION - FORMAL TABLE
-  // ============================================
-  pdf.setTextColor(31, 41, 55);
-  pdf.setFontSize(12);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("CUSTOMER INFORMATION", 15, yPosition);
-
-  yPosition += 3;
-  pdf.setDrawColor(22, 163, 74);
-  pdf.setLineWidth(1);
-  pdf.line(15, yPosition, 75, yPosition);
-
-  yPosition += 8;
-
-  // Table-like structure
-  const customerData = [
+  // Customer Information
+  ensureSpace(40);
+  drawSectionTitle("Customer Information");
+  const customerRows = [
     {
       label: "Full Name",
       value:
@@ -173,276 +245,116 @@ export const generateShipmentPDF = async (
     { label: "Email Address", value: quote?.email || "N/A" },
     { label: "Phone Number", value: quote?.phone || "N/A" },
   ];
-
-  customerData.forEach((item) => {
-    pdf.setFillColor(249, 250, 251);
-    pdf.rect(15, yPosition - 5, pageWidth - 30, 10, "F");
-
-    pdf.setTextColor(107, 114, 128);
-    pdf.setFontSize(9);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(item.label.toUpperCase(), 20, yPosition);
-
-    pdf.setTextColor(31, 41, 55);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(item.value, 75, yPosition);
-
-    yPosition += 10;
-  });
-
-  yPosition += 5;
-
-  // ============================================
-  // VEHICLE INFORMATION - PROFESSIONAL LAYOUT
-  // ============================================
-  pdf.setTextColor(31, 41, 55);
-  pdf.setFontSize(12);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("VEHICLE INFORMATION", 15, yPosition);
-
+  const customerCardHeight = customerRows.length * 8.5 + 4;
+  drawCard(marginX, yPosition - 1.2, contentWidth, customerCardHeight);
+  drawKeyValueRows(customerRows, marginX + 60);
   yPosition += 3;
-  pdf.setDrawColor(22, 163, 74);
-  pdf.setLineWidth(1);
-  pdf.line(15, yPosition, 75, yPosition);
 
-  yPosition += 8;
-
-  // Vehicle image section
-  const vehicleImageUrl = quote?.vehicleImage;
-  if (vehicleImageUrl && canAttemptImageForPdf(vehicleImageUrl)) {
-    try {
-      const imgData = await loadImageAsBase64(vehicleImageUrl);
-
-      // Add border around image
-      pdf.setDrawColor(209, 213, 219);
-      pdf.setLineWidth(0.5);
-      pdf.rect(15, yPosition, 90, 60);
-
-      pdf.addImage(imgData, "JPEG", 16, yPosition + 1, 88, 58);
-
-      // Vehicle details - Right side
-      const detailsX = 110;
-      let detailsY = yPosition + 5;
-
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(31, 41, 55);
-      pdf.text(vehicleName, detailsX, detailsY);
-
-      detailsY += 12;
-
-      const vehicleDetails = [
-        { label: "VIN Number", value: vehicle?.vin || quote?.vin || "N/A" },
-        {
-          label: "Stock Number",
-          value: vehicle?.stockNumber || quote?.stockNumber || "N/A",
-        },
-        { label: "Location", value: quote?.vehicleLocation || "N/A" },
-      ];
-
-      vehicleDetails.forEach((detail) => {
-        pdf.setFillColor(249, 250, 251);
-        pdf.rect(detailsX, detailsY - 4, 85, 8, "F");
-
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(107, 114, 128);
-        pdf.text(detail.label.toUpperCase(), detailsX + 2, detailsY);
-
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(31, 41, 55);
-        pdf.text(detail.value, detailsX + 2, detailsY + 5);
-
-        detailsY += 11;
-      });
-
-      yPosition += 68;
-    } catch (error) {
-      // Fallback without image
-      const vehicleDetails = [
-        { label: "Vehicle", value: vehicleName },
-        { label: "VIN Number", value: vehicle?.vin || quote?.vin || "N/A" },
-        {
-          label: "Stock Number",
-          value: vehicle?.stockNumber || quote?.stockNumber || "N/A",
-        },
-        { label: "Location", value: quote?.vehicleLocation || "N/A" },
-      ];
-
-      vehicleDetails.forEach((detail) => {
-        pdf.setFillColor(249, 250, 251);
-        pdf.rect(15, yPosition - 5, pageWidth - 30, 10, "F");
-
-        pdf.setTextColor(107, 114, 128);
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(detail.label.toUpperCase(), 20, yPosition);
-
-        pdf.setTextColor(31, 41, 55);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(detail.value, 75, yPosition);
-
-        yPosition += 10;
-      });
-
-      yPosition += 5;
-    }
-  } else {
-    const vehicleDetails = [
-      { label: "Vehicle", value: vehicleName },
-      { label: "VIN Number", value: vehicle?.vin || quote?.vin || "N/A" },
-      {
-        label: "Stock Number",
-        value: vehicle?.stockNumber || quote?.stockNumber || "N/A",
-      },
-      { label: "Location", value: quote?.vehicleLocation || "N/A" },
-    ];
-
-    vehicleDetails.forEach((detail) => {
-      pdf.setFillColor(249, 250, 251);
-      pdf.rect(15, yPosition - 5, pageWidth - 30, 10, "F");
-
-      pdf.setTextColor(107, 114, 128);
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(detail.label.toUpperCase(), 20, yPosition);
-
-      pdf.setTextColor(31, 41, 55);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(detail.value, 75, yPosition);
-
-      yPosition += 10;
-    });
-
-    yPosition += 5;
-  }
-
-  // ============================================
-  // ROUTE INFORMATION - FORMAL
-  // ============================================
-  pdf.setTextColor(31, 41, 55);
-  pdf.setFontSize(12);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("ROUTE INFORMATION", 15, yPosition);
-
+  // Vehicle Information
+  ensureSpace(48);
+  drawSectionTitle("Vehicle Information");
+  const vehicleRows = [
+    { label: "Vehicle", value: vehicleName },
+    { label: "VIN Number", value: vehicle?.vin || quote?.vin || "N/A" },
+    {
+      label: "Stock Number",
+      value: vehicle?.stockNumber || quote?.stockNumber || "N/A",
+    },
+    { label: "Location", value: quote?.vehicleLocation || "N/A" },
+  ];
+  const vehicleCardHeight = vehicleRows.length * 8.5 + 4;
+  drawCard(marginX, yPosition - 1.2, contentWidth, vehicleCardHeight);
+  drawKeyValueRows(vehicleRows, marginX + 60);
   yPosition += 3;
-  pdf.setDrawColor(22, 163, 74);
-  pdf.setLineWidth(1);
-  pdf.line(15, yPosition, 75, yPosition);
 
-  yPosition += 10;
+  // Route Information
+  ensureSpace(38);
+  drawSectionTitle("Route Information");
+  drawCard(marginX, yPosition - 1.2, contentWidth, 29);
 
-  // Origin
-  pdf.setFillColor(249, 250, 251);
-  pdf.rect(15, yPosition - 5, pageWidth - 30, 12, "F");
+  const routeX = marginX + 7;
+  const routeTop = yPosition + 5;
+  pdf.setDrawColor(205, 214, 229);
+  pdf.setLineWidth(0.9);
+  pdf.line(routeX, routeTop + 2.5, routeX, routeTop + 12.5);
 
-  pdf.setFillColor(22, 163, 74);
-  pdf.circle(20, yPosition, 2.5, "F");
-
-  pdf.setTextColor(107, 114, 128);
-  pdf.setFontSize(8);
+  pdf.setFillColor(34, 197, 94);
+  pdf.circle(routeX, routeTop, 2.5, "F");
+  pdf.setTextColor(100, 116, 139);
   pdf.setFont("helvetica", "bold");
-  pdf.text("ORIGIN", 27, yPosition - 1);
-
-  pdf.setTextColor(31, 41, 55);
-  pdf.setFontSize(9);
+  pdf.setFontSize(7.6);
+  pdf.text("ORIGIN", routeX + 6, routeTop - 0.8);
+  pdf.setTextColor(30, 41, 59);
   pdf.setFont("helvetica", "normal");
-  pdf.text((shipment as any).origin || "N/A", 27, yPosition + 4);
-
-  yPosition += 12;
-
-  // Connection line
-  pdf.setDrawColor(209, 213, 219);
-  pdf.setLineWidth(1);
-  pdf.line(20, yPosition - 10, 20, yPosition + 2);
-
-  // Destination
-  pdf.setFillColor(249, 250, 251);
-  pdf.rect(15, yPosition - 5, pageWidth - 30, 12, "F");
+  pdf.setFontSize(9);
+  pdf.text(shipment.origin || "N/A", routeX + 6, routeTop + 3.8);
 
   pdf.setFillColor(239, 68, 68);
-  pdf.circle(20, yPosition, 2.5, "F");
-
-  pdf.setTextColor(107, 114, 128);
-  pdf.setFontSize(8);
+  pdf.circle(routeX, routeTop + 15.2, 2.5, "F");
+  pdf.setTextColor(100, 116, 139);
   pdf.setFont("helvetica", "bold");
-  pdf.text("DESTINATION", 27, yPosition - 1);
-
-  pdf.setTextColor(31, 41, 55);
-  pdf.setFontSize(9);
+  pdf.setFontSize(7.6);
+  pdf.text("DESTINATION", routeX + 6, routeTop + 14.6);
+  pdf.setTextColor(30, 41, 59);
   pdf.setFont("helvetica", "normal");
-  pdf.text((shipment as any).destination || "N/A", 27, yPosition + 4);
+  pdf.setFontSize(9);
+  pdf.text(shipment.destination || "N/A", routeX + 6, routeTop + 19);
 
-  yPosition += 17;
+  yPosition += 34;
 
-  // ============================================
-  // SHIPMENT TIMELINE - PROFESSIONAL TABLE
-  // ============================================
-  pdf.setTextColor(31, 41, 55);
-  pdf.setFontSize(12);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("SHIPMENT TIMELINE", 15, yPosition);
-
-  yPosition += 3;
-  pdf.setDrawColor(22, 163, 74);
-  pdf.setLineWidth(1);
-  pdf.line(15, yPosition, 75, yPosition);
-
-  yPosition += 8;
-
+  // Shipment Timeline
   const timelineData = [
     {
-      label: "Requested Pickup Date",
-      date: formatDate((shipment as any).dates?.firstAvailable),
+      label: "Requested Pickup",
+      date: formatDate(shipment.requestedPickupDate),
     },
+    { label: "Scheduled Pickup", date: formatDate(shipment.scheduledPickup) },
+    { label: "Actual Pickup", date: formatDate(shipment.pickedUp) },
     {
-      label: "Scheduled Pickup Date",
-      date: formatDate((shipment as any).dates?.pickupDeadline),
+      label: "Scheduled Delivery",
+      date: formatDate(shipment.scheduledDelivery),
     },
-    { label: "Actual Pickup Date", date: formatDate((shipment as any).pickedUpAt || (shipment as any).pickedUp) },
-    {
-      label: "Scheduled Delivery Date",
-      date: formatDate((shipment as any).dates?.deliveryDeadline),
-    },
-    { label: "Actual Delivery Date", date: formatDate((shipment as any).deliveredAt || (shipment as any).delivered) },
+    { label: "Actual Delivery", date: formatDate(shipment.delivered) },
   ];
 
+  ensureSpace(58);
+  drawSectionTitle("Shipment Timeline");
+  const timelineCardHeight = timelineData.length * 9 + 5;
+  drawCard(marginX, yPosition - 1.2, contentWidth, timelineCardHeight);
+
   timelineData.forEach((item, index) => {
-    const fillColor = index % 2 === 0 ? 249 : 243;
-    pdf.setFillColor(fillColor, 250, 251);
-    pdf.rect(15, yPosition - 5, pageWidth - 30, 10, "F");
+    const rowY = yPosition + index * 9;
+    if (index % 2 === 1) {
+      pdf.setFillColor(250, 252, 255);
+      pdf.rect(marginX + 1.2, rowY - 5, contentWidth - 2.4, 9, "F");
+    }
 
-    pdf.setTextColor(107, 114, 128);
-    pdf.setFontSize(9);
+    const stepColor = index === 0 ? [37, 99, 235] : [99, 102, 241];
+    pdf.setFillColor(stepColor[0], stepColor[1], stepColor[2]);
+    pdf.circle(marginX + 7, rowY - 0.2, 2.3, "F");
+    pdf.setTextColor(255, 255, 255);
     pdf.setFont("helvetica", "bold");
-    pdf.text(item.label, 20, yPosition);
+    pdf.setFontSize(6.8);
+    pdf.text(String(index + 1), marginX + 7, rowY + 0.9, { align: "center" });
 
-    pdf.setTextColor(31, 41, 55);
+    pdf.setTextColor(71, 85, 105);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8.1);
+    pdf.text(item.label, marginX + 12, rowY);
+
+    pdf.setTextColor(30, 41, 59);
     pdf.setFont("helvetica", "normal");
-    pdf.text(item.date, pageWidth - 20, yPosition, { align: "right" });
-
-    yPosition += 10;
+    pdf.setFontSize(8.6);
+    pdf.text(item.date, pageWidth - marginX - 4, rowY, { align: "right" });
   });
 
-  yPosition += 5;
+  yPosition += timelineData.length * 9 + 8;
 
-  // ============================================
-  // TRANSPORT DETAILS & PRICING - FORMAL
-  // ============================================
-  pdf.setTextColor(31, 41, 55);
-  pdf.setFontSize(12);
-  pdf.setFont("helvetica", "bold");
-  pdf.text("TRANSPORT DETAILS", 15, yPosition);
+  // Transport Details + Rate block
+  ensureSpace(56);
+  drawSectionTitle("Transport Details");
 
-  yPosition += 3;
-  pdf.setDrawColor(22, 163, 74);
-  pdf.setLineWidth(1);
-  pdf.line(15, yPosition, 75, yPosition);
-
-  yPosition += 8;
-
-  const transportDetails = [
+  const detailsRows = [
     {
       label: "Transport Type",
       value: quote?.enclosedTrailer ? "Enclosed Trailer" : "Open Trailer",
@@ -452,75 +364,57 @@ export const generateShipmentPDF = async (
       value: quote?.vehicleInoperable ? "Inoperable" : "Operable",
     },
     { label: "Distance", value: `${quote?.miles || "N/A"} miles` },
-    { label: "Number of Units", value: `${quote?.units || "N/A"}` },
+    { label: "Units", value: `${quote?.units || "N/A"}` },
   ];
 
-  transportDetails.forEach((item, index) => {
-    const fillColor = index % 2 === 0 ? 249 : 243;
-    pdf.setFillColor(fillColor, 250, 251);
-    pdf.rect(15, yPosition - 5, pageWidth - 30, 10, "F");
+  const detailsCardHeight = detailsRows.length * 8.5 + 4;
+  drawCard(marginX, yPosition - 1.2, contentWidth, detailsCardHeight);
+  drawKeyValueRows(detailsRows, marginX + 60);
 
-    pdf.setTextColor(107, 114, 128);
-    pdf.setFontSize(9);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(item.label, 20, yPosition);
-
-    pdf.setTextColor(31, 41, 55);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(item.value, pageWidth - 20, yPosition, { align: "right" });
-
-    yPosition += 10;
-  });
-
-  yPosition += 10;
-
-  // Pricing section - Professional box
-  pdf.setFillColor(22, 163, 74);
-  pdf.rect(15, yPosition, pageWidth - 30, 20, "F");
-
+  const rateBoxY = yPosition + 2;
+  const brand = hexToRgb(colors.brandDark);
+  const brandSoft = hexToRgb(colors.brand);
+  pdf.setFillColor(brand.r, brand.g, brand.b);
+  pdf.roundedRect(marginX, rateBoxY, contentWidth, 15, 2, 2, "F");
+  pdf.setFillColor(brandSoft.r, brandSoft.g, brandSoft.b);
+  pdf.rect(marginX, rateBoxY, contentWidth * 0.28, 15, "F");
   pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(9);
   pdf.setFont("helvetica", "bold");
-  pdf.text("TOTAL TRANSPORT RATE", 20, yPosition + 7);
-
-  pdf.setFontSize(18);
-  pdf.setFont("helvetica", "bold");
-  pdf.text(`$${quote?.rate?.toLocaleString() || "N/A"}`, 20, yPosition + 15);
-
-  pdf.setFontSize(10);
-  pdf.text("USD", pageWidth - 20, yPosition + 15, { align: "right" });
-
-  // ============================================
-  // PROFESSIONAL FOOTER
-  // ============================================
-  const footerY = pageHeight - 25;
-
-  pdf.setDrawColor(229, 231, 235);
-  pdf.setLineWidth(0.5);
-  pdf.line(15, footerY, pageWidth - 15, footerY);
-
-  pdf.setTextColor(107, 114, 128);
-  pdf.setFontSize(8);
-  pdf.setFont("helvetica", "normal");
-
-  // Company info
-  pdf.text("Action Auto Utah", pageWidth / 2, footerY + 5, { align: "center" });
-  pdf.setFontSize(7);
-  pdf.text("Powered By Supra AI", pageWidth / 2, footerY + 9, {
-    align: "center",
-  });
-
-  // Document info
-  pdf.setFontSize(7);
-  pdf.text(`Document ID: ${shipment._id}`, pageWidth / 2, footerY + 14, {
-    align: "center",
-  });
+  pdf.setFontSize(8.5);
+  pdf.text("TOTAL TRANSPORT RATE", marginX + 5, rateBoxY + 6.2);
+  pdf.setFontSize(15);
   pdf.text(
-    `Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
-    pageWidth / 2,
-    footerY + 18,
-    { align: "center" },
+    `$${quote?.rate?.toLocaleString() || "N/A"}`,
+    marginX + 5,
+    rateBoxY + 12.3,
   );
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8.2);
+  pdf.text("USD", pageWidth - marginX - 5, rateBoxY + 12.1, { align: "right" });
+
+  // Footer on all pages
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    const footerY = pageHeight - 12;
+    pdf.setDrawColor(220, 228, 239);
+    pdf.setLineWidth(0.3);
+    pdf.line(marginX, footerY - 4.5, pageWidth - marginX, footerY - 4.5);
+
+    pdf.setTextColor(100, 116, 139);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7);
+    pdf.text(`Document ID: ${shipment._id}`, marginX, footerY);
+    pdf.text(
+      `Generated: ${generatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${generatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
+      pageWidth / 2,
+      footerY,
+      { align: "center" },
+    );
+    pdf.text(`Page ${i} of ${totalPages}`, pageWidth - marginX, footerY, {
+      align: "right",
+    });
+  }
 
   // ============================================
   // SAVE PDF
@@ -561,10 +455,10 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+    }
     : { r: 0, g: 0, b: 0 };
 }
 

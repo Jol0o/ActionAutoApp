@@ -7,11 +7,11 @@
  */
 
 import * as React from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, Send, Square, Trash2,
   Loader2, Calendar, Clock, MessageSquare,
-  Fingerprint, Rss, User, Zap, Shield,
+  Fingerprint, Rss, User, Zap,
   ChevronRight,
 } from 'lucide-react'
 import { SupraLeoAvatar } from '@/components/supra-leo-ai/SupraLeoAvatar'
@@ -234,6 +234,12 @@ const QUICK_PROMPTS: Record<ChatModule, string[]> = {
   feeds:        ['What did the team post today?', 'Write an engaging team motivation post', 'Summarize recent feed activity'],
 }
 
+interface SupraLeoStatus {
+  context?: {
+    chatMessages?: number
+  }
+}
+
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 function renderMarkdown(text: string): string {
   return text
@@ -333,10 +339,11 @@ function HUDGrid() {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function SupraLeoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeModule, setActiveModule] = React.useState<ChatModule>('general')
   const [inputText, setInputText] = React.useState('')
   const [showClearConfirm, setShowClearConfirm] = React.useState(false)
-  const [status, setStatus] = React.useState<any>(null)
+  const [status, setStatus] = React.useState<SupraLeoStatus | null>(null)
 
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
@@ -345,6 +352,19 @@ export default function SupraLeoPage() {
     messages, isLoading, isLoadingHistory, hasMore, error,
     sendMessage, stopGeneration, clearHistory, loadMoreHistory,
   } = useSupraLeoChat({ module: activeModule, autoLoadHistory: true })
+
+  const fromPath = searchParams.get('from') || '/crm/dashboard'
+  const lastMessageContent = messages[messages.length - 1]?.content
+
+  React.useEffect(() => {
+    const requestedModule = searchParams.get('module')
+    if (!requestedModule) return
+
+    const isValidModule = MODULES.some(mod => mod.id === requestedModule)
+    if (isValidModule) {
+      setActiveModule(requestedModule as ChatModule)
+    }
+  }, [searchParams])
 
   // Auth check + status load
   React.useEffect(() => {
@@ -359,7 +379,7 @@ export default function SupraLeoPage() {
   React.useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [messages.length, messages[messages.length - 1]?.content])
+  }, [messages.length, lastMessageContent])
 
   // Auto-resize textarea
   React.useEffect(() => {
@@ -385,6 +405,14 @@ export default function SupraLeoPage() {
     setShowClearConfirm(false)
   }
 
+  const handleBack = React.useCallback(() => {
+    if (fromPath.startsWith('/crm/')) {
+      router.push(fromPath)
+      return
+    }
+    router.push('/crm/dashboard')
+  }, [fromPath, router])
+
   const quickPrompts = QUICK_PROMPTS[activeModule]
   const showEmpty = messages.length === 0 && !isLoadingHistory
 
@@ -404,7 +432,10 @@ export default function SupraLeoPage() {
   }, [messages])
 
   return (
-    <div className="axp flex flex-col h-screen overflow-hidden" style={{ position: 'relative' }}>
+    <div
+      className="axp flex h-full min-h-0 flex-col overflow-hidden"
+      style={{ position: 'relative', height: '100%', maxHeight: '100%' }}
+    >
       <HUDGrid />
 
       {/* ── Top bar ── */}
@@ -419,7 +450,7 @@ export default function SupraLeoPage() {
         <div className="flex items-center gap-3 px-4 sm:px-5 h-14">
           {/* Back */}
           <button
-            onClick={() => router.push('/crm/dashboard')}
+            onClick={handleBack}
             className="axp-icon-btn h-9 w-9 sm:h-8 sm:w-8"
             style={{ borderRadius: 10 }}
           >
@@ -482,7 +513,11 @@ export default function SupraLeoPage() {
       </div>
 
       {/* ── Messages ── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto axp-scroll py-4 space-y-4" style={{ position: 'relative', zIndex: 1 }}>
+      <div
+        ref={scrollRef}
+        className="axp-scroll flex-1 overflow-y-auto space-y-4 py-4 min-h-0"
+        style={{ position: 'relative', zIndex: 1 }}
+      >
 
         {hasMore && !isLoadingHistory && (
           <div className="flex justify-center py-2">
@@ -572,7 +607,7 @@ export default function SupraLeoPage() {
         position: 'relative', zIndex: 10,
       }}>
         <div className="axp-shimmer" />
-        <div style={{ padding: '12px 16px 16px' }}>
+        <div style={{ padding: '10px 12px calc(12px + env(safe-area-inset-bottom, 0px))' }}>
           <div
             style={{
               display: 'flex', alignItems: 'flex-end', gap: 10,

@@ -8,15 +8,14 @@ import {
   Loader2, Check, CheckCheck, Hash, Reply, Trash2,
   ArrowLeft, Radio, Bot, Video, PhoneOff,
   Mic, MicOff, VideoOff, Sun, Moon, Sparkles,
-  Settings, Bell, ChevronDown, Phone,
+  Bell,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { apiClient } from '@/lib/api-client';
 import { useSupraSpaceSocket, SSConversation, SSMessage } from '@/hooks/useSupraSpaceSocket';
+import { useTheme } from '@/context/ThemeContext';
 import { cn } from '@/lib/utils';
 
 const SS4_MAX_UPLOAD_FILES = 5;
@@ -27,14 +26,22 @@ const SS4_VIDEO_EXTENSIONS = new Set([
 ]);
 
 // ─── Font + Style Injection ──────────────────────────────────────────────────
-if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;600;700;800&display=swap';
-  document.head.appendChild(link);
+if (typeof document !== 'undefined') {
+  let link = document.getElementById('ss4-fonts') as HTMLLinkElement | null;
+  if (!link) {
+    link = document.createElement('link');
+    link.id = 'ss4-fonts';
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;600;700;800&display=swap';
+    document.head.appendChild(link);
+  }
 
-  const s = document.createElement('style');
-  s.id = 'ss4-styles';
+  let s = document.getElementById('ss4-styles') as HTMLStyleElement | null;
+  if (!s) {
+    s = document.createElement('style');
+    s.id = 'ss4-styles';
+    document.head.appendChild(s);
+  }
   s.textContent = `
     /* ── Token System ──────────────────────────────────── */
     .ss4[data-theme="dark"] {
@@ -124,8 +131,8 @@ if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
       --bubble-other-bg: #ffffff;
       --bubble-other-border: rgba(0,0,0,0.09);
 
-      --sidebar-bg:    #1e2430;
-      --sidebar-border:rgba(255,255,255,0.06);
+      --sidebar-bg:    #ffffff;
+      --sidebar-border:rgba(0,0,0,0.08);
 
       --input-bg:      #ffffff;
       --input-border:  rgba(0,0,0,0.1);
@@ -160,61 +167,6 @@ if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
       border-right: 1px solid var(--sidebar-border);
     }
 
-    /* Light sidebar overrides — stay dark for contrast */
-    .ss4[data-theme="light"] .ss4-sidebar {
-      background: #1e2430;
-      border-right: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-section-label {
-      color: rgba(255,255,255,0.3);
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-conv-name {
-      color: rgba(255,255,255,0.85) !important;
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-conv-preview {
-      color: rgba(255,255,255,0.4) !important;
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-conv:hover {
-      background: rgba(255,255,255,0.06) !important;
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-conv-active {
-      background: rgba(91,124,246,0.2) !important;
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-icon-btn {
-      color: rgba(255,255,255,0.45);
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-icon-btn:hover {
-      background: rgba(255,255,255,0.07);
-      color: rgba(255,255,255,0.85);
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-search-input {
-      background: rgba(255,255,255,0.06);
-      border-color: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.85);
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-search-input::placeholder {
-      color: rgba(255,255,255,0.25);
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-search-input:focus {
-      border-color: rgba(91,124,246,0.5);
-      background: rgba(255,255,255,0.08);
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-search-icon {
-      color: rgba(255,255,255,0.28);
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-logo-mark {
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 4px 16px rgba(91,124,246,0.25);
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-new-btn {
-      background: rgba(91,124,246,0.2);
-      border-color: rgba(91,124,246,0.3);
-      color: #a5b8ff;
-    }
-    .ss4[data-theme="light"] .ss4-sidebar .ss4-new-btn:hover {
-      background: rgba(91,124,246,0.3);
-    }
-
     /* ── Conversation Items ─────────────────────────────── */
     .ss4-conv {
       border-radius: 10px;
@@ -223,11 +175,13 @@ if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
       position: relative;
     }
     .ss4-conv:hover {
-      background: rgba(255,255,255,0.05);
+      background: var(--bg-hover);
     }
     .ss4-conv-active {
       background: rgba(91,124,246,0.18) !important;
     }
+    .ss4-conv-name { color: var(--text-primary); }
+    .ss4-conv-preview { color: var(--text-secondary); }
     .ss4-conv-active::before {
       content: '';
       position: absolute;
@@ -254,6 +208,7 @@ if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--input-focus);
     }
+    .ss4-search-icon { color: var(--text-tertiary); }
 
     /* ── Chat Header ────────────────────────────────────── */
     .ss4-chat-header {
@@ -409,9 +364,6 @@ if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
     .ss4-online-dot {
       background: var(--positive);
       box-shadow: 0 0 0 2px var(--sidebar-bg), 0 0 6px rgba(52,201,125,0.6);
-    }
-    .ss4[data-theme="light"] .ss4-online-dot {
-      box-shadow: 0 0 0 2px #1e2430, 0 0 6px rgba(34,176,96,0.6);
     }
 
     /* ── Typing Indicator ───────────────────────────────── */
@@ -619,7 +571,6 @@ if (typeof document !== 'undefined' && !document.getElementById('ss4-styles')) {
     /* ── Divider ────────────────────────────────────────── */
     .ss4-divider { height: 1px; background: var(--border-1); }
   `;
-  document.head.appendChild(s);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -634,6 +585,22 @@ function fmtDate(d: string) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 const fmtSize = (b: number) => b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`;
+function getErrorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response?: unknown }).response === 'object' &&
+    (error as { response?: { data?: unknown } }).response !== null
+  ) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response;
+    const message = response?.data?.message;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
+}
 const isVideoFileLike = (file: Pick<File, 'name' | 'type'>) => {
   const extension = file.name.includes('.')
     ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
@@ -720,10 +687,10 @@ function Bubble({ message, isOwn, showAvatar, onReply, onDelete }: {
             className="rounded-xl px-3 py-2 mb-1 max-w-full ss4-reply-bar"
           >
             <p className="font-semibold truncate" style={{ fontSize: 10, letterSpacing: '0.05em', color: 'var(--accent-text)' }}>
-              {(message.replyTo as any).sender?.fullName}
+              {message.replyTo.sender?.fullName}
             </p>
             <p className="truncate mt-0.5" style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              {(message.replyTo as any).content || '📎 Attachment'}
+              {message.replyTo.content || '📎 Attachment'}
             </p>
           </div>
         )}
@@ -1042,11 +1009,11 @@ function NewConvModal({ users, onClose, onStartDM, onCreateGroup }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SupraSpacePage() {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const uploadNoticeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [token, setToken] = React.useState('');
   const [uid, setUid] = React.useState('');
   const [loading, setLoading] = React.useState(true);
-  const [theme, setTheme] = React.useState<'dark' | 'light'>('dark');
 
   const [convos, setConvos] = React.useState<SSConversation[]>([]);
   const [activeId, setActiveId] = React.useState<string | null>(null);
@@ -1085,8 +1052,6 @@ export default function SupraSpacePage() {
     const t = localStorage.getItem('crm_token');
     if (!t) { router.replace('/crm'); return; }
     setToken(t);
-    const savedTheme = localStorage.getItem('ss4_theme') as 'dark' | 'light' | null;
-    if (savedTheme) setTheme(savedTheme);
     const init = async () => {
       try {
         const [me, cv, us] = await Promise.all([
@@ -1129,7 +1094,6 @@ export default function SupraSpacePage() {
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
-    localStorage.setItem('ss4_theme', next);
   };
 
   React.useEffect(() => {
@@ -1214,9 +1178,9 @@ export default function SupraSpacePage() {
         const sentMessage = sendResponse.data?.data as SSMessage | undefined;
         if (sentMessage) appendMessageLocal(conversationId, sentMessage);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (hasPendingFiles) {
-        const message = error?.response?.data?.message || 'Failed to send attachment. Please try again.';
+        const message = getErrorMessage(error, 'Failed to send attachment. Please try again.');
         showUploadNotice('error', message);
       } else {
         setInput(content);
@@ -1489,7 +1453,7 @@ export default function SupraSpacePage() {
                 <div className="h-10 w-10 rounded-xl ss4-empty-icon flex items-center justify-center">
                   <MessageSquare className="h-4 w-4" style={{ color: 'var(--accent)' }} />
                 </div>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>No conversations yet</p>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No conversations yet</p>
               </div>
             )}
             {filtered.map(conv => {
@@ -1501,7 +1465,7 @@ export default function SupraSpacePage() {
               return (
                 <div
                   key={conv._id}
-                  className={cn('ss4-conv flex items-center gap-3 px-3 py-2.5', isAct && 'ss4-conv-active')}
+                  className={cn('ss4-conv group flex items-center gap-3 px-3 py-2.5', isAct && 'ss4-conv-active')}
                   onClick={() => { setActiveId(conv._id); setSideOpen(false); }}
                 >
                   <div className="relative shrink-0">
@@ -1518,10 +1482,10 @@ export default function SupraSpacePage() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="ss4-conv-name font-semibold truncate" style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>
+                    <p className="ss4-conv-name font-semibold truncate" style={{ fontSize: 13 }}>
                       {cName}
                     </p>
-                    <p className="ss4-conv-preview truncate mt-0.5" style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                    <p className="ss4-conv-preview truncate mt-0.5" style={{ fontSize: 11 }}>
                       {conv.lastMessage?.isDeleted
                         ? 'Message deleted'
                         : conv.lastMessage?.content || (conv.lastMessage?.attachments?.length ? '📎 Attachment' : 'No messages yet')}
@@ -1532,9 +1496,9 @@ export default function SupraSpacePage() {
                   <button
                     onClick={e => { e.stopPropagation(); setVideoCallConv(conv); }}
                     className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
-                    style={{ color: 'rgba(255,255,255,0.3)', display: isAct ? 'flex' : undefined }}
+                    style={{ color: 'var(--text-tertiary)', display: isAct ? 'flex' : undefined }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(91,124,246,0.15)'; e.currentTarget.style.color = 'var(--accent-text)'; e.currentTarget.style.opacity = '1'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; if (!isAct) e.currentTarget.style.opacity = '0'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--text-tertiary)'; if (!isAct) e.currentTarget.style.opacity = '0'; }}
                     title="Video call"
                   >
                     <Video className="h-3.5 w-3.5" />

@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import React from "react"
+import React from "react";
 import {
   BarChart,
   Bar,
@@ -12,11 +12,17 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip,
-} from "recharts"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { TrendingUp, PackageCheck, BarChart2 } from "lucide-react"
-import { formatCurrency } from "@/utils/format"
-import { Payment } from "@/types/billing"
+} from "recharts";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { TrendingUp, PackageCheck, BarChart2 } from "lucide-react";
+import { formatCurrency } from "@/utils/format";
+import { Payment } from "@/types/billing";
 
 interface ManagedLoad {
   _id: string
@@ -32,12 +38,12 @@ interface Props {
 // ── Data builders ─────────────────────────────────────────────────────────────
 
 const STATUS_FILL: Record<string, string> = {
-  "Delivered":            "var(--chart-1)",
-  "In-Route":             "var(--chart-2)",
-  "Dispatched":           "var(--chart-3)",
+  Delivered: "var(--chart-1)",
+  "In-Route": "var(--chart-2)",
+  Dispatched: "var(--chart-3)",
   "Available for Pickup": "var(--chart-4)",
-  "Cancelled":            "var(--chart-5)",
-}
+  Cancelled: "var(--chart-5)",
+};
 
 
 function buildDeliveryData(loads: ManagedLoad[]) {
@@ -48,41 +54,46 @@ function buildDeliveryData(loads: ManagedLoad[]) {
   return Object.entries(counts).map(([name, value]) => ({ name, value }))
 }
 function buildRevenueData(rawPayments: Payment[]) {
-  const now = new Date()
-  const result = []
+  const now = new Date();
+  const result = [];
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-    const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" })
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-US", {
+      month: "short",
+      year: "2-digit",
+    });
     const revenue = rawPayments
-      .filter(p => p.status === "succeeded" && p.createdAt?.startsWith(key))
-      .reduce((sum, p) => sum + p.amount, 0)
-    result.push({ month: label, revenue })
+      .filter((p) => p.status === "succeeded" && p.createdAt?.startsWith(key))
+      .reduce((sum, p) => sum + p.amount, 0);
+    result.push({ month: label, revenue });
   }
-  return result
+  return result;
 }
 
 // ── Custom tooltips ───────────────────────────────────────────────────────────
 
 function RevenueTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
+  if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg text-xs">
       <p className="text-muted-foreground mb-0.5">{label}</p>
-      <p className="font-semibold text-foreground">{formatCurrency(payload[0].value)}</p>
+      <p className="font-semibold text-foreground">
+        {formatCurrency(payload[0].value)}
+      </p>
     </div>
-  )
+  );
 }
 
 function DeliveryTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null
-  const count = payload[0].value
+  if (!active || !payload?.length) return null;
+  const count = payload[0].value;
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg text-xs">
       <p className="font-semibold text-foreground">{payload[0].name}</p>
       <p className="text-muted-foreground">{count} load{count !== 1 ? "s" : ""}</p>
     </div>
-  )
+  );
 }
 
 // ── Quick stat item ───────────────────────────────────────────────────────────
@@ -93,51 +104,59 @@ function QuickStat({
   icon,
   color,
 }: {
-  label: string
-  value: string | number
-  icon: React.ReactNode
-  color: string
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  color: string;
 }) {
   return (
     <div className="flex items-center gap-3 flex-1 min-w-[140px]">
-      <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+      <div
+        className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${color}`}
+      >
         {icon}
       </div>
       <div>
-        <p className="text-[11px] text-muted-foreground font-medium leading-none mb-0.5">{label}</p>
-        <p className="text-base font-bold text-foreground leading-none">{value}</p>
+        <p className="text-[11px] text-muted-foreground font-medium leading-none mb-0.5">
+          {label}
+        </p>
+        <p className="text-base font-bold text-foreground leading-none">
+          {value}
+        </p>
       </div>
     </div>
-  )
+  );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
   const deliveryData = React.useMemo(() => buildDeliveryData(loads), [loads])
-  const revenueData  = React.useMemo(() => buildRevenueData(rawPayments), [rawPayments])
+  const revenueData = React.useMemo(() => buildRevenueData(rawPayments), [rawPayments])
 
-  const [tickColor, setTickColor] = React.useState("#6b7280")
+  const [tickColor, setTickColor] = React.useState("#6b7280");
   React.useEffect(() => {
     const update = () => {
-      const isDark = document.documentElement.classList.contains("dark")
-      setTickColor(isDark ? "#9ca3af" : "#6b7280")
-    }
-    update()
-    const observer = new MutationObserver(update)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
-    return () => observer.disconnect()
-  }, [])
+      const isDark = document.documentElement.classList.contains("dark");
+      setTickColor(isDark ? "#9ca3af" : "#6b7280");
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
-  const totalLoads      = loads.length
-  const delivered       = loads.filter(s => s.status === "Delivered").length
-  const successRate     = totalLoads > 0 ? Math.round((delivered / totalLoads) * 100) : 0
-  const totalSixMoRev   = revenueData.reduce((s, d) => s + d.revenue, 0)
-  const hasRevenueData  = revenueData.some(d => d.revenue > 0)
+  const totalLoads = loads.length
+  const delivered = loads.filter(s => s.status === "Delivered").length
+  const successRate = totalLoads > 0 ? Math.round((delivered / totalLoads) * 100) : 0
+  const totalSixMoRev = revenueData.reduce((s, d) => s + d.revenue, 0)
+  const hasRevenueData = revenueData.some(d => d.revenue > 0)
 
   return (
-    <div className="space-y-3">
-
+    <div className="space-y-4">
       {/* Section label */}
       <div className="flex items-center gap-2.5">
         <BarChart2 className="size-4 text-muted-foreground" />
@@ -173,11 +192,12 @@ export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
         {/* Delivery Success Rate — Donut */}
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Delivery Breakdown</CardTitle>
+            <CardTitle className="text-sm font-semibold">
+              Delivery Breakdown
+            </CardTitle>
             <CardDescription className="text-xs">
               {monthLabel} — {totalLoads} total load{totalLoads !== 1 ? "s" : ""}
             </CardDescription>
@@ -205,14 +225,21 @@ export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
                       strokeWidth={0}
                     >
                       {deliveryData.map((entry, i) => (
-                        <Cell key={i} fill={STATUS_FILL[entry.name] ?? "var(--chart-3)"} />
+                        <Cell
+                          key={i}
+                          fill={STATUS_FILL[entry.name] ?? "var(--chart-3)"}
+                        />
                       ))}
                     </Pie>
                   </PieChart>
                   {/* Center label overlay */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-2xl font-bold text-foreground leading-none">{successRate}%</span>
-                    <span className="text-[10px] text-muted-foreground mt-1">delivered</span>
+                    <span className="text-2xl font-bold text-foreground leading-none">
+                      {successRate}%
+                    </span>
+                    <span className="text-[10px] text-muted-foreground mt-1">
+                      delivered
+                    </span>
                   </div>
                 </div>
 
@@ -224,15 +251,22 @@ export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
                       <div key={entry.name} className="flex items-center gap-2">
                         <span
                           className="size-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: STATUS_FILL[entry.name] ?? "var(--chart-3)" }}
+                          style={{
+                            backgroundColor:
+                              STATUS_FILL[entry.name] ?? "var(--chart-3)",
+                          }}
                         />
-                        <span className="text-xs text-muted-foreground truncate flex-1">{entry.name}</span>
+                        <span className="text-xs text-muted-foreground truncate flex-1">
+                          {entry.name}
+                        </span>
                         <span className="text-xs font-semibold text-foreground shrink-0">
                           {entry.value}
-                          <span className="font-normal text-muted-foreground ml-1">({pct}%)</span>
+                          <span className="font-normal text-muted-foreground ml-1">
+                            ({pct}%)
+                          </span>
                         </span>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </div>
@@ -243,8 +277,12 @@ export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
         {/* Monthly Revenue — Bar */}
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Monthly Revenue</CardTitle>
-            <CardDescription className="text-xs">Last 6 months — succeeded payments only</CardDescription>
+            <CardTitle className="text-sm font-semibold">
+              Monthly Revenue
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Last 6 months — succeeded payments only
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {!hasRevenueData ? (
@@ -253,8 +291,16 @@ export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={revenueData} barSize={30} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <BarChart
+                  data={revenueData}
+                  barSize={30}
+                  margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    vertical={false}
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
                   <XAxis
                     dataKey="month"
                     tickLine={false}
@@ -266,7 +312,13 @@ export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
                     axisLine={false}
                     width={46}
                     tick={{ fontSize: 11, fill: tickColor }}
-                    tickFormatter={v => v === 0 ? "$0" : v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
+                    tickFormatter={(v) =>
+                      v === 0
+                        ? "$0"
+                        : v >= 1000
+                          ? `$${(v / 1000).toFixed(0)}k`
+                          : `$${v}`
+                    }
                   />
                   <Tooltip
                     content={<RevenueTooltip />}
@@ -283,8 +335,7 @@ export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
             )}
           </CardContent>
         </Card>
-
       </div>
     </div>
-  )
+  );
 }

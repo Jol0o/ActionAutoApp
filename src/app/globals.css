@@ -12,7 +12,6 @@
 }
 @import "mapbox-gl/dist/mapbox-gl.css";
 
-
 /* ── Fullscreen mode ─────────────────────────────────── */
 
 body.app-fullscreen [data-sidebar],
@@ -43,7 +42,6 @@ body.app-fullscreen .main-content {
   max-width: 100% !important;
   width: 100% !important;
 }
-
 
 :root {
   --background: oklch(0.99 0 0);
@@ -239,7 +237,6 @@ body.app-fullscreen .main-content {
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/50;
   }
-
 }
 
 /* Independent global scrollbar, circumventing tailwind layer purging */
@@ -262,17 +259,42 @@ body.app-fullscreen .main-content {
 
 /* Dedicated scrollbar style for compact notification overlays */
 .notification-scrollbar {
-  --notification-scrollbar-track: color-mix(in oklab, var(--muted) 60%, transparent);
-  --notification-scrollbar-thumb: color-mix(in oklab, var(--muted-foreground) 42%, transparent);
-  --notification-scrollbar-thumb-hover: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+  --notification-scrollbar-track: color-mix(
+    in oklab,
+    var(--muted) 60%,
+    transparent
+  );
+  --notification-scrollbar-thumb: color-mix(
+    in oklab,
+    var(--muted-foreground) 42%,
+    transparent
+  );
+  --notification-scrollbar-thumb-hover: color-mix(
+    in oklab,
+    var(--muted-foreground) 60%,
+    transparent
+  );
   scrollbar-width: thin;
-  scrollbar-color: var(--notification-scrollbar-thumb) var(--notification-scrollbar-track);
+  scrollbar-color: var(--notification-scrollbar-thumb)
+    var(--notification-scrollbar-track);
 }
 
 .dark .notification-scrollbar {
-  --notification-scrollbar-track: color-mix(in oklab, var(--card) 75%, black 25%);
-  --notification-scrollbar-thumb: color-mix(in oklab, var(--foreground) 32%, transparent);
-  --notification-scrollbar-thumb-hover: color-mix(in oklab, var(--foreground) 48%, transparent);
+  --notification-scrollbar-track: color-mix(
+    in oklab,
+    var(--card) 75%,
+    black 25%
+  );
+  --notification-scrollbar-thumb: color-mix(
+    in oklab,
+    var(--foreground) 32%,
+    transparent
+  );
+  --notification-scrollbar-thumb-hover: color-mix(
+    in oklab,
+    var(--foreground) 48%,
+    transparent
+  );
 }
 
 .notification-scrollbar::-webkit-scrollbar {
@@ -294,6 +316,61 @@ body.app-fullscreen .main-content {
 
 .notification-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: var(--notification-scrollbar-thumb-hover);
+}
+
+/* Dedicated scrollbar style for modal/table surfaces in dark UI */
+.modal-scrollbar {
+  --modal-scrollbar-track: color-mix(in oklab, var(--card) 82%, transparent);
+  --modal-scrollbar-thumb: color-mix(
+    in oklab,
+    var(--foreground) 26%,
+    transparent
+  );
+  --modal-scrollbar-thumb-hover: color-mix(
+    in oklab,
+    var(--foreground) 42%,
+    transparent
+  );
+  scrollbar-width: thin;
+  scrollbar-color: var(--modal-scrollbar-thumb) var(--modal-scrollbar-track);
+  scrollbar-gutter: stable;
+}
+
+.dark .modal-scrollbar {
+  --modal-scrollbar-track: color-mix(in oklab, var(--card) 78%, black 22%);
+  --modal-scrollbar-thumb: color-mix(
+    in oklab,
+    var(--foreground) 24%,
+    transparent
+  );
+  --modal-scrollbar-thumb-hover: color-mix(
+    in oklab,
+    var(--foreground) 38%,
+    transparent
+  );
+}
+
+.modal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-track {
+  background-color: var(--modal-scrollbar-track);
+  border-radius: 9999px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--modal-scrollbar-thumb);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
+}
+
+.modal-scrollbar:hover::-webkit-scrollbar-thumb,
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--modal-scrollbar-thumb-hover);
 }
 
 .scrollbar-hide {
@@ -327,7 +404,6 @@ body.app-fullscreen .main-content {
 
 /* Profile Banner Animations */
 @keyframes gradientShift {
-
   0%,
   100% {
     background-position: 0% 50%;
@@ -339,7 +415,6 @@ body.app-fullscreen .main-content {
 }
 
 @keyframes float {
-
   0%,
   100% {
     transform: translateY(0px) rotate(0deg);
@@ -365,7 +440,6 @@ body.app-fullscreen .main-content {
 }
 
 @keyframes pulse-glow {
-
   0%,
   100% {
     opacity: 0.4;
@@ -495,7 +569,6 @@ body.app-fullscreen .main-content {
 }
 
 @keyframes wiggle {
-
   0%,
   100% {
     transform: rotate(0deg);
@@ -523,7 +596,6 @@ body.app-fullscreen .main-content {
 }
 
 @keyframes bellSwing {
-
   0%,
   100% {
     transform: rotate(0deg);
@@ -569,37 +641,42 @@ body.app-fullscreen .main-content {
 }
 
 @keyframes glow {
-
   0%,
   100% {
     box-shadow: 0 0 5px rgba(34, 197, 94, 0.3);
   }
 
   50% {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.6), 0 0 30px rgba(34, 197, 94, 0.4);
+    box-shadow:
+      0 0 20px rgba(34, 197, 94, 0.6),
+      0 0 30px rgba(34, 197, 94, 0.4);
   }
 }
 
 /* Throbbing status aura */
 @keyframes statusAura {
-
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4), 0 0 8px 2px rgba(34, 197, 94, 0.3);
+    box-shadow:
+      0 0 0 0 rgba(34, 197, 94, 0.4),
+      0 0 8px 2px rgba(34, 197, 94, 0.3);
   }
 
   50% {
-    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2), 0 0 12px 4px rgba(34, 197, 94, 0.4);
+    box-shadow:
+      0 0 0 4px rgba(34, 197, 94, 0.2),
+      0 0 12px 4px rgba(34, 197, 94, 0.4);
   }
 }
 
 .animate-status-aura {
   animation: statusAura 2s ease-in-out infinite;
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4), 0 0 8px 2px rgba(34, 197, 94, 0.3);
+  box-shadow:
+    0 0 0 0 rgba(34, 197, 94, 0.4),
+    0 0 8px 2px rgba(34, 197, 94, 0.3);
 }
 
 @keyframes borderGlow {
-
   0%,
   100% {
     border-color: rgba(34, 197, 94, 0.3);
@@ -746,7 +823,6 @@ body.app-fullscreen .main-content {
 }
 
 @keyframes softPulse {
-
   0%,
   100% {
     opacity: 1;
@@ -819,7 +895,14 @@ body.app-fullscreen .main-content {
   }
 
   .animate-shimmer-loading {
-    background: linear-gradient(90deg, var(--color-muted) 0%, var(--color-muted) 20%, var(--color-border) 50%, var(--color-muted) 80%, var(--color-muted) 100%);
+    background: linear-gradient(
+      90deg,
+      var(--color-muted) 0%,
+      var(--color-muted) 20%,
+      var(--color-border) 50%,
+      var(--color-muted) 80%,
+      var(--color-muted) 100%
+    );
     background-size: 1000px 100%;
     animation: shimmerLoading 2s infinite;
   }
@@ -849,13 +932,14 @@ body.app-fullscreen .main-content {
 
   .hover-lift:hover {
     transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow:
+      0 20px 25px -5px rgba(0, 0, 0, 0.1),
+      0 10px 10px -5px rgba(0, 0, 0, 0.04);
   }
 }
 
 /* Advanced animations for status and interactive elements */
 @keyframes throb {
-
   0%,
   100% {
     transform: scale(1);
@@ -903,14 +987,15 @@ body.app-fullscreen .main-content {
 }
 
 @keyframes buttonHoverGlow {
-
   0%,
   100% {
     box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
   }
 
   50% {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.6), 0 0 30px rgba(34, 197, 94, 0.3);
+    box-shadow:
+      0 0 20px rgba(34, 197, 94, 0.6),
+      0 0 30px rgba(34, 197, 94, 0.3);
   }
 }
 
@@ -927,14 +1012,17 @@ body.app-fullscreen .main-content {
 }
 
 @keyframes profilePictureGlow {
-
   0%,
   100% {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4), inset 0 0 20px rgba(34, 197, 94, 0.1);
+    box-shadow:
+      0 0 20px rgba(34, 197, 94, 0.4),
+      inset 0 0 20px rgba(34, 197, 94, 0.1);
   }
 
   50% {
-    box-shadow: 0 0 30px rgba(34, 197, 94, 0.8), inset 0 0 30px rgba(34, 197, 94, 0.2);
+    box-shadow:
+      0 0 30px rgba(34, 197, 94, 0.8),
+      inset 0 0 30px rgba(34, 197, 94, 0.2);
   }
 }
 
@@ -1183,16 +1271,16 @@ body.app-fullscreen .main-content {
     display: none;
   }
 
-  .supra-floating-widget[data-panel-open='true'] {
+  .supra-floating-widget[data-panel-open="true"] {
     right: 0.75rem !important;
     left: auto !important;
   }
 
-  .supra-floating-widget[data-position='bottom-left'] {
+  .supra-floating-widget[data-position="bottom-left"] {
     left: var(--supra-leo-side) !important;
   }
 
-  .supra-floating-widget[data-position='bottom-right'] {
+  .supra-floating-widget[data-position="bottom-right"] {
     right: var(--supra-leo-side) !important;
   }
 }

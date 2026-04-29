@@ -30,6 +30,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { apiClient } from "@/lib/api-client"
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react"
 import DayPulsePage from "@/components/DayPulsePage"
@@ -87,17 +92,39 @@ interface ReactionState {
 }
 
 const REACTIONS: { type: ReactionType; emoji: string; label: string; color: string; bg: string }[] = [
-  { type: "like",  emoji: "👍", label: "Like",  color: "text-blue-500",   bg: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30" },
-  { type: "love",  emoji: "❤️", label: "Love",  color: "text-red-500",    bg: "bg-red-500/10 hover:bg-red-500/20 border-red-500/30" },
-  { type: "haha",  emoji: "😂", label: "Haha",  color: "text-yellow-500", bg: "bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-500/30" },
-  { type: "wow",   emoji: "😮", label: "Wow",   color: "text-yellow-400", bg: "bg-yellow-400/10 hover:bg-yellow-400/20 border-yellow-400/30" },
-  { type: "sad",   emoji: "😢", label: "Sad",   color: "text-sky-400",    bg: "bg-sky-400/10 hover:bg-sky-400/20 border-sky-400/30" },
+  { type: "like", emoji: "👍", label: "Like", color: "text-blue-500", bg: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30" },
+  { type: "love", emoji: "❤️", label: "Love", color: "text-red-500", bg: "bg-red-500/10 hover:bg-red-500/20 border-red-500/30" },
+  { type: "haha", emoji: "😂", label: "Haha", color: "text-yellow-500", bg: "bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-500/30" },
+  { type: "wow", emoji: "😮", label: "Wow", color: "text-yellow-400", bg: "bg-yellow-400/10 hover:bg-yellow-400/20 border-yellow-400/30" },
+  { type: "sad", emoji: "😢", label: "Sad", color: "text-sky-400", bg: "bg-sky-400/10 hover:bg-sky-400/20 border-sky-400/30" },
   { type: "angry", emoji: "😡", label: "Angry", color: "text-orange-500", bg: "bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/30" },
 ]
 
 const REACTION_MAP = Object.fromEntries(REACTIONS.map((r) => [r.type, r])) as Record<ReactionType, typeof REACTIONS[0]>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function usePreferNativeEmojiPicker() {
+  const [preferNative, setPreferNative] = React.useState(false)
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const media = window.matchMedia?.("(pointer: coarse)")
+    const update = () => {
+      const coarse = media?.matches ?? false
+      const touch = navigator.maxTouchPoints > 0
+      const mobileUA = Boolean((navigator as any).userAgentData?.mobile) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+      setPreferNative(coarse || touch || mobileUA)
+    }
+
+    update()
+    media?.addEventListener?.("change", update)
+    return () => media?.removeEventListener?.("change", update)
+  }, [])
+
+  return preferNative
+}
 
 function ini(n: string) {
   return n.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
@@ -106,13 +133,13 @@ function ini(n: string) {
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const s = Math.floor(diff / 1000)
-  if (s < 60)  return "just now"
+  if (s < 60) return "just now"
   const m = Math.floor(s / 60)
-  if (m < 60)  return `${m}m ago`
+  if (m < 60) return `${m}m ago`
   const h = Math.floor(m / 60)
-  if (h < 24)  return `${h}h ago`
+  if (h < 24) return `${h}h ago`
   const d = Math.floor(h / 24)
-  if (d < 7)   return `${d}d ago`
+  if (d < 7) return `${d}d ago`
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
@@ -124,8 +151,8 @@ function fullDate(dateStr: string): string {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin:    "text-violet-500 bg-violet-500/10 border-violet-500/20",
-  manager:  "text-sky-500 bg-sky-500/10 border-sky-500/20",
+  admin: "text-violet-500 bg-violet-500/10 border-violet-500/20",
+  manager: "text-sky-500 bg-sky-500/10 border-sky-500/20",
   employee: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
 }
 
@@ -150,9 +177,9 @@ function ReactionBar({
   reactionState: ReactionState; onReactionChange: (state: ReactionState) => void; compact?: boolean
 }) {
   const [showPicker, setShowPicker] = React.useState(false)
-  const [loading, setLoading]       = React.useState(false)
-  const pickerRef  = React.useRef<HTMLDivElement>(null)
-  const btnRef     = React.useRef<HTMLButtonElement>(null)
+  const [loading, setLoading] = React.useState(false)
+  const pickerRef = React.useRef<HTMLDivElement>(null)
+  const btnRef = React.useRef<HTMLButtonElement>(null)
   const hoverTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
@@ -182,9 +209,9 @@ function ReactionBar({
   }
 
   const { summary, myReaction } = reactionState
-  const total     = totalReactions(summary)
+  const total = totalReactions(summary)
   const topEmojis = topReactionEmojis(summary)
-  const myMeta    = myReaction ? REACTION_MAP[myReaction] : null
+  const myMeta = myReaction ? REACTION_MAP[myReaction] : null
 
   function tooltipFor(type: ReactionType): string {
     const users = summary[type]?.users || []
@@ -292,10 +319,10 @@ function CommentItem({ comment, currentUser, token, postId, onDeleted, reactionS
   onDeleted: (commentId: string) => void; reactionState: ReactionState; onReactionChange: (state: ReactionState) => void
 }) {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false)
-  const [deleteLoading, setDeleteLoading]     = React.useState(false)
+  const [deleteLoading, setDeleteLoading] = React.useState(false)
 
-  const isOwner   = comment.userId === currentUser._id
-  const isAdmin   = currentUser.role === "admin"
+  const isOwner = comment.userId === currentUser._id
+  const isAdmin = currentUser.role === "admin"
   const canDelete = isOwner || isAdmin
 
   const handleDelete = async () => {
@@ -322,7 +349,7 @@ function CommentItem({ comment, currentUser, token, postId, onDeleted, reactionS
                 {comment.authorRole}
               </Badge>
             </div>
-            <p className="text-xs leading-relaxed whitespace-pre-wrap break-words text-foreground/80">{comment.content}</p>
+            <p className="text-xs leading-relaxed whitespace-pre-wrap wrap-break-word text-foreground/80">{comment.content}</p>
           </div>
           <div className="flex items-center gap-2 mt-1 pl-1 flex-wrap">
             <span className="text-[10px] text-muted-foreground/35 cursor-default" title={fullDate(comment.createdAt)}>{timeAgo(comment.createdAt)}</span>
@@ -346,25 +373,17 @@ function CommentSection({ post, currentUser, token, comments, setComments, comme
   comments: Comment[]; setComments: React.Dispatch<React.SetStateAction<Comment[]>>
   commentReactions: Record<string, ReactionState>; setCommentReactions: React.Dispatch<React.SetStateAction<Record<string, ReactionState>>>
 }) {
-  const COLLAPSE_THRESHOLD     = 5
+  const COLLAPSE_THRESHOLD = 5
   const VISIBLE_WHEN_COLLAPSED = 3
 
-  const [loading, setLoading]         = React.useState(false)
-  const [showAll, setShowAll]         = React.useState(false)
-  const [newComment, setNewComment]   = React.useState("")
-  const [submitting, setSubmitting]   = React.useState(false)
+  const [loading, setLoading] = React.useState(false)
+  const [showAll, setShowAll] = React.useState(false)
+  const [newComment, setNewComment] = React.useState("")
+  const [submitting, setSubmitting] = React.useState(false)
   const [submitError, setSubmitError] = React.useState("")
-  const [showEmoji, setShowEmoji]     = React.useState(false)
+  const [showEmoji, setShowEmoji] = React.useState(false)
+  const preferNativeEmoji = usePreferNativeEmojiPicker()
   const inputRef = React.useRef<HTMLTextAreaElement>(null)
-  const emojiRef = React.useRef<HTMLDivElement>(null)
-
-  React.useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) setShowEmoji(false)
-    }
-    if (showEmoji) document.addEventListener("mousedown", handle)
-    return () => document.removeEventListener("mousedown", handle)
-  }, [showEmoji])
 
   React.useEffect(() => {
     if (!token || !post._id) return
@@ -380,9 +399,9 @@ function CommentSection({ post, currentUser, token, comments, setComments, comme
           } catch { }
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post._id, token])
 
   const handleSubmit = async () => {
@@ -408,9 +427,9 @@ function CommentSection({ post, currentUser, token, comments, setComments, comme
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); handleSubmit() }
   }
 
-  const shouldCollapse   = comments.length >= COLLAPSE_THRESHOLD && !showAll
-  const visibleComments  = shouldCollapse ? comments.slice(-VISIBLE_WHEN_COLLAPSED) : comments
-  const hiddenCount      = comments.length - VISIBLE_WHEN_COLLAPSED
+  const shouldCollapse = comments.length >= COLLAPSE_THRESHOLD && !showAll
+  const visibleComments = shouldCollapse ? comments.slice(-VISIBLE_WHEN_COLLAPSED) : comments
+  const hiddenCount = comments.length - VISIBLE_WHEN_COLLAPSED
 
   return (
     <div className="border-t border-border/20 mt-1 pt-3 space-y-3">
@@ -454,16 +473,44 @@ function CommentSection({ post, currentUser, token, comments, setComments, comme
               style={{ minHeight: "36px" }}
             />
             <div className="flex items-center justify-between px-2.5 pb-2">
-              <div className="relative" ref={emojiRef}>
-                <button type="button" onClick={() => setShowEmoji((p) => !p)} className="text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors">
+              {preferNativeEmoji ? (
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.focus()}
+                  className="text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors"
+                  title="Use your keyboard's emoji picker"
+                >
                   <Smile className="h-3.5 w-3.5" />
                 </button>
-                {showEmoji && (
-                  <div className="absolute bottom-full left-0 mb-2 z-30 shadow-2xl">
-                    <EmojiPicker theme={"auto" as Theme} onEmojiClick={(e: EmojiClickData) => { setNewComment((p) => p + e.emoji); setShowEmoji(false); inputRef.current?.focus() }} height={320} width={280} />
-                  </div>
-                )}
-              </div>
+              ) : (
+                <Popover open={showEmoji} onOpenChange={setShowEmoji}>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors">
+                      <Smile className="h-3.5 w-3.5" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="top"
+                    align="start"
+                    sideOffset={8}
+                    collisionPadding={8}
+                    className="w-auto border-none bg-transparent p-0 shadow-none"
+                  >
+                    <div className="rounded-2xl border border-border/40 bg-card/95 shadow-2xl overflow-hidden">
+                      <EmojiPicker
+                        theme={"auto" as Theme}
+                        onEmojiClick={(e: EmojiClickData) => {
+                          setNewComment((p) => p + e.emoji)
+                          setShowEmoji(false)
+                          inputRef.current?.focus()
+                        }}
+                        height={320}
+                        width={280}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
               <button type="button" onClick={handleSubmit} disabled={submitting || !newComment.trim()} className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                 {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Post
               </button>
@@ -484,20 +531,21 @@ function PostCard({ post, currentUser, token, onUpdated, onDeleted, reactionStat
   onUpdated: (updated: Post) => void; onDeleted: (id: string) => void
   reactionState: ReactionState; onReactionChange: (state: ReactionState) => void
 }) {
-  const [isEditing, setIsEditing]         = React.useState(false)
-  const [editContent, setEditContent]     = React.useState(post.content)
-  const [editLoading, setEditLoading]     = React.useState(false)
-  const [editError, setEditError]         = React.useState("")
+  const [isEditing, setIsEditing] = React.useState(false)
+  const [editContent, setEditContent] = React.useState(post.content)
+  const [editLoading, setEditLoading] = React.useState(false)
+  const [editError, setEditError] = React.useState("")
   const [showEmojiEdit, setShowEmojiEdit] = React.useState(false)
+  const preferNativeEmoji = usePreferNativeEmojiPicker()
   const [showDeleteModal, setShowDeleteModal] = React.useState(false)
-  const [deleteLoading, setDeleteLoading]     = React.useState(false)
-  const [comments, setComments]           = React.useState<Comment[]>([])
+  const [deleteLoading, setDeleteLoading] = React.useState(false)
+  const [comments, setComments] = React.useState<Comment[]>([])
   const [commentReactions, setCommentReactions] = React.useState<Record<string, ReactionState>>({})
   const editRef = React.useRef<HTMLTextAreaElement>(null)
 
   const isOwner = post.userId === currentUser._id
   const isAdmin = currentUser.role === "admin"
-  const canEdit   = isOwner
+  const canEdit = isOwner
   const canDelete = isOwner || isAdmin
 
   React.useEffect(() => {
@@ -583,13 +631,42 @@ function PostCard({ post, currentUser, token, onUpdated, onDeleted, reactionStat
                 rows={4} maxLength={5000}
                 className="w-full rounded-xl border border-border/50 bg-muted/20 text-sm p-3 pr-10 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/30 leading-relaxed"
               />
-              <button type="button" onClick={() => setShowEmojiEdit((p) => !p)} className="absolute bottom-2.5 right-2.5 text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors">
-                <Smile className="h-4 w-4" />
-              </button>
-              {showEmojiEdit && (
-                <div className="absolute bottom-full right-0 mb-2 z-30">
-                  <EmojiPicker theme={"auto" as Theme} onEmojiClick={(e: EmojiClickData) => { setEditContent((p) => p + e.emoji); setShowEmojiEdit(false) }} height={380} width={320} />
-                </div>
+              {preferNativeEmoji ? (
+                <button
+                  type="button"
+                  onClick={() => editRef.current?.focus()}
+                  className="absolute bottom-2.5 right-2.5 text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors"
+                  title="Use your keyboard's emoji picker"
+                >
+                  <Smile className="h-4 w-4" />
+                </button>
+              ) : (
+                <Popover open={showEmojiEdit} onOpenChange={setShowEmojiEdit}>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="absolute bottom-2.5 right-2.5 text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors">
+                      <Smile className="h-4 w-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="top"
+                    align="end"
+                    sideOffset={8}
+                    collisionPadding={8}
+                    className="w-auto border-none bg-transparent p-0 shadow-none"
+                  >
+                    <div className="rounded-2xl border border-border/40 bg-card/95 shadow-2xl overflow-hidden">
+                      <EmojiPicker
+                        theme={"auto" as Theme}
+                        onEmojiClick={(e: EmojiClickData) => {
+                          setEditContent((p) => p + e.emoji)
+                          setShowEmojiEdit(false)
+                        }}
+                        height={380}
+                        width={320}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
             {editError && <p className="text-xs text-red-500">{editError}</p>}
@@ -606,7 +683,7 @@ function PostCard({ post, currentUser, token, onUpdated, onDeleted, reactionStat
             </div>
           </div>
         ) : (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground/85">{post.content}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-word text-foreground/85">{post.content}</p>
         )}
 
         <ReactionBar targetType="post" targetId={post._id} token={token} reactionState={reactionState} onReactionChange={onReactionChange} />
@@ -626,21 +703,13 @@ function PostCard({ post, currentUser, token, onUpdated, onDeleted, reactionStat
 function Composer({ currentUser, token, onPosted }: {
   currentUser: CrmUser; token: string; onPosted: (post: Post) => void
 }) {
-  const [content, setContent]     = React.useState("")
-  const [loading, setLoading]     = React.useState(false)
-  const [error, setError]         = React.useState("")
+  const [content, setContent] = React.useState("")
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState("")
   const [showEmoji, setShowEmoji] = React.useState(false)
   const [isFocused, setIsFocused] = React.useState(false)
-  const emojiRef    = React.useRef<HTMLDivElement>(null)
+  const preferNativeEmoji = usePreferNativeEmojiPicker()
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
-
-  React.useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) setShowEmoji(false)
-    }
-    if (showEmoji) document.addEventListener("mousedown", handle)
-    return () => document.removeEventListener("mousedown", handle)
-  }, [showEmoji])
 
   const handleSubmit = async () => {
     if (!content.trim()) { setError("Write something first!"); return }
@@ -678,16 +747,44 @@ function Composer({ currentUser, token, onPosted }: {
         </div>
       </div>
       <div className="flex items-center justify-between pl-12 border-t border-border/20 pt-3">
-        <div className="relative" ref={emojiRef}>
-          <button type="button" onClick={() => setShowEmoji((p) => !p)} className={`flex items-center gap-1.5 text-xs font-medium rounded-lg px-2.5 py-1.5 transition-colors ${showEmoji ? "bg-emerald-500/10 text-emerald-600" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/40"}`}>
+        {preferNativeEmoji ? (
+          <button
+            type="button"
+            onClick={() => textareaRef.current?.focus()}
+            className="flex items-center gap-1.5 text-xs font-medium rounded-lg px-2.5 py-1.5 transition-colors text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/40"
+            title="Use your keyboard's emoji picker"
+          >
             <Smile className="h-4 w-4" /> Emoji
           </button>
-          {showEmoji && (
-            <div className="absolute bottom-full left-0 mb-2 z-30 shadow-2xl">
-              <EmojiPicker theme={"auto" as Theme} onEmojiClick={(e: EmojiClickData) => { setContent((p) => p + e.emoji); setShowEmoji(false); textareaRef.current?.focus() }} height={380} width={320} />
-            </div>
-          )}
-        </div>
+        ) : (
+          <Popover open={showEmoji} onOpenChange={setShowEmoji}>
+            <PopoverTrigger asChild>
+              <button type="button" className={`flex items-center gap-1.5 text-xs font-medium rounded-lg px-2.5 py-1.5 transition-colors ${showEmoji ? "bg-emerald-500/10 text-emerald-600" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/40"}`}>
+                <Smile className="h-4 w-4" /> Emoji
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="start"
+              sideOffset={8}
+              collisionPadding={8}
+              className="w-auto border-none bg-transparent p-0 shadow-none"
+            >
+              <div className="rounded-2xl border border-border/40 bg-card/95 shadow-2xl overflow-hidden">
+                <EmojiPicker
+                  theme={"auto" as Theme}
+                  onEmojiClick={(e: EmojiClickData) => {
+                    setContent((p) => p + e.emoji)
+                    setShowEmoji(false)
+                    textareaRef.current?.focus()
+                  }}
+                  height={380}
+                  width={320}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
         <div className="flex items-center gap-3">
           {content.length > 0 && (
             <span className={`text-[10px] tabular-nums font-medium transition-colors ${content.length > 4500 ? "text-red-500" : "text-muted-foreground/30"}`}>
@@ -712,8 +809,8 @@ function TabBar({ active, onChange }: { active: FeedTab; onChange: (t: FeedTab) 
     <div className="flex items-center gap-1 border-b border-border/30">
       {(
         [
-          { key: "feeds",    label: "Team Feeds", icon: <Rss className="h-3.5 w-3.5" /> },
-          { key: "daypulse", label: "DayPulse",   icon: <BarChart2 className="h-3.5 w-3.5" /> },
+          { key: "feeds", label: "Team Feeds", icon: <Rss className="h-3.5 w-3.5" /> },
+          { key: "daypulse", label: "DayPulse", icon: <BarChart2 className="h-3.5 w-3.5" /> },
         ] as { key: FeedTab; label: string; icon: React.ReactNode }[]
       ).map(({ key, label, icon }) => (
         <button
@@ -743,19 +840,19 @@ const PAGE_LIMIT = 20
 
 export default function FeedsPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab]       = React.useState<FeedTab>("feeds")
-  const [currentUser, setCurrentUser]   = React.useState<CrmUser | null>(null)
-  const [token, setToken]               = React.useState("")
-  const [posts, setPosts]               = React.useState<Post[]>([])
+  const [activeTab, setActiveTab] = React.useState<FeedTab>("feeds")
+  const [currentUser, setCurrentUser] = React.useState<CrmUser | null>(null)
+  const [token, setToken] = React.useState("")
+  const [posts, setPosts] = React.useState<Post[]>([])
   const [postReactions, setPostReactions] = React.useState<Record<string, ReactionState>>({})
-  const [page, setPage]                 = React.useState(1)
-  const [hasMore, setHasMore]           = React.useState(false)
-  const [loadingInit, setLoadingInit]   = React.useState(true)
-  const [loadingMore, setLoadingMore]   = React.useState(false)
-  const [refreshing, setRefreshing]     = React.useState(false)
+  const [page, setPage] = React.useState(1)
+  const [hasMore, setHasMore] = React.useState(false)
+  const [loadingInit, setLoadingInit] = React.useState(true)
+  const [loadingMore, setLoadingMore] = React.useState(false)
+  const [refreshing, setRefreshing] = React.useState(false)
   const [newPostCount, setNewPostCount] = React.useState(0)
   const observerRef = React.useRef<HTMLDivElement>(null)
-  const socketRef   = React.useRef<any>(null)
+  const socketRef = React.useRef<any>(null)
 
   // Auth check
   React.useEffect(() => {
@@ -787,7 +884,7 @@ export default function FeedsPage() {
     if (!token) return
     fetchPostsAndReactions(token, 1)
       .then(({ posts, hasMore, reactions }) => { setPosts(posts); setPostReactions(reactions); setHasMore(hasMore) })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingInit(false))
   }, [token, fetchPostsAndReactions])
 
@@ -813,7 +910,7 @@ export default function FeedsPage() {
         }
       })
       socketRef.current = socket
-    }).catch(() => {})
+    }).catch(() => { })
     return () => { socketRef.current?.disconnect() }
   }, [token])
 
@@ -830,7 +927,7 @@ export default function FeedsPage() {
           if (newOnes.length) setNewPostCount((c) => c + newOnes.length)
           return prev.map((p) => fresh.find((f) => f._id === p._id) ?? p)
         })
-      } catch {}
+      } catch { }
     }, 30_000)
     return () => clearInterval(id)
   }, [token])
@@ -845,7 +942,7 @@ export default function FeedsPage() {
     )
     obs.observe(observerRef.current)
     return () => obs.disconnect()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMore, loadingMore, posts, activeTab])
 
   const loadMore = async () => {
@@ -857,7 +954,7 @@ export default function FeedsPage() {
       setPosts((prev) => { const ids = new Set(prev.map((p) => p._id)); return [...prev, ...morePosts.filter((p) => !ids.has(p._id))] })
       setPostReactions((prev) => ({ ...prev, ...reactions }))
       setHasMore(moreHasMore); setPage(next)
-    } catch {}
+    } catch { }
     finally { setLoadingMore(false) }
   }
 
@@ -866,7 +963,7 @@ export default function FeedsPage() {
     try {
       const { posts, hasMore, reactions } = await fetchPostsAndReactions(token, 1)
       setPosts(posts); setPostReactions(reactions); setHasMore(hasMore); setPage(1)
-    } catch {}
+    } catch { }
     finally { setRefreshing(false) }
   }
 

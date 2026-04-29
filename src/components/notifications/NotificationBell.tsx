@@ -40,18 +40,18 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
 
   return (
     <>
-      <div className="shrink-0 px-4 py-3 border-b bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600">
+      <div className="shrink-0 px-4 py-3 border-b border-border/50 bg-card/90 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
-              <Bell className="size-4 text-white" />
+            <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
+              <Bell className="size-4" />
             </div>
             <div>
-              <h3 className="text-[13px] font-bold text-white tracking-tight">Notifications</h3>
-              <p className="text-[10px] text-white/75 font-medium">
+              <h3 className="text-[13px] font-bold text-foreground tracking-tight">Notifications</h3>
+              <p className="text-[10px] text-muted-foreground font-medium">
                 {unreadCount > 0 ? (
                   <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                     {unreadCount} new
                   </span>
                 ) : 'All caught up'}
@@ -64,7 +64,7 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-[10px] text-white/90 hover:bg-white/15 hover:text-white rounded-lg"
+                  className="h-7 px-2 text-[10px] text-muted-foreground hover:bg-muted/60 hover:text-foreground rounded-lg"
                   onClick={markAllAsRead}
                 >
                   <CheckCheck className="size-3 mr-1" />
@@ -74,7 +74,7 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-[10px] text-white/90 hover:bg-white/15 hover:text-white rounded-lg"
+                className="h-7 px-2 text-[10px] text-muted-foreground hover:bg-muted/60 hover:text-foreground rounded-lg"
                 onClick={deleteAllRead}
               >
                 <Trash2 className="size-3 mr-1" />
@@ -94,7 +94,7 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
         </div>
       )}
 
-      <div className="notification-scrollbar flex-1 overflow-y-auto min-h-0">
+      <div className="notification-scrollbar flex-1 overflow-y-auto min-h-0 bg-card/80">
         <NotificationList
           notifications={notifications}
           isLoading={isLoading}
@@ -106,7 +106,7 @@ function NotificationDropdownContent({ onDriverRequestClick }: { onDriverRequest
       </div>
 
       {notifications.length > 0 && (
-        <div className="shrink-0 border-t px-4 py-2">
+        <div className="shrink-0 border-t border-border/50 px-4 py-2 bg-card/90">
           <Link
             href={{
               pathname: notificationsPath,
@@ -173,7 +173,7 @@ export function NotificationBell() {
 
         <DropdownMenuContent
           align="end"
-          className="w-95 sm:w-105 p-0 shadow-2xl border border-border/50 rounded-2xl overflow-hidden flex flex-col max-h-135"
+          className="w-95 sm:w-105 p-0 shadow-xl border border-border/50 rounded-2xl overflow-hidden flex flex-col max-h-135 bg-card/95"
         >
           <NotificationErrorBoundary>
             <NotificationDropdownContent onDriverRequestClick={handleDriverRequestClick} />

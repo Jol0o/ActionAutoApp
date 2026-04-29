@@ -36,18 +36,24 @@ export function NotificationItem({ notification, onMarkAsRead, onDelete, onClick
     <div
       className={cn(
         'group relative transition-all duration-200',
-        compact ? 'px-4 py-3' : 'px-5 py-4',
+        compact
+          ? 'px-4 py-3 rounded-xl border border-border/40 bg-card/80 shadow-sm hover:shadow-md'
+          : 'px-5 py-4',
         !notification.isRead
-          ? 'bg-emerald-50/60 dark:bg-emerald-950/15 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/25'
-          : 'hover:bg-muted/50',
+          ? compact
+            ? 'border-primary/25 bg-primary/5 hover:bg-primary/8'
+            : 'bg-primary/5 dark:bg-primary/10 hover:bg-primary/8 dark:hover:bg-primary/15'
+          : compact
+            ? 'hover:border-border/70 hover:bg-muted/40'
+            : 'hover:bg-muted/50',
         isClickable && 'cursor-pointer'
       )}
       onClick={handleClick}
     >
       <div className="flex items-start gap-3.5">
-        <div className="relative flex-shrink-0">
+        <div className="relative shrink-0">
           <div className={cn(
-            'rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-sm',
+            'rounded-xl bg-linear-to-br flex items-center justify-center text-white shadow-sm',
             compact ? 'w-9 h-9' : 'w-11 h-11',
             meta.gradient
           )}>
@@ -67,7 +73,7 @@ export function NotificationItem({ notification, onMarkAsRead, onDelete, onClick
               {notification.title}
             </p>
             {isClickable && (
-              <ArrowUpRight className="size-3.5 text-muted-foreground/40 flex-shrink-0 group-hover:text-emerald-500 transition-colors" />
+              <ArrowUpRight className="size-3.5 text-muted-foreground/40 shrink-0 group-hover:text-emerald-500 transition-colors" />
             )}
           </div>
           <p className={cn(
@@ -89,12 +95,12 @@ export function NotificationItem({ notification, onMarkAsRead, onDelete, onClick
           </div>
         </div>
 
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           {!notification.isRead && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-lg hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-950 dark:hover:text-emerald-400"
+              className="h-7 w-7 rounded-lg hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-400"
               onClick={(e) => { e.stopPropagation(); onMarkAsRead(notification._id); }}
             >
               <Check className="size-3.5" />
@@ -103,7 +109,7 @@ export function NotificationItem({ notification, onMarkAsRead, onDelete, onClick
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-lg hover:bg-red-100 dark:hover:bg-red-950 hover:text-red-600"
+            className="h-7 w-7 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/60 hover:text-red-600"
             onClick={(e) => { e.stopPropagation(); onDelete(notification._id); }}
           >
             <Trash2 className="size-3.5" />

@@ -1,6 +1,6 @@
 'use client'
 import * as React from 'react'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { SupraLeoAvatar, type LeoState } from './SupraLeoAvatar'
 
@@ -271,6 +271,26 @@ export interface SupraLeoAIProps {
   onSetTranscript?: (t: string) => void
 }
 
+interface LoadedPanelProps {
+  state: LeoState
+  module: string
+  fromPath: string
+  email: null
+  message: LeoMessage | null
+  errorMsg: string | null
+  voiceName: string | null
+  transcript: string
+  onStop: () => void
+  onPause: () => void
+  onResume: () => void
+  onClose: () => void
+  onReplay: () => void
+  onStartListeningForCommand: () => void
+  onStartReplyListening: () => void
+  onSetTranscript: (t: string) => void
+  onSendReply: () => Promise<void>
+}
+
 // ─── Module detection ─────────────────────────────────────────────────────────
 function detectModule(pathname: string): string {
   if (pathname.includes('/appointments')) return 'appointments'
@@ -337,7 +357,7 @@ function AutrixBadge({ state, onClick, module }: { state: LeoState; onClick: () 
 }
 
 // ─── Toolbar badge ────────────────────────────────────────────────────────────
-function AutrixToolbarBadge({ state, onClick, module }: { state: LeoState; onClick: () => void; module: string }) {
+function AutrixToolbarBadge({ state, onClick }: { state: LeoState; onClick: () => void }) {
   const d = DOTS[state]
   return (
     <div data-ax>
@@ -381,16 +401,25 @@ export function SupraLeoAI({
   onSetTranscript = () => {},
 }: SupraLeoAIProps) {
   const [open, setOpen] = useState(false)
-  const [Panel, setPanel] = useState<React.ComponentType<any> | null>(null)
+  const [Panel, setPanel] = useState<React.ComponentType<LoadedPanelProps> | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const currentModule = detectModule(pathname || '')
+  const isLeft = position === 'bottom-left'
+  const floatingStyles = {
+    bottom: 'var(--supra-leo-bottom, var(--leo-bottom, 22px))',
+    ...(isLeft
+      ? { left: 'var(--supra-leo-side, var(--leo-side, 22px))' }
+      : { right: 'var(--supra-leo-side, var(--leo-side, 22px))' }),
+  }
 
   useEffect(() => { injectBadgeCSS() }, [])
 
   // Lazy-load panel
   useEffect(() => {
-    import('./SupraLeoPanel').then(m => setPanel(() => m.SupraLeoPanel))
+    import('./SupraLeoPanel').then(m => {
+      setPanel(() => m.SupraLeoPanel as React.ComponentType<LoadedPanelProps>)
+    })
   }, [])
 
   // Close on outside click
@@ -418,10 +447,11 @@ export function SupraLeoAI({
   }, [state])
 
   const close = () => { setOpen(false); onStop() }
-  const isLeft = position === 'bottom-left'
 
   const panelProps = Panel ? {
-    state: state as any,
+    state,
+    module: currentModule,
+    fromPath: pathname || '/crm/dashboard',
     email: null,
     message,
     errorMsg,
@@ -438,7 +468,7 @@ export function SupraLeoAI({
   if (variant === 'toolbar') {
     return (
       <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
-        <AutrixToolbarBadge state={state} module={currentModule} onClick={() => setOpen(p => !p)} />
+        <AutrixToolbarBadge state={state} onClick={() => setOpen(p => !p)} />
         {open && Panel && panelProps && (
           <div data-ax style={{ position: 'absolute', right: 0, top: 'calc(100% + 10px)', zIndex: 9999 }}>
             <div className="ax-panel-wrap"><Panel {...panelProps} /></div>
@@ -451,10 +481,12 @@ export function SupraLeoAI({
   return (
     <div
       ref={ref}
+      className="supra-floating-widget"
+      data-panel-open={open ? 'true' : 'false'}
+      data-position={position}
       style={{
         position: 'fixed',
-        bottom: 'var(--leo-bottom, 22px)',
-        ...(isLeft ? { left: 'var(--leo-side, 22px)' } : { right: 'var(--leo-side, 22px)' }),
+        ...floatingStyles,
         zIndex: 9999,
         display: 'flex',
         flexDirection: 'column',
@@ -467,7 +499,7 @@ export function SupraLeoAI({
           <div className="ax-panel-wrap"><Panel {...panelProps} /></div>
         </div>
       )}
-      <AutrixBadge state={state} module={currentModule} onClick={() => setOpen(p => !p)} />
+      {!open && <AutrixBadge state={state} module={currentModule} onClick={() => setOpen(p => !p)} />}
     </div>
   )
 }
