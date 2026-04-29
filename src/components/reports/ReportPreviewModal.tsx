@@ -505,10 +505,11 @@ export function ReportPreviewModal({
         <div className="flex items-start justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border shrink-0">
           <div className="flex items-start gap-3">
             <div
-              className={`size-10 rounded-lg flex items-center justify-center border ${isDriver
+              className={`size-10 rounded-lg flex items-center justify-center border ${
+                isDriver
                   ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800"
                   : "bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800"
-                }`}
+              }`}
             >
               <FileText className={`size-4.5 ${accentColor}`} />
             </div>
