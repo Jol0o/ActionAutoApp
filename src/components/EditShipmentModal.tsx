@@ -15,36 +15,36 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
     const [isSaving, setIsSaving] = useState(false)
     const [formData, setFormData] = useState({
         status: shipment.status,
-        origin: shipment.origin,
-        destination: shipment.destination,
-        requestedPickupDate: shipment.requestedPickupDate || '',
-        scheduledPickup: shipment.scheduledPickup || '',
-        pickedUp: shipment.pickedUp || '',
-        scheduledDelivery: shipment.scheduledDelivery || '',
-        delivered: shipment.delivered || '',
-        isPostedToBoard: shipment.isPostedToBoard || false,
-        trailerTypeRequired: shipment.trailerTypeRequired || '',
-        vehicleCount: shipment.vehicleCount || 1,
-        preDispatchNotes: shipment.preDispatchNotes || '',
-        carrierPayAmount: shipment.carrierPayAmount ?? '',
-        copCodAmount: shipment.copCodAmount ?? '',
-        specialInstructions: shipment.specialInstructions || '',
-        loadSpecificTerms: shipment.loadSpecificTerms || '',
-        desiredDeliveryDate: shipment.desiredDeliveryDate || '',
-        internalLoadId: shipment.internalLoadId || '',
+        origin: shipment.origin || `${(shipment as any).pickupLocation?.city}, ${(shipment as any).pickupLocation?.state}`,
+        destination: shipment.destination || `${(shipment as any).deliveryLocation?.city}, ${(shipment as any).deliveryLocation?.state}`,
+        requestedPickupDate: (shipment as any).dates?.firstAvailable || shipment.requestedPickupDate || '',
+        scheduledPickup: (shipment as any).dates?.pickupDeadline || shipment.scheduledPickup || '',
+        pickedUp: (shipment as any).pickedUpAt || (shipment as any).pickedUp || '',
+        scheduledDelivery: (shipment as any).dates?.deliveryDeadline || (shipment as any).scheduledDelivery || '',
+        delivered: (shipment as any).deliveredAt || (shipment as any).delivered || '',
+        isPostedToBoard: (shipment as any).additionalInfo?.visibility === 'public',
+        trailerTypeRequired: (shipment as any).trailerType || '',
+        vehicleCount: (shipment as any).vehicles?.length || 1,
+        preDispatchNotes: (shipment as any).additionalInfo?.notes || '',
+        carrierPayAmount: (shipment as any).carrierPayAmount ?? (shipment as any).pricing?.carrierPayAmount ?? '',
+        copCodAmount: (shipment as any).copCodAmount ?? (shipment as any).pricing?.copCodAmount ?? '',
+        specialInstructions: (shipment as any).specialInstructions || (shipment as any).additionalInfo?.instructions || '',
+        loadSpecificTerms: (shipment as any).contract?.signatureName || '', // Mapping to something if relevant
+        desiredDeliveryDate: (shipment as any).desiredDeliveryDate || (shipment as any).dates?.deliveryDeadline || '',
+        internalLoadId: (shipment as any).loadNumber || (shipment as any).trackingNumber || '',
         originContact: {
-            contactName: shipment.originContact?.contactName || '',
-            email: shipment.originContact?.email || '',
-            phone: shipment.originContact?.phone || '',
-            cellPhone: shipment.originContact?.cellPhone || '',
-            buyerReferenceNumber: shipment.originContact?.buyerReferenceNumber || '',
+            contactName: (shipment as any).pickupLocation?.contactName || (shipment as any).originContact?.contactName || '',
+            email: (shipment as any).pickupLocation?.email || (shipment as any).originContact?.email || '',
+            phone: (shipment as any).pickupLocation?.phone || (shipment as any).originContact?.phone || '',
+            cellPhone: (shipment as any).pickupLocation?.cellPhone || (shipment as any).originContact?.cellPhone || '',
+            buyerReferenceNumber: (shipment as any).pickupLocation?.buyerReferenceNumber || (shipment as any).originContact?.buyerReferenceNumber || '',
         },
         destinationContact: {
-            contactName: shipment.destinationContact?.contactName || '',
-            email: shipment.destinationContact?.email || '',
-            phone: shipment.destinationContact?.phone || '',
-            cellPhone: shipment.destinationContact?.cellPhone || '',
-            buyerReferenceNumber: shipment.destinationContact?.buyerReferenceNumber || '',
+            contactName: (shipment as any).deliveryLocation?.contactName || (shipment as any).destinationContact?.contactName || '',
+            email: (shipment as any).deliveryLocation?.email || (shipment as any).destinationContact?.email || '',
+            phone: (shipment as any).deliveryLocation?.phone || (shipment as any).destinationContact?.phone || '',
+            cellPhone: (shipment as any).deliveryLocation?.cellPhone || (shipment as any).destinationContact?.cellPhone || '',
+            buyerReferenceNumber: (shipment as any).deliveryLocation?.buyerReferenceNumber || (shipment as any).destinationContact?.buyerReferenceNumber || '',
         },
     })
 
@@ -60,10 +60,37 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSave }: EditShi
         e.preventDefault()
         setIsSaving(true)
         try {
-            const payload = {
-                ...formData,
-                carrierPayAmount: formData.carrierPayAmount !== '' ? Number(formData.carrierPayAmount) : undefined,
-                copCodAmount: formData.copCodAmount !== '' ? Number(formData.copCodAmount) : undefined,
+            const payload: any = {
+                status: formData.status,
+                origin: formData.origin,
+                destination: formData.destination,
+                dates: {
+                    firstAvailable: formData.requestedPickupDate,
+                    pickupDeadline: formData.scheduledPickup,
+                    deliveryDeadline: formData.scheduledDelivery,
+                },
+                pickedUpAt: formData.pickedUp,
+                deliveredAt: formData.delivered,
+                additionalInfo: {
+                    visibility: formData.isPostedToBoard ? 'public' : 'private',
+                    notes: formData.preDispatchNotes,
+                    instructions: formData.specialInstructions,
+                },
+                trailerType: formData.trailerTypeRequired,
+                pricing: {
+                    carrierPayAmount: formData.carrierPayAmount !== '' ? Number(formData.carrierPayAmount) : undefined,
+                    copCodAmount: formData.copCodAmount !== '' ? Number(formData.copCodAmount) : undefined,
+                },
+                pickupLocation: {
+                    ...(shipment as any).pickupLocation,
+                    contactName: formData.originContact.contactName,
+                    phone: formData.originContact.phone,
+                },
+                deliveryLocation: {
+                    ...(shipment as any).deliveryLocation,
+                    contactName: formData.destinationContact.contactName,
+                    phone: formData.destinationContact.phone,
+                }
             }
             await onSave(payload)
             onClose()

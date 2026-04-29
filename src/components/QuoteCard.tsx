@@ -1,4 +1,4 @@
-import { Check, MapPin, Calendar, Package, Clock, Trash2, User, Building2 } from "lucide-react"
+import { Check, MapPin, Calendar, Package, Clock, Trash2, User, Building2, Truck } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,14 +9,14 @@ import { EditQuoteModal } from "./EditQuoteModal"
 
 interface QuoteCardProps {
     quote: Quote
-    onCreateShipment: (id: string) => Promise<boolean | void>
+    onConvertToLoad: (id: string) => Promise<boolean | void>
     onDelete: (id: string) => void
     onUpdate: (id: string, updatedQuote: Partial<Quote>) => Promise<void>
 }
 
-export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: QuoteCardProps) {
+export function QuoteCard({ quote, onConvertToLoad, onDelete, onUpdate }: QuoteCardProps) {
     const [isDeleting, setIsDeleting] = useState(false)
-    const [isCreatingShipment, setIsCreatingShipment] = useState(false)
+    const [isConvertingToLoad, setIsConvertingToLoad] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const { showAlert, alert, hideAlert } = useAlert()
 
@@ -34,20 +34,20 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
     }
 
 
-    const handleCreateShipment = async () => {
+    const handleConvertToLoad = async () => {
         showAlert({
             type: "confirm",
-            title: "Create Shipment",
-            message: `Are you sure you want to create a shipment for ${quote.firstName} ${quote.lastName}? This quote will be moved to shipments and removed from the quotes list.`,
-            confirmText: "Yes, Create Shipment",
+            title: "Convert to Load",
+            message: `Convert this quote for ${quote.firstName} ${quote.lastName} into a dispatachable load? The quote will remain in your history.`,
+            confirmText: "Yes, Convert to Load",
             cancelText: "No, Cancel",
             onConfirm: async () => {
-                setIsCreatingShipment(true)
+                setIsConvertingToLoad(true)
                 try {
-                    await onCreateShipment(quote._id)
+                    await onConvertToLoad(quote._id)
                 } catch (error) {
-                    console.error('Error creating shipment:', error)
-                    setIsCreatingShipment(false)
+                    console.error('Error converting quote to load:', error)
+                    setIsConvertingToLoad(false)
                     throw error
                 }
             }
@@ -287,17 +287,18 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                                 {/* Action Buttons */}
                                 <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 pt-2">
                                     <Button
-                                        className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm h-9 sm:h-10 text-xs sm:text-sm"
-                                        onClick={handleCreateShipment}
-                                        disabled={isCreatingShipment || isDeleting}
+                                        className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm h-9 sm:h-10 text-xs sm:text-sm"
+                                        onClick={handleConvertToLoad}
+                                        disabled={isConvertingToLoad || isConvertingToLoad || isDeleting}
                                     >
-                                        {isCreatingShipment ? 'Creating...' : 'Create Shipment'}
+                                        <Truck className="w-3.5 h-3.5 mr-1.5" />
+                                        {isConvertingToLoad ? 'Converting...' : 'Convert to Load'}
                                     </Button>
                                     <Button
                                         variant="outline"
                                         className="border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 h-9 sm:h-10 text-xs sm:text-sm"
                                         onClick={() => setIsEditModalOpen(true)}
-                                        disabled={isCreatingShipment || isDeleting}
+                                        disabled={isConvertingToLoad || isConvertingToLoad || isDeleting}
                                     >
                                         Edit
                                     </Button>
@@ -305,7 +306,7 @@ export function QuoteCard({ quote, onCreateShipment, onDelete, onUpdate }: Quote
                                         variant="ghost"
                                         className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950 h-9 sm:h-10 text-xs sm:text-sm px-3"
                                         onClick={handleDelete}
-                                        disabled={isDeleting || isCreatingShipment}
+                                        disabled={isDeleting || isConvertingToLoad || isConvertingToLoad}
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </Button>

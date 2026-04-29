@@ -73,7 +73,7 @@ function buildMonthlyShipmentTrend(rawShipments: Shipment[]) {
     const monthShipments = rawShipments.filter(s => s.createdAt?.startsWith(key))
     const total = monthShipments.length
     const delivered = monthShipments.filter(s => s.status === "Delivered").length
-    const revenue = monthShipments.reduce((sum, s) => sum + ((s.quoteId || s.preservedQuoteData)?.rate || 0), 0)
+    const revenue = monthShipments.reduce((sum, s) => sum + ((s.quoteId as any)?.rate || (s as any).pricing?.estimatedRate || (s as any).pricing?.carrierPayAmount || (s as any).carrierPayAmount || 0), 0)
     return { month: label, total, delivered, revenue }
   })
 }

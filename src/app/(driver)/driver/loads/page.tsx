@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/lib/api-client';
-import { Shipment } from '@/types/transportation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +26,12 @@ import Link from 'next/link';
 
 const STATUS_THEME: Record<string, string> = {
   'Available for Pickup': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  Assigned: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   Dispatched: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+  Accepted: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+  'Picked Up': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
   'In-Route': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+  'In-Transit': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
   Delivered: 'bg-green-500/10 text-green-700 border-green-500/20',
   Cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
@@ -36,14 +39,17 @@ const STATUS_THEME: Record<string, string> = {
 const STEPS = [
   { key: 'assigned', label: 'Assigned' },
   { key: 'accepted', label: 'Accepted' },
-  { key: 'in-route', label: 'In Route' },
+  { key: 'picked-up', label: 'Picked Up' },
+  { key: 'in-transit', label: 'In Transit' },
   { key: 'delivered', label: 'Delivered' },
 ] as const;
 
-const getStepIdx = (l: Shipment) => {
-  if (l.status === 'Delivered') return 3;
-  if (l.status === 'In-Route') return 2;
-  if (l.driverAcceptedAt) return 1;
+const getStepIdx = (l: any) => {
+  const status = l.status;
+  if (status === 'Delivered') return 4;
+  if (status === 'In-Transit' || status === 'In-Route') return 3;
+  if (status === 'Picked Up') return 2;
+  if (status === 'Accepted' || status === 'Dispatched' || (l.driverAcceptedAt && status !== 'Assigned')) return 1;
   return 0;
 };
 
@@ -54,36 +60,48 @@ type Tab = 'active' | 'requests' | 'completed' | 'all';
 
 export default function DriverLoadsPage() {
   const { getToken } = useAuth();
-  const [loads, setLoads] = React.useState<Shipment[]>([]);
-  const [requests, setRequests] = React.useState<Shipment[]>([]);
+  const [loads, setLoads] = React.useState<any[]>([]);
+  const [requests, setRequests] = React.useState<any[]>([]);
+  const [pagination, setPagination] = React.useState<{ hasMore: boolean; page: number; totalPages: number } | null>(null);
+  const [page, setPage] = React.useState(1);
   const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const [tab, setTab] = React.useState<Tab>('active');
   const [search, setSearch] = React.useState('');
   const [acceptingId, setAcceptingId] = React.useState<string | null>(null);
+  const [pickingUpId, setPickingUpId] = React.useState<string | null>(null);
   const [droppingId, setDroppingId] = React.useState<string | null>(null);
   const [startingId, setStartingId] = React.useState<string | null>(null);
-  const [proofTarget, setProofTarget] = React.useState<Shipment | null>(null);
-  const [dropTarget, setDropTarget] = React.useState<Shipment | null>(null);
+  const [proofTarget, setProofTarget] = React.useState<any | null>(null);
+  const [dropTarget, setDropTarget] = React.useState<any | null>(null);
   const [refreshing, setRefreshing] = React.useState(false);
   const [maxLoadCapacity, setMaxLoadCapacity] = React.useState(12);
 
-  const fetchLoads = React.useCallback(async () => {
+  const fetchLoads = React.useCallback(async (pageNum = 1, append = false) => {
     try {
       const token = await getToken();
       const [loadsRes, reqRes] = await Promise.all([
-        apiClient.get('/api/driver-tracking/my-loads', { headers: { Authorization: `Bearer ${token}` } }),
+        apiClient.get(`/api/driver-tracking/my-loads?page=${pageNum}`, { headers: { Authorization: `Bearer ${token}` } }),
         apiClient.get('/api/driver-tracking/my-requests', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      const data = loadsRes.data?.data;
-      if (data?.loads) {
-        setLoads(data.loads);
-        setMaxLoadCapacity(data.maxLoadCapacity || 12);
+      const loadsData = loadsRes.data?.data;
+      const newLoads = loadsData?.loads || loadsData || [];
+      const newPagination = loadsData?.pagination || null;
+      const newCapacity = loadsData?.maxLoadCapacity || 12;
+      
+      if (append) {
+        setLoads(prev => [...prev, ...newLoads]);
       } else {
-        setLoads(data || []);
+        setLoads(newLoads);
       }
+      setPagination(newPagination);
+      setMaxLoadCapacity(newCapacity);
+      if (!append) setPage(1);
+      else setPage(pageNum);
+      
       setRequests(reqRes.data?.data || []);
     } catch (err: any) { toast.error(extractErr(err, 'Failed to fetch loads')); }
-    finally { setLoading(false); setRefreshing(false); }
+    finally { setLoading(false); setRefreshing(false); setLoadingMore(false); }
   }, [getToken]);
 
   React.useEffect(() => {
@@ -115,14 +133,19 @@ export default function DriverLoadsPage() {
     };
   }, [getToken, fetchLoads]);
 
-  const handleRefresh = () => { setRefreshing(true); fetchLoads(); };
+  const handleRefresh = () => { setRefreshing(true); fetchLoads(1, false); };
 
-  const handleAccept = async (id: string, load: Shipment) => {
+  const handleLoadMore = async () => {
+    if (!pagination || !pagination.hasMore || loadingMore) return;
+    setLoadingMore(true);
+    await fetchLoads(page + 1, true);
+  };
+
+  const handleAccept = async (id: string, load: any) => {
     setAcceptingId(id);
     try {
       const token = await getToken();
-      const body = (load as any).__docType === 'load' ? { loadId: id } : { shipmentId: id };
-      await apiClient.post('/api/driver-tracking/accept-load', body, { headers: { Authorization: `Bearer ${token}` } });
+      await apiClient.post('/api/driver-tracking/accept-load', { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Load accepted — you are now dispatched');
       await fetchLoads();
     } catch (err: any) { toast.error(extractErr(err, 'Failed to accept load')); }
@@ -133,9 +156,7 @@ export default function DriverLoadsPage() {
     setDroppingId(id);
     try {
       const token = await getToken();
-      const target = loads.find(l => l._id === id);
-      const body = (target as any)?.__docType === 'load' ? { loadId: id } : { shipmentId: id };
-      await apiClient.post('/api/driver-tracking/drop-load', body, { headers: { Authorization: `Bearer ${token}` } });
+      await apiClient.post('/api/driver-tracking/drop-load', { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Load dropped successfully');
       setDropTarget(null);
       await fetchLoads();
@@ -143,14 +164,23 @@ export default function DriverLoadsPage() {
     finally { setDroppingId(null); }
   };
 
+  const handleMarkPickedUp = async (id: string) => {
+    setPickingUpId(id);
+    try {
+      const token = await getToken();
+      await apiClient.post('/api/driver-tracking/mark-picked-up', { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Pickup confirmed — vehicle loaded');
+      await fetchLoads();
+    } catch (err: any) { toast.error(extractErr(err, 'Failed to mark pickup')); }
+    finally { setPickingUpId(null); }
+  };
+
   const handleStartRoute = async (id: string) => {
     setStartingId(id);
     try {
       const token = await getToken();
-      const target = loads.find(l => l._id === id);
-      const body = (target as any)?.__docType === 'load' ? { loadId: id } : { shipmentId: id };
-      await apiClient.post('/api/driver-tracking/start-route', body, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success('Route started — status updated to In-Route');
+      await apiClient.post('/api/driver-tracking/start-route', { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Route started — now In-Transit');
       await fetchLoads();
     } catch (err: any) { toast.error(extractErr(err, 'Failed to start route')); }
     finally { setStartingId(null); }
@@ -163,7 +193,7 @@ export default function DriverLoadsPage() {
   const atCapacity = activeCount >= maxLoadCapacity;
 
   const filtered = React.useMemo(() => {
-    let result: Shipment[] = [];
+    let result: any[] = [];
     if (tab === 'active') result = loads.filter(l => l.status !== 'Delivered' && l.status !== 'Cancelled');
     else if (tab === 'requests') result = [...pending, ...rejected];
     else if (tab === 'completed') result = loads.filter(l => l.status === 'Delivered');
@@ -249,16 +279,28 @@ export default function DriverLoadsPage() {
             </CardContent>
           </Card>
         ) : (
-          <AnimatePresence mode="popLayout">
-            <div className="space-y-3">
-              {filtered.map((load, i) => (
-                <motion.div key={load._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i * 0.03 }}>
-                  <LoadCard load={load} isRequest={tab === 'requests'} acceptingId={acceptingId} droppingId={droppingId} startingId={startingId}
-                    onAccept={(id, l) => handleAccept(id, l)} onDrop={l => setDropTarget(l)} onStartRoute={handleStartRoute} onSubmitProof={() => setProofTarget(load)} />
-                </motion.div>
-              ))}
-            </div>
-          </AnimatePresence>
+          <>
+            <AnimatePresence mode="popLayout">
+              <div className="space-y-3">
+                {filtered.map((load, i) => (
+                  <motion.div key={load._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i * 0.03 }}>
+                    <LoadCard load={load} isRequest={tab === 'requests'} acceptingId={acceptingId} pickingUpId={pickingUpId} droppingId={droppingId} startingId={startingId}
+                      onAccept={(id, l) => handleAccept(id, l)} onMarkPickedUp={handleMarkPickedUp} onDrop={l => setDropTarget(l)} onStartRoute={handleStartRoute} onSubmitProof={() => setProofTarget(load)} />
+                  </motion.div>
+                ))}
+              </div>
+            </AnimatePresence>
+            {loadingMore && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/30" />
+              </div>
+            )}
+            {pagination?.hasMore && !loadingMore && (
+              <Button variant="outline" className="w-full rounded-xl h-10 text-xs gap-2 border-border/30 hover:border-primary/30" onClick={handleLoadMore}>
+                <ChevronDown className="h-4 w-4" /> Load more loads
+              </Button>
+            )}
+          </>
         )}
       </motion.div>
 
@@ -270,7 +312,7 @@ export default function DriverLoadsPage() {
   );
 }
 
-function StatusTimeline({ load }: { load: Shipment }) {
+function StatusTimeline({ load }: { load: any }) {
   const cur = getStepIdx(load);
   return (
     <div className="flex items-center gap-0 w-full mt-1">
@@ -291,23 +333,26 @@ function StatusTimeline({ load }: { load: Shipment }) {
   );
 }
 
-function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAccept, onDrop, onStartRoute, onSubmitProof }: {
-  load: Shipment; isRequest: boolean; acceptingId: string | null; droppingId: string | null; startingId: string | null;
-  onAccept: (id: string, load: Shipment) => void; onDrop: (l: Shipment) => void; onStartRoute: (id: string) => void; onSubmitProof: () => void;
+function LoadCard({ load, isRequest, acceptingId, pickingUpId, droppingId, startingId, onAccept, onMarkPickedUp, onDrop, onStartRoute, onSubmitProof }: {
+  load: any; isRequest: boolean; acceptingId: string | null; pickingUpId: string | null; droppingId: string | null; startingId: string | null;
+  onAccept: (id: string, load: any) => void; onMarkPickedUp: (id: string) => void; onDrop: (l: any) => void; onStartRoute: (id: string) => void; onSubmitProof: () => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
-  const isDispatched = load.status === 'Dispatched' || load.status === 'In-Route';
-  const isActive = load.status !== 'Delivered' && load.status !== 'Cancelled';
+  const status = load.status as string;
+  const isDispatched = ['Dispatched', 'Accepted', 'Picked Up', 'In-Route', 'In-Transit'].includes(status);
+  const isActive = status !== 'Delivered' && status !== 'Cancelled';
   const isPending = load.myRequestStatus === 'pending';
   const isRejected = load.myRequestStatus === 'rejected';
-  const quote = (load as any).preservedQuoteData;
+  const quote = load.preservedQuoteData;
   const vehicleName = quote?.vehicleName;
   const vehicleImg = quote?.vehicleImage;
 
   return (
     <Card className={cn('overflow-hidden border-border/20 hover:shadow-lg transition-all duration-200 rounded-2xl group',
       isPending ? 'border-amber-500/30 bg-amber-500/3' : isRejected ? 'border-red-500/20 opacity-75' :
-        load.status === 'In-Route' ? 'border-emerald-500/30 bg-emerald-500/3' : 'hover:border-primary/20')}>
+        (status === 'In-Route' || status === 'In-Transit') ? 'border-emerald-500/30 bg-emerald-500/3' :
+          status === 'Picked Up' ? 'border-orange-500/30 bg-orange-500/3' :
+            status === 'Accepted' ? 'border-amber-500/30 bg-amber-500/3' : 'hover:border-primary/20')}>
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
           {vehicleImg && (
@@ -329,8 +374,8 @@ function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAcce
                   ) : (
                     <Badge variant="outline" className={STATUS_THEME[load.status] || ''}>{load.status}</Badge>
                   )}
-                  {load.carrierPayAmount != null && load.carrierPayAmount > 0 && (
-                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-0.5"><DollarSign className="size-2.5" />{load.carrierPayAmount.toLocaleString()}</Badge>
+                  {load.pricing?.carrierPayAmount != null && load.pricing.carrierPayAmount > 0 && (
+                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-0.5"><DollarSign className="size-2.5" />{load.pricing.carrierPayAmount.toLocaleString()}</Badge>
                   )}
                 </div>
                 {vehicleName && <p className="text-sm font-bold text-foreground/80">{vehicleName}</p>}
@@ -340,26 +385,42 @@ function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAcce
                   <div className="flex items-center gap-1 text-rose-600"><div className="size-1.5 rounded-full bg-rose-500" /><span className="truncate font-medium">{load.destination}</span></div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                  {load.scheduledPickup && <span className="flex items-center gap-1"><Clock className="size-3" />Pickup: {fmtDate(load.scheduledPickup)}</span>}
-                  {load.scheduledDelivery && <span className="flex items-center gap-1"><Truck className="size-3" />Delivery: {fmtDate(load.scheduledDelivery)}</span>}
+                  {load.dates?.pickupDeadline && <span className="flex items-center gap-1"><Clock className="size-3" />Pickup: {fmtDate(load.dates.pickupDeadline)}</span>}
+                  {load.dates?.deliveryDeadline && <span className="flex items-center gap-1"><Truck className="size-3" />Delivery: {fmtDate(load.dates.deliveryDeadline)}</span>}
                   {isRequest && load.myRequestedAt && <span>Requested: {fmtDate(load.myRequestedAt)}</span>}
                 </div>
               </div>
 
               {!isRequest && (
                 <div className="flex flex-col items-end gap-2 shrink-0">
-                  {!load.driverAcceptedAt && isActive && (
+                  {/* Step 1 → 2: Accept (only when Assigned, not yet accepted) */}
+                  {status === 'Assigned' && !load.driverAcceptedAt && isActive && (
                     <Button size="sm" onClick={() => onAccept(load._id, load)} disabled={acceptingId === load._id} className="rounded-lg gap-1.5">
                       {acceptingId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><CheckCircle2 className="size-4" />Accept</>}
                     </Button>
                   )}
-                  {load.driverAcceptedAt && load.status === 'Dispatched' && (
+                  {/* Step 2 → 3: Mark Picked Up (when Accepted) */}
+                  {status === 'Accepted' && (
+                    <Button size="sm" className="bg-orange-600 hover:bg-orange-700 rounded-lg gap-1.5" onClick={() => onMarkPickedUp(load._id)} disabled={pickingUpId === load._id}>
+                      {pickingUpId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Package className="size-4" />Mark Picked Up</>}
+                    </Button>
+                  )}
+                  {/* Step 3 → 4: Start Route (when Picked Up) */}
+                  {status === 'Picked Up' && (
                     <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg gap-1.5" onClick={() => onStartRoute(load._id)} disabled={startingId === load._id}>
                       {startingId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Navigation2 className="size-4" />Start Route</>}
                     </Button>
                   )}
-                  {load.status === 'In-Route' && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 animate-pulse"><Navigation2 className="size-3" />In Route</Badge>}
-                  {load.status === 'In-Route' && !load.proofOfDelivery?.imageUrl && (
+                  {/* Legacy Shipment: Start Route when Dispatched */}
+                  {status === 'Dispatched' && load.driverAcceptedAt && (
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg gap-1.5" onClick={() => onStartRoute(load._id)} disabled={startingId === load._id}>
+                      {startingId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Navigation2 className="size-4" />Start Route</>}
+                    </Button>
+                  )}
+                  {(status === 'In-Transit' || status === 'In-Route') && (
+                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 animate-pulse"><Navigation2 className="size-3" />In Transit</Badge>
+                  )}
+                  {(status === 'In-Transit' || status === 'In-Route') && !load.proofOfDelivery?.imageUrl && (
                     <Button size="sm" variant="outline" onClick={onSubmitProof} className="rounded-lg gap-1.5"><Camera className="size-4" />Submit Proof</Button>
                   )}
                   {load.proofOfDelivery?.imageUrl && (
@@ -394,16 +455,16 @@ function LoadCard({ load, isRequest, acceptingId, droppingId, startingId, onAcce
 
             {expanded && isDispatched && (
               <div className="rounded-xl border border-border/20 bg-muted/20 p-3 space-y-3">
-                {load.preDispatchNotes && <DetailBlock label="Dispatch Notes" text={load.preDispatchNotes} />}
-                {load.specialInstructions && <DetailBlock label="Special Instructions" text={load.specialInstructions} />}
-                {load.loadSpecificTerms && <DetailBlock label="Load Terms" text={load.loadSpecificTerms} />}
-                {(load.originContact?.contactName || load.originContact?.phone) && <ContactBlock label="Pick-Up Contact" contact={load.originContact} />}
-                {(load.destinationContact?.contactName || load.destinationContact?.phone) && <ContactBlock label="Delivery Contact" contact={load.destinationContact} />}
-                {load.carrierPayAmount != null && load.carrierPayAmount > 0 && (
+                {load.additionalInfo?.notes && <DetailBlock label="Dispatch Notes" text={load.additionalInfo.notes} />}
+                {load.additionalInfo?.instructions && <DetailBlock label="Special Instructions" text={load.additionalInfo.instructions} />}
+                {load.contract?.signatureName && <DetailBlock label="Signed By" text={load.contract.signatureName} />}
+                {load.pickupLocation?.contactName && <ContactBlock label="Pick-Up Contact" contact={load.pickupLocation} />}
+                {load.deliveryLocation?.contactName && <ContactBlock label="Delivery Contact" contact={load.deliveryLocation} />}
+                {load.pricing?.carrierPayAmount != null && load.pricing.carrierPayAmount > 0 && (
                   <div className="flex items-center gap-4 pt-1 border-t border-border/15">
-                    <MoneyBlock label="Carrier Pay" value={load.carrierPayAmount} highlight />
-                    {load.copCodAmount != null && load.copCodAmount > 0 && <MoneyBlock label="COD" value={load.copCodAmount} />}
-                    {load.balanceAmount != null && <MoneyBlock label="Balance" value={load.balanceAmount} />}
+                    <MoneyBlock label="Carrier Pay" value={load.pricing.carrierPayAmount} highlight />
+                    {load.pricing.copCodAmount != null && load.pricing.copCodAmount > 0 && <MoneyBlock label="COD" value={load.pricing.copCodAmount} />}
+                    {load.pricing.balanceAmount != null && <MoneyBlock label="Balance" value={load.pricing.balanceAmount} />}
                   </div>
                 )}
               </div>
@@ -436,7 +497,7 @@ function MoneyBlock({ label, value, highlight }: { label: string; value: number;
   return <div><p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p><p className={cn('text-sm font-bold', highlight && 'text-emerald-600')}>${value.toLocaleString()}</p></div>;
 }
 
-function DropConfirmDialog({ shipment, dropping, onConfirm, onCancel }: { shipment: Shipment | null; dropping: boolean; onConfirm: () => void; onCancel: () => void }) {
+function DropConfirmDialog({ shipment, dropping, onConfirm, onCancel }: { shipment: any | null; dropping: boolean; onConfirm: () => void; onCancel: () => void }) {
   if (!shipment) return null;
   return (
     <Dialog open={!!shipment} onOpenChange={open => { if (!open) onCancel(); }}>
@@ -447,7 +508,7 @@ function DropConfirmDialog({ shipment, dropping, onConfirm, onCancel }: { shipme
         </DialogHeader>
         <div className="rounded-xl border p-3 bg-muted/20 space-y-1">
           <p className="text-sm font-semibold">{shipment.origin} → {shipment.destination}</p>
-          {shipment.carrierPayAmount != null && shipment.carrierPayAmount > 0 && <p className="text-xs text-muted-foreground">Carrier Pay: <span className="text-emerald-600 font-bold">${shipment.carrierPayAmount.toLocaleString()}</span></p>}
+          {shipment.pricing?.carrierPayAmount != null && shipment.pricing.carrierPayAmount > 0 && <p className="text-xs text-muted-foreground">Carrier Pay: <span className="text-emerald-600 font-bold">${shipment.pricing.carrierPayAmount.toLocaleString()}</span></p>}
         </div>
         <div className="flex items-start gap-2 rounded-xl bg-amber-500/5 border border-amber-500/15 p-3">
           <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
@@ -464,7 +525,7 @@ function DropConfirmDialog({ shipment, dropping, onConfirm, onCancel }: { shipme
   );
 }
 
-function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment: Shipment | null; getToken: () => Promise<string | null>; onClose: () => void; onSuccess: () => void }) {
+function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment: any | null; getToken: () => Promise<string | null>; onClose: () => void; onSuccess: () => void }) {
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
   const [note, setNote] = React.useState('');
@@ -491,9 +552,7 @@ function SubmitProofModal({ shipment, getToken, onClose, onSuccess }: { shipment
       const fd = new FormData();
       fd.append('proof', file);
       if (note.trim()) fd.append('note', note.trim());
-      const proofEndpoint = (shipment as any)._type === 'load'
-        ? `/api/loads/${shipment._id}/submit-proof`
-        : `/api/shipments/${shipment._id}/submit-proof`;
+      const proofEndpoint = `/api/loads/${shipment._id}/submit-proof`;
       await apiClient.post(proofEndpoint, fd, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
       onSuccess();
     } catch (err: any) { setError(extractErr(err, 'Failed to submit proof.')); }

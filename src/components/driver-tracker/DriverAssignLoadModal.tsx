@@ -39,7 +39,7 @@ interface DriverAssignLoadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   driver: DriverTrackingItem | null;
-  availableShipments: AvailableItem[];
+  availableLoads: AvailableItem[];
   isLoading: boolean;
   onAssign: (item: AvailableItem) => Promise<void>;
 }
@@ -48,7 +48,7 @@ export function DriverAssignLoadModal({
   open,
   onOpenChange,
   driver,
-  availableShipments,
+  availableLoads,
   isLoading,
   onAssign,
 }: DriverAssignLoadModalProps) {
@@ -57,16 +57,16 @@ export function DriverAssignLoadModal({
 
   const eq = driver?.equipment;
 
-  const filteredShipments = React.useMemo(() => {
+  const filteredLoads = React.useMemo(() => {
     const q = loadSearch.trim().toLowerCase();
-    if (!q) return availableShipments;
-    return availableShipments.filter((s) => {
+    if (!q) return availableLoads;
+    return availableLoads.filter((s) => {
       const tn = s.trackingNumber?.toLowerCase() || "";
       const origin = s.origin?.toLowerCase() || "";
       const dest = s.destination?.toLowerCase() || "";
       return tn.includes(q) || origin.includes(q) || dest.includes(q);
     });
-  }, [availableShipments, loadSearch]);
+  }, [availableLoads, loadSearch]);
 
   const handleAssign = async (item: AvailableItem) => {
     setAssigning(item._id);
@@ -138,7 +138,7 @@ export function DriverAssignLoadModal({
               <p className="text-xs text-muted-foreground font-medium">Loading available loads...</p>
             </div>
           )}
-          {!isLoading && filteredShipments.length === 0 && (
+          {!isLoading && filteredLoads.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 gap-2">
               <div className="size-12 rounded-xl bg-muted/40 flex items-center justify-center">
                 <Package className="size-6 text-muted-foreground/40" />
@@ -148,17 +148,17 @@ export function DriverAssignLoadModal({
               </p>
             </div>
           )}
-          {filteredShipments.map((shipment) => {
-            const trailerMatch = eq?.trailerType && shipment.trailerTypeRequired
-              ? eq.trailerType === shipment.trailerTypeRequired
+          {filteredLoads.map((load) => {
+            const trailerMatch = eq?.trailerType && load.trailerTypeRequired
+              ? eq.trailerType === load.trailerTypeRequired
               : null;
-            const capacityMatch = eq?.maxVehicleCapacity && shipment.vehicleCount
-              ? eq.maxVehicleCapacity >= shipment.vehicleCount
+            const capacityMatch = eq?.maxVehicleCapacity && load.vehicleCount
+              ? eq.maxVehicleCapacity >= load.vehicleCount
               : null;
 
             return (
               <div
-                key={shipment._id}
+                key={load._id}
                 className="rounded-xl border border-border/40 p-4 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -168,36 +168,36 @@ export function DriverAssignLoadModal({
                     </div>
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="text-sm font-bold text-foreground">
-                        {shipment.trackingNumber || shipment._id}
+                        {load.trackingNumber || load._id}
                       </p>
-                      {(shipment.origin || shipment.destination) && (
+                      {(load.origin || load.destination) && (
                         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <MapPin className="size-3 shrink-0" />
-                          <span className="truncate">{shipment.origin}</span>
+                          <span className="truncate">{load.origin}</span>
                           <ArrowRight className="size-3 shrink-0 text-muted-foreground/40" />
-                          <span className="truncate">{shipment.destination}</span>
+                          <span className="truncate">{load.destination}</span>
                         </div>
                       )}
-                      {shipment.requestedPickupDate && (
+                      {load.requestedPickupDate && (
                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
                           <Calendar className="size-3" />
-                          Pickup: {new Date(shipment.requestedPickupDate).toLocaleDateString()}
+                          Pickup: {new Date(load.requestedPickupDate).toLocaleDateString()}
                         </div>
                       )}
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {shipment.trailerTypeRequired && (
+                        {load.trailerTypeRequired && (
                           <Badge className="text-[9px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 gap-0.5">
-                            <Truck className="size-2.5" />{trailerLabel(shipment.trailerTypeRequired)}
+                            <Truck className="size-2.5" />{trailerLabel(load.trailerTypeRequired)}
                           </Badge>
                         )}
-                        {shipment.vehicleCount != null && (
+                        {load.vehicleCount != null && (
                           <Badge className="text-[9px] px-1.5 py-0 h-5 bg-indigo-500/10 text-indigo-600 border-indigo-200">
-                            {shipment.vehicleCount} vehicle{shipment.vehicleCount !== 1 ? "s" : ""}
+                            {load.vehicleCount} vehicle{load.vehicleCount !== 1 ? "s" : ""}
                           </Badge>
                         )}
-                        {shipment.carrierPayAmount != null && (
+                        {load.carrierPayAmount != null && (
                           <Badge className="text-[9px] px-1.5 py-0 h-5 bg-emerald-500/10 text-emerald-600 border-emerald-200">
-                            ${shipment.carrierPayAmount.toLocaleString()}
+                            ${load.carrierPayAmount.toLocaleString()}
                           </Badge>
                         )}
                       </div>
@@ -206,10 +206,10 @@ export function DriverAssignLoadModal({
                   <Button
                     size="sm"
                     className="h-8 px-3 text-xs font-bold shrink-0 shadow-sm"
-                    onClick={() => handleAssign(shipment)}
+                    onClick={() => handleAssign(load)}
                     disabled={assigning !== null}
                   >
-                    {assigning === shipment._id ? (
+                    {assigning === load._id ? (
                       <Loader2 className="size-3.5 animate-spin" />
                     ) : (
                       "Assign"

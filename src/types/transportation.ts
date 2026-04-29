@@ -126,11 +126,15 @@ export interface Shipment {
   rejectionReason?: string;
 }
 
+// Type alias for compatibility (Load = Shipment)
+export type Load = Shipment;
+
+// ShipmentStats reflects the actual load status values
 export interface ShipmentStats {
   all: number;
-  "Available for Pickup": number;
-  Cancelled: number;
+  Posted: number;
+  Assigned: number;
+  "In-Transit": number;
   Delivered: number;
-  Dispatched: number;
-  "In-Route": number;
+  Cancelled: number;
 }

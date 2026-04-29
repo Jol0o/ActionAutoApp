@@ -71,8 +71,7 @@ export default function LoadDetailPage() {
     setActionLoading(action);
     try {
       const token = await getToken();
-      const body = data?.__docType === 'load' ? { loadId } : { shipmentId: loadId };
-      await apiClient.post(`/api/driver-tracking/${action}`, body, { headers: { Authorization: `Bearer ${token}` } });
+      await apiClient.post(`/api/driver-tracking/${action}`, { loadId }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success(action === 'accept-load' ? 'Load accepted' : action === 'start-route' ? 'Route started' : action === 'drop-load' ? 'Load dropped' : action === 'request-load' ? 'Request submitted' : 'Done');
       await fetchDetail();
     } catch (err: any) { toast.error(extractErr(err, `Failed to ${action}`)); }
@@ -130,9 +129,9 @@ export default function LoadDetailPage() {
                   <p className="text-sm text-white/40 mt-0.5">{vehicleName || `${data.origin} → ${data.destination}`}</p>
                 </div>
               </div>
-              {data.carrierPayAmount != null && data.carrierPayAmount > 0 && (
+              {data.pricing?.carrierPayAmount != null && data.pricing.carrierPayAmount > 0 && (
                 <div className="text-right hidden sm:block">
-                  <span className="text-3xl font-black tabular-nums text-white">${data.carrierPayAmount.toLocaleString()}</span>
+                  <span className="text-3xl font-black tabular-nums text-white">${data.pricing.carrierPayAmount.toLocaleString()}</span>
                   <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Carrier Pay</p>
                 </div>
               )}
@@ -233,9 +232,8 @@ export default function LoadDetailPage() {
               <div className="flex items-center gap-2"><Calendar className="size-4 text-primary" /><h3 className="text-sm font-black uppercase tracking-wider">Schedule</h3></div>
             </div>
             <CardContent className="p-4 space-y-3">
-              <DateRow label="Scheduled Pickup" value={data.scheduledPickup} />
-              <DateRow label="Scheduled Delivery" value={data.scheduledDelivery || data.desiredDeliveryDate} />
-              {data.requestedPickupDate && <DateRow label="Requested Pickup" value={data.requestedPickupDate} />}
+              <DateRow label="Scheduled Pickup" value={data.dates?.pickupDeadline || data.scheduledPickup || data.requestedPickupDate} />
+              <DateRow label="Scheduled Delivery" value={data.dates?.deliveryDeadline || data.scheduledDelivery || data.desiredDeliveryDate} />
               {data.assignedAt && <DateRow label="Assigned" value={data.assignedAt} />}
               {data.driverAcceptedAt && <DateRow label="Accepted" value={data.driverAcceptedAt} />}
               {data.pickedUp && <DateRow label="Picked Up" value={data.pickedUp} />}
@@ -248,9 +246,9 @@ export default function LoadDetailPage() {
               <div className="flex items-center gap-2"><DollarSign className="size-4 text-emerald-500" /><h3 className="text-sm font-black uppercase tracking-wider">Financials</h3></div>
             </div>
             <CardContent className="p-4 space-y-3">
-              {data.carrierPayAmount != null && <FinRow label="Carrier Pay" value={data.carrierPayAmount} highlight />}
-              {data.copCodAmount != null && data.copCodAmount > 0 && <FinRow label="COD" value={data.copCodAmount} />}
-              {data.balanceAmount != null && <FinRow label="Balance" value={data.balanceAmount} />}
+              {data.pricing?.carrierPayAmount != null && <FinRow label="Carrier Pay" value={data.pricing.carrierPayAmount} highlight />}
+              {data.pricing?.copCodAmount != null && data.pricing.copCodAmount > 0 && <FinRow label="COD" value={data.pricing.copCodAmount} />}
+              {data.pricing?.balanceAmount != null && <FinRow label="Balance" value={data.pricing.balanceAmount} />}
               {quote?.rate && <FinRow label="Quoted Rate" value={quote.rate} />}
               {quote?.miles && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Distance</span><span className="font-semibold">{quote.miles.toLocaleString()} miles</span></div>}
               {data.trailerTypeRequired && (
@@ -259,36 +257,36 @@ export default function LoadDetailPage() {
             </CardContent>
           </Card>
 
-          {(data.originContact?.contactName || data.originContact?.phone) && (
+          {(data.pickupLocation?.contactName || data.pickupLocation?.phone || data.originContact?.contactName || data.originContact?.phone) && (
             <Card className="border-border/20 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-border/10">
                 <h3 className="text-sm font-black uppercase tracking-wider">Pick-Up Contact</h3>
               </div>
               <CardContent className="p-4 space-y-2">
-                <ContactInfo contact={data.originContact} />
+                <ContactInfo contact={data.pickupLocation || data.originContact} />
               </CardContent>
             </Card>
           )}
 
-          {(data.destinationContact?.contactName || data.destinationContact?.phone) && (
+          {(data.deliveryLocation?.contactName || data.deliveryLocation?.phone || data.destinationContact?.contactName || data.destinationContact?.phone) && (
             <Card className="border-border/20 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-border/10">
                 <h3 className="text-sm font-black uppercase tracking-wider">Delivery Contact</h3>
               </div>
               <CardContent className="p-4 space-y-2">
-                <ContactInfo contact={data.destinationContact} />
+                <ContactInfo contact={data.deliveryLocation || data.destinationContact} />
               </CardContent>
             </Card>
           )}
 
-          {(data.specialInstructions || data.preDispatchNotes || data.loadSpecificTerms) && (
+          {(data.additionalInfo?.instructions || data.specialInstructions || data.additionalInfo?.notes || data.preDispatchNotes || data.loadSpecificTerms) && (
             <Card className="border-border/20 rounded-2xl overflow-hidden md:col-span-2">
               <div className="p-4 border-b border-border/10">
                 <div className="flex items-center gap-2"><FileText className="size-4 text-primary" /><h3 className="text-sm font-black uppercase tracking-wider">Notes & Instructions</h3></div>
               </div>
               <CardContent className="p-4 space-y-4">
-                {data.preDispatchNotes && <NoteBlock label="Dispatch Notes" text={data.preDispatchNotes} />}
-                {data.specialInstructions && <NoteBlock label="Special Instructions" text={data.specialInstructions} />}
+                {(data.additionalInfo?.notes || data.preDispatchNotes) && <NoteBlock label="Dispatch Notes" text={data.additionalInfo?.notes || data.preDispatchNotes} />}
+                {(data.additionalInfo?.instructions || data.specialInstructions) && <NoteBlock label="Special Instructions" text={data.additionalInfo?.instructions || data.specialInstructions} />}
                 {data.loadSpecificTerms && <NoteBlock label="Load Terms" text={data.loadSpecificTerms} />}
               </CardContent>
             </Card>

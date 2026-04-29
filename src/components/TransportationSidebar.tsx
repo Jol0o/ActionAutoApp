@@ -58,6 +58,31 @@ export function TransportationSidebar({
       bg: "bg-blue-500",
       bgDark: "dark:bg-blue-400",
     },
+    "Assigned": {
+      light: "bg-purple-50 text-purple-700",
+      dark: "dark:bg-purple-950 dark:text-purple-300",
+      bg: "bg-purple-500",
+      bgDark: "dark:bg-purple-400",
+    },
+    "In-Transit": {
+      light: "bg-indigo-50 text-indigo-700",
+      dark: "dark:bg-indigo-950 dark:text-indigo-300",
+      bg: "bg-indigo-500",
+      bgDark: "dark:bg-indigo-400",
+    },
+    "Posted": {
+      light: "bg-orange-50 text-orange-700",
+      dark: "dark:bg-orange-950 dark:text-orange-300",
+      bg: "bg-orange-500",
+      bgDark: "dark:bg-orange-400",
+    },
+  };
+
+  const defaultColor = {
+    light: "bg-slate-50 text-slate-700",
+    dark: "dark:bg-slate-950 dark:text-slate-300",
+    bg: "bg-slate-500",
+    bgDark: "dark:bg-slate-400",
   };
 
   return (
@@ -83,19 +108,19 @@ export function TransportationSidebar({
             value="shipments"
             className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2"
           >
-            SHIPS
+            My Loads
           </TabsTrigger>
           <TabsTrigger
             value="drafts"
             className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2"
           >
-            DRAFTS
+            Quotes / Drafts
           </TabsTrigger>
           <TabsTrigger
             value="load-board"
             className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2"
           >
-            LOADS
+            Load Board
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -108,11 +133,10 @@ export function TransportationSidebar({
               setSelectedStatus("all");
               setIsSidebarOpen(false);
             }}
-            className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${
-              selectedStatus === "all"
-                ? "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300"
-                : "hover:bg-muted text-foreground"
-            }`}
+            className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${selectedStatus === "all"
+              ? "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300"
+              : "hover:bg-muted text-foreground"
+              }`}
           >
             <span className="flex items-center gap-1.5 sm:gap-2">
               <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-400 dark:bg-yellow-500 rounded-sm"></span>
@@ -123,7 +147,7 @@ export function TransportationSidebar({
 
           {Object.entries(stats).map(([status, count]) => {
             if (status === "all") return null;
-            const colors = colorMap[status];
+            const colors = colorMap[status] || defaultColor;
             return (
               <button
                 key={status}
@@ -131,11 +155,10 @@ export function TransportationSidebar({
                   setSelectedStatus(status);
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${
-                  selectedStatus === status
-                    ? `${colors.light} ${colors.dark}`
-                    : "hover:bg-muted text-foreground"
-                }`}
+                className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${selectedStatus === status
+                  ? `${colors.light} ${colors.dark}`
+                  : "hover:bg-muted text-foreground"
+                  }`}
               >
                 <span className="flex items-center gap-1.5 sm:gap-2">
                   <span
@@ -205,11 +228,10 @@ export function TransportationSidebar({
                 setSelectedStatus(key);
                 setIsSidebarOpen(false);
               }}
-              className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${
-                selectedStatus === key
-                  ? active
-                  : "hover:bg-muted text-foreground"
-              }`}
+              className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${selectedStatus === key
+                ? active
+                : "hover:bg-muted text-foreground"
+                }`}
             >
               <span className="flex items-center gap-1.5 sm:gap-2">
                 <span

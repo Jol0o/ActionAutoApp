@@ -21,7 +21,6 @@ import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUser } from "@/providers/AuthProvider";
 import { DriverTrackingItem, DriverStatus } from "@/types/driver-tracking";
-import { Shipment } from "@/types/transportation";
 
 export interface AvailableItem {
   _id: string;
@@ -98,10 +97,8 @@ export default function DriverTrackerPage() {
   const [shareError, setShareError] = React.useState<string | null>(null);
   const [lastShareAt, setLastShareAt] = React.useState<string | null>(null);
   const [mapNotice, setMapNotice] = React.useState<string | null>(null);
-  const [availableShipments, setAvailableShipments] = React.useState<
-    AvailableItem[]
-  >([]);
-  const [shipmentsLoading, setShipmentsLoading] = React.useState(false);
+  const [availableLoads, setAvailableLoads] = React.useState<AvailableItem[]>([]);
+  const [loadsLoading, setLoadsLoading] = React.useState(false);
   const [assignModalOpen, setAssignModalOpen] = React.useState(false);
   const [assigningTo, setAssigningTo] =
     React.useState<DriverTrackingItem | null>(null);
@@ -177,41 +174,17 @@ export default function DriverTrackerPage() {
     }
   }, [getToken, isSignedIn]);
 
-  const fetchAvailableShipments = React.useCallback(async () => {
+  const fetchAvailableLoads = React.useCallback(async () => {
     if (!isSignedIn) return;
-    setShipmentsLoading(true);
+    setLoadsLoading(true);
     try {
       const token = await getToken();
-      const headers = { Authorization: `Bearer ${token}` };
-      const [shipmentsRes, loadsRes] = await Promise.all([
-        apiClient.get("/api/shipments", { headers }),
-        apiClient.get("/api/loads", {
-          headers,
-          params: { status: "Posted", limit: 50 },
-        }),
-      ]);
-      const allShipments: Shipment[] = shipmentsRes.data?.data?.shipments || [];
+      const loadsRes = await apiClient.get("/api/loads", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { status: "Posted", limit: 50 },
+      });
       const allLoads: any[] = loadsRes.data?.data?.loads || [];
-
-      const mappedShipments: AvailableItem[] = allShipments
-        .filter(
-          (s) => s.status === "Available for Pickup" && !s.assignedDriverId,
-        )
-        .map((s) => ({
-          _id: s._id,
-          __docType: "shipment" as const,
-          trackingNumber: s.trackingNumber,
-          origin: s.origin,
-          destination: s.destination,
-          status: s.status,
-          trailerTypeRequired: s.trailerTypeRequired,
-          vehicleCount: s.vehicleCount,
-          carrierPayAmount: s.carrierPayAmount,
-          requestedPickupDate: s.requestedPickupDate,
-          isPostedToBoard: s.isPostedToBoard,
-        }));
-
-      const mappedLoads: AvailableItem[] = allLoads
+      const mapped: AvailableItem[] = allLoads
         .filter((l) => l.status === "Posted" && !l.assignedDriverId)
         .map((l) => ({
           _id: l._id,
@@ -226,11 +199,10 @@ export default function DriverTrackerPage() {
           requestedPickupDate: l.dates?.firstAvailable,
           isPostedToBoard: false,
         }));
-
-      setAvailableShipments([...mappedShipments, ...mappedLoads]);
+      setAvailableLoads(mapped);
     } catch {
     } finally {
-      setShipmentsLoading(false);
+      setLoadsLoading(false);
     }
   }, [getToken, isSignedIn]);
 
@@ -248,12 +220,12 @@ export default function DriverTrackerPage() {
           `Load assigned to ${assigningTo.driver.name || "driver"}`,
         );
         fetchDrivers();
-        fetchAvailableShipments();
+        fetchAvailableLoads();
       } catch (err: any) {
         toast.error(err.response?.data?.message || "Failed to assign load");
       }
     },
-    [assigningTo, getToken, isSignedIn, fetchDrivers, fetchAvailableShipments],
+    [assigningTo, getToken, isSignedIn, fetchDrivers, fetchAvailableLoads],
   );
 
   const handleAssignFromAvailable = React.useCallback(
@@ -268,12 +240,12 @@ export default function DriverTrackerPage() {
         );
         toast.success("Load assigned successfully");
         fetchDrivers();
-        fetchAvailableShipments();
+        fetchAvailableLoads();
       } catch (err: any) {
         toast.error(err.response?.data?.message || "Failed to assign load");
       }
     },
-    [getToken, isSignedIn, fetchDrivers, fetchAvailableShipments],
+    [getToken, isSignedIn, fetchDrivers, fetchAvailableLoads],
   );
 
   const handleRemoveLoad = React.useCallback(
@@ -288,12 +260,12 @@ export default function DriverTrackerPage() {
         );
         toast.success("Load removed from driver");
         fetchDrivers();
-        fetchAvailableShipments();
+        fetchAvailableLoads();
       } catch (err: any) {
         toast.error(err.response?.data?.message || "Failed to remove load");
       }
     },
-    [getToken, isSignedIn, fetchDrivers, fetchAvailableShipments],
+    [getToken, isSignedIn, fetchDrivers, fetchAvailableLoads],
   );
 
   const handleReassignLoad = React.useCallback(
@@ -308,12 +280,12 @@ export default function DriverTrackerPage() {
         );
         toast.success("Load reassigned successfully");
         fetchDrivers();
-        fetchAvailableShipments();
+        fetchAvailableLoads();
       } catch (err: any) {
         toast.error(err.response?.data?.message || "Failed to reassign load");
       }
     },
-    [getToken, isSignedIn, fetchDrivers, fetchAvailableShipments],
+    [getToken, isSignedIn, fetchDrivers, fetchAvailableLoads],
   );
 
   const fetchLoadRequests = React.useCallback(async () => {
@@ -332,46 +304,38 @@ export default function DriverTrackerPage() {
   }, [getToken, isSignedIn, isDriver]);
 
   const handleApproveRequest = React.useCallback(
-    async (
-      shipmentId: string | undefined,
-      driverId: string,
-      loadId?: string,
-    ) => {
-      const key = `${loadId || shipmentId}-${driverId}`;
+    async (loadId: string, driverId: string) => {
+      const key = `${loadId}-${driverId}`;
       setApprovingId(key);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/approve-request",
-          loadId ? { loadId, driverId } : { shipmentId, driverId },
+          { loadId, driverId },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load request approved — driver dispatched");
         fetchLoadRequests();
         fetchDrivers();
-        fetchAvailableShipments();
+        fetchAvailableLoads();
       } catch (err: any) {
         toast.error(err.response?.data?.message || "Failed to approve request");
       } finally {
         setApprovingId(null);
       }
     },
-    [getToken, fetchLoadRequests, fetchDrivers, fetchAvailableShipments],
+    [getToken, fetchLoadRequests, fetchDrivers, fetchAvailableLoads],
   );
 
   const handleRejectRequest = React.useCallback(
-    async (
-      shipmentId: string | undefined,
-      driverId: string,
-      loadId?: string,
-    ) => {
-      const key = `${loadId || shipmentId}-${driverId}`;
+    async (loadId: string, driverId: string) => {
+      const key = `${loadId}-${driverId}`;
       setRejectingId(key);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/reject-request",
-          loadId ? { loadId, driverId } : { shipmentId, driverId },
+          { loadId, driverId },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load request rejected");
@@ -392,8 +356,8 @@ export default function DriverTrackerPage() {
   }, [fetchDrivers]);
 
   React.useEffect(() => {
-    fetchAvailableShipments();
-  }, [fetchAvailableShipments]);
+    fetchAvailableLoads();
+  }, [fetchAvailableLoads]);
 
   React.useEffect(() => {
     fetchLoadRequests();
@@ -437,29 +401,25 @@ export default function DriverTrackerPage() {
 
         sock.on("driver:loads_updated", () => {
           fetchDrivers();
-          fetchAvailableShipments();
+          fetchAvailableLoads();
           fetchLoadRequests();
         });
 
         sock.on("driver:load_requested", () => {
           fetchLoadRequests();
-          fetchAvailableShipments();
+          fetchAvailableLoads();
         });
 
         sock.on("driver:load_request_updated", () => {
           fetchLoadRequests();
           fetchDrivers();
-          fetchAvailableShipments();
+          fetchAvailableLoads();
         });
 
         sock.on("load:change", () => {
-          fetchAvailableShipments();
+          fetchAvailableLoads();
         });
-
-        sock.on("shipment:change", () => {
-          fetchAvailableShipments();
-        });
-      } catch {}
+      } catch { }
     };
 
     connectSocket();
@@ -471,7 +431,6 @@ export default function DriverTrackerPage() {
       socketRef.current?.off("driver:load_requested");
       socketRef.current?.off("driver:load_request_updated");
       socketRef.current?.off("load:change");
-      socketRef.current?.off("shipment:change");
       socketRef.current = null;
     };
   }, [isSignedIn]);
@@ -639,7 +598,7 @@ export default function DriverTrackerPage() {
                   ?.setHTML(buildPopupHtml(locationName));
               }
             })
-            .catch(() => {});
+            .catch(() => { });
         }
       });
 
@@ -721,8 +680,8 @@ export default function DriverTrackerPage() {
         } catch (err: any) {
           setShareError(
             err.response?.data?.message ||
-              err.message ||
-              "Failed to send location",
+            err.message ||
+            "Failed to send location",
           );
         }
       },
@@ -746,8 +705,8 @@ export default function DriverTrackerPage() {
       } catch (err: any) {
         setShareError(
           err.response?.data?.message ||
-            err.message ||
-            "Failed to update status",
+          err.message ||
+          "Failed to update status",
         );
       }
     }
@@ -980,7 +939,7 @@ export default function DriverTrackerPage() {
                   key: "available",
                   label: "Available",
                   icon: <Truck className="size-3 text-blue-400" />,
-                  count: availableShipments.length,
+                  count: availableLoads.length,
                   activeClass: "bg-blue-500/20 border-blue-500/40",
                   badgeClass: "bg-blue-500/20 text-blue-400",
                 },
@@ -997,28 +956,25 @@ export default function DriverTrackerPage() {
               <button
                 key={tab.key}
                 onClick={() => setLoadsTab(tab.key)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md flex-1 transition-all ${
-                  loadsTab === tab.key
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md flex-1 transition-all ${loadsTab === tab.key
                     ? `${tab.activeClass} border shadow-sm`
                     : "border border-transparent hover:bg-muted/50"
-                }`}
+                  }`}
               >
                 {tab.icon}
                 <span
-                  className={`text-[11px] font-bold flex-1 text-left ${
-                    loadsTab === tab.key
+                  className={`text-[11px] font-bold flex-1 text-left ${loadsTab === tab.key
                       ? "text-foreground"
                       : "text-muted-foreground"
-                  }`}
+                    }`}
                 >
                   {tab.label}
                 </span>
                 <span
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                    loadsTab === tab.key
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${loadsTab === tab.key
                       ? tab.badgeClass
                       : "bg-muted/50 text-muted-foreground/60"
-                  }`}
+                    }`}
                 >
                   {tab.count}
                 </span>
@@ -1040,8 +996,8 @@ export default function DriverTrackerPage() {
 
         {loadsTab === "available" && (
           <DriverTrackerAvailableLoadsCard
-            shipments={availableShipments}
-            isLoading={shipmentsLoading}
+            loads={availableLoads}
+            isLoading={loadsLoading}
             activeDrivers={activeDrivers}
             onAssign={handleAssignFromAvailable}
           />
@@ -1076,8 +1032,8 @@ export default function DriverTrackerPage() {
         open={assignModalOpen}
         onOpenChange={setAssignModalOpen}
         driver={assigningTo}
-        availableShipments={availableShipments}
-        isLoading={shipmentsLoading}
+        availableLoads={availableLoads}
+        isLoading={loadsLoading}
         onAssign={handleAssignLoad}
       />
     </div>

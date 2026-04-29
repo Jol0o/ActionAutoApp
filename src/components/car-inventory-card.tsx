@@ -16,6 +16,7 @@ interface CarInventoryCardProps {
   onApplyNow?: (vehicle: Vehicle) => void
   onCallUs?: (vehicle: Vehicle) => void
   onVideo?: (vehicle: Vehicle) => void
+  onCreateLoad?: (vehicle: Vehicle) => void
 }
 
 export function CarInventoryCard({
@@ -26,7 +27,8 @@ export function CarInventoryCard({
   onCheckAvailability,
   onApplyNow,
   onCallUs,
-  onVideo
+  onVideo,
+  onCreateLoad
 }: CarInventoryCardProps) {
   const [imgLoaded, setImgLoaded] = React.useState(false)
   const [imgError, setImgError] = React.useState(false)
@@ -171,10 +173,10 @@ export function CarInventoryCard({
             </Button>
           </div>
           <Button
-            onClick={() => onGetQuote(vehicle)}
+            onClick={() => (onCreateLoad || onGetQuote)?.(vehicle)}
             className="w-full bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-[0.99] transition-all"
           >
-            <TruckIcon className="w-4 h-4 mr-2" /> Home Shipping Quote
+            <TruckIcon className="w-4 h-4 mr-2" /> Create Managed Load
           </Button>
         </div>
       </div>

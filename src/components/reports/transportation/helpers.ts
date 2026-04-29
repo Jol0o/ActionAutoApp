@@ -2,7 +2,15 @@ import { Quote, Shipment } from "@/types/transportation"
 import { ShipmentSummary, QuoteSummary } from "./types"
 
 function quoteData(s: Shipment) {
-  return s.quoteId || s.preservedQuoteData
+  // Try to use quoteId if populated, otherwise use data from Load pricing
+  if (s.quoteId && typeof s.quoteId === 'object') return s.quoteId
+  return {
+    rate: (s as any).pricing?.estimatedRate || (s as any).pricing?.carrierPayAmount || (s as any).carrierPayAmount || 0,
+    miles: (s as any).pricing?.miles || (s as any).miles || 0,
+    enclosedTrailer: (s as any).trailerType?.toLowerCase().includes('enclosed') || (s as any).trailerTypeRequired?.toLowerCase().includes('enclosed'),
+    firstName: "",
+    lastName: ""
+  } as any
 }
 
 export function buildShipmentSummary(shipments: Shipment[]): ShipmentSummary {
@@ -19,9 +27,11 @@ export function buildShipmentSummary(shipments: Shipment[]): ShipmentSummary {
   const totalMiles = miles.reduce((a, b) => a + b, 0)
 
   const deliveryDays = shipments
-    .filter(s => s.pickedUp && s.delivered)
+    .filter(s => ((s as any).pickedUpAt || (s as any).pickedUp) && ((s as any).deliveredAt || (s as any).delivered))
     .map(s => {
-      const diff = new Date(s.delivered!).getTime() - new Date(s.pickedUp!).getTime()
+      const p = (s as any).pickedUpAt || (s as any).pickedUp
+      const d = (s as any).deliveredAt || (s as any).delivered
+      const diff = new Date(d!).getTime() - new Date(p!).getTime()
       return diff / 86_400_000
     })
   const avgDeliveryDays = deliveryDays.length > 0
@@ -99,7 +109,7 @@ export function shipmentTransportType(s: Shipment): string {
 }
 
 export function shipmentRoute(s: Shipment): string {
-  return `${s.origin || "—"} → ${s.destination || "—"}`
+  return `${(s as any).origin || "—"} → ${(s as any).destination || "—"}`
 }
 
 export function calcDuration(pickedUp?: string, delivered?: string): string {
@@ -113,8 +123,9 @@ export function calcDuration(pickedUp?: string, delivered?: string): string {
 }
 
 export function driverName(s: Shipment): string {
-  if (!s.assignedDriverId) return "Unassigned"
-  if (typeof s.assignedDriverId === "object") return s.assignedDriverId.name || "Unknown"
+  const driverId = (s as any).assignedDriverId || (s as any).driverId
+  if (!driverId) return "Unassigned"
+  if (typeof driverId === "object") return driverId.name || "Unknown"
   return "Assigned"
 }
 

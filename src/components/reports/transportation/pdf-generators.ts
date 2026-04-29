@@ -43,7 +43,7 @@ export async function generateShipmentReportPdf(shipments: Shipment[], monthLabe
   doc.text("ACTION AUTO UTAH", 14, 10)
   doc.setFontSize(10)
   doc.setFont("helvetica", "normal")
-  doc.text("Shipment Report", 14, 17)
+  doc.text("Managed Load Report", 14, 17)
   doc.setTextColor(0)
 
   doc.setFontSize(9)
@@ -118,7 +118,7 @@ export async function generateShipmentReportPdf(shipments: Shipment[], monthLabe
 
   doc.setFont("helvetica", "bold")
   doc.setFontSize(9)
-  doc.text("Shipment Status Breakdown", 14, 20)
+  doc.text("Load Status Breakdown", 14, 20)
 
   const statusGroups: Record<string, Shipment[]> = {}
   shipments.forEach(s => {
@@ -127,7 +127,7 @@ export async function generateShipmentReportPdf(shipments: Shipment[], monthLabe
   })
 
   const breakdownRows = Object.entries(statusGroups).map(([status, items]) => {
-    const totalRate = items.reduce((sum, s) => sum + ((s.quoteId || s.preservedQuoteData)?.rate || 0), 0)
+    const totalRate = items.reduce((sum, s) => sum + ((s.quoteId as any)?.rate || (s as any).pricing?.estimatedRate || (s as any).pricing?.carrierPayAmount || (s as any).carrierPayAmount || 0), 0)
     const avgRate = items.length > 0 ? totalRate / items.length : 0
     const withDriver = items.filter(s => s.assignedDriverId).length
     return [status, String(items.length), `${Math.round((items.length / shipments.length) * 100)}%`, fmtCurrency(totalRate), fmtCurrency(avgRate), String(withDriver)]
@@ -154,8 +154,8 @@ export async function generateShipmentReportPdf(shipments: Shipment[], monthLabe
       const key = `${s.origin || "?"} → ${s.destination || "?"}`
       const existing = routeMap.get(key) || { count: 0, totalRate: 0, totalMiles: 0 }
       existing.count++
-      existing.totalRate += (s.quoteId || s.preservedQuoteData)?.rate || 0
-      existing.totalMiles += (s.quoteId || s.preservedQuoteData)?.miles || 0
+      existing.totalRate += (s.quoteId as any)?.rate || (s as any).pricing?.estimatedRate || (s as any).pricing?.carrierPayAmount || (s as any).carrierPayAmount || 0
+      existing.totalMiles += (s.quoteId as any)?.miles || (s as any).pricing?.miles || (s as any).miles || 0
       routeMap.set(key, existing)
     })
 
@@ -166,7 +166,7 @@ export async function generateShipmentReportPdf(shipments: Shipment[], monthLabe
 
     autoTable(doc, {
       startY: lastY + 15,
-      head: [["Route", "Shipments", "Total Miles", "Total Revenue", "Avg Rate"]],
+      head: [["Route", "Loads", "Total Miles", "Total Revenue", "Avg Rate"]],
       body: routeRows.length > 0 ? routeRows : [["No route data", "", "", "", ""]],
       styles: { fontSize: 7.5, cellPadding: 2.5 },
       headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: "bold" },

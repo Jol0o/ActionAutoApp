@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
-import { DriverPayout, DeliverableShipment, DriverPayoutStats } from "@/types/driver-payout";
+import { DriverPayout, DeliverableLoad, DriverPayoutStats } from "@/types/driver-payout";
 import { formatCurrency } from "@/utils/format";
 import {
   Users, ChevronLeft, RefreshCw, Truck, CheckCircle2,
@@ -21,9 +21,9 @@ function ProofLightbox({ src, onClose }: { src: string; onClose: () => void }) {
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
   const clampZoom = (z: number) => Math.min(Math.max(z, MIN_ZOOM), MAX_ZOOM);
-  const zoomIn  = () => setZoom(z => clampZoom(z + 0.25));
+  const zoomIn = () => setZoom(z => clampZoom(z + 0.25));
   const zoomOut = () => setZoom(z => clampZoom(z - 0.25));
-  const reset   = () => setZoom(1);
+  const reset = () => setZoom(1);
 
   // Keyboard: Esc to close
   React.useEffect(() => {
@@ -82,8 +82,8 @@ function ProofLightbox({ src, onClose }: { src: string; onClose: () => void }) {
         {[
           { label: '−', action: zoomOut, title: 'Zoom out' },
           { label: `${Math.round(zoom * 100)}%`, action: reset, title: 'Reset zoom' },
-          { label: '+', action: zoomIn,  title: 'Zoom in'  },
-          { label: '✕', action: onClose, title: 'Close'    },
+          { label: '+', action: zoomIn, title: 'Zoom in' },
+          { label: '✕', action: onClose, title: 'Close' },
         ].map(({ label, action, title }) => (
           <button key={title} onClick={action} title={title}
             style={{ minWidth: 44, height: 44, borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontFamily: "'Share Tech Mono', monospace", fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent' }}>
@@ -118,9 +118,11 @@ const MONO = "'Share Tech Mono', 'Roboto Mono', monospace";
 
 function PayoutStatusBadge({ status }: { status: string }) {
   const colors: Record<string, { bg: string; text: string }> = {
-    pending:   { bg: "rgba(250,204,21,0.12)",  text: "#facc15" },
-    paid:      { bg: "rgba(74,222,128,0.12)",  text: "#4ade80" },
-    confirmed: { bg: "rgba(96,165,250,0.12)",  text: "#60a5fa" },
+    pending: { bg: "rgba(250,204,21,0.12)", text: "#facc15" },
+    processing: { bg: "rgba(250,204,21,0.12)", text: "#facc15" },
+    paid: { bg: "rgba(74,222,128,0.12)", text: "#4ade80" },
+    confirmed: { bg: "rgba(96,165,250,0.12)", text: "#60a5fa" },
+    failed: { bg: "rgba(239,68,68,0.12)", text: "#ef4444" },
     cancelled: { bg: "rgba(148,163,184,0.12)", text: "#94a3b8" },
   };
   const c = colors[status] || colors.pending;
@@ -137,7 +139,7 @@ function PayoutStatusBadge({ status }: { status: string }) {
 }
 
 function PayoutModal({ target, onClose, onCreated, getToken }: {
-  target: DeliverableShipment; onClose: () => void; onCreated: () => void; getToken: () => Promise<string | null>;
+  target: DeliverableLoad; onClose: () => void; onCreated: () => void; getToken: () => Promise<string | null>;
 }) {
   const [amount, setAmount] = React.useState(0);
   const [notes, setNotes] = React.useState("");
@@ -151,7 +153,7 @@ function PayoutModal({ target, onClose, onCreated, getToken }: {
       const token = await getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       await apiClient.post("/api/driver-payouts", {
-        shipmentId: target._id,
+        loadId: target._id,
         driverId: target.assignedDriverId._id,
         amount, notes,
       }, { headers });
@@ -211,12 +213,12 @@ function PayoutModal({ target, onClose, onCreated, getToken }: {
 
 export default function DriverPayoutsPage() {
   const { getToken } = useAuth();
-  const [deliverable, setDeliverable] = React.useState<DeliverableShipment[]>([]);
+  const [deliverableLoads, setDeliverableLoads] = React.useState<DeliverableLoad[]>([]);
   const [pendingProofs, setPendingProofs] = React.useState<any[]>([]);
   const [payouts, setPayouts] = React.useState<DriverPayout[]>([]);
   const [payoutStats, setPayoutStats] = React.useState<DriverPayoutStats | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [payoutTarget, setPayoutTarget] = React.useState<DeliverableShipment | null>(null);
+  const [payoutTarget, setPayoutTarget] = React.useState<DeliverableLoad | null>(null);
   const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
   const [proofBlobUrls, setProofBlobUrls] = React.useState<Record<string, string>>({});
   const [loadingProofId, setLoadingProofId] = React.useState<string | null>(null);
@@ -238,7 +240,7 @@ export default function DriverPayoutsPage() {
         apiClient.get("/api/driver-payouts", { headers }),
         apiClient.get("/api/driver-payouts/stats", { headers }),
       ]);
-      setDeliverable(dRes.data.data || []);
+      setDeliverableLoads(dRes.data.data || []);
       setPendingProofs(ppRes.data.data || []);
       setPayouts(pRes.data.data || []);
       setPayoutStats(sRes.data.data || null);
@@ -248,12 +250,10 @@ export default function DriverPayoutsPage() {
 
   React.useEffect(() => { fetchData(); }, [fetchData]);
 
-  const confirmDelivery = async (id: string, type?: string) => {
+  const confirmDelivery = async (id: string) => {
     setConfirmingId(id);
     try {
-      const endpoint = type === 'load'
-        ? `/api/loads/${id}/confirm-delivery`
-        : `/api/shipments/${id}/confirm-delivery`;
+      const endpoint = `/api/loads/${id}/confirm-delivery`;
       await apiClient.post(endpoint, {}, { headers: await authHeaders() });
       fetchData();
     } catch (e) { console.error(e); }
@@ -262,14 +262,11 @@ export default function DriverPayoutsPage() {
 
   const openProofImage = async (item: any) => {
     const id = item._id;
-    // If already cached, open lightbox immediately
     if (proofBlobUrls[id]) { setLightboxSrc(proofBlobUrls[id]); return; }
     setLoadingProofId(id);
     try {
       const token = await getToken();
-      const endpoint = item._type === 'load'
-        ? `/api/loads/${id}/proof-image`
-        : `/api/shipments/${id}/proof-image`;
+      const endpoint = `/api/loads/${id}/proof-image`;
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const res = await fetch(`${API_BASE}${endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) return;
@@ -304,7 +301,7 @@ export default function DriverPayoutsPage() {
             {[
               { label: "Total Paid Out", val: formatCurrency(payoutStats?.totalPaid ?? 0), color: "#4ade80" },
               { label: "Pending Payouts", val: formatCurrency(payoutStats?.totalPending ?? 0), color: "#facc15" },
-              { label: "Deliverable Jobs", val: String(deliverable.length), color: ORANGE },
+              { label: "Deliverable Loads", val: String(deliverableLoads.length), color: ORANGE },
               { label: "All Payouts", val: String(payouts.length), color: "#60a5fa" },
             ].map(({ label, val, color }) => (
               <div key={label} style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "14px 16px" }}>
@@ -318,7 +315,7 @@ export default function DriverPayoutsPage() {
           <div style={{ display: "flex", gap: 4, marginBottom: 18, background: "#0d0d11", border: `1px solid ${BORDER}`, borderRadius: 10, padding: 4, width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" as any }}>
             {([
               ["pending-proofs", "Pending Proofs", FileCheck, pendingProofs.length],
-              ["deliverable", "Ready to Pay", Truck, deliverable.length],
+              ["deliverable", "Ready to Pay", Truck, deliverableLoads.length],
               ["history", "Payout History", DollarSign, 0],
             ] as [string, string, any, number][]).map(([key, label, Icon, count]) => (
               <button key={key} onClick={() => setTab(key as any)}
@@ -358,8 +355,8 @@ export default function DriverPayoutsPage() {
                   <div key={item._id} style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "18px", display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                       <div>
-                        <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.3)", margin: 0, letterSpacing: "0.05em" }}>TRACKING</p>
-                        <p style={{ fontFamily: MONO, fontSize: 13, color: "#fff", margin: 0, marginTop: 3 }}>{item.trackingNumber || item.loadNumber}</p>
+                        <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.3)", margin: 0, letterSpacing: "0.05em" }}>LOAD #</p>
+                        <p style={{ fontFamily: MONO, fontSize: 13, color: "#fff", margin: 0, marginTop: 3 }}>{item.loadNumber || item.trackingNumber}</p>
                       </div>
                       <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(96,165,250,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <FileCheck style={{ width: 15, height: 15, color: "#60a5fa" }} />
@@ -391,7 +388,7 @@ export default function DriverPayoutsPage() {
                         View Proof
                       </button>
                       <button
-                        onClick={() => confirmDelivery(item._id, item._type)}
+                        onClick={() => confirmDelivery(item._id)}
                         disabled={confirmingId === item._id}
                         style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, padding: "0 8px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 9, color: "#4ade80", fontFamily: DISPLAY, fontSize: 12, fontWeight: 700, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
                         {confirmingId === item._id ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> : <CheckCircle2 style={{ width: 13, height: 13 }} />}
@@ -410,20 +407,20 @@ export default function DriverPayoutsPage() {
               <div style={{ padding: "50px 0", textAlign: "center" }}>
                 <RefreshCw style={{ width: 22, height: 22, color: "rgba(255,255,255,0.2)", animation: "spin 1s linear infinite" }} />
               </div>
-            ) : deliverable.length === 0 ? (
+            ) : deliverableLoads.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14 }}>
                 <Package style={{ width: 36, height: 36, color: "rgba(255,255,255,0.1)", display: "block", margin: "0 auto 14px" }} />
-                <p style={{ fontFamily: DISPLAY, fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>No deliverable shipments</p>
-                <p style={{ fontFamily: DISPLAY, fontSize: 13, color: "rgba(255,255,255,0.25)" }}>Completed shipments awaiting payout will appear here.</p>
+                <p style={{ fontFamily: DISPLAY, fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>No deliverable loads</p>
+                <p style={{ fontFamily: DISPLAY, fontSize: 13, color: "rgba(255,255,255,0.25)" }}>Completed loads awaiting payout will appear here.</p>
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
-                {deliverable.map(s => (
+                {deliverableLoads.map(s => (
                   <div key={s._id} style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "18px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                       <div>
-                        <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.3)", margin: 0, letterSpacing: "0.05em" }}>TRACKING</p>
-                        <p style={{ fontFamily: MONO, fontSize: 13, color: "#fff", margin: 0, marginTop: 3 }}>{s.trackingNumber}</p>
+                        <p style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.3)", margin: 0, letterSpacing: "0.05em" }}>LOAD #</p>
+                        <p style={{ fontFamily: MONO, fontSize: 13, color: "#fff", margin: 0, marginTop: 3 }}>{s.loadNumber || s.trackingNumber}</p>
                       </div>
                       <div style={{ width: 34, height: 34, borderRadius: 8, background: `${ORANGE}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Truck style={{ width: 15, height: 15, color: ORANGE }} />
@@ -434,7 +431,7 @@ export default function DriverPayoutsPage() {
                       <p style={{ fontFamily: DISPLAY, fontSize: 15, fontWeight: 700, color: "#fff", margin: 0, marginTop: 2 }}>{s.assignedDriverId?.name || "—"}</p>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => confirmDelivery(s._id, (s as any)._type)} disabled={confirmingId === s._id}
+                      <button onClick={() => confirmDelivery(s._id)} disabled={confirmingId === s._id}
                         style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 9, color: "#4ade80", fontFamily: DISPLAY, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                         {confirmingId === s._id ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> : <CheckCircle2 style={{ width: 12, height: 12 }} />}
                         Confirm
@@ -454,7 +451,7 @@ export default function DriverPayoutsPage() {
           {tab === "history" && (
             <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto auto", gap: 12, padding: "11px 16px", borderBottom: `1px solid ${BORDER}` }}>
-                {["Driver", "Shipment", "Amount", "Status"].map(h => (
+                {["Driver", "Load", "Amount", "Status"].map(h => (
                   <span key={h} style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{h}</span>
                 ))}
               </div>
@@ -470,7 +467,7 @@ export default function DriverPayoutsPage() {
                     <p style={{ fontFamily: DISPLAY, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.85)", margin: 0 }}>{(p.driverId as any)?.name || "—"}</p>
                     <p style={{ fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.3)", margin: 0 }}>{new Date(p.createdAt || "").toLocaleDateString()}</p>
                   </div>
-                  <p style={{ fontFamily: MONO, fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>{(p.shipmentId as any)?.trackingNumber || "—"}</p>
+                  <p style={{ fontFamily: MONO, fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>{(p.loadId as any)?.loadNumber || (p.loadId as any)?.trackingNumber || "—"}</p>
                   <p style={{ fontFamily: MONO, fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{formatCurrency(p.amount)}</p>
                   <PayoutStatusBadge status={p.status} />
                 </div>

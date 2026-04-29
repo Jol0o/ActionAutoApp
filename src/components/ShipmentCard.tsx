@@ -51,7 +51,7 @@ interface ShipmentCardInnerProps {
   onUpdate?: (id: string, updatedShipment: Partial<Shipment>) => Promise<void>;
 }
 
-// Memoized heavy card body â€” isolated from alert state so it does NOT re-render
+// Memoized heavy card body — isolated from alert state so it does NOT re-render
 // when the confirmation dialog opens/closes, keeping the delete button snappy.
 const ShipmentCardInner = React.memo(function ShipmentCardInner({
   shipment,
@@ -65,7 +65,7 @@ const ShipmentCardInner = React.memo(function ShipmentCardInner({
   onSaveEdit,
   onUpdate,
 }: ShipmentCardInnerProps) {
-  const quote = shipment.quoteId || shipment.preservedQuoteData;
+  const quote = shipment.quoteId || (shipment as any).preservedQuoteData;
   const vehicle = quote?.vehicleId;
   const vehicleName = vehicle
     ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
@@ -151,23 +151,23 @@ const ShipmentCardInner = React.memo(function ShipmentCardInner({
                     {shipment.status}
                   </Badge>
                 </div>
-                {(shipment.isPostedToBoard || shipment.trailerTypeRequired) && (
+                {((shipment as any).additionalInfo?.visibility === 'public' || (shipment as any).trailerType) && (
                   <div className="absolute top-10 sm:top-11 left-2 flex flex-wrap gap-1">
-                    {shipment.isPostedToBoard && (
+                    {(shipment as any).additionalInfo?.visibility === 'public' && (
                       <Badge className="bg-blue-600/90 text-white backdrop-blur-sm px-1.5 py-0.5 text-[9px] sm:text-[10px] shadow-lg">
                         <Megaphone className="w-2.5 h-2.5 mr-0.5" />
                         On Board
                       </Badge>
                     )}
-                    {shipment.trailerTypeRequired && (
+                    {(shipment as any).trailerType && (
                       <Badge className="bg-purple-600/90 text-white backdrop-blur-sm px-1.5 py-0.5 text-[9px] sm:text-[10px] shadow-lg">
                         <Truck className="w-2.5 h-2.5 mr-0.5" />
-                        {trailerLabel(shipment.trailerTypeRequired)}
+                        {trailerLabel((shipment as any).trailerType)}
                       </Badge>
                     )}
-                    {shipment.vehicleCount && shipment.vehicleCount > 1 && (
+                    {(shipment as any).vehicles && (shipment as any).vehicles.length > 1 && (
                       <Badge className="bg-indigo-600/90 text-white backdrop-blur-sm px-1.5 py-0.5 text-[9px] sm:text-[10px] shadow-lg">
-                        {shipment.vehicleCount} cars
+                        {(shipment as any).vehicles.length} cars
                       </Badge>
                     )}
                   </div>
@@ -234,24 +234,24 @@ const ShipmentCardInner = React.memo(function ShipmentCardInner({
                       Added {formatDate(shipment.createdAt)}
                     </span>
                   </div>
-                  {shipment.organization && (
+                  {((shipment as any).organization || quote?.organization) && (
                     <div className="flex items-center gap-1.5">
                       <Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-400 dark:text-gray-500" />
                       <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                         Organization:{" "}
                         <span className="font-medium text-gray-700 dark:text-gray-300">
-                          {shipment.organization.name}
+                          {((shipment as any).organization || quote?.organization)?.name}
                         </span>
                       </span>
                     </div>
                   )}
                   {shipment.createdBy && (
                     <div className="flex items-center gap-1.5">
-                      {shipment.createdBy.avatar ? (
+                      {(shipment.createdBy as any).avatar ? (
                         <img
-                          src={shipment.createdBy.avatar}
+                          src={(shipment.createdBy as any).avatar}
                           alt={
-                            shipment.createdBy.name || shipment.createdBy.email
+                            (shipment.createdBy as any).name || (shipment.createdBy as any).email
                           }
                           className="w-3.5 h-3.5 rounded-full object-cover"
                         />
@@ -260,17 +260,17 @@ const ShipmentCardInner = React.memo(function ShipmentCardInner({
                           <User className="w-2 h-2 text-green-600 dark:text-green-400" />
                         </div>
                       )}
-                      {shipment.createdBy.name || shipment.createdBy.email ? (
+                      {(shipment.createdBy as any).name || (shipment.createdBy as any).email ? (
                         <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                           By{" "}
                           <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {shipment.createdBy.name ||
-                              shipment.createdBy.email}
+                            {(shipment.createdBy as any).name ||
+                              (shipment.createdBy as any).email}
                           </span>
                         </span>
                       ) : (
-                        <span className="text-[10px] sm:text-xs text-red-400 dark:text-red-500 italic">
-                          Deleted User
+                        <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 italic">
+                          By {(typeof shipment.createdBy === 'string' ? shipment.createdBy : 'Deleted User')}
                         </span>
                       )}
                     </div>
@@ -415,31 +415,31 @@ const ShipmentCardInner = React.memo(function ShipmentCardInner({
                       {[
                         {
                           label: "Requested",
-                          date: shipment.requestedPickupDate,
+                          date: (shipment as any).dates?.firstAvailable,
                           step: "Step 1",
                           color: "blue",
                         },
                         {
                           label: "Scheduled Pickup",
-                          date: shipment.scheduledPickup,
+                          date: (shipment as any).dates?.pickupDeadline,
                           step: "Step 2",
                           color: "indigo",
                         },
                         {
                           label: "Picked Up",
-                          date: shipment.pickedUp,
+                          date: (shipment as any).pickedUpAt || (shipment as any).pickedUp,
                           step: "Step 3",
                           color: "purple",
                         },
                         {
                           label: "Est. Delivery",
-                          date: shipment.scheduledDelivery,
+                          date: (shipment as any).dates?.deliveryDeadline,
                           step: "Step 4",
                           color: "orange",
                         },
                         {
                           label: "Delivered",
-                          date: shipment.delivered,
+                          date: (shipment as any).deliveredAt || (shipment as any).delivered,
                           step: "Complete",
                           color: "green",
                           icon: true,
@@ -530,7 +530,7 @@ const ShipmentCardInner = React.memo(function ShipmentCardInner({
   );
 });
 
-// â”€â”€â”€ Thin outer shell â€” manages state and alert only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ——— Thin outer shell — manages state and alert only ———————————————————————————
 export function ShipmentCard({
   shipment,
   onDelete,
@@ -542,7 +542,7 @@ export function ShipmentCard({
   const { showAlert, alert, hideAlert } = useAlert();
 
   const handleDelete = React.useCallback(() => {
-    const quote = shipment.quoteId || shipment.preservedQuoteData;
+    const quote = shipment.quoteId || (shipment as any).preservedQuoteData;
     const customerName = quote
       ? `${quote.firstName} ${quote.lastName}`
       : "this customer";
@@ -574,7 +574,7 @@ export function ShipmentCard({
       await onUpdate(shipment._id, updatedShipment);
       showAlert({
         type: "success",
-        title: "Shipment Updated",
+        title: "Load Updated",
         message: "The shipment has been successfully updated.",
       });
     },
@@ -582,7 +582,7 @@ export function ShipmentCard({
   );
 
   const handleSendEmail = React.useCallback(() => {
-    const quote = shipment.quoteId || shipment.preservedQuoteData;
+    const quote = shipment.quoteId || (shipment as any).preservedQuoteData;
     const customerEmail = quote?.email || "";
 
     if (!customerEmail || !isValidEmail(customerEmail)) {
@@ -629,7 +629,7 @@ export function ShipmentCard({
         showAlert({
           type: "success",
           title: "PDF Generated",
-          message: "Shipment documentation has been downloaded successfully.",
+          message: "Load documentation has been downloaded successfully.",
         });
       } else if (result === "initiated") {
         toast.success("PDF export started.");

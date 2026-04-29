@@ -15,7 +15,7 @@ export const generateShipmentPDF = async (
   const pageHeight = pdf.internal.pageSize.getHeight();
 
   // Get quote data
-  const quote = shipment.quoteId || shipment.preservedQuoteData;
+  const quote = (shipment as any).quoteId || (shipment as any).preservedQuoteData;
   const vehicle = quote?.vehicleId;
   const vehicleName = vehicle
     ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
@@ -120,7 +120,7 @@ export const generateShipmentPDF = async (
 
   pdf.setFontSize(14);
   pdf.setFont("helvetica", "bold");
-  pdf.text(shipment.trackingNumber || "Not Assigned", 20, yPosition + 14);
+  pdf.text((shipment as any).trackingNumber || "Not Assigned", 20, yPosition + 14);
 
   // Status badge - Right side
   const statusColor = getStatusColor(shipment.status);
@@ -348,7 +348,7 @@ export const generateShipmentPDF = async (
   pdf.setTextColor(31, 41, 55);
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "normal");
-  pdf.text(shipment.origin, 27, yPosition + 4);
+  pdf.text((shipment as any).origin || "N/A", 27, yPosition + 4);
 
   yPosition += 12;
 
@@ -372,7 +372,7 @@ export const generateShipmentPDF = async (
   pdf.setTextColor(31, 41, 55);
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "normal");
-  pdf.text(shipment.destination, 27, yPosition + 4);
+  pdf.text((shipment as any).destination || "N/A", 27, yPosition + 4);
 
   yPosition += 17;
 
@@ -394,18 +394,18 @@ export const generateShipmentPDF = async (
   const timelineData = [
     {
       label: "Requested Pickup Date",
-      date: formatDate(shipment.requestedPickupDate),
+      date: formatDate((shipment as any).dates?.firstAvailable),
     },
     {
       label: "Scheduled Pickup Date",
-      date: formatDate(shipment.scheduledPickup),
+      date: formatDate((shipment as any).dates?.pickupDeadline),
     },
-    { label: "Actual Pickup Date", date: formatDate(shipment.pickedUp) },
+    { label: "Actual Pickup Date", date: formatDate((shipment as any).pickedUpAt || (shipment as any).pickedUp) },
     {
       label: "Scheduled Delivery Date",
-      date: formatDate(shipment.scheduledDelivery),
+      date: formatDate((shipment as any).dates?.deliveryDeadline),
     },
-    { label: "Actual Delivery Date", date: formatDate(shipment.delivered) },
+    { label: "Actual Delivery Date", date: formatDate((shipment as any).deliveredAt || (shipment as any).delivered) },
   ];
 
   timelineData.forEach((item, index) => {
@@ -525,7 +525,7 @@ export const generateShipmentPDF = async (
   // ============================================
   // SAVE PDF
   // ============================================
-  const fileName = `ActionAutoUtah_Shipment_${shipment.trackingNumber || shipment._id}.pdf`;
+  const fileName = `ActionAutoUtah_Shipment_${(shipment as any).trackingNumber || shipment._id}.pdf`;
   const pdfBlob = pdf.output("blob");
 
   if (typeof window !== "undefined" && "showSaveFilePicker" in window) {

@@ -26,7 +26,7 @@ interface AssignedDriver {
   email: string
 }
 
-interface Shipment {
+interface ManagedLoad {
   _id: string
   status: string
   origin: string
@@ -48,7 +48,7 @@ interface ReportPreviewModalProps {
   open: boolean
   onClose: () => void
   reportType: "driver" | "billing"
-  shipments: Shipment[]
+  loads: ManagedLoad[]
   payments: Payment[]
   payouts: DriverPayout[]
   monthLabel: string
@@ -64,7 +64,7 @@ function resolveDriverName(id?: AssignedDriver | string | null): string {
   return "Assigned" // string ID — not populated
 }
 
-function customerName(s: Shipment) {
+function customerName(s: ManagedLoad) {
   return (
     [s.preservedQuoteData?.firstName, s.preservedQuoteData?.lastName]
       .filter(Boolean)
@@ -141,8 +141,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ── Driver Preview ────────────────────────────────────────────────────────────
 
-function DriverPreview({ shipments }: { shipments: Shipment[] }) {
-  const assigned = shipments.filter(s => s.assignedDriverId != null)
+function DriverPreview({ loads }: { loads: ManagedLoad[] }) {
+  const assigned = loads.filter(s => s.assignedDriverId != null)
   const delivered = assigned.filter(s => s.status === "Delivered").length
   const pendingApproval = assigned.filter(
     s => s.proofOfDelivery?.submittedAt && !s.proofOfDelivery?.confirmedAt
@@ -396,7 +396,7 @@ export function ReportPreviewModal({
   open,
   onClose,
   reportType,
-  shipments,
+  loads,
   payments,
   payouts,
   monthLabel,
@@ -464,7 +464,7 @@ export function ReportPreviewModal({
         {/* Body */}
         <div className="overflow-y-auto px-6 py-5 flex-1">
           {isDriver
-            ? <DriverPreview shipments={shipments} />
+            ? <DriverPreview loads={loads} />
             : <BillingPreview payments={payments} payouts={payouts} />
           }
         </div>

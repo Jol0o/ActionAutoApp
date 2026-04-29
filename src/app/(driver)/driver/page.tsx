@@ -1,10 +1,9 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
-import { Shipment } from "@/types/transportation";
 import { useDriverLocationSharing } from "@/hooks/useDriverLocationSharing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,7 +88,7 @@ const STATUS_CONFIG: Array<{
       key: "waiting",
       label: "Waiting",
       icon: <Hourglass className="size-4 sm:size-5" />,
-      color: "border-border/50 text-muted-foreground hover:bg-blue-500/5 hover:border-blue-300 dark:hover:border-blue-700",
+      color: "border-border/50 text-muted-foreground hover:bg-blue-500/5 hover:border-blue-300 dark:hover:blue-700",
       activeColor: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-400 dark:border-blue-600 shadow-sm shadow-blue-500/10",
     },
     {
@@ -136,7 +135,7 @@ function formatDualTime(date: Date) {
 
 export default function DriverDashboardPage() {
   const { getToken } = useAuth();
-  const [loads, setLoads] = React.useState<Shipment[]>([]);
+  const [loads, setLoads] = React.useState<any[]>([]);
   const [dashStats, setDashStats] = React.useState<{
     pendingRequests: number;
     totalEarnings: number;
@@ -367,17 +366,14 @@ export default function DriverDashboardPage() {
     }
   };
 
-  const buildPayload = (load: Shipment) =>
-    (load as any).__docType === "load" ? { loadId: load._id } : { shipmentId: load._id };
-
   const acceptLoad = React.useCallback(
-    async (load: Shipment) => {
+    async (load: any) => {
       setAccepting(load._id);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/accept-load",
-          buildPayload(load),
+          { loadId: load._id },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load accepted");
@@ -392,13 +388,13 @@ export default function DriverDashboardPage() {
   );
 
   const dropLoad = React.useCallback(
-    async (load: Shipment) => {
+    async (load: any) => {
       setDropping(load._id);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/drop-load",
-          buildPayload(load),
+          { loadId: load._id },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Load dropped");
@@ -413,13 +409,13 @@ export default function DriverDashboardPage() {
   );
 
   const startRoute = React.useCallback(
-    async (load: Shipment) => {
+    async (load: any) => {
       setStartingRoute(load._id);
       try {
         const token = await getToken();
         await apiClient.post(
           "/api/driver-tracking/start-route",
-          buildPayload(load),
+          { loadId: load._id },
           { headers: { Authorization: `Bearer ${token}` } },
         );
         toast.success("Route started");
@@ -826,9 +822,9 @@ export default function DriverDashboardPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-mono font-bold">{currentLoad.trackingNumber || "No tracking #"}</p>
-                  {currentLoad.carrierPayAmount != null && currentLoad.carrierPayAmount > 0 && (
-                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">${currentLoad.carrierPayAmount.toLocaleString()}</span>
-                  )}
+                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    ${(currentLoad.pricing?.carrierPayAmount || 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="size-3.5 text-primary shrink-0" />
@@ -836,12 +832,10 @@ export default function DriverDashboardPage() {
                   <ArrowRight className="size-3 shrink-0 text-primary" />
                   <span className="truncate">{currentLoad.destination}</span>
                 </div>
-                {currentLoad.scheduledPickup && (
-                  <p className="text-[10px] text-muted-foreground/60 font-medium flex items-center gap-1">
-                    <Clock className="size-3" />
-                    Pickup: {new Date(currentLoad.scheduledPickup).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })}
-                  </p>
-                )}
+                <p className="text-[10px] text-muted-foreground/60 font-medium flex items-center gap-1">
+                  <Clock className="size-3" />
+                  Pickup: {new Date(currentLoad.dates?.pickupDeadline || currentLoad.requestedPickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })}
+                </p>
                 {(currentLoad.status === "Available for Pickup" || currentLoad.status === "Dispatched") && !currentLoad.driverAcceptedAt && (
                   <Button size="sm" className="w-full h-9 text-xs font-bold shadow-sm" disabled={accepting === currentLoad._id} onClick={() => acceptLoad(currentLoad)}>
                     {accepting === currentLoad._id ? <><Loader2 className="size-3.5 mr-2 animate-spin" />Accepting...</> : <><CheckCircle2 className="size-3.5 mr-2" />Accept Load</>}

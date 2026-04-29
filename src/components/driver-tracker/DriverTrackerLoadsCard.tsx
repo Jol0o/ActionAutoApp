@@ -4,7 +4,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Package, Eye, ExternalLink, Truck, Trash2, RefreshCw,
-  Loader2, MapPin, ArrowRight, Search,
+  Loader2, MapPin, ArrowRight, Search, Camera, CheckCircle2,
+  Navigation2, AlertCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,18 @@ import {
 } from "@/components/ui/dialog";
 import { DriverTrackingItem } from "@/types/driver-tracking";
 import { trailerTypeOptions } from "@/components/driver-profile/driver-profile-constants";
+import { cn } from "@/lib/utils";
+
+const STATUS_BADGE: Record<string, string> = {
+  Assigned: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  Accepted: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  "Picked Up": "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  "In-Transit": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+  "In-Route": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+  Dispatched: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  Delivered: "bg-green-500/10 text-green-700 border-green-500/20",
+  Cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
+};
 
 const trailerLabel = (val?: string) =>
   trailerTypeOptions.find((t) => t.value === val)?.label || val || "";
@@ -151,10 +164,25 @@ export function DriverTrackerLoadsCard({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {shipments.length > 0 && shipments.length <= 2 && shipments.map((s) => (
-                    <Badge key={s.id} variant="outline" className="text-[10px] font-semibold h-6 gap-1 border-border/50">
-                      <Package className="size-2.5" />
-                      {s.trackingNumber || s.id.slice(-6)}
-                    </Badge>
+                    <div key={s.id} className="flex items-center gap-1">
+                      <Badge variant="outline" className="text-[10px] font-semibold h-6 gap-1 border-border/50">
+                        <Package className="size-2.5" />
+                        {s.trackingNumber || s.id.slice(-6)}
+                      </Badge>
+                      {s.status && (
+                        <Badge variant="outline" className={cn("text-[9px] h-5 px-1.5 gap-0.5", (s.status && STATUS_BADGE[s.status]) || "border-border/50")}>
+                          {(s.status === "In-Transit" || s.status === "In-Route") && <Navigation2 className="size-2.5" />}
+                          {s.status === "Picked Up" && <Truck className="size-2.5" />}
+                          {s.status === "Accepted" && <CheckCircle2 className="size-2.5" />}
+                          {s.status}
+                        </Badge>
+                      )}
+                      {(s as any).proofPending && (
+                        <Badge className="text-[9px] h-5 px-1.5 gap-0.5 bg-amber-500/10 text-amber-600 border-amber-500/20 animate-pulse">
+                          <Camera className="size-2.5" />Proof
+                        </Badge>
+                      )}
+                    </div>
                   ))}
                   <Button
                     size="sm"
@@ -237,7 +265,12 @@ export function DriverTrackerLoadsCard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="outline" className="text-[10px] font-semibold border-border/50">
+                    {(shipment as any).proofPending && (
+                      <Badge className="text-[9px] h-5 px-1.5 gap-0.5 bg-amber-500/10 text-amber-600 border-amber-500/20 animate-pulse">
+                        <Camera className="size-2.5" />Proof
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className={cn("text-[10px] font-semibold", (shipment.status && STATUS_BADGE[shipment.status]) || "border-border/50")}>
                       {shipment.status || "—"}
                     </Badge>
                     <ExternalLink className="size-3.5 text-muted-foreground/40" />

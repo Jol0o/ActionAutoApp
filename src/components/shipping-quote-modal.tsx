@@ -30,14 +30,16 @@ interface ShippingQuoteModalProps {
   vehicles: Vehicle[];
   onCalculate: (formData: ShippingQuoteFormData) => Promise<void>;
   defaultVehicle?: Vehicle | null;
+  initialData?: Partial<ShippingQuoteFormData>;
 }
 
 export function ShippingQuoteModal({
   open,
   onOpenChange,
-  vehicles,
+  vehicles = [],
   onCalculate,
   defaultVehicle,
+  initialData,
 }: ShippingQuoteModalProps) {
   const [isCalculating, setIsCalculating] = React.useState(false);
   const [selectedVehicle, setSelectedVehicle] = React.useState<Vehicle | null>(
@@ -66,8 +68,14 @@ export function ShippingQuoteModal({
       if (defaultVehicle) {
         setSelectedVehicle(defaultVehicle);
       }
+      if (initialData) {
+        setFormData((prev) => ({
+          ...prev,
+          ...initialData,
+        }));
+      }
     }
-  }, [open, vehicles, defaultVehicle]);
+  }, [open, vehicles, defaultVehicle, initialData]);
 
   // Auto-populate origin data when a vehicle is selected (or pre-selected)
   React.useEffect(() => {
@@ -244,7 +252,7 @@ export function ShippingQuoteModal({
               </span>
             </div>
 
-            {vehicles.length === 0 && (
+            {vehicles?.length === 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-xs text-yellow-800">
                 No vehicles available. Check console for details.
               </div>
@@ -252,7 +260,7 @@ export function ShippingQuoteModal({
 
             <div className="space-y-2">
               <Label htmlFor="vehicle" className="text-xs">
-                Select Vehicle ({vehicles.length} available)
+                Select Vehicle ({vehicles?.length || 0} available)
               </Label>
               <div className="relative">
                 <select
@@ -295,7 +303,7 @@ export function ShippingQuoteModal({
                     </p>
                     <p>
                       <strong>Price:</strong> $
-                      {selectedVehicle.price.toLocaleString()}
+                      {selectedVehicle.price?.toLocaleString() || "N/A"}
                     </p>
                   </div>
                 </div>

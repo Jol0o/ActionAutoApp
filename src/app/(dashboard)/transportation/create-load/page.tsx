@@ -41,29 +41,31 @@ export default function CreateLoadPage() {
   const [successInfo, setSuccessInfo] = React.useState<{ loadNumber: string } | null>(null)
 
   // Load Board tab state
-  const [lbPickup,         setLbPickup]         = React.useState<LocationBlock>(emptyLocation())
-  const [lbDelivery,       setLbDelivery]       = React.useState<LocationBlock>(emptyLocation())
-  const [lbVehicles,       setLbVehicles]       = React.useState<LoadVehicle[]>([emptyVehicle()])
-  const [lbDates,          setLbDates]          = React.useState<LoadDates>(emptyDates())
+  const [lbPickup, setLbPickup] = React.useState<LocationBlock>(emptyLocation())
+  const [lbDelivery, setLbDelivery] = React.useState<LocationBlock>(emptyLocation())
+  const [lbVehicles, setLbVehicles] = React.useState<LoadVehicle[]>([emptyVehicle()])
+  const [lbDates, setLbDates] = React.useState<LoadDates>(emptyDates())
   const [lbAdditionalInfo, setLbAdditionalInfo] = React.useState<LoadAdditionalInfo>(emptyAdditionalInfo())
-  const [lbContract,       setLbContract]       = React.useState<LoadContract>(emptyContract())
+  const [lbContract, setLbContract] = React.useState<LoadContract>(emptyContract())
+  const [lbTrailerType, setLbTrailerType] = React.useState<string>("open_3car_wedge")
 
   // Assign to Carrier tab state
-  const [acPickup,         setAcPickup]         = React.useState<LocationBlock>(emptyLocation())
-  const [acDelivery,       setAcDelivery]       = React.useState<LocationBlock>(emptyLocation())
-  const [acVehicles,       setAcVehicles]       = React.useState<LoadVehicle[]>([emptyVehicle()])
-  const [acDates,          setAcDates]          = React.useState<LoadDates>(emptyDates())
+  const [acPickup, setAcPickup] = React.useState<LocationBlock>(emptyLocation())
+  const [acDelivery, setAcDelivery] = React.useState<LocationBlock>(emptyLocation())
+  const [acVehicles, setAcVehicles] = React.useState<LoadVehicle[]>([emptyVehicle()])
+  const [acDates, setAcDates] = React.useState<LoadDates>(emptyDates())
   const [acAdditionalInfo, setAcAdditionalInfo] = React.useState<LoadAdditionalInfo>(emptyAdditionalInfo())
-  const [acContract,       setAcContract]       = React.useState<LoadContract>(emptyContract())
+  const [acContract, setAcContract] = React.useState<LoadContract>(emptyContract())
+  const [acTrailerType, setAcTrailerType] = React.useState<string>("open_3car_wedge")
 
   const buildBackUrl = () => {
     const params = new URLSearchParams()
     const search = searchParams.get("search")
     const status = searchParams.get("status")
-    const tab    = searchParams.get("tab")
+    const tab = searchParams.get("tab")
     if (search) params.set("search", search)
     if (status) params.set("status", status)
-    if (tab)    params.set("tab", tab)
+    if (tab) params.set("tab", tab)
     const query = params.toString()
     return `/transportation${query ? `?${query}` : ""}`
   }
@@ -135,15 +137,13 @@ export default function CreateLoadPage() {
                 key={value}
                 type="button"
                 onClick={() => setActiveTab(value)}
-                className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all ${
-                  active
+                className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all ${active
                     ? "border-green-500 bg-green-50/40 dark:bg-green-950/20"
                     : "border-border bg-card hover:border-muted-foreground/30"
-                }`}
+                  }`}
               >
-                <div className={`size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                  active ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
-                }`}>
+                <div className={`size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${active ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
+                  }`}>
                   <Icon className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -165,12 +165,13 @@ export default function CreateLoadPage() {
           <TabsContent value="load-board" className="mt-0 outline-none">
             <LoadFormLayout
               postType="load-board"
-              pickup={lbPickup}                   setPickup={setLbPickup}
-              delivery={lbDelivery}               setDelivery={setLbDelivery}
-              vehicles={lbVehicles}               setVehicles={setLbVehicles}
-              dates={lbDates}                     setDates={setLbDates}
-              additionalInfo={lbAdditionalInfo}   setAdditionalInfo={setLbAdditionalInfo}
-              contract={lbContract}               setContract={setLbContract}
+              pickup={lbPickup} setPickup={setLbPickup}
+              delivery={lbDelivery} setDelivery={setLbDelivery}
+              vehicles={lbVehicles} setVehicles={setLbVehicles}
+              dates={lbDates} setDates={setLbDates}
+              additionalInfo={lbAdditionalInfo} setAdditionalInfo={setLbAdditionalInfo}
+              contract={lbContract} setContract={setLbContract}
+              trailerType={lbTrailerType} setTrailerType={setLbTrailerType}
               onCancel={handleBack}
               onSuccess={handleSuccess}
               submitLabel="POST LOAD"
@@ -180,12 +181,13 @@ export default function CreateLoadPage() {
           <TabsContent value="assign-carrier" className="mt-0 outline-none">
             <LoadFormLayout
               postType="assign-carrier"
-              pickup={acPickup}                   setPickup={setAcPickup}
-              delivery={acDelivery}               setDelivery={setAcDelivery}
-              vehicles={acVehicles}               setVehicles={setAcVehicles}
-              dates={acDates}                     setDates={setAcDates}
-              additionalInfo={acAdditionalInfo}   setAdditionalInfo={setAcAdditionalInfo}
-              contract={acContract}               setContract={setAcContract}
+              pickup={acPickup} setPickup={setAcPickup}
+              delivery={acDelivery} setDelivery={setAcDelivery}
+              vehicles={acVehicles} setVehicles={setAcVehicles}
+              dates={acDates} setDates={setAcDates}
+              additionalInfo={acAdditionalInfo} setAdditionalInfo={setAcAdditionalInfo}
+              contract={acContract} setContract={setAcContract}
+              trailerType={acTrailerType} setTrailerType={setAcTrailerType}
               onCancel={handleBack}
               onSuccess={handleSuccess}
               submitLabel="ASSIGN"

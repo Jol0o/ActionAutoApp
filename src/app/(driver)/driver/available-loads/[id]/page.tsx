@@ -43,7 +43,9 @@ export default function AvailableLoadDetailPage() {
         try {
             const token = await getToken();
             const res = await apiClient.get('/api/driver-tracking/available-loads', { headers: { Authorization: `Bearer ${token}` } });
-            const found = (res.data?.data || []).find((l: any) => l._id === loadId);
+            const responseData = res.data?.data;
+            const loadsList = responseData?.loads || responseData || [];
+            const found = loadsList.find((l: any) => l._id === loadId);
             if (found) setData(found);
         } catch (err: any) { toast.error(extractErr(err, 'Failed to load details')); }
         finally { setLoading(false); }
@@ -130,8 +132,8 @@ export default function AvailableLoadDetailPage() {
         try {
             const token = await getToken();
             await apiClient.post('/api/driver-tracking/request-load',
-                data.__docType === 'load' ? { loadId: data._id } : { shipmentId: data._id },
-                { headers: { Authorization: `Bearer ${token}` } });
+            { loadId: data._id },
+            { headers: { Authorization: `Bearer ${token}` } });
             toast.success('Load request submitted — pending dispatcher approval');
             setShowConfirm(false);
             fetchDetail();
@@ -159,7 +161,7 @@ export default function AvailableLoadDetailPage() {
     const vehicleName = quote?.vehicleName;
     const vehicleImg = quote?.vehicleImage;
     const vehicles = data.vehicles || [];
-    const pay = data.carrierPayAmount || quote?.rate || 0;
+    const pay = data.pricing?.carrierPayAmount || data.carrierPayAmount || quote?.rate || 0;
     const miles = quote?.miles || data.estimatedMiles;
     const isRequested = data.myRequestStatus === 'pending';
     const isRejected = data.myRequestStatus === 'rejected';
@@ -299,9 +301,8 @@ export default function AvailableLoadDetailPage() {
                             <div className="flex items-center gap-2"><Calendar className="size-4 text-primary" /><h3 className="text-sm font-black uppercase tracking-wider">Schedule</h3></div>
                         </div>
                         <CardContent className="p-4 space-y-3">
-                            <DetailRow label="Scheduled Pickup" value={fmtDate(data.scheduledPickup)} />
-                            <DetailRow label="Scheduled Delivery" value={fmtDate(data.scheduledDelivery || data.desiredDeliveryDate)} />
-                            {data.requestedPickupDate && <DetailRow label="Requested Pickup" value={fmtDate(data.requestedPickupDate)} />}
+                            <DetailRow label="Scheduled Pickup" value={fmtDate(data.dates?.pickupDeadline || data.scheduledPickup || data.requestedPickupDate)} />
+                            <DetailRow label="Scheduled Delivery" value={fmtDate(data.dates?.deliveryDeadline || data.scheduledDelivery || data.desiredDeliveryDate)} />
                             <DetailRow label="Posted" value={fmtDate(data.createdAt)} />
                         </CardContent>
                     </Card>

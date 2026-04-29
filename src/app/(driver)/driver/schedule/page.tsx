@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
-import { Shipment } from "@/types/transportation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,12 +23,12 @@ const statusColors: Record<string, string> = {
 };
 
 interface GroupedLoads {
-  [date: string]: Shipment[];
+  [date: string]: any[];
 }
 
 export default function DriverSchedulePage() {
   const { getToken } = useAuth();
-  const [loads, setLoads] = React.useState<Shipment[]>([]);
+  const [loads, setLoads] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -55,8 +54,8 @@ export default function DriverSchedulePage() {
   const grouped = React.useMemo(() => {
     const groups: GroupedLoads = {};
     upcoming.forEach((load) => {
-      const dateStr = load.scheduledPickup
-        ? new Date(load.scheduledPickup).toLocaleDateString("en-US", {
+      const dateStr = load.dates?.pickupDeadline
+        ? new Date(load.dates.pickupDeadline).toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
             month: "long",
@@ -133,11 +132,11 @@ export default function DriverSchedulePage() {
                               {load.destination}
                             </span>
                           </div>
-                          {load.scheduledPickup && (
+                          {load.dates?.pickupDeadline && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="size-3" />
                               {new Date(
-                                load.scheduledPickup
+                                load.dates.pickupDeadline
                               ).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",

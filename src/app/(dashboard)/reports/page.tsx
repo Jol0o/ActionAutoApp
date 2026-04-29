@@ -36,7 +36,7 @@ type TabValue = "ALL" | "Transportation" | "Driver Reports" | "Billings"
 
 interface AssignedDriver { _id: string; name: string; email: string }
 
-interface Shipment {
+interface ManagedLoad {
     _id: string
     status: "Available for Pickup" | "Cancelled" | "Delivered" | "Dispatched" | "In-Route"
     origin: string
@@ -52,20 +52,20 @@ interface Shipment {
 }
 
 interface ReportData {
-    shipments: Shipment[]   // already month-filtered
+    loads: ManagedLoad[]   // already month-filtered
     payments: Payment[]     // already month-filtered
     payouts: DriverPayout[] // already month-filtered
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function driverName(s: Shipment): string {
+function driverName(s: ManagedLoad): string {
     if (!s.assignedDriverId) return "—"
     if (typeof s.assignedDriverId === "object") return s.assignedDriverId.name || "—"
     return "—"
 }
 
-function customerName(s: Shipment): string {
+function customerName(s: ManagedLoad): string {
     return [s.preservedQuoteData?.firstName, s.preservedQuoteData?.lastName].filter(Boolean).join(" ") || "—"
 }
 
@@ -96,10 +96,10 @@ async function generateDriverReportPdf(data: ReportData, monthLabel: string): Pr
     const autoTable = (await import("jspdf-autotable")).default
     const doc = new jsPDF({ orientation: "landscape" })
 
-    const assigned = data.shipments.filter(s => s.assignedDriverId != null)
+    const assigned = data.loads.filter(s => s.assignedDriverId != null)
 
     // Unique drivers
-    const driverMap = new Map<string, { name: string; loads: Shipment[] }>()
+    const driverMap = new Map<string, { name: string; loads: ManagedLoad[] }>()
     assigned.forEach(s => {
         const d = typeof s.assignedDriverId === "object" ? s.assignedDriverId : null
         if (!d) return
@@ -438,7 +438,7 @@ export default function ReportsPage() {
     const [driverSearch, setDriverSearch] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState("all")
 
-    const [rawShipments, setRawShipments] = React.useState<Shipment[]>([])
+    const [rawLoads, setRawLoads] = React.useState<ManagedLoad[]>([])
     const [rawTransportShipments, setRawTransportShipments] = React.useState<TransportShipment[]>([])
     const [rawQuotes, setRawQuotes] = React.useState<TransportQuote[]>([])
     const [rawPayments, setRawPayments] = React.useState<Payment[]>([])
@@ -460,7 +460,7 @@ export default function ReportsPage() {
                 apiClient.get("/api/quotes", { headers }),
             ])
             const shipmentData = Array.isArray(sRes.data?.data) ? sRes.data.data : []
-            setRawShipments(shipmentData)
+            setRawLoads(shipmentData)
             setRawTransportShipments(shipmentData)
             setRawPayments(Array.isArray(pRes.data?.data?.payments) ? pRes.data.data.payments : [])
             setRawPayouts(Array.isArray(payRes.data?.data) ? payRes.data.data : [])
@@ -476,10 +476,10 @@ export default function ReportsPage() {
 
     // Month-filtered data
     const reportData: ReportData = React.useMemo(() => ({
-        shipments: rawShipments.filter(s => (s.assignedAt || s.createdAt)?.startsWith(selectedMonth)),
+        loads: rawLoads.filter(s => (s.assignedAt || s.createdAt)?.startsWith(selectedMonth)),
         payments: rawPayments.filter(p => p.createdAt?.startsWith(selectedMonth)),
         payouts: rawPayouts.filter(p => p.createdAt?.startsWith(selectedMonth)),
-    }), [rawShipments, rawPayments, rawPayouts, selectedMonth])
+    }), [rawLoads, rawPayments, rawPayouts, selectedMonth])
 
     const filteredTransportShipments = React.useMemo(() => rawTransportShipments.filter(s => s.createdAt?.startsWith(selectedMonth)), [rawTransportShipments, selectedMonth])
     const filteredQuotes = React.useMemo(() => rawQuotes.filter(q => q.createdAt?.startsWith(selectedMonth)), [rawQuotes, selectedMonth])
@@ -496,11 +496,11 @@ export default function ReportsPage() {
 
     // Apply tab-specific filters on top of the month-filtered data
     const filteredData: ReportData = React.useMemo(() => {
-        let { shipments, payments, payouts } = reportData
+        let { loads, payments, payouts } = reportData
 
         if (driverSearch.trim()) {
             const q = driverSearch.toLowerCase()
-            shipments = shipments.filter(s => {
+            loads = loads.filter(s => {
                 if (typeof s.assignedDriverId !== "object" || !s.assignedDriverId) return false
                 return s.assignedDriverId.name.toLowerCase().includes(q)
             })
@@ -510,11 +510,11 @@ export default function ReportsPage() {
             payments = payments.filter(p => p.status === statusFilter)
         }
 
-        return { shipments, payments, payouts }
+        return { loads, payments, payouts }
     }, [reportData, driverSearch, statusFilter])
 
     // Derived counts — from filtered data so card stats react to filters
-    const assignedLoads = filteredData.shipments.filter(s => s.assignedDriverId != null)
+    const assignedLoads = filteredData.loads.filter(s => s.assignedDriverId != null)
     const uniqueDrivers = new Set(assignedLoads.map(s =>
         typeof s.assignedDriverId === "object" ? s.assignedDriverId?._id : s.assignedDriverId
     ).filter(Boolean)).size
@@ -760,7 +760,7 @@ export default function ReportsPage() {
                     />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <ReportCard
-                        title="Shipment Report"
+                        title="Managed Load Report"
                         subtitle={monthLabel}
                         description="Complete shipment tracking, delivery performance, route analysis, and revenue breakdown"
                         category="Transportation"
@@ -807,7 +807,7 @@ export default function ReportsPage() {
                 <div className="space-y-4">
                     {activeTab === "ALL" && (
                         <ReportsAnalytics
-                            shipments={reportData.shipments}
+                            loads={reportData.loads}
                             rawPayments={rawPayments}
                             monthLabel={monthLabel}
                         />
@@ -825,7 +825,7 @@ export default function ReportsPage() {
                             categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                             stats={[
                                 { icon: <Users className="size-3" />, label: `${uniqueDrivers} drivers` },
-                                { icon: <Database className="size-3" />, label: `${assignedLoads.length} loads` },
+                                { icon: <Database className="size-3" />, label: `${assignedLoads.length} managed loads` },
                                 { icon: <Calendar className="size-3" />, label: monthLabel },
                             ]}
                             highlights={[
@@ -873,7 +873,7 @@ export default function ReportsPage() {
                             category="Transportation"
                             categoryClass="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                             stats={[
-                                { icon: <Truck className="size-3" />, label: `${shipmentSummary.total} shipments` },
+                                { icon: <Truck className="size-3" />, label: `${shipmentSummary.total} managed loads` },
                                 { icon: <MapPin className="size-3" />, label: `${fmtNumber(shipmentSummary.totalMiles)} mi` },
                                 { icon: <Calendar className="size-3" />, label: monthLabel },
                             ]}
@@ -921,7 +921,7 @@ export default function ReportsPage() {
                     open={!!preview}
                     onClose={() => setPreview(null)}
                     reportType={preview}
-                    shipments={filteredData.shipments}
+                    loads={filteredData.loads}
                     payments={filteredData.payments}
                     payouts={filteredData.payouts}
                     monthLabel={monthLabel}

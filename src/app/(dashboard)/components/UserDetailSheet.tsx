@@ -56,7 +56,7 @@ export function UserDetailSheet({
       bg: "bg-emerald-500/10",
     },
     {
-      label: "Shipments",
+      label: "Managed Loads",
       value: user.shipments,
       icon: Package,
       color: "text-amber-500",
@@ -154,7 +154,7 @@ export function UserDetailSheet({
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {user.name} is currently in the{" "}
                     <span className="text-foreground font-bold">Top 10%</span>{" "}
-                    for shipment conversions this month. Response time is{" "}
+                    for managed loads this month. Response time is{" "}
                     <span className="text-emerald-500 font-bold">
                       12% faster
                     </span>{" "}
