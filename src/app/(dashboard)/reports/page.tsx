@@ -42,6 +42,10 @@ import {
   fmtCurrency as transportFmtCurrency,
   fmtNumber,
 } from "@/components/reports/transportation";
+import {
+  saveGeneratedReportFile,
+  type ReportFileCategory,
+} from "@/lib/report-files";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -124,7 +128,7 @@ function triggerDownload(blob: Blob, filename: string) {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 // ─── PDF generators ───────────────────────────────────────────────────────────
@@ -954,25 +958,61 @@ export default function ReportsPage() {
   async function downloadReport(id: string) {
     setDownloading(id);
     try {
+      const saveAndDownload = async (
+        blob: Blob,
+        fileName: string,
+        category: ReportFileCategory,
+        successMessage: string,
+      ) => {
+        try {
+          await saveGeneratedReportFile({
+            name: fileName,
+            category,
+            blob,
+          });
+        } catch {
+          toast.error("Saved copy to Recent Generated Files failed.");
+        }
+
+        triggerDownload(blob, fileName);
+        toast.success(successMessage);
+      };
+
       if (id === "driver-report") {
         const blob = await generateDriverReportPdf(filteredData, monthLabel);
-        triggerDownload(blob, `Driver Reports - ${monthLabel}.pdf`);
-        toast.success(`Driver Reports — ${monthLabel} downloaded.`);
+        await saveAndDownload(
+          blob,
+          `Driver_Reports_${monthLabel.replace(/\s+/g, "_")}.pdf`,
+          "driver",
+          `Driver Reports — ${monthLabel} downloaded.`,
+        );
       } else if (id === "billing-report") {
         const blob = await generateBillingReportPdf(filteredData, monthLabel);
-        triggerDownload(blob, `Billing Report - ${monthLabel}.pdf`);
-        toast.success(`Billing Report — ${monthLabel} downloaded.`);
+        await saveAndDownload(
+          blob,
+          `Billing_Report_${monthLabel.replace(/\s+/g, "_")}.pdf`,
+          "billings",
+          `Billing Report — ${monthLabel} downloaded.`,
+        );
       } else if (id === "shipment-report") {
         const blob = await generateShipmentReportPdf(
           filteredTransportShipments,
           monthLabel,
         );
-        triggerDownload(blob, `Shipment Report - ${monthLabel}.pdf`);
-        toast.success(`Shipment Report — ${monthLabel} downloaded.`);
+        await saveAndDownload(
+          blob,
+          `Shipment_Report_${monthLabel.replace(/\s+/g, "_")}.pdf`,
+          "transportation",
+          `Shipment Report — ${monthLabel} downloaded.`,
+        );
       } else if (id === "quote-report") {
         const blob = await generateQuoteReportPdf(filteredQuotes, monthLabel);
-        triggerDownload(blob, `Quotes Report - ${monthLabel}.pdf`);
-        toast.success(`Quotes Report — ${monthLabel} downloaded.`);
+        await saveAndDownload(
+          blob,
+          `Quotes_Drafts_Report_${monthLabel.replace(/\s+/g, "_")}.pdf`,
+          "transportation",
+          `Quotes Report — ${monthLabel} downloaded.`,
+        );
       }
     } catch {
       toast.error("Failed to generate PDF.");
@@ -1185,7 +1225,7 @@ export default function ReportsPage() {
           </Button>
         </div>
       ) : activeTab === "Transportation" ? (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <TransportationAnalytics
             shipments={filteredTransportShipments}
             quotes={filteredQuotes}
@@ -1267,7 +1307,7 @@ export default function ReportsPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {activeTab === "ALL" && (
             <ReportsAnalytics
               shipments={reportData.shipments}

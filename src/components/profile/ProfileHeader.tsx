@@ -2,6 +2,12 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Camera,
   MapPin,
   CircleDot,
@@ -161,6 +167,46 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       navigator.clipboard.writeText(id);
       toast.success("Account ID copied");
     }
+  };
+
+  const getProfileShareUrl = () => {
+    if (typeof window === "undefined") return "/profile";
+    return `${window.location.origin}/profile`;
+  };
+
+  const handleCopyProfileLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getProfileShareUrl());
+      toast.success("Profile link copied");
+    } catch {
+      toast.error("Unable to copy profile link");
+    }
+  };
+
+  const handleShareExternally = async () => {
+    const url = getProfileShareUrl();
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${displayName} • Action Auto`,
+          text: `View ${displayName}'s profile on Action Auto`,
+          url,
+        });
+        return;
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "name" in error &&
+          (error as { name?: string }).name === "AbortError"
+        ) {
+          return;
+        }
+      }
+    }
+
+    await handleCopyProfileLink();
+    toast.info("Native sharing unavailable, copied profile link instead.");
   };
 
   const displayName =
@@ -444,6 +490,38 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         </div>
 
         <div className="shrink-0 flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-sm font-medium"
+              >
+                <Share2 className="size-3.5 mr-1.5" />
+                Share
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-52 bg-gray-900 border-white/10 text-white"
+            >
+              <DropdownMenuItem
+                className="focus:bg-white/10 focus:text-white"
+                onClick={handleCopyProfileLink}
+              >
+                <Copy className="size-4 mr-2" />
+                Copy profile link
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-white/10 focus:text-white"
+                onClick={handleShareExternally}
+              >
+                <Share2 className="size-4 mr-2" />
+                Share externally
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="ghost"
             size="sm"

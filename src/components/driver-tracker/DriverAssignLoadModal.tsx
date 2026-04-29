@@ -2,8 +2,15 @@
 
 import * as React from "react";
 import {
-  Truck, Package, Loader2, MapPin, ArrowRight,
-  CheckCircle2, XCircle, Search, Calendar,
+  Truck,
+  Package,
+  Loader2,
+  MapPin,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Search,
+  Calendar,
 } from "lucide-react";
 import {
   Dialog,
@@ -90,13 +97,17 @@ export function DriverAssignLoadModal({
           </p>
           <div className="flex items-center gap-3 mt-2">
             <Avatar className="size-10 border-2 border-background shadow-sm">
-              {driver?.driver?.avatar && <AvatarImage src={driver.driver.avatar} />}
+              {driver?.driver?.avatar && (
+                <AvatarImage src={driver.driver.avatar} />
+              )}
               <AvatarFallback className="text-xs font-bold bg-primary/5 text-primary">
                 {driver?.driver?.name?.[0]?.toUpperCase() || "?"}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold">{driver?.driver?.name || "Unknown"}</p>
+              <p className="text-sm font-bold">
+                {driver?.driver?.name || "Unknown"}
+              </p>
               <div className="flex flex-wrap gap-1 mt-0.5">
                 {eq?.truckMake && (
                   <Badge className="text-[9px] px-1.5 py-0 h-5 bg-muted text-muted-foreground border-border/50">
@@ -105,7 +116,8 @@ export function DriverAssignLoadModal({
                 )}
                 {eq?.trailerType && (
                   <Badge className="text-[9px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 gap-0.5">
-                    <Truck className="size-2.5" />{trailerLabel(eq.trailerType)}
+                    <Truck className="size-2.5" />
+                    {trailerLabel(eq.trailerType)}
                   </Badge>
                 )}
                 {eq?.maxVehicleCapacity != null && (
@@ -114,7 +126,8 @@ export function DriverAssignLoadModal({
                   </Badge>
                 )}
                 <Badge className="text-[9px] px-1.5 py-0 h-5 bg-muted text-muted-foreground border-border/50">
-                  {driver?.shipments?.length || 0} current load{(driver?.shipments?.length || 0) !== 1 ? "s" : ""}
+                  {driver?.shipments?.length || 0} current load
+                  {(driver?.shipments?.length || 0) !== 1 ? "s" : ""}
                 </Badge>
               </div>
             </div>
@@ -131,11 +144,13 @@ export function DriverAssignLoadModal({
           />
         </div>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-96 overflow-y-auto modal-scrollbar [scrollbar-gutter:stable] pr-2">
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-8 gap-3">
               <Loader2 className="size-6 text-primary animate-spin" />
-              <p className="text-xs text-muted-foreground font-medium">Loading available loads...</p>
+              <p className="text-xs text-muted-foreground font-medium">
+                Loading available loads...
+              </p>
             </div>
           )}
           {!isLoading && filteredShipments.length === 0 && (
@@ -144,17 +159,21 @@ export function DriverAssignLoadModal({
                 <Package className="size-6 text-muted-foreground/40" />
               </div>
               <p className="text-xs text-muted-foreground font-medium">
-                {loadSearch ? "No loads match your search" : "No loads available for pickup"}
+                {loadSearch
+                  ? "No loads match your search"
+                  : "No loads available for pickup"}
               </p>
             </div>
           )}
           {filteredShipments.map((shipment) => {
-            const trailerMatch = eq?.trailerType && shipment.trailerTypeRequired
-              ? eq.trailerType === shipment.trailerTypeRequired
-              : null;
-            const capacityMatch = eq?.maxVehicleCapacity && shipment.vehicleCount
-              ? eq.maxVehicleCapacity >= shipment.vehicleCount
-              : null;
+            const trailerMatch =
+              eq?.trailerType && shipment.trailerTypeRequired
+                ? eq.trailerType === shipment.trailerTypeRequired
+                : null;
+            const capacityMatch =
+              eq?.maxVehicleCapacity && shipment.vehicleCount
+                ? eq.maxVehicleCapacity >= shipment.vehicleCount
+                : null;
 
             return (
               <div
@@ -175,24 +194,31 @@ export function DriverAssignLoadModal({
                           <MapPin className="size-3 shrink-0" />
                           <span className="truncate">{shipment.origin}</span>
                           <ArrowRight className="size-3 shrink-0 text-muted-foreground/40" />
-                          <span className="truncate">{shipment.destination}</span>
+                          <span className="truncate">
+                            {shipment.destination}
+                          </span>
                         </div>
                       )}
                       {shipment.requestedPickupDate && (
                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
                           <Calendar className="size-3" />
-                          Pickup: {new Date(shipment.requestedPickupDate).toLocaleDateString()}
+                          Pickup:{" "}
+                          {new Date(
+                            shipment.requestedPickupDate,
+                          ).toLocaleDateString()}
                         </div>
                       )}
                       <div className="flex flex-wrap gap-1 mt-1">
                         {shipment.trailerTypeRequired && (
                           <Badge className="text-[9px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 gap-0.5">
-                            <Truck className="size-2.5" />{trailerLabel(shipment.trailerTypeRequired)}
+                            <Truck className="size-2.5" />
+                            {trailerLabel(shipment.trailerTypeRequired)}
                           </Badge>
                         )}
                         {shipment.vehicleCount != null && (
                           <Badge className="text-[9px] px-1.5 py-0 h-5 bg-indigo-500/10 text-indigo-600 border-indigo-200">
-                            {shipment.vehicleCount} vehicle{shipment.vehicleCount !== 1 ? "s" : ""}
+                            {shipment.vehicleCount} vehicle
+                            {shipment.vehicleCount !== 1 ? "s" : ""}
                           </Badge>
                         )}
                         {shipment.carrierPayAmount != null && (
@@ -220,14 +246,26 @@ export function DriverAssignLoadModal({
                 {(trailerMatch !== null || capacityMatch !== null) && (
                   <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/20">
                     {trailerMatch !== null && (
-                      <span className={`flex items-center gap-1 text-[10px] font-semibold ${trailerMatch ? "text-emerald-600" : "text-red-500"}`}>
-                        {trailerMatch ? <CheckCircle2 className="size-3" /> : <XCircle className="size-3" />}
+                      <span
+                        className={`flex items-center gap-1 text-[10px] font-semibold ${trailerMatch ? "text-emerald-600" : "text-red-500"}`}
+                      >
+                        {trailerMatch ? (
+                          <CheckCircle2 className="size-3" />
+                        ) : (
+                          <XCircle className="size-3" />
+                        )}
                         Trailer {trailerMatch ? "Match" : "Mismatch"}
                       </span>
                     )}
                     {capacityMatch !== null && (
-                      <span className={`flex items-center gap-1 text-[10px] font-semibold ${capacityMatch ? "text-emerald-600" : "text-red-500"}`}>
-                        {capacityMatch ? <CheckCircle2 className="size-3" /> : <XCircle className="size-3" />}
+                      <span
+                        className={`flex items-center gap-1 text-[10px] font-semibold ${capacityMatch ? "text-emerald-600" : "text-red-500"}`}
+                      >
+                        {capacityMatch ? (
+                          <CheckCircle2 className="size-3" />
+                        ) : (
+                          <XCircle className="size-3" />
+                        )}
                         Capacity {capacityMatch ? "OK" : "Exceeded"}
                       </span>
                     )}
