@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShippingQuoteModal } from "@/components/shipping-quote-modal";
 import { QuoteResultModal } from "@/components/QuoteResultModal";
 import { TransportationSidebar } from "@/components/TransportationSidebar";
-import { ShipmentCard } from "@/components/ShipmentCard";
 import { QuoteCard } from "@/components/QuoteCard";
 import { useRouter } from "next/navigation";
 import {
@@ -323,18 +322,23 @@ function TransportationPageInner() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((s) => {
-        const quote = s.quoteId;
-        const preserved = s.preservedQuoteData;
+        const pickup = s.pickupLocation;
+        const delivery = s.deliveryLocation;
+        const vehicles = s.vehicles || [];
+        
         return (
-          quote?.firstName?.toLowerCase().includes(query) ||
-          quote?.lastName?.toLowerCase().includes(query) ||
-          quote?.vin?.toLowerCase().includes(query) ||
-          quote?.stockNumber?.toLowerCase().includes(query) ||
-          preserved?.firstName?.toLowerCase().includes(query) ||
-          preserved?.lastName?.toLowerCase().includes(query) ||
-          preserved?.vin?.toLowerCase().includes(query) ||
-          preserved?.stockNumber?.toLowerCase().includes(query) ||
-          s.trackingNumber?.toLowerCase().includes(query)
+          s.loadNumber?.toLowerCase().includes(query) ||
+          pickup.city.toLowerCase().includes(query) ||
+          pickup.state.toLowerCase().includes(query) ||
+          pickup.contactName?.toLowerCase().includes(query) ||
+          delivery.city.toLowerCase().includes(query) ||
+          delivery.state.toLowerCase().includes(query) ||
+          delivery.contactName?.toLowerCase().includes(query) ||
+          vehicles.some(v => 
+            v.make?.toLowerCase().includes(query) || 
+            v.model?.toLowerCase().includes(query) || 
+            v.vin?.toLowerCase().includes(query)
+          )
         );
       });
     }
@@ -703,10 +707,10 @@ function TransportationPageInner() {
                   total={loadsPagination?.total ?? 0}
                   onLimitChange={changeLoadsLimit}
                 />
-                {filteredLoads.map((shipment) => (
-                  <ShipmentCard
-                    key={shipment._id}
-                    shipment={shipment}
+                {filteredLoads.map((load) => (
+                  <LoadCard
+                    key={load._id}
+                    load={load}
                     onDelete={handleDeleteLoad}
                     onUpdate={handleUpdateLoad}
                   />

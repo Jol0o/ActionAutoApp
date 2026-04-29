@@ -218,9 +218,9 @@ export default function LoadDetailsPage() {
               <CardTitle className="text-lg flex items-center gap-2 font-bold">
                 <Car className="size-5 text-muted-foreground" /> Vehicles <span className="text-muted-foreground font-normal text-sm bg-muted px-2 py-0.5 rounded-full">{load.vehicles?.length || 0}</span>
               </CardTitle>
-              {load.vehicles?.[0]?.trailerType && (
+              {load.trailerType && (
                 <Badge variant="secondary" className="font-bold text-xs uppercase tracking-wider bg-background border-border shadow-sm">
-                  {load.vehicles[0].trailerType.replace(/_/g, " ")}
+                  {load.trailerType.replace(/_/g, " ")}
                 </Badge>
               )}
             </CardHeader>

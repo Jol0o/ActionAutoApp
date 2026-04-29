@@ -23,14 +23,10 @@ import {
 import { TrendingUp, PackageCheck, BarChart2 } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import { Payment } from "@/types/billing";
-
-interface ManagedLoad {
-  _id: string
-  status: string
-}
+import { Load } from "@/types/load";
 
 interface Props {
-  loads: ManagedLoad[]
+  loads: Load[]
   rawPayments: Payment[]
   monthLabel: string
 }
@@ -39,20 +35,23 @@ interface Props {
 
 const STATUS_FILL: Record<string, string> = {
   Delivered: "var(--chart-1)",
-  "In-Route": "var(--chart-2)",
-  Dispatched: "var(--chart-3)",
-  "Available for Pickup": "var(--chart-4)",
+  "In-Transit": "var(--chart-2)",
+  "Picked Up": "var(--chart-2)",
+  Assigned: "var(--chart-3)",
+  Accepted: "var(--chart-3)",
+  Posted: "var(--chart-4)",
   Cancelled: "var(--chart-5)",
 };
 
 
-function buildDeliveryData(loads: ManagedLoad[]) {
+function buildDeliveryData(loads: Load[]) {
   const counts: Record<string, number> = {}
   loads.forEach(s => {
     counts[s.status] = (counts[s.status] || 0) + 1
   })
   return Object.entries(counts).map(([name, value]) => ({ name, value }))
 }
+
 function buildRevenueData(rawPayments: Payment[]) {
   const now = new Date();
   const result = [];

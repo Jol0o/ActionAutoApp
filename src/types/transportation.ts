@@ -1,4 +1,6 @@
 // types/transportation.ts
+// Note: This file now only contains legacy Quote types. 
+// Shipment and the legacy Load alias have been purged in favor of the Load architecture in types/load.ts.
 
 export interface Quote {
   _id: string;
@@ -41,100 +43,4 @@ export interface Quote {
     name: string;
     logoUrl?: string;
   };
-}
-
-export interface Shipment {
-  _id: string;
-  quoteId?: Quote;
-  preservedQuoteData?: Quote;
-  status:
-  | "Available for Pickup"
-  | "Cancelled"
-  | "Delivered"
-  | "Dispatched"
-  | "In-Route"
-  | "Assigned"
-  | "In-Transit"
-  | "Posted";
-  origin: string;
-  destination: string;
-  requestedPickupDate: string;
-  scheduledPickup?: string;
-  pickedUp?: string;
-  scheduledDelivery?: string;
-  delivered?: string;
-  trackingNumber?: string;
-  createdAt: string;
-  assignedDriverId?:
-  | string
-  | {
-    _id: string;
-    name?: string;
-    email?: string;
-    avatar?: string | null;
-  };
-  assignedAt?: string;
-  driverAcceptedAt?: string;
-  proofOfDelivery?: {
-    imageUrl: string;
-    submittedAt: string;
-    note?: string;
-    confirmedAt?: string;
-    confirmedBy?: string;
-  };
-  createdBy?: {
-    _id: string;
-    name?: string;
-    email?: string;
-    avatar?: string | null;
-  };
-  organization?: {
-    name: string;
-    logoUrl?: string;
-  };
-
-  // Extended fields (from main branch merge)
-  desiredDeliveryDate?: string;
-  internalLoadId?: string;
-  carrierPayAmount?: number;
-  copCodAmount?: number;
-  balanceAmount?: number;
-  specialInstructions?: string;
-  loadSpecificTerms?: string;
-  preDispatchNotes?: string;
-  trailerTypeRequired?: string;
-  vehicleCount?: number;
-  isPostedToBoard?: boolean;
-  originContact?: {
-    contactName?: string;
-    email?: string;
-    phone?: string;
-    cellPhone?: string;
-    buyerReferenceNumber?: string;
-  };
-  destinationContact?: {
-    contactName?: string;
-    email?: string;
-    phone?: string;
-    cellPhone?: string;
-    buyerReferenceNumber?: string;
-  };
-
-  // Driver-specific response fields (injected by backend per-user)
-  myRequestStatus?: "pending" | "approved" | "rejected";
-  myRequestedAt?: string;
-  rejectionReason?: string;
-}
-
-// Type alias for compatibility (Load = Shipment)
-export type Load = Shipment;
-
-// ShipmentStats reflects the actual load status values
-export interface ShipmentStats {
-  all: number;
-  Posted: number;
-  Assigned: number;
-  "In-Transit": number;
-  Delivered: number;
-  Cancelled: number;
 }

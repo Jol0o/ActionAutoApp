@@ -18,26 +18,29 @@ import { cn, resolveImageUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { trailerTypeOptions } from '@/components/driver-profile/driver-profile-constants';
+import { Load, LoadStatus } from '@/types/load';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Denver' }) : '';
 const fmtDateTime = (d?: string) => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Denver' }) : '';
 const trailerLabel = (val?: string) => trailerTypeOptions.find(t => t.value === val)?.label || val || 'Any';
 const extractErr = (e: any, fb: string) => e?.response?.data?.message || e?.message || fb;
 
-const STATUS_THEME: Record<string, { bg: string; text: string; border: string }> = {
-  'Available for Pickup': { bg: 'bg-blue-500/10', text: 'text-blue-600', border: 'border-blue-500/20' },
-  Dispatched: { bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-500/20' },
-  'In-Route': { bg: 'bg-emerald-500/10', text: 'text-emerald-600', border: 'border-emerald-500/20' },
+const STATUS_THEME: Record<LoadStatus, { bg: string; text: string; border: string }> = {
+  Draft: { bg: 'bg-slate-500/10', text: 'text-slate-600', border: 'border-slate-500/20' },
+  Posted: { bg: 'bg-blue-500/10', text: 'text-blue-600', border: 'border-blue-500/20' },
+  Assigned: { bg: 'bg-blue-500/10', text: 'text-blue-600', border: 'border-blue-500/20' },
+  Accepted: { bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-500/20' },
+  'Picked Up': { bg: 'bg-orange-500/10', text: 'text-orange-600', border: 'border-orange-500/20' },
+  'In-Transit': { bg: 'bg-emerald-500/10', text: 'text-emerald-600', border: 'border-emerald-500/20' },
   Delivered: { bg: 'bg-green-500/10', text: 'text-green-700', border: 'border-green-500/20' },
   Cancelled: { bg: 'bg-red-500/10', text: 'text-red-600', border: 'border-red-500/20' },
-  Posted: { bg: 'bg-blue-500/10', text: 'text-blue-600', border: 'border-blue-500/20' },
-  Assigned: { bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-500/20' },
 };
 
 const STEPS = [
   { key: 'assigned', label: 'Assigned' },
   { key: 'accepted', label: 'Accepted' },
-  { key: 'in-route', label: 'In Route' },
+  { key: 'picked-up', label: 'Picked Up' },
+  { key: 'in-transit', label: 'In Transit' },
   { key: 'delivered', label: 'Delivered' },
 ] as const;
 
@@ -46,20 +49,21 @@ export default function LoadDetailPage() {
   const params = useParams();
   const router = useRouter();
   const loadId = params.id as string;
-  const [data, setData] = React.useState<any>(null);
+  const [data, setData] = React.useState<Load | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
 
   const fetchDetail = React.useCallback(async () => {
     try {
       const token = await getToken();
+      // Unifying detail fetch
       const [loadsRes, reqRes, availRes] = await Promise.all([
         apiClient.get('/api/driver-tracking/my-loads', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { data: [] } })),
         apiClient.get('/api/driver-tracking/my-requests', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { data: [] } })),
         apiClient.get('/api/driver-tracking/available-loads', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { data: [] } })),
       ]);
-      const all = [...(loadsRes.data?.data || []), ...(reqRes.data?.data || []), ...(availRes.data?.data || [])];
-      const found = all.find((l: any) => l._id === loadId);
+      const all: Load[] = [...(loadsRes.data?.data || []), ...(reqRes.data?.data || []), ...(availRes.data?.data || [])];
+      const found = all.find((l) => l._id === loadId);
       if (found) setData(found);
     } catch (err: any) { toast.error(extractErr(err, 'Failed to load details')); }
     finally { setLoading(false); }
@@ -94,20 +98,30 @@ export default function LoadDetailPage() {
     </div>
   );
 
-  const quote = data.preservedQuoteData;
-  const vehicleName = quote?.vehicleName;
-  const vehicleImg = quote?.vehicleImage;
-  const vehicles = data.vehicles || [];
-  const status = data.status || 'Unknown';
+  const status = data.status;
   const theme = STATUS_THEME[status] || STATUS_THEME['Posted'];
-  const isAssigned = !!data.assignedDriverId || !!data.assignedAt;
+  const vehicles = data.vehicles || [];
+  const primaryVehicle = vehicles[0];
+  const vehicleName = primaryVehicle ? `${primaryVehicle.year || ''} ${primaryVehicle.make || ''} ${primaryVehicle.model || ''}`.trim() : "Unknown Vehicle";
+  
+  const isAssigned = !!data.assignedAt;
   const isAccepted = !!data.driverAcceptedAt;
   const isMyRequest = !!data.myRequestStatus;
-  const canAccept = isAssigned && !isAccepted && status !== 'Delivered' && status !== 'Cancelled';
-  const canStartRoute = isAccepted && status === 'Dispatched';
-  const canDrop = isAssigned && isAccepted && status !== 'Delivered' && status !== 'Cancelled';
-  const canRequest = !isAssigned && !isMyRequest && (status === 'Available for Pickup' || status === 'Posted');
-  const stepIdx = status === 'Delivered' ? 3 : status === 'In-Route' ? 2 : isAccepted ? 1 : 0;
+  
+  const canAccept = status === 'Assigned' && !isAccepted;
+  const canMarkPickedUp = status === 'Accepted';
+  const canStartRoute = status === 'Picked Up';
+  const canDrop = isAccepted && (status === 'Accepted' || status === 'Picked Up' || status === 'In-Transit');
+  const canRequest = !isAssigned && !isMyRequest && (status === 'Posted');
+  
+  const getStepIdx = () => {
+    if (status === 'Delivered') return 4;
+    if (status === 'In-Transit') return 3;
+    if (status === 'Picked Up') return 2;
+    if (status === 'Accepted' || isAccepted) return 1;
+    return 0;
+  };
+  const stepIdx = getStepIdx();
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
@@ -123,10 +137,10 @@ export default function LoadDetailPage() {
                 <button onClick={() => router.back()} className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"><ArrowLeft className="size-4.5 text-white/80" /></button>
                 <div>
                   <div className="flex items-center gap-2.5">
-                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white font-mono">{data.trackingNumber || data.loadNumber || loadId.slice(-8)}</h1>
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white font-mono">{data.loadNumber || loadId.slice(-8)}</h1>
                     <Badge className={cn('text-[10px]', theme.bg, theme.text, theme.border)}>{status}</Badge>
                   </div>
-                  <p className="text-sm text-white/40 mt-0.5">{vehicleName || `${data.origin} → ${data.destination}`}</p>
+                  <p className="text-sm text-white/40 mt-0.5">{vehicleName || `${data.pickupLocation.city} → ${data.deliveryLocation.city}`}</p>
                 </div>
               </div>
               {data.pricing?.carrierPayAmount != null && data.pricing.carrierPayAmount > 0 && (
@@ -138,16 +152,16 @@ export default function LoadDetailPage() {
             </div>
 
             <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1.5 text-emerald-400"><div className="size-2 rounded-full bg-emerald-400" /><span className="font-semibold">{data.origin}</span></div>
+              <div className="flex items-center gap-1.5 text-emerald-400"><div className="size-2 rounded-full bg-emerald-400" /><span className="font-semibold">{data.pickupLocation.city}, {data.pickupLocation.state}</span></div>
               <ArrowRight className="size-4 text-white/20" />
-              <div className="flex items-center gap-1.5 text-rose-400"><MapPin className="size-3.5" /><span className="font-semibold">{data.destination}</span></div>
+              <div className="flex items-center gap-1.5 text-rose-400"><MapPin className="size-3.5" /><span className="font-semibold">{data.deliveryLocation.city}, {data.deliveryLocation.state}</span></div>
             </div>
 
-            {isAssigned && status !== 'Delivered' && status !== 'Cancelled' && (
-              <div className="flex items-center gap-0 w-full mt-5">
+            {isAssigned && status !== 'Cancelled' && (
+              <div className="flex items-center gap-0 w-full mt-5 overflow-x-auto pb-2 scrollbar-hide">
                 {STEPS.map((step, i) => (
                   <React.Fragment key={step.key}>
-                    <div className="flex flex-col items-center gap-0.5">
+                    <div className="flex flex-col items-center gap-0.5 min-w-[70px] shrink-0">
                       <div className={cn('size-6 rounded-full flex items-center justify-center border-2 transition-colors',
                         i <= stepIdx ? (i === stepIdx ? 'bg-emerald-400 border-emerald-400 text-slate-950' : 'bg-emerald-400/20 border-emerald-400 text-emerald-300')
                           : 'bg-white/5 border-white/15 text-white/20')}>
@@ -155,7 +169,7 @@ export default function LoadDetailPage() {
                       </div>
                       <span className={cn('text-[10px] font-semibold whitespace-nowrap', i <= stepIdx ? 'text-emerald-400' : 'text-white/20')}>{step.label}</span>
                     </div>
-                    {i < STEPS.length - 1 && <div className={cn('flex-1 h-0.5 -mt-2.5 mx-1 rounded-full', i < stepIdx ? 'bg-emerald-400' : 'bg-white/10')} />}
+                    {i < STEPS.length - 1 && <div className={cn('flex-1 h-0.5 -mt-2.5 mx-1 rounded-full min-w-[20px]', i < stepIdx ? 'bg-emerald-400' : 'bg-white/10')} />}
                   </React.Fragment>
                 ))}
               </div>
@@ -167,6 +181,11 @@ export default function LoadDetailPage() {
           {canAccept && (
             <Button onClick={() => handleAction('accept-load')} disabled={!!actionLoading} className="gap-2 rounded-xl">
               {actionLoading === 'accept-load' ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />} Accept Load
+            </Button>
+          )}
+          {canMarkPickedUp && (
+            <Button onClick={() => handleAction('mark-picked-up')} disabled={!!actionLoading} className="gap-2 bg-orange-600 hover:bg-orange-700 rounded-xl">
+              {actionLoading === 'mark-picked-up' ? <Loader2 className="size-4 animate-spin" /> : <Package className="size-4" />} Mark Picked Up
             </Button>
           )}
           {canStartRoute && (
@@ -188,19 +207,6 @@ export default function LoadDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {vehicleImg && (
-            <Card className="border-border/20 rounded-2xl overflow-hidden md:col-span-2">
-              <div className="relative h-56 sm:h-72">
-                <img src={vehicleImg} alt={vehicleName || 'Vehicle'} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <p className="text-xl font-black text-white">{vehicleName}</p>
-                  {quote?.miles && <p className="text-sm text-white/60">{quote.miles.toLocaleString()} miles</p>}
-                </div>
-              </div>
-            </Card>
-          )}
-
           {vehicles.length > 0 && (
             <Card className="border-border/20 rounded-2xl overflow-hidden md:col-span-2">
               <div className="p-4 border-b border-border/10">
@@ -232,12 +238,12 @@ export default function LoadDetailPage() {
               <div className="flex items-center gap-2"><Calendar className="size-4 text-primary" /><h3 className="text-sm font-black uppercase tracking-wider">Schedule</h3></div>
             </div>
             <CardContent className="p-4 space-y-3">
-              <DateRow label="Scheduled Pickup" value={data.dates?.pickupDeadline || data.scheduledPickup || data.requestedPickupDate} />
-              <DateRow label="Scheduled Delivery" value={data.dates?.deliveryDeadline || data.scheduledDelivery || data.desiredDeliveryDate} />
+              <DateRow label="Scheduled Pickup" value={data.dates?.pickupDeadline} />
+              <DateRow label="Scheduled Delivery" value={data.dates?.deliveryDeadline} />
               {data.assignedAt && <DateRow label="Assigned" value={data.assignedAt} />}
               {data.driverAcceptedAt && <DateRow label="Accepted" value={data.driverAcceptedAt} />}
-              {data.pickedUp && <DateRow label="Picked Up" value={data.pickedUp} />}
-              {data.delivered && <DateRow label="Delivered" value={data.delivered} />}
+              {data.pickedUpAt && <DateRow label="Picked Up" value={data.pickedUpAt} />}
+              {data.deliveredAt && <DateRow label="Delivered" value={data.deliveredAt} />}
             </CardContent>
           </Card>
 
@@ -249,45 +255,47 @@ export default function LoadDetailPage() {
               {data.pricing?.carrierPayAmount != null && <FinRow label="Carrier Pay" value={data.pricing.carrierPayAmount} highlight />}
               {data.pricing?.copCodAmount != null && data.pricing.copCodAmount > 0 && <FinRow label="COD" value={data.pricing.copCodAmount} />}
               {data.pricing?.balanceAmount != null && <FinRow label="Balance" value={data.pricing.balanceAmount} />}
-              {quote?.rate && <FinRow label="Quoted Rate" value={quote.rate} />}
-              {quote?.miles && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Distance</span><span className="font-semibold">{quote.miles.toLocaleString()} miles</span></div>}
-              {data.trailerTypeRequired && (
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Trailer Required</span><Badge variant="outline" className="text-[10px] h-5">{trailerLabel(data.trailerTypeRequired)}</Badge></div>
+              {data.trailerType && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Trailer Required</span>
+                  <Badge variant="outline" className="text-[10px] h-5">
+                    {data.trailerType.replace(/_/g, " ")}
+                  </Badge>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          {(data.pickupLocation?.contactName || data.pickupLocation?.phone || data.originContact?.contactName || data.originContact?.phone) && (
+          {data.pickupLocation?.contactName && (
             <Card className="border-border/20 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-border/10">
                 <h3 className="text-sm font-black uppercase tracking-wider">Pick-Up Contact</h3>
               </div>
               <CardContent className="p-4 space-y-2">
-                <ContactInfo contact={data.pickupLocation || data.originContact} />
+                <ContactInfo contact={data.pickupLocation} />
               </CardContent>
             </Card>
           )}
 
-          {(data.deliveryLocation?.contactName || data.deliveryLocation?.phone || data.destinationContact?.contactName || data.destinationContact?.phone) && (
+          {data.deliveryLocation?.contactName && (
             <Card className="border-border/20 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-border/10">
                 <h3 className="text-sm font-black uppercase tracking-wider">Delivery Contact</h3>
               </div>
               <CardContent className="p-4 space-y-2">
-                <ContactInfo contact={data.deliveryLocation || data.destinationContact} />
+                <ContactInfo contact={data.deliveryLocation} />
               </CardContent>
             </Card>
           )}
 
-          {(data.additionalInfo?.instructions || data.specialInstructions || data.additionalInfo?.notes || data.preDispatchNotes || data.loadSpecificTerms) && (
+          {(data.additionalInfo?.instructions || data.additionalInfo?.notes) && (
             <Card className="border-border/20 rounded-2xl overflow-hidden md:col-span-2">
               <div className="p-4 border-b border-border/10">
                 <div className="flex items-center gap-2"><FileText className="size-4 text-primary" /><h3 className="text-sm font-black uppercase tracking-wider">Notes & Instructions</h3></div>
               </div>
               <CardContent className="p-4 space-y-4">
-                {(data.additionalInfo?.notes || data.preDispatchNotes) && <NoteBlock label="Dispatch Notes" text={data.additionalInfo?.notes || data.preDispatchNotes} />}
-                {(data.additionalInfo?.instructions || data.specialInstructions) && <NoteBlock label="Special Instructions" text={data.additionalInfo?.instructions || data.specialInstructions} />}
-                {data.loadSpecificTerms && <NoteBlock label="Load Terms" text={data.loadSpecificTerms} />}
+                {data.additionalInfo?.notes && <NoteBlock label="Dispatch Notes" text={data.additionalInfo.notes} />}
+                {data.additionalInfo?.instructions && <NoteBlock label="Special Instructions" text={data.additionalInfo.instructions} />}
               </CardContent>
             </Card>
           )}

@@ -24,36 +24,20 @@ import {
 import { formatCurrency } from "@/utils/format";
 import { Payment } from "@/types/billing";
 import { DriverPayout } from "@/types/driver-payout";
-
-interface AssignedDriver {
-  _id: string;
-  name: string;
-  email: string;
-}
-
-interface ManagedLoad {
-  _id: string
-  status: string
-  origin: string
-  destination: string
-  pickedUp?: string
-  delivered?: string
-  assignedDriverId?: AssignedDriver | string | null
-  proofOfDelivery?: { submittedAt?: string; confirmedAt?: string }
-  preservedQuoteData?: {
-    firstName?: string;
-    lastName?: string;
-    vehicleName?: string;
-    rate?: number;
-  };
-  createdAt: string;
-}
+import { Load } from "@/types/load";
+import {
+  loadCustomer,
+  loadVehicle,
+  loadRoute,
+  fmtDate,
+  driverName,
+} from "@/lib/transportation-reports";
 
 interface ReportPreviewModalProps {
   open: boolean
   onClose: () => void
   reportType: "driver" | "billing"
-  loads: ManagedLoad[]
+  loads: Load[]
   payments: Payment[]
   payouts: DriverPayout[]
   monthLabel: string
@@ -63,35 +47,14 @@ interface ReportPreviewModalProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function resolveDriverName(id?: AssignedDriver | string | null): string {
-  if (!id) return "Unassigned";
-  if (typeof id === "object") return id.name || "Unknown Driver";
-  return "Assigned"; // string ID — not populated
-}
-
-function customerName(s: ManagedLoad) {
-  return (
-    [s.preservedQuoteData?.firstName, s.preservedQuoteData?.lastName]
-      .filter(Boolean)
-      .join(" ") || "—"
-  );
-}
-
-function fmtDate(d?: string) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function statusBadgeClass(status: string) {
   const s = status.toLowerCase();
   if (s === "delivered")
     return "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
-  if (s === "in-route" || s === "dispatched")
+  if (s === "in-transit" || s === "picked up")
     return "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800";
+  if (s === "posted" || s === "assigned" || s === "accepted")
+    return "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800";
   if (s === "cancelled")
     return "bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800";
   return "bg-muted text-muted-foreground border-border";
@@ -122,7 +85,7 @@ function StatCard({
 }) {
   return (
     <div
-      className={`flex-1 min-w-27.5 rounded-lg border bg-card px-4 py-3 ${accent}`}
+      className={`flex-1 min-w-[110px] rounded-lg border bg-card px-4 py-3 ${accent}`}
     >
       <div className="flex items-center justify-between mb-1.5">
         <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
@@ -148,7 +111,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ── Driver Preview ────────────────────────────────────────────────────────────
 
-function DriverPreview({ loads }: { loads: ManagedLoad[] }) {
+function DriverPreview({ loads }: { loads: Load[] }) {
   const assigned = loads.filter(s => s.assignedDriverId != null)
   const delivered = assigned.filter(s => s.status === "Delivered").length
   const pendingApproval = assigned.filter(
@@ -197,29 +160,29 @@ function DriverPreview({ loads }: { loads: ManagedLoad[] }) {
           </div>
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
-            <div className="overflow-y-auto max-h-85">
+            <div className="overflow-y-auto max-h-[340px]">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/60 hover:bg-muted/60">
-                    <TableHead className="text-xs font-semibold w-40">
+                    <TableHead className="text-xs font-semibold w-[160px]">
                       Driver
                     </TableHead>
-                    <TableHead className="text-xs font-semibold w-37.5">
+                    <TableHead className="text-xs font-semibold w-[150px]">
                       Vehicle
                     </TableHead>
-                    <TableHead className="text-xs font-semibold w-37.5">
+                    <TableHead className="text-xs font-semibold w-[150px]">
                       Customer
                     </TableHead>
                     <TableHead className="text-xs font-semibold">
                       Route
                     </TableHead>
-                    <TableHead className="text-xs font-semibold w-22.5">
+                    <TableHead className="text-xs font-semibold w-[90px]">
                       Delivered
                     </TableHead>
-                    <TableHead className="text-xs font-semibold w-25">
+                    <TableHead className="text-xs font-semibold w-[100px]">
                       Status
                     </TableHead>
-                    <TableHead className="text-xs font-semibold w-22.5">
+                    <TableHead className="text-xs font-semibold w-[90px]">
                       Approval
                     </TableHead>
                   </TableRow>
@@ -228,24 +191,24 @@ function DriverPreview({ loads }: { loads: ManagedLoad[] }) {
                   {assigned.map((s) => (
                     <TableRow key={s._id} className="text-xs hover:bg-muted/30">
                       <TableCell className="font-medium text-foreground">
-                        {resolveDriverName(s.assignedDriverId)}
+                        {driverName(s)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {s.preservedQuoteData?.vehicleName || "—"}
+                        {loadVehicle(s)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {customerName(s)}
+                        {loadCustomer(s)}
                       </TableCell>
                       <TableCell>
                         <span
-                          className="inline-block max-w-50 truncate text-muted-foreground"
-                          title={`${s.origin} → ${s.destination}`}
+                          className="inline-block max-w-[200px] truncate text-muted-foreground"
+                          title={loadRoute(s)}
                         >
-                          {s.origin} → {s.destination}
+                          {loadRoute(s)}
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">
-                        {fmtDate(s.delivered)}
+                        {fmtDate(s.deliveredAt)}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -343,9 +306,9 @@ function BillingPreview({
           </div>
         ) : (
           <div className="rounded-xl border border-border/70 bg-card/30 p-2 sm:p-3">
-            <div className="custom-scrollbar overflow-y-auto overflow-x-auto max-h-88 rounded-md [scrollbar-gutter:stable_both-edges]">
-              <Table className="w-full table-auto min-w-160 md:min-w-0">
-                <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur supports-backdrop-filter:bg-muted/70">
+            <div className="overflow-y-auto overflow-x-auto max-h-[350px] rounded-md">
+              <Table className="w-full table-auto min-w-[640px] md:min-w-0">
+                <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
                   <TableRow className="bg-transparent hover:bg-transparent">
                     <TableHead className="text-xs font-semibold">
                       Customer
@@ -367,11 +330,11 @@ function BillingPreview({
                 <TableBody>
                   {payments.map((p) => (
                     <TableRow key={p._id} className="text-xs hover:bg-muted/30">
-                      <TableCell className="font-medium text-foreground whitespace-normal wrap-break-word">
+                      <TableCell className="font-medium text-foreground">
                         {p.customerName}
                       </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-normal wrap-break-word">
-                        <span className="block" title={p.description}>
+                      <TableCell className="text-muted-foreground">
+                        <span className="block truncate max-w-[200px]" title={p.description}>
                           {p.description}
                         </span>
                       </TableCell>
@@ -407,9 +370,9 @@ function BillingPreview({
           </div>
         ) : (
           <div className="rounded-xl border border-border/70 bg-card/30 p-2 sm:p-3">
-            <div className="custom-scrollbar overflow-y-auto overflow-x-auto max-h-88 rounded-md [scrollbar-gutter:stable_both-edges]">
-              <Table className="w-full table-auto min-w-160 md:min-w-0">
-                <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur supports-backdrop-filter:bg-muted/70">
+            <div className="overflow-y-auto overflow-x-auto max-h-[350px] rounded-md">
+              <Table className="w-full table-auto min-w-[640px] md:min-w-0">
+                <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
                   <TableRow className="bg-transparent hover:bg-transparent">
                     <TableHead className="text-xs font-semibold">
                       Driver
@@ -431,11 +394,11 @@ function BillingPreview({
                 <TableBody>
                   {payouts.map((p) => (
                     <TableRow key={p._id} className="text-xs hover:bg-muted/30">
-                      <TableCell className="font-medium text-foreground whitespace-normal wrap-break-word">
+                      <TableCell className="font-medium text-foreground">
                         {p.driverName}
                       </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-normal wrap-break-word">
-                        <span className="block" title={p.description || "—"}>
+                      <TableCell className="text-muted-foreground">
+                        <span className="block truncate max-w-[200px]" title={p.description || "—"}>
                           {p.description || "—"}
                         </span>
                       </TableCell>
@@ -493,16 +456,10 @@ export function ReportPreviewModal({
     >
       <DialogContent
         showCloseButton={false}
-        overlayClassName="bg-black/65 backdrop-blur-sm"
-        onEscapeKeyDown={(event) => {
-          event.preventDefault();
-          onClose();
-        }}
-        className="w-[96vw] max-w-300 sm:max-w-[min(96vw,1200px)] p-0 gap-0 overflow-hidden max-h-[92dvh] min-h-[62dvh] flex flex-col rounded-2xl border-border/60 bg-background/95 shadow-2xl"
+        className="w-[96vw] max-w-[1200px] p-0 gap-0 overflow-hidden max-h-[92vh] flex flex-col rounded-2xl"
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        {/* Header */}
-        <div className="flex items-start justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border shrink-0">
+        <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-border shrink-0">
           <div className="flex items-start gap-3">
             <div
               className={`size-10 rounded-lg flex items-center justify-center border ${isDriver
@@ -550,7 +507,6 @@ export function ReportPreviewModal({
           </div>
         </div>
 
-        {/* Body */}
         <div className="overflow-y-auto px-6 py-5 flex-1">
           {isDriver
             ? <DriverPreview loads={loads} />

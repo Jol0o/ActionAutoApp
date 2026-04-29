@@ -1,14 +1,16 @@
+"use client";
+
 import { X, Phone } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShipmentStats } from "@/types/transportation";
 import { LoadStats } from "@/lib/api/loads";
+import { LoadStatus } from "@/types/load";
 
 interface TransportationSidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   selectedStatus: string;
   setSelectedStatus: (status: string) => void;
-  stats: ShipmentStats;
+  stats: LoadStats;
   loadStats?: LoadStats;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
@@ -28,53 +30,47 @@ export function TransportationSidebar({
     string,
     { light: string; dark: string; bg: string; bgDark: string }
   > = {
-    "Available for Pickup": {
-      light: "bg-yellow-50 text-yellow-700",
-      dark: "dark:bg-yellow-950 dark:text-yellow-300",
-      bg: "bg-yellow-500",
-      bgDark: "dark:bg-yellow-400",
+    Posted: {
+      light: "bg-green-50 text-green-700",
+      dark: "dark:bg-green-950 dark:text-green-300",
+      bg: "bg-green-500",
+      bgDark: "dark:bg-green-400",
+    },
+    Assigned: {
+      light: "bg-blue-50 text-blue-700",
+      dark: "dark:bg-blue-950 dark:text-blue-300",
+      bg: "bg-blue-500",
+      bgDark: "dark:bg-blue-400",
+    },
+    Accepted: {
+        light: "bg-purple-50 text-purple-700",
+        dark: "dark:bg-purple-950 dark:text-purple-300",
+        bg: "bg-purple-500",
+        bgDark: "dark:bg-purple-400",
+    },
+    "Picked Up": {
+      light: "bg-indigo-50 text-indigo-700",
+      dark: "dark:bg-indigo-950 dark:text-indigo-300",
+      bg: "bg-indigo-500",
+      bgDark: "dark:bg-indigo-400",
+    },
+    "In-Transit": {
+      light: "bg-sky-50 text-sky-700",
+      dark: "dark:bg-sky-950 dark:text-sky-300",
+      bg: "bg-sky-500",
+      bgDark: "dark:bg-sky-400",
+    },
+    Delivered: {
+      light: "bg-emerald-50 text-emerald-700",
+      dark: "dark:bg-emerald-950 dark:text-emerald-300",
+      bg: "bg-emerald-500",
+      bgDark: "dark:bg-emerald-400",
     },
     Cancelled: {
       light: "bg-red-50 text-red-700",
       dark: "dark:bg-red-950 dark:text-red-300",
       bg: "bg-red-500",
       bgDark: "dark:bg-red-400",
-    },
-    Delivered: {
-      light: "bg-green-50 text-green-700",
-      dark: "dark:bg-green-950 dark:text-green-300",
-      bg: "bg-green-500",
-      bgDark: "dark:bg-green-400",
-    },
-    Dispatched: {
-      light: "bg-blue-50 text-blue-700",
-      dark: "dark:bg-blue-950 dark:text-blue-300",
-      bg: "bg-blue-500",
-      bgDark: "dark:bg-blue-400",
-    },
-    "In-Route": {
-      light: "bg-blue-50 text-blue-700",
-      dark: "dark:bg-blue-950 dark:text-blue-300",
-      bg: "bg-blue-500",
-      bgDark: "dark:bg-blue-400",
-    },
-    "Assigned": {
-      light: "bg-purple-50 text-purple-700",
-      dark: "dark:bg-purple-950 dark:text-purple-300",
-      bg: "bg-purple-500",
-      bgDark: "dark:bg-purple-400",
-    },
-    "In-Transit": {
-      light: "bg-indigo-50 text-indigo-700",
-      dark: "dark:bg-indigo-950 dark:text-indigo-300",
-      bg: "bg-indigo-500",
-      bgDark: "dark:bg-indigo-400",
-    },
-    "Posted": {
-      light: "bg-orange-50 text-orange-700",
-      dark: "dark:bg-orange-950 dark:text-orange-300",
-      bg: "bg-orange-500",
-      bgDark: "dark:bg-orange-400",
     },
   };
 
@@ -84,6 +80,8 @@ export function TransportationSidebar({
     bg: "bg-slate-500",
     bgDark: "dark:bg-slate-400",
   };
+
+  const currentStats = activeTab === "load-board" ? (loadStats || stats) : stats;
 
   return (
     <div
@@ -125,142 +123,65 @@ export function TransportationSidebar({
         </TabsList>
       </Tabs>
 
-      {/* Shipments / Drafts filters */}
-      {activeTab !== "load-board" && (
-        <div className="space-y-1.5 sm:space-y-2">
-          <button
-            onClick={() => {
-              setSelectedStatus("all");
-              setIsSidebarOpen(false);
-            }}
-            className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${selectedStatus === "all"
-              ? "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300"
-              : "hover:bg-muted text-foreground"
-              }`}
-          >
-            <span className="flex items-center gap-1.5 sm:gap-2">
-              <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-400 dark:bg-yellow-500 rounded-sm"></span>
-              <span className="truncate">Show All</span>
-            </span>
-            <span className="text-muted-foreground ml-2">{stats.all}</span>
-          </button>
+      <div className="space-y-1.5 sm:space-y-2">
+        <button
+          onClick={() => {
+            setSelectedStatus("all");
+            setIsSidebarOpen(false);
+          }}
+          className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${selectedStatus === "all"
+            ? "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300"
+            : "hover:bg-muted text-foreground"
+            }`}
+        >
+          <span className="flex items-center gap-1.5 sm:gap-2">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-400 dark:bg-yellow-500 rounded-sm"></span>
+            <span className="truncate">Show All</span>
+          </span>
+          <span className="text-muted-foreground ml-2 font-mono">{currentStats.all}</span>
+        </button>
 
-          {Object.entries(stats).map(([status, count]) => {
-            if (status === "all") return null;
-            const colors = colorMap[status] || defaultColor;
-            return (
-              <button
-                key={status}
-                onClick={() => {
-                  setSelectedStatus(status);
-                  setIsSidebarOpen(false);
-                }}
-                className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${selectedStatus === status
-                  ? `${colors.light} ${colors.dark}`
-                  : "hover:bg-muted text-foreground"
-                  }`}
-              >
-                <span className="flex items-center gap-1.5 sm:gap-2">
-                  <span
-                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${colors.bg} ${colors.bgDark} rounded-sm`}
-                  ></span>
-                  <span className="truncate">{status}</span>
-                </span>
-                <span className="text-muted-foreground ml-2">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Load Board filters */}
-      {activeTab === "load-board" && loadStats && (
-        <div className="space-y-1.5 sm:space-y-2">
-          {(
-            [
-              {
-                key: "all",
-                label: "All Loads",
-                dot: "bg-yellow-400 dark:bg-yellow-500",
-                active:
-                  "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300",
-              },
-              {
-                key: "Posted",
-                label: "Posted",
-                dot: "bg-green-500",
-                active:
-                  "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300",
-              },
-              {
-                key: "Assigned",
-                label: "Assigned",
-                dot: "bg-blue-500",
-                active:
-                  "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300",
-              },
-              {
-                key: "In-Transit",
-                label: "In-Transit",
-                dot: "bg-purple-500",
-                active:
-                  "bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300",
-              },
-              {
-                key: "Delivered",
-                label: "Delivered",
-                dot: "bg-emerald-500",
-                active:
-                  "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300",
-              },
-              {
-                key: "Cancelled",
-                label: "Cancelled",
-                dot: "bg-red-500",
-                active:
-                  "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300",
-              },
-            ] as const
-          ).map(({ key, label, dot, active }) => (
+        {Object.entries(currentStats).map(([status, count]) => {
+          if (status === "all") return null;
+          const colors = colorMap[status] || defaultColor;
+          return (
             <button
-              key={key}
+              key={status}
               onClick={() => {
-                setSelectedStatus(key);
+                setSelectedStatus(status);
                 setIsSidebarOpen(false);
               }}
-              className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${selectedStatus === key
-                ? active
+              className={`w-full text-left px-2.5 sm:px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm transition-colors ${selectedStatus === status
+                ? `${colors.light} ${colors.dark}`
                 : "hover:bg-muted text-foreground"
                 }`}
             >
               <span className="flex items-center gap-1.5 sm:gap-2">
                 <span
-                  className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${dot} rounded-sm`}
+                  className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${colors.bg} ${colors.bgDark} rounded-sm`}
                 ></span>
-                <span className="truncate">{label}</span>
+                <span className="truncate">{status}</span>
               </span>
-              <span className="text-muted-foreground ml-2">
-                {loadStats[key as keyof typeof loadStats] ?? 0}
-              </span>
+              <span className="text-muted-foreground ml-2 font-mono">{count}</span>
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border">
-        <p className="text-xs sm:text-sm font-medium mb-2 sm:mb-3 text-foreground">
-          Having Transportation Issues?
+        <p className="text-xs sm:text-sm font-bold mb-2 sm:mb-3 text-foreground uppercase tracking-wider">
+          Support Center
         </p>
-        <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+        <div className="space-y-3 text-xs sm:text-sm">
           <a
-            href="mailto:carketach@acertusdeliver.com"
-            className="flex items-center gap-1.5 sm:gap-2 text-blue-600 dark:text-blue-400 hover:underline break-all"
+            href="mailto:support@actionautoutah.com"
+            className="flex items-center gap-2 text-primary hover:underline font-medium"
           >
-            <span className="break-all">carketach@acertusdeliver.com</span>
+            support@actionautoutah.com
           </a>
           <a
             href="tel:8554316570"
-            className="flex items-center gap-1.5 sm:gap-2 text-blue-600 dark:text-blue-400 hover:underline"
+            className="flex items-center gap-2 text-primary hover:underline font-medium"
           >
             <Phone className="size-3.5 sm:size-4" />
             (855) 431-6570

@@ -2,7 +2,8 @@ import * as React from "react";
 import { apiClient } from "@/lib/api-client";
 import { AxiosError } from "axios";
 import { Vehicle, ShippingQuoteFormData } from "@/types/inventory";
-import { Load, Quote } from "@/types/transportation";
+import { Load } from "@/types/load";
+import { Quote } from "@/types/transportation";
 import { LoadStats } from "@/lib/api/loads";
 import { useAuth } from "@/providers/AuthProvider";
 import { initializeSocket } from "@/lib/socket.client";
@@ -511,30 +512,6 @@ export function useTransportationData(filters: TransportationFilters = {}) {
       }
     },
     [vehicles, getAuthConfig],
-  );
-
-  const handleCreateShipment = React.useCallback(
-    async (quoteId: string) => {
-      try {
-        const config = await getAuthConfig();
-        await apiClient.post(
-          "/api/shipments",
-          { quoteId, requestedPickupDate: new Date(), autoDeleteQuote: true },
-          config ?? undefined,
-        );
-        setQuotes((prev) => prev.filter((q) => q._id !== quoteId));
-        return true;
-      } catch (err) {
-        const axiosError = err as AxiosError;
-        throw new Error(
-          "Failed to create shipment: " +
-          ((axiosError.response?.data as any)?.message ||
-            axiosError.message ||
-            "Unknown error"),
-        );
-      }
-    },
-    [getAuthConfig],
   );
 
   const handleConvertToLoad = React.useCallback(
