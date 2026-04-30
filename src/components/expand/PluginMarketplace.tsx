@@ -311,7 +311,7 @@ export default function PluginMarketplace() {
           {/* Plugin Detail Overlay (Management & Enrollment) */}
           {selectedPlugin && (
             <div
-              className="fixed inset-0 z-50 bg-background/60 backdrop-blur-xl flex items-center justify-center px-4 sm:px-6 py-0 animate-in fade-in duration-300"
+              className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center px-4 sm:px-6 py-0 animate-in fade-in duration-300"
               onClick={() => setSelectedPlugin(null)}
             >
               <Card

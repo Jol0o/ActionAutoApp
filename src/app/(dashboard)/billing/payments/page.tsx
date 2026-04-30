@@ -85,13 +85,12 @@ function ToastContainer({
             gap: 10,
             padding: "12px 16px",
             background: T.hi,
-            border: `0.5px solid ${
-              t.type === "success"
+            border: `0.5px solid ${t.type === "success"
                 ? T.green
                 : t.type === "error"
                   ? T.red
                   : T.borderHi
-            }`,
+              }`,
             borderRadius: "var(--border-radius-lg)",
             boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
             animation: "slideIn 0.2s ease both",
@@ -220,6 +219,21 @@ function DetailDrawer({
   toast: (type: ToastType, msg: string) => void;
 }) {
   const [loading, setLoading] = React.useState<string | null>(null);
+  const [hoveredAction, setHoveredAction] = React.useState<"send" | "refund" | "cancel" | null>(
+    null,
+  );
+  const [closeHovered, setCloseHovered] = React.useState(false);
+
+  React.useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   const authHeaders = async () => {
     const token = await getToken();
@@ -233,21 +247,38 @@ function DetailDrawer({
       onRefresh();
       onClose();
       toast("success", `${label} successful`);
-    } catch (e: any) {
-      toast("error", e.response?.data?.message ?? `${label} failed`);
+    } catch (error: unknown) {
+      const errMsg =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as { response?: { data?: { message?: unknown } } }).response?.data?.message ===
+          "string"
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : `${label} failed`;
+      toast("error", errMsg ?? `${label} failed`);
     } finally {
       setLoading(null);
     }
   };
 
-  const Row = ({ label, val }: { label: string; val: React.ReactNode }) => (
+  const Row = ({
+    label,
+    val,
+    last = false,
+  }: {
+    label: string;
+    val: React.ReactNode;
+    last?: boolean;
+  }) => (
     <div
       style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        padding: "9px 0",
-        borderBottom: `0.5px solid ${T.border}`,
+        display: "grid",
+        gridTemplateColumns: "110px minmax(0, 1fr)",
+        gap: 10,
+        alignItems: "start",
+        padding: "10px 0",
+        borderBottom: last ? "none" : `0.5px solid ${T.border}`,
       }}
     >
       <span style={{ fontSize: 12, color: T.textSub }}>{label}</span>
@@ -255,9 +286,12 @@ function DetailDrawer({
         style={{
           fontSize: 12,
           color: T.text,
-          textAlign: "right",
-          maxWidth: "60%",
-          wordBreak: "break-all",
+          textAlign: "left",
+          minWidth: 0,
+          whiteSpace: "normal",
+          overflowWrap: "anywhere",
+          fontWeight: 500,
+          lineHeight: 1.45,
         }}
       >
         {val}
@@ -265,251 +299,393 @@ function DetailDrawer({
     </div>
   );
 
+  const customerRows: Array<{ label: string; val: React.ReactNode }> = [
+    { label: "Customer", val: payment.customerName },
+    { label: "Email", val: payment.customerEmail },
+    ...(payment.customerPhone ? [{ label: "Phone", val: payment.customerPhone }] : []),
+  ];
+
+  const transactionRows: Array<{ label: string; val: React.ReactNode }> = [
+    { label: "Description", val: payment.description },
+    ...(payment.invoiceNumber ? [{ label: "Invoice #", val: payment.invoiceNumber }] : []),
+    { label: "Created", val: new Date(payment.createdAt).toLocaleString() },
+    ...(payment.dueDate
+      ? [{ label: "Due date", val: new Date(payment.dueDate).toLocaleDateString() }]
+      : []),
+    ...(payment.paidAt
+      ? [{ label: "Paid at", val: new Date(payment.paidAt).toLocaleString() }]
+      : []),
+    ...(payment.paymentMethod ? [{ label: "Method", val: payment.paymentMethod }] : []),
+    ...(payment.failureReason ? [{ label: "Failure reason", val: payment.failureReason }] : []),
+    ...(payment.notes ? [{ label: "Notes", val: payment.notes }] : []),
+  ];
+
   return (
     <div
       style={{
         position: "fixed",
         top: 0,
         right: 0,
+        left: 0,
         bottom: 0,
-        width: "min(420px,100vw)",
-        background: T.hi,
-        borderLeft: `0.5px solid ${T.borderHi}`,
         zIndex: 900,
-        overflowY: "auto",
-        padding: "22px 20px",
-        boxShadow: "-8px 0 40px rgba(0,0,0,0.15)",
+        display: "flex",
+        justifyContent: "flex-end",
       }}
     >
-      <div
+      <button
+        type="button"
+        aria-label="Close payment details"
+        onClick={onClose}
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          marginBottom: 22,
+          flex: 1,
+          border: "none",
+          background: "rgba(2, 6, 23, 0.32)",
+          cursor: "pointer",
+          padding: 0,
+        }}
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Payment details"
+        style={{
+          width: "min(100vw, clamp(320px, 30vw, 440px))",
+          height: "100%",
+          background: T.hi,
+          borderLeft: `0.5px solid ${T.borderHi}`,
+          overflowY: "auto",
+          padding: "18px 16px 16px",
+          boxShadow: "-14px 0 44px rgba(0,0,0,0.22)",
+          animation: "drawerIn 0.22s ease both",
         }}
       >
-        <button
-          onClick={onClose}
-          style={{
-            background: T.surface,
-            border: `0.5px solid ${T.border}`,
-            borderRadius: "var(--border-radius-md)",
-            padding: 7,
-            cursor: "pointer",
-            color: T.textSub,
-            display: "flex",
-          }}
-        >
-          <X style={{ width: 14, height: 14 }} />
-        </button>
-        <h3 style={{ fontSize: 16, fontWeight: 500, color: T.text, margin: 0 }}>
-          Payment details
-        </h3>
-      </div>
-
-      <div style={{ marginBottom: 18 }}>
-        <p
-          style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: T.text,
-            margin: 0,
-            letterSpacing: "-0.02em",
-          }}
-        >
-          {formatCurrency(payment.amount)}
-        </p>
-        <div style={{ marginTop: 8 }}>
-          <StatusBadge status={payment.status} />
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <Row label="Customer" val={payment.customerName} />
-        <Row label="Email" val={payment.customerEmail} />
-        {payment.customerPhone && (
-          <Row label="Phone" val={payment.customerPhone} />
-        )}
-        <Row label="Description" val={payment.description} />
-        {payment.invoiceNumber && (
-          <Row label="Invoice #" val={payment.invoiceNumber} />
-        )}
-        {payment.dueDate && (
-          <Row
-            label="Due date"
-            val={new Date(payment.dueDate).toLocaleDateString()}
-          />
-        )}
-        {payment.paidAt && (
-          <Row
-            label="Paid at"
-            val={new Date(payment.paidAt).toLocaleString()}
-          />
-        )}
-        {payment.paymentMethod && (
-          <Row label="Method" val={payment.paymentMethod} />
-        )}
-        {payment.notes && <Row label="Notes" val={payment.notes} />}
-      </div>
-
-      {payment.receiptUrl && (
-        <a
-          href={payment.receiptUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 7,
-            padding: "9px 14px",
+            justifyContent: "space-between",
+            gap: 10,
+            marginBottom: 14,
+            paddingBottom: 12,
+            borderBottom: `0.5px solid ${T.border}`,
+          }}
+        >
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: 0 }}>
+            Payment details
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            onMouseEnter={() => setCloseHovered(true)}
+            onMouseLeave={() => setCloseHovered(false)}
+            style={{
+              background: closeHovered ? T.bg : T.surface,
+              border: `0.5px solid ${T.border}`,
+              borderRadius: 10,
+              width: 30,
+              height: 30,
+              cursor: "pointer",
+              color: T.textSub,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background 120ms ease, color 120ms ease",
+            }}
+          >
+            <X style={{ width: 14, height: 14 }} />
+          </button>
+        </div>
+
+        <div
+          style={{
             background: T.surface,
             border: `0.5px solid ${T.border}`,
-            borderRadius: "var(--border-radius-md)",
-            color: T.text,
-            textDecoration: "none",
-            fontSize: 13,
-            fontWeight: 500,
+            borderRadius: 12,
+            padding: "14px 14px 12px",
+            marginBottom: 14,
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              color: T.textMute,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              fontWeight: 700,
+            }}
+          >
+            Amount
+          </p>
+          <div
+            style={{
+              marginTop: 8,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 34,
+                fontWeight: 800,
+                color: T.text,
+                margin: 0,
+                letterSpacing: "-0.03em",
+                lineHeight: 1.1,
+              }}
+            >
+              {formatCurrency(payment.amount)}
+            </p>
+            <StatusBadge status={payment.status} />
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: T.surface,
+            border: `0.5px solid ${T.border}`,
+            borderRadius: 12,
+            padding: "12px 14px 4px",
             marginBottom: 12,
           }}
         >
-          <Download style={{ width: 13, height: 13 }} /> View receipt
-        </a>
-      )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {(payment.status === "pending" || payment.status === "failed") && (
-          <button
-            onClick={() =>
-              action("Send request", async () => {
-                const headers = await authHeaders();
-                await apiClient.post(
-                  `/api/payments/${payment._id}/request`,
-                  {},
-                  { headers },
-                );
-              })
-            }
-            disabled={!!loading}
+          <p
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              padding: "10px 0",
-              background: "#2563EB",
-              border: "none",
-              borderRadius: "var(--border-radius-md)",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading === "Send request" ? 0.6 : 1,
+              margin: 0,
+              fontSize: 11,
+              color: T.textMute,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              fontWeight: 700,
+              marginBottom: 6,
             }}
           >
-            {loading === "Send request" ? (
-              <Loader2
-                style={{
-                  width: 13,
-                  height: 13,
-                  animation: "spin 1s linear infinite",
-                }}
-              />
-            ) : (
-              <Send style={{ width: 13, height: 13 }} />
-            )}
-            Send payment request
-          </button>
-        )}
+            Customer info
+          </p>
+          {customerRows.map((row, idx) => (
+            <Row
+              key={`customer-${row.label}`}
+              label={row.label}
+              val={row.val}
+              last={idx === customerRows.length - 1}
+            />
+          ))}
+        </div>
 
-        {payment.status === "succeeded" && (
-          <button
-            onClick={() =>
-              action("Refund", async () => {
-                const headers = await authHeaders();
-                await apiClient.post(
-                  `/api/payments/${payment._id}/refund`,
-                  {},
-                  { headers },
-                );
-              })
-            }
-            disabled={!!loading}
+        <div
+          style={{
+            background: T.surface,
+            border: `0.5px solid ${T.border}`,
+            borderRadius: 12,
+            padding: "12px 14px 4px",
+            marginBottom: 12,
+          }}
+        >
+          <p
             style={{
-              display: "flex",
+              margin: 0,
+              fontSize: 11,
+              color: T.textMute,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              fontWeight: 700,
+              marginBottom: 6,
+            }}
+          >
+            Transaction details
+          </p>
+          {transactionRows.map((row, idx) => (
+            <Row
+              key={`transaction-${row.label}`}
+              label={row.label}
+              val={row.val}
+              last={idx === transactionRows.length - 1}
+            />
+          ))}
+        </div>
+
+        {payment.receiptUrl && (
+          <a
+            href={payment.receiptUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
               alignItems: "center",
-              justifyContent: "center",
               gap: 7,
-              padding: "10px 0",
+              padding: "9px 14px",
               background: T.surface,
-              border: `0.5px solid ${T.borderHi}`,
-              borderRadius: "var(--border-radius-md)",
-              color: T.textSub,
+              border: `0.5px solid ${T.border}`,
+              borderRadius: 10,
+              color: T.text,
+              textDecoration: "none",
               fontSize: 13,
-              fontWeight: 500,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading === "Refund" ? 0.6 : 1,
+              fontWeight: 600,
+              marginBottom: 12,
             }}
           >
-            {loading === "Refund" ? (
-              <Loader2
-                style={{
-                  width: 13,
-                  height: 13,
-                  animation: "spin 1s linear infinite",
-                }}
-              />
-            ) : (
-              <RotateCcw style={{ width: 13, height: 13 }} />
-            )}
-            Refund payment
-          </button>
+            <Download style={{ width: 13, height: 13 }} /> View receipt
+          </a>
         )}
 
-        {(payment.status === "pending" || payment.status === "processing") && (
-          <button
-            onClick={() =>
-              action("Cancel", async () => {
-                const headers = await authHeaders();
-                await apiClient.post(
-                  `/api/payments/${payment._id}/cancel`,
-                  {},
-                  { headers },
-                );
-              })
-            }
-            disabled={!!loading}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              padding: "10px 0",
-              background: T.redBg,
-              border: `0.5px solid ${T.red}`,
-              borderRadius: "var(--border-radius-md)",
-              color: T.red,
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading === "Cancel" ? 0.6 : 1,
-            }}
-          >
-            {loading === "Cancel" ? (
-              <Loader2
-                style={{
-                  width: 13,
-                  height: 13,
-                  animation: "spin 1s linear infinite",
-                }}
-              />
-            ) : (
-              <Ban style={{ width: 13, height: 13 }} />
-            )}
-            Cancel payment
-          </button>
-        )}
-      </div>
+        <div
+          style={{
+            background: T.surface,
+            border: `0.5px solid ${T.border}`,
+            borderRadius: 12,
+            padding: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          {(payment.status === "pending" || payment.status === "failed") && (
+            <button
+              onClick={() =>
+                action("Send request", async () => {
+                  const headers = await authHeaders();
+                  await apiClient.post(
+                    `/api/payments/${payment._id}/request`,
+                    {},
+                    { headers },
+                  );
+                })
+              }
+              disabled={!!loading}
+              onMouseEnter={() => setHoveredAction("send")}
+              onMouseLeave={() => setHoveredAction(null)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                padding: "11px 12px",
+                background: hoveredAction === "send" && loading !== "Send request" ? "#1D4ED8" : "#2563EB",
+                border: "none",
+                borderRadius: 10,
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading === "Send request" ? 0.62 : 1,
+                transition: "filter 120ms ease, transform 120ms ease",
+              }}
+            >
+              {loading === "Send request" ? (
+                <Loader2
+                  style={{
+                    width: 13,
+                    height: 13,
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
+              ) : (
+                <Send style={{ width: 13, height: 13 }} />
+              )}
+              Send payment request
+            </button>
+          )}
+
+          {payment.status === "succeeded" && (
+            <button
+              onClick={() =>
+                action("Refund", async () => {
+                  const headers = await authHeaders();
+                  await apiClient.post(
+                    `/api/payments/${payment._id}/refund`,
+                    {},
+                    { headers },
+                  );
+                })
+              }
+              disabled={!!loading}
+              onMouseEnter={() => setHoveredAction("refund")}
+              onMouseLeave={() => setHoveredAction(null)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                padding: "11px 12px",
+                background: hoveredAction === "refund" && loading !== "Refund" ? T.bg : T.surface,
+                border: `0.5px solid ${T.borderHi}`,
+                borderRadius: 10,
+                color: T.textSub,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading === "Refund" ? 0.62 : 1,
+                transition: "background 120ms ease, color 120ms ease",
+              }}
+            >
+              {loading === "Refund" ? (
+                <Loader2
+                  style={{
+                    width: 13,
+                    height: 13,
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
+              ) : (
+                <RotateCcw style={{ width: 13, height: 13 }} />
+              )}
+              Refund payment
+            </button>
+          )}
+
+          {(payment.status === "pending" || payment.status === "processing") && (
+            <button
+              onClick={() =>
+                action("Cancel", async () => {
+                  const headers = await authHeaders();
+                  await apiClient.post(
+                    `/api/payments/${payment._id}/cancel`,
+                    {},
+                    { headers },
+                  );
+                })
+              }
+              disabled={!!loading}
+              onMouseEnter={() => setHoveredAction("cancel")}
+              onMouseLeave={() => setHoveredAction(null)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                padding: "11px 12px",
+                background:
+                  hoveredAction === "cancel" && loading !== "Cancel" ? "rgba(220,38,38,0.08)" : "transparent",
+                border: `0.5px solid ${T.red}`,
+                borderRadius: 10,
+                color: T.red,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading === "Cancel" ? 0.62 : 1,
+                transition: "background 120ms ease, color 120ms ease",
+              }}
+            >
+              {loading === "Cancel" ? (
+                <Loader2
+                  style={{
+                    width: 13,
+                    height: 13,
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
+              ) : (
+                <Ban style={{ width: 13, height: 13 }} />
+              )}
+              Cancel payment
+            </button>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
@@ -612,6 +788,22 @@ function PaymentRow({
   );
 }
 
+type AdvancedPaymentFilters = {
+  minAmount: string;
+  maxAmount: string;
+  fromDate: string;
+  toDate: string;
+  paymentMethod: string;
+};
+
+const defaultAdvancedFilters: AdvancedPaymentFilters = {
+  minAmount: "",
+  maxAmount: "",
+  fromDate: "",
+  toDate: "",
+  paymentMethod: "",
+};
+
 export default function PaymentsPage() {
   const { getToken } = useAuth();
   const [payments, setPayments] = React.useState<Payment[]>([]);
@@ -620,8 +812,25 @@ export default function PaymentsPage() {
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [selected, setSelected] = React.useState<Payment | null>(null);
+  const [filterPanelOpen, setFilterPanelOpen] = React.useState(false);
+  const [advancedFilters, setAdvancedFilters] = React.useState<AdvancedPaymentFilters>(defaultAdvancedFilters);
+  const [draftFilters, setDraftFilters] = React.useState<AdvancedPaymentFilters>(defaultAdvancedFilters);
+  const [totalRecords, setTotalRecords] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const { toasts, push, dismiss } = useToast();
+  const pageSize = 10;
+
+  const hasAdvancedFilters = React.useMemo(
+    () =>
+      Boolean(
+        advancedFilters.minAmount ||
+        advancedFilters.maxAmount ||
+        advancedFilters.fromDate ||
+        advancedFilters.toDate ||
+        advancedFilters.paymentMethod,
+      ),
+    [advancedFilters],
+  );
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -633,14 +842,27 @@ export default function PaymentsPage() {
           headers,
           params: {
             status: statusFilter !== "all" ? statusFilter : undefined,
-            search: search || undefined,
+            search: search.trim() || undefined,
+            limit: pageSize,
+            skip: (page - 1) * pageSize,
+            minAmount: advancedFilters.minAmount || undefined,
+            maxAmount: advancedFilters.maxAmount || undefined,
+            fromDate: advancedFilters.fromDate || undefined,
+            toDate: advancedFilters.toDate || undefined,
+            paymentMethod: advancedFilters.paymentMethod.trim() || undefined,
           },
         }),
         apiClient.get("/api/payments/stats", { headers }),
       ]);
 
       if (paymentsRes.status === "fulfilled") {
-        setPayments(paymentsRes.value.data.data.payments ?? []);
+        const payload = paymentsRes.value.data.data;
+        setPayments(payload.payments ?? []);
+        setTotalRecords(
+          typeof payload.total === "number"
+            ? payload.total
+            : payload.payments?.length ?? 0,
+        );
       }
       if (statsRes.status === "fulfilled") {
         setStats(statsRes.value.data.data ?? null);
@@ -650,15 +872,11 @@ export default function PaymentsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [getToken, search, statusFilter]);
+  }, [advancedFilters, getToken, page, search, statusFilter]);
 
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  React.useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter]);
 
   const statuses = [
     "all",
@@ -670,12 +888,11 @@ export default function PaymentsPage() {
     "cancelled",
   ];
 
-  const pageSize = 6;
-  const totalRecords = payments.length;
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * pageSize;
-  const pagedPayments = payments.slice(startIdx, startIdx + pageSize);
+  const startDisplay = totalRecords === 0 ? 0 : startIdx + 1;
+  const endDisplay = totalRecords === 0 ? 0 : Math.min(startIdx + payments.length, totalRecords);
 
   const trend = React.useMemo(() => {
     const now = new Date();
@@ -731,6 +948,7 @@ export default function PaymentsPage() {
         @import url('https://fonts.googleapis.com/css2?family=Epilogue:wght@500;600;700;800&display=swap');
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes slideIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes drawerIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
         @keyframes skeletonShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
       `}</style>
 
@@ -924,7 +1142,7 @@ export default function PaymentsPage() {
                 <Skeleton width="92%" height={16} radius={6} />
               </div>
             ) : (
-              <ChartContainer config={chartConfig} className="h-[240px] w-full">
+              <ChartContainer config={chartConfig} className="h-60 w-full">
                 <LineChart
                   accessibilityLayer
                   data={trend.map((item) => ({
@@ -1015,7 +1233,10 @@ export default function PaymentsPage() {
                 />
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                   placeholder="Search name, email, invoice..."
                   style={{
                     width: "100%",
@@ -1036,15 +1257,20 @@ export default function PaymentsPage() {
 
               <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
                 <button
+                  type="button"
+                  onClick={() => {
+                    setDraftFilters(advancedFilters);
+                    setFilterPanelOpen(true);
+                  }}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 6,
                     padding: "8px 12px",
                     borderRadius: 10,
-                    border: `0.5px solid ${T.border}`,
-                    background: "transparent",
-                    color: T.textSub,
+                    border: `0.5px solid ${filterPanelOpen || hasAdvancedFilters ? "#3B82F6" : T.border}`,
+                    background: filterPanelOpen || hasAdvancedFilters ? "rgba(59,130,246,0.12)" : "transparent",
+                    color: filterPanelOpen || hasAdvancedFilters ? "#3B82F6" : T.textSub,
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -1081,7 +1307,11 @@ export default function PaymentsPage() {
               {statuses.map((status) => (
                 <button
                   key={status}
-                  onClick={() => setStatusFilter(status)}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(status);
+                    setPage(1);
+                  }}
                   style={{
                     padding: "6px 12px",
                     borderRadius: 8,
@@ -1170,7 +1400,7 @@ export default function PaymentsPage() {
                 </p>
               </div>
             ) : (
-              pagedPayments.map((payment) => (
+              payments.map((payment) => (
                 <PaymentRow
                   key={payment._id}
                   payment={payment}
@@ -1191,12 +1421,12 @@ export default function PaymentsPage() {
                 }}
               >
                 <p style={{ margin: 0, fontSize: 12, color: T.textMute }}>
-                  Showing {startIdx + 1} to{" "}
-                  {Math.min(startIdx + pageSize, totalRecords)} of{" "}
+                  Showing {startDisplay} to {endDisplay} of{" "}
                   {totalRecords} transactions
                 </p>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
+                    type="button"
                     onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage <= 1}
                     style={{
@@ -1214,6 +1444,7 @@ export default function PaymentsPage() {
                     Previous
                   </button>
                   <button
+                    type="button"
                     onClick={() =>
                       setPage((prev) => Math.min(totalPages, prev + 1))
                     }
@@ -1239,6 +1470,231 @@ export default function PaymentsPage() {
           </div>
         </div>
       </div>
+
+      {filterPanelOpen && (
+        <div
+          onClick={() => setFilterPanelOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1800,
+            background: "rgba(15,23,42,0.42)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(460px,100vw)",
+              height: "100%",
+              background: T.hi,
+              borderLeft: `0.5px solid ${T.borderHi}`,
+              boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
+              padding: 22,
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: T.textMute, fontWeight: 700 }}>
+                  Filter payments
+                </p>
+                <h3 style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700, color: T.text }}>
+                  More Filters
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFilterPanelOpen(false)}
+                style={{
+                  border: `0.5px solid ${T.border}`,
+                  background: T.surface,
+                  borderRadius: 10,
+                  width: 34,
+                  height: 34,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: T.textSub,
+                }}
+              >
+                <X style={{ width: 14, height: 14 }} />
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, color: T.textSub, fontWeight: 600 }}>Minimum amount</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draftFilters.minAmount}
+                  onChange={(event) =>
+                    setDraftFilters((prev) => ({ ...prev, minAmount: event.target.value }))
+                  }
+                  placeholder="0.00"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `0.5px solid ${T.borderHi}`,
+                    background: T.surface,
+                    color: T.text,
+                    fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, color: T.textSub, fontWeight: 600 }}>Maximum amount</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draftFilters.maxAmount}
+                  onChange={(event) =>
+                    setDraftFilters((prev) => ({ ...prev, maxAmount: event.target.value }))
+                  }
+                  placeholder="0.00"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `0.5px solid ${T.borderHi}`,
+                    background: T.surface,
+                    color: T.text,
+                    fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+              </label>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: T.textSub, fontWeight: 600 }}>From date</span>
+                  <input
+                    type="date"
+                    value={draftFilters.fromDate}
+                    onChange={(event) =>
+                      setDraftFilters((prev) => ({ ...prev, fromDate: event.target.value }))
+                    }
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: `0.5px solid ${T.borderHi}`,
+                      background: T.surface,
+                      color: T.text,
+                      fontSize: 13,
+                      outline: "none",
+                    }}
+                  />
+                </label>
+
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: T.textSub, fontWeight: 600 }}>To date</span>
+                  <input
+                    type="date"
+                    value={draftFilters.toDate}
+                    onChange={(event) =>
+                      setDraftFilters((prev) => ({ ...prev, toDate: event.target.value }))
+                    }
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: `0.5px solid ${T.borderHi}`,
+                      background: T.surface,
+                      color: T.text,
+                      fontSize: 13,
+                      outline: "none",
+                    }}
+                  />
+                </label>
+              </div>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 12, color: T.textSub, fontWeight: 600 }}>Payment method</span>
+                <input
+                  type="text"
+                  value={draftFilters.paymentMethod}
+                  onChange={(event) =>
+                    setDraftFilters((prev) => ({ ...prev, paymentMethod: event.target.value }))
+                  }
+                  placeholder="card, ach_credit_transfer, cash..."
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `0.5px solid ${T.borderHi}`,
+                    background: T.surface,
+                    color: T.text,
+                    fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+              </label>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setDraftFilters(defaultAdvancedFilters);
+                  setAdvancedFilters(defaultAdvancedFilters);
+                  setPage(1);
+                }}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: `0.5px solid ${T.border}`,
+                  background: T.surface,
+                  color: T.textSub,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Clear filters
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAdvancedFilters(draftFilters);
+                  setPage(1);
+                  setFilterPanelOpen(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#2563EB",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Apply filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <DetailDrawer

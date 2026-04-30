@@ -145,7 +145,7 @@ export function ReceiveModal({ open, userId, userName, onClose }: ReceiveModalPr
   const paymentLink = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
 
   const handleCopy = async () => {
-    try { await navigator.clipboard.writeText(paymentLink); } catch (_) {}
+    try { await navigator.clipboard.writeText(paymentLink); } catch { }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -164,7 +164,10 @@ export function ReceiveModal({ open, userId, userName, onClose }: ReceiveModalPr
        * Override shadcn DialogContent for full Supra theming.
        * [&>button]:hidden — suppresses the auto-added close button; we render our own.
        */}
-      <DialogContent className="!p-0 !border-0 !bg-transparent !shadow-none sm:max-w-sm overflow-hidden rounded-2xl [&>button]:hidden w-[calc(100%-2rem)]">
+      <DialogContent
+        overlayClassName="bg-black/70 backdrop-blur-[4px]"
+        className="p-0! border-0! bg-transparent! shadow-none! sm:max-w-sm overflow-hidden rounded-2xl [&>button]:hidden w-[calc(100%-2rem)]"
+      >
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
           @keyframes supraSheen{0%,62%{left:-110%}100%{left:230%}}

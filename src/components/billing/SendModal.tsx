@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import {
   Building2, Smartphone, UserCircle, ArrowLeft, ChevronRight,
   Camera, ImageUp, Loader2, X,
@@ -17,7 +18,6 @@ import {
 
 const ORANGE = "#E55A00";
 const DISPLAY = "'Rajdhani', var(--font-sans), sans-serif";
-const MONO = "'Share Tech Mono', 'Roboto Mono', monospace";
 const BG = "#0d0d10";
 const SURFACE = "rgba(255,255,255,0.05)";
 const BORDER = "rgba(255,255,255,0.10)";
@@ -287,8 +287,12 @@ export function SendModal({ open, onClose, onSuccess, getToken }: SendModalProps
       if (!results.length) throw new Error("No QR code found. Try a clearer photo.");
       const parsed = parseQrPayload(results[0].rawValue);
       setQrForm({ rawData: results[0].rawValue, ...parsed });
-    } catch (err: any) {
-      setQrError(err.message || "Failed to decode QR code.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to decode QR code.";
+      setQrError(message);
     } finally {
       setQrDecoding(false);
     }
@@ -321,11 +325,11 @@ export function SendModal({ open, onClose, onSuccess, getToken }: SendModalProps
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      const token = await getToken();
+      await getToken();
       // TODO: await apiClient.post("/api/billing/transfer", payload, { headers: { Authorization: `Bearer ${token}` } });
       await new Promise(r => setTimeout(r, 1400)); // Simulated delay
       setFlow("success");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[SendModal] transfer error:", err);
     } finally {
       setIsLoading(false);
@@ -401,7 +405,10 @@ export function SendModal({ open, onClose, onSuccess, getToken }: SendModalProps
   // ────────────────────────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { stopCamera(); onClose(); } }}>
-      <DialogContent className="!p-0 !border-0 !bg-transparent !shadow-none sm:max-w-[420px] overflow-hidden rounded-2xl [&>button]:hidden w-[calc(100%-2rem)]">
+      <DialogContent
+        overlayClassName="bg-black/70 backdrop-blur-[4px]"
+        className="!p-0 !border-0 !bg-transparent !shadow-none sm:max-w-[420px] overflow-hidden rounded-2xl [&>button]:hidden w-[calc(100%-2rem)]"
+      >
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
           @keyframes supraSheen { 0%, 62% { left: -110%; } 100% { left: 230%; } }
@@ -648,8 +655,14 @@ export function SendModal({ open, onClose, onSuccess, getToken }: SendModalProps
                     border: `2px dashed ${qrUploadPreview ? "rgba(229,90,0,0.42)" : "rgba(255,255,255,0.14)"}`,
                   }}>
                     {qrUploadPreview ? (
-                      <img src={qrUploadPreview} alt="Uploaded QR"
-                        style={{ height: 110, width: 110, objectFit: "contain", borderRadius: 8 }} />
+                      <Image
+                        src={qrUploadPreview}
+                        alt="Uploaded QR"
+                        width={110}
+                        height={110}
+                        unoptimized
+                        style={{ objectFit: "contain", borderRadius: 8 }}
+                      />
                     ) : (
                       <>
                         <span style={{

@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
 import { Payment, PaymentStats } from "@/types/billing";
@@ -30,22 +31,22 @@ import { SendModal } from "@/components/billing/SendModal";
 
 // ─── Design Tokens ─────────────────────────────────────────────────────────────
 const T = {
-  bg: "var(--color-background-tertiary)",
-  surface: "var(--color-background-secondary)",
-  surfaceHi: "var(--color-background-primary)",
-  border: "var(--color-border-tertiary)",
-  borderHi: "var(--color-border-secondary)",
-  text: "var(--color-text-primary)",
-  textSub: "var(--color-text-secondary)",
-  textMute: "var(--color-text-tertiary)",
-  accent: "var(--color-text-info)",
-  accentBg: "var(--color-background-info)",
-  success: "var(--color-text-success)",
-  successBg: "var(--color-background-success)",
-  warning: "var(--color-text-warning)",
-  warningBg: "var(--color-background-warning)",
-  danger: "var(--color-text-danger)",
-  dangerBg: "var(--color-background-danger)",
+  bg: "var(--color-background-tertiary, var(--background))",
+  surface: "var(--color-background-secondary, var(--card))",
+  surfaceHi: "var(--color-background-primary, var(--popover))",
+  border: "var(--color-border-tertiary, var(--border))",
+  borderHi: "var(--color-border-secondary, var(--border))",
+  text: "var(--color-text-primary, var(--foreground))",
+  textSub: "var(--color-text-secondary, var(--muted-foreground))",
+  textMute: "var(--color-text-tertiary, var(--muted-foreground))",
+  accent: "var(--color-text-info, #2563EB)",
+  accentBg: "var(--color-background-info, rgba(37,99,235,0.12))",
+  success: "var(--color-text-success, #16A34A)",
+  successBg: "var(--color-background-success, rgba(34,197,94,0.12))",
+  warning: "var(--color-text-warning, #D97706)",
+  warningBg: "var(--color-background-warning, rgba(217,119,6,0.12))",
+  danger: "var(--color-text-danger, #DC2626)",
+  dangerBg: "var(--color-background-danger, rgba(220,38,38,0.12))",
   // Brand palette
   brand: "#16A34A",
   brandMid: "#22C55E",
@@ -62,6 +63,34 @@ const T = {
   wiseBg: "rgba(159,232,112,0.12)",
   wiseBorder: "rgba(159,232,112,0.25)",
 };
+
+function MetricIconShell({
+  children,
+  bg,
+  size = 38,
+}: {
+  children: React.ReactNode;
+  bg: string;
+  size?: number;
+}) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 11,
+        background: bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: `1px solid ${T.border}`,
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 // ─── Stripe SVG Logo ──────────────────────────────────────────────────────────
 function StripeLogo({ size = 38 }: { size?: number }) {
@@ -286,8 +315,10 @@ function StatusPill({ status }: { status: string }) {
 // ─── Payment Method Pill ──────────────────────────────────────────────────────
 // Indicates whether a transaction used Stripe or Wise
 function MethodPill({ method }: { method?: "stripe" | "wise" }) {
+  const { theme } = useTheme();
   if (!method) return null;
   const isStripe = method === "stripe";
+  const wiseColor = theme === "dark" ? "#D9F99D" : T.wiseDark;
   return (
     <span
       style={{
@@ -296,7 +327,7 @@ function MethodPill({ method }: { method?: "stripe" | "wise" }) {
         letterSpacing: "0.08em",
         textTransform: "uppercase",
         fontFamily: "var(--font-mono)",
-        color: isStripe ? T.stripe : T.wiseDark,
+        color: isStripe ? T.stripe : wiseColor,
         background: isStripe ? T.stripeBg : T.wiseBg,
         padding: "2px 7px",
         borderRadius: 5,
@@ -361,21 +392,9 @@ function StatCard({
           marginBottom: 18,
         }}
       >
-        <div
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 11,
-            background: bgVar,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: `1px solid ${T.border}`,
-            flexShrink: 0,
-          }}
-        >
+        <MetricIconShell bg={bgVar}>
           <Icon style={{ width: 16, height: 16, color: colorVar }} />
-        </div>
+        </MetricIconShell>
         <span
           style={{
             fontSize: 10,
@@ -659,21 +678,9 @@ function MiniMetric({
         gap: 12,
       }}
     >
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          background: bgVar,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: `1px solid ${T.border}`,
-          flexShrink: 0,
-        }}
-      >
+      <MetricIconShell bg={bgVar} size={36}>
         <Icon style={{ width: 14, height: 14, color: colorVar }} />
-      </div>
+      </MetricIconShell>
       <div style={{ minWidth: 0 }}>
         <p
           style={{
@@ -786,6 +793,8 @@ function ProviderBadges() {
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function DashboardFooter() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer
       style={{
@@ -793,107 +802,112 @@ function DashboardFooter() {
         paddingTop: 24,
         borderTop: `1px solid ${T.border}`,
         display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: 16,
+        flexDirection: "column",
+        gap: 18,
       }}
     >
-      {/* Left: branding */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 800,
-            color: T.text,
-            letterSpacing: "-0.02em",
-            fontFamily: "'Epilogue', sans-serif",
-          }}
-        >
-          Suprah<span style={{ color: T.brandMid }}>Pay</span>
-        </span>
-        <span style={{ fontSize: 11, color: T.textMute, fontFamily: "var(--font-mono)" }}>
-          ©{new Date().getFullYear()} All rights reserved
-        </span>
-      </div>
-
-      {/* Right: Powered by Stripe + Wise */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            color: T.textMute,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            fontFamily: "var(--font-mono)",
-          }}
-        >
-          Powered by
-        </span>
-
-        {/* Stripe wordmark */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
-            borderRadius: 10,
-            background: T.stripeBg,
-            border: `1px solid ${T.stripeBorder}`,
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 60 60" fill="none">
-            <circle cx="30" cy="30" r="30" fill="#635BFF" />
-            <path
-              d="M27.5 22.5c0-2.2 1.8-3 4.5-3 4 0 9 1.2 13 3.3V12C41 10.3 36.8 9 32 9c-9 0-15 4.5-15 13.5 0 13.2 18 11.1 18 16.8 0 2.6-2.1 3.2-5 3.2-4.3 0-9.8-1.7-14-4.2V49c3.6 2 7.8 3 12 3 9 0 15.3-4.4 15.3-13 0-14.3-18-11.8-18-16.5z"
-              fill="white"
-            />
-          </svg>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
           <span
             style={{
               fontSize: 13,
-              fontWeight: 700,
-              color: T.stripe,
+              fontWeight: 800,
+              color: T.text,
+              letterSpacing: "-0.02em",
               fontFamily: "'Epilogue', sans-serif",
-              letterSpacing: "-0.01em",
+              lineHeight: 1.1,
             }}
           >
-            stripe
+            Suprah<span style={{ color: T.brandMid }}>Pay</span>
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              color: T.textMute,
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.02em",
+              lineHeight: 1.4,
+            }}
+          >
+            ©{currentYear} All rights reserved
           </span>
         </div>
 
-        <span style={{ fontSize: 12, color: T.textMute }}>+</span>
-
-        {/* Wise wordmark */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            padding: "6px 12px",
-            borderRadius: 10,
-            background: T.wiseBg,
-            border: `1px solid ${T.wiseBorder}`,
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 60 60" fill="none">
-            <rect width="60" height="60" rx="12" fill="#9FE870" />
-            <rect x="14" y="14" width="16" height="32" rx="3" fill="#163300" />
-            <path d="M18 20h8l-4 8 4 8h-8V20z" fill="#9FE870" />
-          </svg>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <span
             style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#5a9c32",
-              fontFamily: "'Epilogue', sans-serif",
-              letterSpacing: "-0.01em",
+              fontSize: 10,
+              fontWeight: 600,
+              color: T.textMute,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              fontFamily: "var(--font-mono)",
             }}
           >
-            wise
+            Powered by
           </span>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 10,
+              background: T.stripeBg,
+              border: `1px solid ${T.stripeBorder}`,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 60 60" fill="none">
+              <circle cx="30" cy="30" r="30" fill="#635BFF" />
+              <path
+                d="M27.5 22.5c0-2.2 1.8-3 4.5-3 4 0 9 1.2 13 3.3V12C41 10.3 36.8 9 32 9c-9 0-15 4.5-15 13.5 0 13.2 18 11.1 18 16.8 0 2.6-2.1 3.2-5 3.2-4.3 0-9.8-1.7-14-4.2V49c3.6 2 7.8 3 12 3 9 0 15.3-4.4 15.3-13 0-14.3-18-11.8-18-16.5z"
+                fill="white"
+              />
+            </svg>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: T.stripe,
+                fontFamily: "'Epilogue', sans-serif",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              stripe
+            </span>
+          </div>
+
+          <span style={{ fontSize: 12, color: T.textMute }}>+</span>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "6px 12px",
+              borderRadius: 10,
+              background: T.wiseBg,
+              border: `1px solid ${T.wiseBorder}`,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 60 60" fill="none">
+              <rect width="60" height="60" rx="12" fill="#9FE870" />
+              <rect x="14" y="14" width="16" height="32" rx="3" fill="#163300" />
+              <path d="M18 20h8l-4 8 4 8h-8V20z" fill="#9FE870" />
+            </svg>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#5a9c32",
+                fontFamily: "'Epilogue', sans-serif",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              wise
+            </span>
+          </div>
         </div>
       </div>
     </footer>
@@ -1069,7 +1083,7 @@ export default function BillingDashboard() {
               className="sp-header-right"
               style={{ display: "flex", alignItems: "center", gap: 12 }}
             >
-          
+
 
               <Link
                 href="/billing/payments"
@@ -1306,16 +1320,16 @@ export default function BillingDashboard() {
                         letterSpacing: "0.01em",
                         ...(primary
                           ? {
-                              background: T.brand,
-                              border: "1px solid transparent",
-                              color: "#fff",
-                              boxShadow: `0 0 22px rgba(22,163,74,0.26)`,
-                            }
+                            background: T.brand,
+                            border: "1px solid transparent",
+                            color: "#fff",
+                            boxShadow: `0 0 22px rgba(22,163,74,0.26)`,
+                          }
                           : {
-                              background: "transparent",
-                              border: `1px solid ${T.borderHi}`,
-                              color: T.text,
-                            }),
+                            background: "transparent",
+                            border: `1px solid ${T.borderHi}`,
+                            color: T.text,
+                          }),
                       }}
                     >
                       <Icon style={{ width: 14, height: 14 }} />
@@ -1559,67 +1573,120 @@ export default function BillingDashboard() {
 
           {/* ── Stats ── */}
           <section style={{ marginBottom: 20, animation: "fadeUp 0.42s ease 0.16s both" }}>
-            <p
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: T.textMute,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                fontFamily: "var(--font-mono)",
-                margin: "0 0 14px",
-              }}
-            >
-              Overview
-            </p>
             <div
-              className="sp-stats"
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: 12,
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                borderRadius: 22,
+                overflow: "hidden",
               }}
             >
-              <StatCard
-                icon={CheckCircle2}
-                label="Revenue"
-                skeleton={isLoading}
-                value={isHidden ? "$ ••••" : formatCurrency(stats?.totalRevenue ?? 0)}
-                sub={`${succeeded?.count ?? 0} deals closed`}
-                colorVar={T.brandMid}
-                bgVar={T.brandLight}
-                delay={60}
-              />
-              <StatCard
-                icon={Zap}
-                label="Pending"
-                skeleton={isLoading}
-                value={isHidden ? "$ ••••" : formatCurrency(pending?.totalAmount ?? 0)}
-                sub={`${pending?.count ?? 0} awaiting`}
-                colorVar={T.warning}
-                bgVar={T.warningBg}
-                delay={110}
-              />
-              <StatCard
-                icon={XCircle}
-                label="Failed"
-                skeleton={isLoading}
-                value={isHidden ? "$ ••••" : formatCurrency(failed?.totalAmount ?? 0)}
-                sub={`${failed?.count ?? 0} failed`}
-                colorVar={T.danger}
-                bgVar={T.dangerBg}
-                delay={160}
-              />
-              <StatCard
-                icon={BarChart3}
-                label="All Time"
-                skeleton={isLoading}
-                value={String(stats?.totalCount ?? 0)}
-                sub="total payments"
-                colorVar={T.accent}
-                bgVar={T.accentBg}
-                delay={210}
-              />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  padding: "18px 22px",
+                  borderBottom: `1px solid ${T.border}`,
+                }}
+              >
+                <div>
+                  <p
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: T.textMute,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      fontFamily: "var(--font-mono)",
+                      margin: 0,
+                    }}
+                  >
+                    Overview
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: T.textSub,
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    Snapshot of the current billing position.
+                  </p>
+                </div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 12,
+                    background: T.brandLight,
+                    border: `1px solid ${T.brandBorder}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <BarChart3 style={{ width: 15, height: 15, color: T.brandMid }} />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: 22,
+                }}
+              >
+                <div
+                  className="sp-stats"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  <StatCard
+                    icon={CheckCircle2}
+                    label="Revenue"
+                    skeleton={isLoading}
+                    value={isHidden ? "$ ••••" : formatCurrency(stats?.totalRevenue ?? 0)}
+                    sub={`${succeeded?.count ?? 0} deals closed`}
+                    colorVar={T.brandMid}
+                    bgVar={T.brandLight}
+                    delay={60}
+                  />
+                  <StatCard
+                    icon={Zap}
+                    label="Pending"
+                    skeleton={isLoading}
+                    value={isHidden ? "$ ••••" : formatCurrency(pending?.totalAmount ?? 0)}
+                    sub={`${pending?.count ?? 0} awaiting`}
+                    colorVar={T.warning}
+                    bgVar={T.warningBg}
+                    delay={110}
+                  />
+                  <StatCard
+                    icon={XCircle}
+                    label="Failed"
+                    skeleton={isLoading}
+                    value={isHidden ? "$ ••••" : formatCurrency(failed?.totalAmount ?? 0)}
+                    sub={`${failed?.count ?? 0} failed`}
+                    colorVar={T.danger}
+                    bgVar={T.dangerBg}
+                    delay={160}
+                  />
+                  <StatCard
+                    icon={BarChart3}
+                    label="All Time"
+                    skeleton={isLoading}
+                    value={String(stats?.totalCount ?? 0)}
+                    sub="total payments"
+                    colorVar={T.accent}
+                    bgVar={T.accentBg}
+                    delay={210}
+                  />
+                </div>
+              </div>
             </div>
           </section>
 
@@ -1705,7 +1772,7 @@ export default function BillingDashboard() {
       <SendModal
         open={activeModal === "send"}
         onClose={() => setActiveModal(null)}
-        onSuccess={() => {}}
+        onSuccess={() => { }}
         getToken={getToken}
       />
     </>
