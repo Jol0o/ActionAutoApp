@@ -86,7 +86,10 @@ export function DriverAssignLoadModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent
+        className="sm:max-w-xl"
+        overlayClassName="bg-black/80 backdrop-blur-md"
+      >
         <DialogHeader>
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <Package className="size-4 text-primary" />
@@ -144,7 +147,7 @@ export function DriverAssignLoadModal({
           />
         </div>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto modal-scrollbar [scrollbar-gutter:stable] pr-2">
+        <div className="space-y-4 max-h-96 overflow-y-auto modal-scrollbar [scrollbar-gutter:stable] pr-2">
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-8 gap-3">
               <Loader2 className="size-6 text-primary animate-spin" />
@@ -185,20 +188,22 @@ export function DriverAssignLoadModal({
                     <div className="size-10 rounded-xl bg-primary/5 flex items-center justify-center shrink-0">
                       <Package className="size-5 text-primary" />
                     </div>
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <p className="text-sm font-bold text-foreground">
-                        {shipment.trackingNumber || shipment._id}
-                      </p>
-                      {(shipment.origin || shipment.destination) && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <MapPin className="size-3 shrink-0" />
-                          <span className="truncate">{shipment.origin}</span>
-                          <ArrowRight className="size-3 shrink-0 text-muted-foreground/40" />
-                          <span className="truncate">
-                            {shipment.destination}
-                          </span>
-                        </div>
-                      )}
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div>
+                        <p className="text-base font-bold text-foreground">
+                          {shipment.trackingNumber || shipment._id}
+                        </p>
+                        {(shipment.origin || shipment.destination) && (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70 mt-1">
+                            <MapPin className="size-3 shrink-0" />
+                            <span className="truncate">{shipment.origin}</span>
+                            <ArrowRight className="size-3 shrink-0 text-muted-foreground/40" />
+                            <span className="truncate">
+                              {shipment.destination}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       {shipment.requestedPickupDate && (
                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
                           <Calendar className="size-3" />
@@ -208,7 +213,7 @@ export function DriverAssignLoadModal({
                           ).toLocaleDateString()}
                         </div>
                       )}
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="flex flex-wrap gap-2">
                         {shipment.trailerTypeRequired && (
                           <Badge className="text-[9px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 gap-0.5">
                             <Truck className="size-2.5" />
@@ -244,27 +249,27 @@ export function DriverAssignLoadModal({
                 </div>
 
                 {(trailerMatch !== null || capacityMatch !== null) && (
-                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/20">
+                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/20">
                     {trailerMatch !== null && (
                       <span
-                        className={`flex items-center gap-1 text-[10px] font-semibold ${trailerMatch ? "text-emerald-600" : "text-red-500"}`}
+                        className={`flex items-center gap-1.5 text-xs font-semibold ${trailerMatch ? "text-emerald-600" : "text-red-500"}`}
                       >
                         {trailerMatch ? (
-                          <CheckCircle2 className="size-3" />
+                          <CheckCircle2 className="size-3.5" />
                         ) : (
-                          <XCircle className="size-3" />
+                          <XCircle className="size-3.5" />
                         )}
                         Trailer {trailerMatch ? "Match" : "Mismatch"}
                       </span>
                     )}
                     {capacityMatch !== null && (
                       <span
-                        className={`flex items-center gap-1 text-[10px] font-semibold ${capacityMatch ? "text-emerald-600" : "text-red-500"}`}
+                        className={`flex items-center gap-1.5 text-xs font-semibold ${capacityMatch ? "text-emerald-600" : "text-red-500"}`}
                       >
                         {capacityMatch ? (
-                          <CheckCircle2 className="size-3" />
+                          <CheckCircle2 className="size-3.5" />
                         ) : (
-                          <XCircle className="size-3" />
+                          <XCircle className="size-3.5" />
                         )}
                         Capacity {capacityMatch ? "OK" : "Exceeded"}
                       </span>
