@@ -215,9 +215,7 @@ export function ReceiveModal({
     : baseUrl;
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(paymentLink);
-    } catch (_) {}
+    try { await navigator.clipboard.writeText(paymentLink); } catch { }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -265,10 +263,9 @@ export function ReceiveModal({
        * Override shadcn DialogContent for full Supra theming.
        * [&>button]:hidden — suppresses the auto-added close button; we render our own.
        */}
-      {/* overlayClassName adds backdrop blur + dark dim to match system-wide modal style */}
       <DialogContent
-        className="!p-0 !border-0 !bg-transparent !shadow-none sm:max-w-sm overflow-hidden rounded-2xl [&>button]:hidden w-[calc(100%-2rem)]"
-        overlayClassName="bg-black/65 backdrop-blur-sm"
+        overlayClassName="bg-black/70 backdrop-blur-[4px]"
+        className="p-0! border-0! bg-transparent! shadow-none! sm:max-w-sm overflow-hidden rounded-2xl [&>button]:hidden w-[calc(100%-2rem)]"
       >
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
