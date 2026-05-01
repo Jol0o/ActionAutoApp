@@ -112,13 +112,13 @@ export function TransportationSidebar({
             value="drafts"
             className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2"
           >
-            Quotes / Drafts
+            Quotes
           </TabsTrigger>
           <TabsTrigger
             value="load-board"
             className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-2"
           >
-            Load Board
+            Board
           </TabsTrigger>
         </TabsList>
       </Tabs>

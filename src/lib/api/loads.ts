@@ -221,3 +221,41 @@ export async function getLoadById(loadId: string): Promise<Load> {
   const res = await apiClient.get<{ data: Load }>(`/api/loads/${loadId}`);
   return res.data.data;
 }
+
+export async function confirmLoadDelivery(loadId: string): Promise<Load> {
+  const res = await apiClient.post<{ data: Load }>(`/api/loads/${loadId}/confirm-delivery`, {});
+  return res.data.data;
+}
+
+export interface ActiveDriver {
+  id: string;
+  status: "on-route" | "idle" | "on-break" | "waiting" | "offline";
+  coords: { lat: number; lng: number };
+  lastSeenAt: string;
+  driver: {
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  equipment: {
+    trailerType: string;
+    maxVehicleCapacity: number;
+    operationalStatus: string;
+    truckMake?: string;
+    truckModel?: string;
+    isComplianceExpired: boolean;
+  } | null;
+  shipments: Array<{
+    id: string;
+    trackingNumber: string;
+    status: string;
+    origin: string;
+    destination: string;
+  }>;
+}
+
+export async function getActiveDrivers(): Promise<ActiveDriver[]> {
+  const res = await apiClient.get<{ data: ActiveDriver[] }>("/api/driver-tracking/active-drivers");
+  return res.data.data;
+}

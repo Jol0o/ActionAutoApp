@@ -80,7 +80,7 @@ export function LoadCard({ load, onDelete, onUpdate, isDeleting }: LoadCardProps
   const vCount = vehicles.length
   const isPublic = load.additionalInfo?.visibility !== "private"
   const isLoadBoard = load.postType === "load-board"
-  
+
   // Try to find a hero image
   const heroImage = vehicles.find(v => v.imageUrl)?.imageUrl || "https://images.unsplash.com/photo-1586191552066-d52dd1e3af86?auto=format&fit=crop&q=80&w=1000"
 
@@ -109,21 +109,21 @@ export function LoadCard({ load, onDelete, onUpdate, isDeleting }: LoadCardProps
 
   return (
     <>
-      <Card 
+      <Card
         onClick={handleCardClick}
-        className="group border-border overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer bg-card/50 backdrop-blur-sm relative"
+        className="group border-border overflow-hidden p-0 transition-all duration-300 cursor-pointer bg-card relative"
       >
         <CardContent className="p-0">
           <div className="flex flex-col md:flex-row">
             {/* Hero Image Section */}
             <div className="relative w-full md:w-64 lg:w-72 h-48 md:h-auto overflow-hidden shrink-0">
-              <img 
-                src={heroImage} 
-                alt="Load Vehicle" 
+              <img
+                src={heroImage}
+                alt="Load Vehicle"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              
+
               <div className="absolute bottom-3 left-3 flex flex-col gap-1">
                 <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">Load Number</span>
                 <span className="text-sm font-black text-white font-mono">{load.loadNumber}</span>
@@ -262,6 +262,36 @@ export function LoadCard({ load, onDelete, onUpdate, isDeleting }: LoadCardProps
                     </div>
                   </div>
                 </div>
+
+                {/* Progress Bar (Mini Timeline) */}
+                {load.status !== 'Posted' && load.status !== 'Cancelled' && (
+                  <div className="pt-4 mt-2 border-t border-border/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Journey Progress</span>
+                      <span className="text-[9px] font-bold text-primary px-1.5 py-0.5 rounded-full bg-primary/5 uppercase">{load.status}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[
+                        { key: 'assignedAt', label: 'Assigned' },
+                        { key: 'driverAcceptedAt', label: 'Accepted' },
+                        { key: 'pickedUpAt', label: 'Picked Up' },
+                        { key: 'inTransitAt', label: 'In Transit' },
+                        { key: 'deliveredAt', label: 'Delivered' }
+                      ].map((step, idx, arr) => {
+                        const isDone = !!(load as any)[step.key]
+                        const isLastDone = idx === 0 ? true : !!(load as any)[arr[idx - 1].key]
+                        return (
+                          <React.Fragment key={step.key}>
+                            <div className={cn(
+                              "h-1.5 flex-1 rounded-full transition-colors duration-500",
+                              isDone ? "bg-primary" : "bg-muted"
+                            )} />
+                          </React.Fragment>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

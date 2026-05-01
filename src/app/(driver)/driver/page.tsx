@@ -57,6 +57,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { US_STATES, AVAILABLE_DAYS } from "@/components/driver-profile/driver-profile-constants";
+import { ConfirmationModal, ConfirmationVariant } from "@/components/ui/confirmation-modal";
 import Link from "next/link";
 
 type DriverStatus = "on-route" | "idle" | "on-break" | "waiting" | "offline";
@@ -101,11 +102,13 @@ const STATUS_CONFIG: Array<{
   ];
 
 const LOAD_STATUS_COLORS: Record<string, string> = {
-  "Available for Pickup": "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700",
-  Dispatched: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700",
-  "In-Route": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700",
-  Delivered: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700",
-  Cancelled: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700",
+  "Posted": "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700",
+  "Assigned": "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700",
+  "Accepted": "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700",
+  "Picked Up": "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-700",
+  "In-Transit": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700",
+  "Delivered": "bg-green-500/15 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700",
+  "Cancelled": "bg-red-500/15 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700",
 };
 
 const OP_STATUS_CONFIG = [
@@ -158,6 +161,21 @@ export default function DriverDashboardPage() {
   const [logRouteInput, setLogRouteInput] = React.useState("");
   const [logDays, setLogDays] = React.useState<string[]>(["monday", "tuesday", "wednesday", "thursday", "friday"]);
   const [savingLogistics, setSavingLogistics] = React.useState(false);
+  const [confirmState, setConfirmState] = React.useState<{
+    isOpen: boolean;
+    action: string;
+    title: string;
+    description: string;
+    variant: ConfirmationVariant;
+    load: any;
+  }>({
+    isOpen: false,
+    action: '',
+    title: '',
+    description: '',
+    variant: 'primary',
+    load: null,
+  });
   const {
     isSharing,
     status,
@@ -420,6 +438,7 @@ export default function DriverDashboardPage() {
         );
         toast.success("Route started");
         fetchData();
+        setConfirmState(prev => ({ ...prev, isOpen: false }));
       } catch (err: any) {
         toast.error(err.response?.data?.message || "Failed to start route");
       } finally {
@@ -428,6 +447,48 @@ export default function DriverDashboardPage() {
     },
     [getToken, fetchData],
   );
+
+  const handleAction = (action: string, load: any) => {
+    let title = '';
+    let description = '';
+    let variant: ConfirmationVariant = 'primary';
+
+    switch (action) {
+      case 'accept-load':
+        title = 'Accept This Load?';
+        description = 'Are you sure you want to accept this load assignment? This will be added to your active schedule.';
+        variant = 'primary';
+        break;
+      case 'start-route':
+        title = 'Start Route?';
+        description = 'Are you ready to begin the delivery route? This will notify the organization that you are in transit.';
+        variant = 'success';
+        break;
+      case 'drop-load':
+        title = 'Drop This Load?';
+        description = 'Warning: You are about to drop this load. This action should only be taken if you cannot complete the delivery.';
+        variant = 'danger';
+        break;
+      default:
+        return;
+    }
+
+    setConfirmState({
+      isOpen: true,
+      action,
+      title,
+      description,
+      variant,
+      load,
+    });
+  };
+
+  const executeConfirmedAction = () => {
+    const { action, load } = confirmState;
+    if (action === 'accept-load') acceptLoad(load);
+    if (action === 'start-route') startRoute(load);
+    if (action === 'drop-load') dropLoad(load);
+  };
 
   const updateOpStatus = React.useCallback(
     async (newStatus: string) => {
@@ -836,26 +897,26 @@ export default function DriverDashboardPage() {
                   <Clock className="size-3" />
                   Pickup: {new Date(currentLoad.dates?.pickupDeadline || currentLoad.requestedPickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })}
                 </p>
-                {(currentLoad.status === "Available for Pickup" || currentLoad.status === "Dispatched") && !currentLoad.driverAcceptedAt && (
-                  <Button size="sm" className="w-full h-9 text-xs font-bold shadow-sm" disabled={accepting === currentLoad._id} onClick={() => acceptLoad(currentLoad)}>
+                {(currentLoad.status === "Assigned" || currentLoad.status === "Posted") && !currentLoad.driverAcceptedAt && (
+                  <Button size="sm" className="w-full h-9 text-xs font-bold shadow-sm" disabled={accepting === currentLoad._id} onClick={() => handleAction('accept-load', currentLoad)}>
                     {accepting === currentLoad._id ? <><Loader2 className="size-3.5 mr-2 animate-spin" />Accepting...</> : <><CheckCircle2 className="size-3.5 mr-2" />Accept Load</>}
                   </Button>
                 )}
-                {currentLoad.driverAcceptedAt && currentLoad.status === "Dispatched" && (
-                  <Button size="sm" className="w-full h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm" disabled={startingRoute === currentLoad._id} onClick={() => startRoute(currentLoad)}>
+                {currentLoad.driverAcceptedAt && currentLoad.status === "Picked Up" && (
+                  <Button size="sm" className="w-full h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm" disabled={startingRoute === currentLoad._id} onClick={() => handleAction('start-route', currentLoad)}>
                     {startingRoute === currentLoad._id ? <><Loader2 className="size-3.5 mr-2 animate-spin" />Starting...</> : <><Navigation2 className="size-3.5 mr-2" />Start Route</>}
                   </Button>
                 )}
-                {currentLoad.status === "In-Route" && (
+                {currentLoad.status === "In-Transit" && (
                   <div className="flex items-center gap-2 py-1">
                     <span className="relative flex size-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
                     </span>
-                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">In Route</span>
+                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">In Transit</span>
                   </div>
                 )}
-                <Button size="sm" variant="outline" className="w-full h-8 text-xs font-semibold text-destructive border-destructive/20 hover:bg-destructive/10" disabled={dropping === currentLoad._id} onClick={() => dropLoad(currentLoad)}>
+                <Button size="sm" variant="outline" className="w-full h-8 text-xs font-semibold text-destructive border-destructive/20 hover:bg-destructive/10" disabled={dropping === currentLoad._id} onClick={() => handleAction('drop-load', currentLoad)}>
                   {dropping === currentLoad._id ? <><Loader2 className="size-3.5 mr-2 animate-spin" />Dropping...</> : <><XCircle className="size-3.5 mr-2" />Drop Load</>}
                 </Button>
               </div>
@@ -1028,6 +1089,16 @@ export default function DriverDashboardPage() {
           Save Logistics
         </Button>
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={executeConfirmedAction}
+        title={confirmState.title}
+        description={confirmState.description}
+        variant={confirmState.variant}
+        isLoading={!!accepting || !!dropping || !!startingRoute}
+      />
     </div>
   );
 }

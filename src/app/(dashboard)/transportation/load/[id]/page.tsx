@@ -2,14 +2,17 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { getLoadById } from "@/lib/api/loads"
-import { ArrowLeft, MapPin, Calendar, Car, DollarSign, FileText, ScrollText, Truck, AlertCircle, Phone, Building2 } from "lucide-react"
+import { ArrowLeft, MapPin, Calendar, Car, DollarSign, FileText, ScrollText, Truck, AlertCircle, Phone, Building2, User2, CheckCircle2, Package, Shield, Clock, FileCheck, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { format } from "date-fns"
+import { motion, AnimatePresence } from "framer-motion"
+import { cn } from "@/lib/utils"
 
 // Skeleton loader
 function LoadDetailsSkeleton() {
@@ -34,11 +37,110 @@ function StatusBadge({ status }: { status?: string }) {
   switch (status) {
     case "Posted": color = "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/30"; break;
     case "Assigned": color = "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30"; break;
+    case "Accepted": color = "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30"; break;
+    case "Picked Up": color = "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30"; break;
     case "In-Transit": color = "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30"; break;
     case "Delivered": color = "bg-green-100 text-green-800 border-green-200 dark:bg-green-500/20 dark:text-green-300 dark:border-green-500/30"; break;
     case "Cancelled": color = "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/20 dark:text-red-300 dark:border-red-500/30"; break;
   }
   return <Badge variant="outline" className={`${color} px-3 py-1 font-medium text-xs rounded-full shadow-none`}>{status}</Badge>
+}
+
+function LoadTrackingTimeline({ load }: { load: any }) {
+  const steps = [
+    { label: "Assigned", date: load.assignedAt, icon: <User2 className="size-3.5" />, color: "slate" },
+    { label: "Accepted", date: load.acceptedAt || load.driverAcceptedAt, icon: <CheckCircle2 className="size-3.5" />, color: "blue" },
+    { label: "Picked Up", date: load.pickedUpAt, icon: <Package className="size-3.5" />, color: "amber" },
+    { label: "In Transit", date: load.inTransitAt, icon: <Truck className="size-3.5" />, color: "indigo" },
+    { label: "Delivered", date: load.deliveredAt, icon: <Shield className="size-3.5" />, color: "emerald" },
+  ]
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return null
+    try {
+      return format(new Date(dateStr), "MMM d, h:mm a")
+    } catch {
+      return null
+    }
+  }
+
+  const activeStepIdx = [...steps].reverse().findIndex(s => !!s.date)
+  const currentStepIdx = activeStepIdx === -1 ? -1 : steps.length - 1 - activeStepIdx
+
+  return (
+    <Card className="border-border shadow-sm bg-card overflow-hidden p-0">
+      <CardHeader className="p-4 border-b border-border/50 bg-muted/20">
+        <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+          <Clock className="size-3.5" />
+          Load Journey
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <div className="space-y-0 relative">
+          {/* Vertical Progress Line */}
+          <div className="absolute left-[19px] top-2 bottom-2 w-[1px] bg-border" />
+          <motion.div
+            initial={{ height: 0 }}
+            animate={{ height: `${(currentStepIdx / (steps.length - 1)) * 100}%` }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="absolute left-[19px] top-2 w-[1px] bg-primary origin-top"
+          />
+
+          {steps.map((step, i) => {
+            const date = formatDate(step.date)
+            const isCompleted = !!step.date
+            const isCurrent = i === currentStepIdx
+            const isFuture = i > currentStepIdx
+
+            return (
+              <div
+                key={i}
+                className="relative flex items-start gap-6 pb-8 last:pb-0"
+              >
+                {/* Dot / Icon */}
+                <div className="relative z-10">
+                  <div className={cn(
+                    "size-10 rounded-full border flex items-center justify-center transition-all duration-300 bg-background",
+                    isCompleted ? "border-primary text-primary" : "border-border text-muted-foreground/30",
+                    isCurrent && "ring-4 ring-primary/10"
+                  )}>
+                    {step.icon}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 pt-1.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h4 className={cn(
+                        "text-sm font-bold transition-colors",
+                        isCompleted ? "text-foreground" : "text-muted-foreground/40"
+                      )}>
+                        {step.label}
+                      </h4>
+                      {date && (
+                        <p className="text-[10px] font-medium text-muted-foreground mt-0.5">
+                          {date}
+                        </p>
+                      )}
+                    </div>
+                    {isCurrent && (
+                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[9px] font-bold uppercase tracking-tighter px-1.5 py-0">
+                        Current
+                      </Badge>
+                    )}
+                  </div>
+                  {!isCompleted && !isFuture && (
+                    <p className="text-[10px] text-muted-foreground/40 mt-1 italic">Pending action...</p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function LoadDetailsPage() {
@@ -213,10 +315,10 @@ export default function LoadDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Left Column (Vehicles) ── */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-4">
-              <CardTitle className="text-lg flex items-center gap-2 font-bold">
-                <Car className="size-5 text-muted-foreground" /> Vehicles <span className="text-muted-foreground font-normal text-sm bg-muted px-2 py-0.5 rounded-full">{load.vehicles?.length || 0}</span>
+          <Card className="border-border shadow-sm bg-card overflow-hidden p-0">
+            <CardHeader className="flex flex-row items-center justify-between p-4 border-b border-border/50 bg-muted/20">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <Car className="size-3.5" /> Vehicles <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full">{load.vehicles?.length || 0}</span>
               </CardTitle>
               {load.trailerType && (
                 <Badge variant="secondary" className="font-bold text-xs uppercase tracking-wider bg-background border-border shadow-sm">
@@ -224,7 +326,7 @@ export default function LoadDetailsPage() {
                 </Badge>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-4">
               <div className="space-y-3">
                 {load.vehicles?.map((v, i) => (
                   <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors gap-4">
@@ -257,16 +359,13 @@ export default function LoadDetailsPage() {
         {/* ── Right Column (Pricing & Info) ── */}
         <div className="space-y-6">
           {/* Pricing */}
-          <Card className="border-border/80 shadow-sm bg-gradient-to-br from-card to-muted/30 overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-4 opacity-5">
-              <DollarSign className="size-24" />
-            </div>
-            <CardHeader className="pb-4 relative z-10">
-              <CardTitle className="text-lg flex items-center gap-2 font-bold">
-                <DollarSign className="size-5 text-green-600 dark:text-green-500" /> Financials
+          <Card className="border-border shadow-sm bg-card overflow-hidden p-0">
+            <CardHeader className="p-4 border-b border-border/50 bg-muted/20">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <DollarSign className="size-3.5" /> Financials
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 relative z-10">
+            <CardContent className="space-y-4 pb-4 relative z-10">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground text-sm font-medium">Carrier Pay</span>
                 <span className="font-bold text-xl text-foreground">${load.pricing?.carrierPayAmount?.toLocaleString() || "0"}</span>
@@ -289,14 +388,51 @@ export default function LoadDetailsPage() {
             </CardContent>
           </Card>
 
+          {/* Proof of Delivery Preview */}
+          {load.proofOfDelivery && (
+            <Card className="border-border shadow-sm bg-card overflow-hidden p-0 border-blue-500/20">
+              <CardHeader className="p-4 border-b border-border/50 bg-blue-500/5">
+                <CardTitle className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                  <FileCheck className="size-3.5" /> Proof of Delivery
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <div className="relative group cursor-pointer overflow-hidden rounded-xl border border-border/50 bg-muted/20">
+                  <img 
+                    src={load.proofOfDelivery.imageUrl} 
+                    alt="POD Preview" 
+                    className="w-full aspect-video object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Eye className="size-6 text-white" />
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Submitted</p>
+                  <p className="text-sm font-medium">{new Date(load.proofOfDelivery.submittedAt).toLocaleString()}</p>
+                </div>
+
+                <Link href={`/billing/driver-payouts/${load._id}`}>
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-xl shadow-lg shadow-blue-500/20 gap-2">
+                    <DollarSign className="size-4" /> Review & Approve Payout
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Status Timeline */}
+          <LoadTrackingTimeline load={load} />
+
           {/* Contract / Terms */}
-          <Card className="border-border shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 font-bold">
-                <ScrollText className="size-5 text-muted-foreground" /> Contract
+          <Card className="border-border shadow-sm bg-card overflow-hidden p-0">
+            <CardHeader className="p-4 border-b border-border/50 bg-muted/20">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <ScrollText className="size-3.5" /> Contract
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-4">
               {load.contract?.agreedToTerms ? (
                 <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 shadow-sm relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1 h-full bg-green-500/50" />
@@ -317,10 +453,10 @@ export default function LoadDetailsPage() {
 
           {/* Instructions */}
           {(load.additionalInfo?.instructions || load.additionalInfo?.notes) && (
-            <Card className="border-border shadow-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg flex items-center gap-2 font-bold">
-                  <FileText className="size-5 text-muted-foreground" /> Notes
+            <Card className="border-border shadow-sm bg-card overflow-hidden">
+              <CardHeader className="pb-4 border-b border-border/50 bg-muted/20">
+                <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <FileText className="size-3.5" /> Notes
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">

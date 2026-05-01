@@ -10,7 +10,7 @@ const publicRoutes = [
     '/.well-known'
 ];
 
-export async function middleware(request: any) {
+export async function proxy(request: any) {
     // The previous authentication logic here was checking for a 'refreshToken' cookie.
     // In production, the backend is on a separate domain (e.g. api.actionauto.com), 
     // so Next.js Middleware cannot see the HttpOnly cookies set by the backend.

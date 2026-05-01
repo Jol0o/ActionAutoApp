@@ -377,24 +377,16 @@ export default function DriverPayoutsPage() {
                         {item.proofOfDelivery.note}
                       </p>
                     )}
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <Link 
+                      href={`/billing/driver-payouts/${item._id}`}
+                      style={{ flex: 1, textDecoration: "none" }}
+                    >
                       <button
-                        onClick={() => openProofImage(item)}
-                        disabled={loadingProofId === item._id}
-                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, padding: "0 8px", background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 9, color: "#60a5fa", fontFamily: DISPLAY, fontSize: 12, fontWeight: 700, cursor: loadingProofId === item._id ? "wait" : "pointer", WebkitTapHighlightColor: "transparent" }}>
-                        {loadingProofId === item._id
-                          ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />
-                          : <Eye style={{ width: 13, height: 13 }} />}
-                        View Proof
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, padding: "0 8px", background: ORANGE, border: "none", borderRadius: 9, color: "#fff", fontFamily: DISPLAY, fontSize: 12, fontWeight: 700, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+                        <Eye style={{ width: 13, height: 13 }} />
+                        Review Proof & Payout
                       </button>
-                      <button
-                        onClick={() => confirmDelivery(item._id)}
-                        disabled={confirmingId === item._id}
-                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, padding: "0 8px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 9, color: "#4ade80", fontFamily: DISPLAY, fontSize: 12, fontWeight: 700, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
-                        {confirmingId === item._id ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> : <CheckCircle2 style={{ width: 13, height: 13 }} />}
-                        Approve
-                      </button>
-                    </div>
+                    </Link>
                   </div>
                 ))}
               </div>
@@ -430,17 +422,16 @@ export default function DriverPayoutsPage() {
                       <p style={{ fontFamily: DISPLAY, fontSize: 12, color: "rgba(255,255,255,0.35)", margin: 0 }}>Driver</p>
                       <p style={{ fontFamily: DISPLAY, fontSize: 15, fontWeight: 700, color: "#fff", margin: 0, marginTop: 2 }}>{s.assignedDriverId?.name || "—"}</p>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => confirmDelivery(s._id)} disabled={confirmingId === s._id}
-                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 9, color: "#4ade80", fontFamily: DISPLAY, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                        {confirmingId === s._id ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> : <CheckCircle2 style={{ width: 12, height: 12 }} />}
-                        Confirm
+                    <Link 
+                      href={`/billing/driver-payouts/${s._id}`}
+                      style={{ flex: 1, textDecoration: "none" }}
+                    >
+                      <button
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", background: ORANGE, border: "none", borderRadius: 9, color: "#fff", fontFamily: DISPLAY, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        <DollarSign style={{ width: 12, height: 12 }} />
+                        Process Payout
                       </button>
-                      <button onClick={() => setPayoutTarget(s)}
-                        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", background: ORANGE, border: "none", borderRadius: 9, color: "#fff", fontFamily: DISPLAY, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                        <DollarSign style={{ width: 12, height: 12 }} /> Pay Driver
-                      </button>
-                    </div>
+                    </Link>
                   </div>
                 ))}
               </div>

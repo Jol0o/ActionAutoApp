@@ -198,7 +198,11 @@ export default function AvailableLoadsPage() {
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase().trim();
     let result = loads.filter(l => {
-      if (trailerFilter !== 'all' && l.trailerTypeRequired !== trailerFilter) return false;
+      if (trailerFilter !== 'all') {
+        const loadTrailer = (l.trailerTypeRequired || '').toLowerCase().replace(/[\s-]/g, '_');
+        const activeFilter = trailerFilter.toLowerCase().replace(/[\s-]/g, '_');
+        if (loadTrailer !== activeFilter) return false;
+      }
       if (!q) return true;
       return l.origin?.toLowerCase().includes(q) || l.destination?.toLowerCase().includes(q) || l.trackingNumber?.toLowerCase().includes(q) || l.preservedQuoteData?.vehicleName?.toLowerCase().includes(q);
     });

@@ -1,5 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from "axios";
 
+// Use absolute URLs in both browser and server to hit the backend directly
+// This ensures consistency across services and simplifies network debugging
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 // ── Token refresh queue ───────────────────────────────────────────────────────

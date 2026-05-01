@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { trailerTypeOptions } from '@/components/driver-profile/driver-profile-constants';
 import { Load, LoadStatus } from '@/types/load';
+import { ConfirmationModal, ConfirmationVariant } from '@/components/ui/confirmation-modal';
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Denver' }) : '';
 const fmtDateTime = (d?: string) => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Denver' }) : '';
@@ -52,34 +53,102 @@ export default function LoadDetailPage() {
   const [data, setData] = React.useState<Load | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
+  const [confirmState, setConfirmState] = React.useState<{
+    isOpen: boolean;
+    action: string;
+    title: string;
+    description: string;
+    variant: ConfirmationVariant;
+  }>({
+    isOpen: false,
+    action: '',
+    title: '',
+    description: '',
+    variant: 'primary',
+  });
 
   const fetchDetail = React.useCallback(async () => {
     try {
       const token = await getToken();
-      // Unifying detail fetch
-      const [loadsRes, reqRes, availRes] = await Promise.all([
-        apiClient.get('/api/driver-tracking/my-loads', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { data: [] } })),
-        apiClient.get('/api/driver-tracking/my-requests', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { data: [] } })),
-        apiClient.get('/api/driver-tracking/available-loads', { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { data: [] } })),
-      ]);
-      const all: Load[] = [...(loadsRes.data?.data || []), ...(reqRes.data?.data || []), ...(availRes.data?.data || [])];
-      const found = all.find((l) => l._id === loadId);
-      if (found) setData(found);
-    } catch (err: any) { toast.error(extractErr(err, 'Failed to load details')); }
-    finally { setLoading(false); }
+      const res = await apiClient.get(`/api/driver-tracking/loads/${loadId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const loadData = res.data?.data;
+      if (loadData) {
+        setData(loadData);
+      }
+    } catch (err: any) {
+      const msg = extractErr(err, 'Failed to load details');
+      // If 403 or 404, the "data" will be null, showing the "Not Found" screen
+      if (err.response?.status !== 403 && err.response?.status !== 404) {
+        toast.error(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [getToken, loadId]);
 
   React.useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
-  const handleAction = async (action: string) => {
+  const executeAction = async (action: string) => {
+    if (!loadId) {
+      toast.error(`Cannot ${action}: Load ID is missing from URL`);
+      return;
+    }
     setActionLoading(action);
     try {
       const token = await getToken();
       await apiClient.post(`/api/driver-tracking/${action}`, { loadId }, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success(action === 'accept-load' ? 'Load accepted' : action === 'start-route' ? 'Route started' : action === 'drop-load' ? 'Load dropped' : action === 'request-load' ? 'Request submitted' : 'Done');
+      toast.success(action === 'accept-load' ? 'Load accepted' : action === 'start-route' ? 'Route started' : action === 'drop-load' ? 'Load dropped' : action === 'request-load' ? 'Request submitted' : action === 'mark-picked-up' ? 'Load picked up' : 'Done');
       await fetchDetail();
+      setConfirmState(prev => ({ ...prev, isOpen: false }));
     } catch (err: any) { toast.error(extractErr(err, `Failed to ${action}`)); }
     finally { setActionLoading(null); }
+  };
+
+  const handleAction = (action: string) => {
+    let title = '';
+    let description = '';
+    let variant: ConfirmationVariant = 'primary';
+
+    switch (action) {
+      case 'accept-load':
+        title = 'Accept This Load?';
+        description = 'Are you sure you want to accept this load assignment? This will be added to your active schedule.';
+        variant = 'primary';
+        break;
+      case 'mark-picked-up':
+        title = 'Confirm Pickup?';
+        description = 'Are you sure you have picked up all vehicles for this load? The current time will be recorded as the pickup time.';
+        variant = 'success';
+        break;
+      case 'start-route':
+        title = 'Start Route?';
+        description = 'Are you ready to begin the delivery route? This will notify the organization that you are in transit.';
+        variant = 'success';
+        break;
+      case 'drop-load':
+        title = 'Drop This Load?';
+        description = 'Warning: You are about to drop this load. This action should only be taken if you cannot complete the delivery.';
+        variant = 'danger';
+        break;
+      case 'request-load':
+        title = 'Submit Load Request?';
+        description = 'You are requesting to be assigned to this load. The dispatcher will review your request shortly.';
+        variant = 'primary';
+        break;
+      default:
+        executeAction(action);
+        return;
+    }
+
+    setConfirmState({
+      isOpen: true,
+      action,
+      title,
+      description,
+      variant,
+    });
   };
 
   if (loading) return (
@@ -319,6 +388,15 @@ export default function LoadDetailPage() {
           )}
         </div>
       </motion.div>
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => executeAction(confirmState.action)}
+        title={confirmState.title}
+        description={confirmState.description}
+        variant={confirmState.variant}
+        isLoading={!!actionLoading}
+      />
     </div>
   );
 }

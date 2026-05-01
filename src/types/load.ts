@@ -94,8 +94,10 @@ export interface Load {
     avatar?: string | null;
   };
   assignedAt?: string;
+  acceptedAt?: string;
   driverAcceptedAt?: string;
   pickedUpAt?: string;
+  inTransitAt?: string;
   deliveredAt?: string;
   proofOfDelivery?: {
     imageUrl: string;

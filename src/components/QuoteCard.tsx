@@ -85,7 +85,7 @@ export function QuoteCard({ quote, onConvertToLoad, onDelete, onUpdate }: QuoteC
 
     return (
         <>
-            <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+            <Card className="border border-gray-200 dark:border-gray-700 p-0 hover:shadow-lg transition-shadow duration-300 overflow-hidden">
                 <AlertDialog {...alert} onOpenChange={hideAlert} />
                 <CardContent className="p-0">
                     <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-700">

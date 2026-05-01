@@ -513,8 +513,8 @@ function TransportationPageInner() {
           {(
             [
               { key: "shipments", label: "My Loads" },
-              { key: "drafts", label: "Quotes / Drafts" },
-              { key: "load-board", label: "Load Board" },
+              { key: "drafts", label: "Quotes" },
+              { key: "load-board", label: "Board" },
             ] as const
           ).map((t) => (
             <button

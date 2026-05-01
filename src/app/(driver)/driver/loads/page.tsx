@@ -51,6 +51,7 @@ import { initializeSocket, getSocket } from "@/lib/socket.client";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import Link from "next/link";
 import { Load, LoadStatus } from '@/types/load';
+import { ConfirmationModal, ConfirmationVariant } from '@/components/ui/confirmation-modal';
 
 const STATUS_THEME: Record<LoadStatus, string> = {
   Draft: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
@@ -97,16 +98,25 @@ export default function DriverLoadsPage() {
   const [search, setSearch] = React.useState('');
   
   // Action States
-  const [acceptingId, setAcceptingId] = React.useState<string | null>(null);
-  const [pickingUpId, setPickingUpId] = React.useState<string | null>(null);
-  const [droppingId, setDroppingId] = React.useState<string | null>(null);
-  const [startingId, setStartingId] = React.useState<string | null>(null);
+  const [actionLoading, setActionLoading] = React.useState<string | null>(null);
+  const [confirmState, setConfirmState] = React.useState<{
+    isOpen: boolean;
+    action: string;
+    loadId: string;
+    title: string;
+    description: string;
+    variant: ConfirmationVariant;
+  }>({
+    isOpen: false,
+    action: '',
+    loadId: '',
+    title: '',
+    description: '',
+    variant: 'primary',
+  });
   
   // Dialog Targets
   const [proofTarget, setProofTarget] = React.useState<Load | null>(null);
-  const [dropTarget, setDropTarget] = React.useState<Load | null>(null);
-  const [pickupTarget, setPickupTarget] = React.useState<Load | null>(null);
-  const [pickupDate, setPickupDate] = React.useState("");
   
   const [refreshing, setRefreshing] = React.useState(false);
   const [maxLoadCapacity, setMaxLoadCapacity] = React.useState(12);
@@ -183,66 +193,73 @@ export default function DriverLoadsPage() {
     await fetchLoads(page + 1, true);
   };
 
-  const handleAccept = async (id: string) => {
-    setAcceptingId(id);
-    try {
-      const token = await getToken();
-      await apiClient.post('/api/driver-tracking/accept-load', { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success('Load accepted — you are now dispatched');
-      await fetchLoads();
-    } catch (err: any) {
-      toast.error(extractErr(err, "Failed to accept load"));
-    } finally {
-      setAcceptingId(null);
+  const executeAction = async (action: string, id: string) => {
+    if (!id) {
+      toast.error(`Cannot ${action}: Load ID is missing`);
+      return;
     }
-  };
-
-  const handleDrop = async (id: string) => {
-    setDroppingId(id);
+    setActionLoading(id);
     try {
       const token = await getToken();
-      await apiClient.post('/api/driver-tracking/drop-load', { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success('Load dropped successfully');
-      setDropTarget(null);
-      await fetchLoads();
-    } catch (err: any) { 
-      toast.error(extractErr(err, 'Failed to drop load')); 
-    } finally { 
-      setDroppingId(null); 
-    }
-  };
-
-  const handleMarkPickedUp = async (id: string, date?: string) => {
-    setPickingUpId(id);
-    try {
-      const token = await getToken();
-      await apiClient.post('/api/driver-tracking/mark-picked-up', 
-        { loadId: id, pickedUpAt: date }, 
-        { headers: { Authorization: `Bearer ${token}` } }
+      await apiClient.post(`/api/driver-tracking/${action}`, { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(
+        action === 'accept-load' ? 'Load accepted' : 
+        action === 'start-route' ? 'Route started' : 
+        action === 'drop-load' ? 'Load dropped' : 
+        action === 'mark-picked-up' ? 'Load picked up' : 
+        'Done'
       );
-      toast.success('Pickup confirmed — vehicle loaded');
-      setPickupTarget(null);
-      setPickupDate("");
       await fetchLoads();
-    } catch (err: any) { 
-      toast.error(extractErr(err, 'Failed to mark pickup')); 
-    } finally { 
-      setPickingUpId(null); 
+      setConfirmState(prev => ({ ...prev, isOpen: false }));
+    } catch (err: any) {
+      toast.error(extractErr(err, `Failed to ${action}`));
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleStartRoute = async (id: string) => {
-    setStartingId(id);
-    try {
-      const token = await getToken();
-      await apiClient.post('/api/driver-tracking/start-route', { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success('Route started — now In-Transit');
-      await fetchLoads();
-    } catch (err: any) {
-      toast.error(extractErr(err, "Failed to start route"));
-    } finally {
-      setStartingId(null);
+  const handleAction = (action: string, loadOrId: Load | string) => {
+    let title = '';
+    let description = '';
+    let variant: ConfirmationVariant = 'primary';
+    
+    // Safety check: loadOrId might be a string (the ID) or the full Load object
+    const actualLoadId = typeof loadOrId === 'string' ? loadOrId : loadOrId._id;
+
+    switch (action) {
+      case 'accept-load':
+        title = 'Accept This Load?';
+        description = 'Are you sure you want to accept this load assignment? This will be added to your active schedule.';
+        variant = 'primary';
+        break;
+      case 'mark-picked-up':
+        title = 'Confirm Pickup?';
+        description = 'Are you sure you have picked up all vehicles for this load? The current time will be recorded as the pickup time.';
+        variant = 'success';
+        break;
+      case 'start-route':
+        title = 'Start Route?';
+        description = 'Are you ready to begin the delivery route? This will notify the organization that you are in transit.';
+        variant = 'success';
+        break;
+      case 'drop-load':
+        title = 'Drop This Load?';
+        description = 'Warning: You are about to drop this load. This action should only be taken if you cannot complete the delivery.';
+        variant = 'danger';
+        break;
+      default:
+        executeAction(action, actualLoadId);
+        return;
     }
+
+    setConfirmState({
+      isOpen: true,
+      action,
+      loadId: actualLoadId,
+      title,
+      description,
+      variant,
+    });
   };
 
   const pending = requests.filter((r) => r.myRequestStatus === "pending");
@@ -462,14 +479,11 @@ export default function DriverLoadsPage() {
                     <LoadCard 
                       load={load} 
                       isRequest={tab === 'requests'} 
-                      acceptingId={acceptingId} 
-                      pickingUpId={pickingUpId} 
-                      droppingId={droppingId} 
-                      startingId={startingId}
-                      onAccept={(id) => handleAccept(id)} 
-                      onMarkPickedUp={() => setPickupTarget(load)} 
-                      onDrop={l => setDropTarget(l)} 
-                      onStartRoute={handleStartRoute} 
+                      actionLoading={actionLoading}
+                      onAccept={(l) => handleAction('accept-load', l)} 
+                      onMarkPickedUp={(l) => handleAction('mark-picked-up', l)} 
+                      onDrop={(l) => handleAction('drop-load', l)} 
+                      onStartRoute={(l) => handleAction('start-route', l)} 
                       onSubmitProof={() => setProofTarget(load)} 
                     />
                   </motion.div>
@@ -490,29 +504,14 @@ export default function DriverLoadsPage() {
         )}
       </motion.div>
 
-      <DropConfirmDialog
-        load={dropTarget}
-        dropping={droppingId === dropTarget?._id}
-        onConfirm={() => dropTarget && handleDrop(dropTarget._id)}
-        onCancel={() => setDropTarget(null)}
-      />
-
-      <PickedUpDialog
-        load={pickupTarget}
-        pickedUpAt={pickupDate}
-        isSaving={pickingUpId === pickupTarget?._id}
-        onPickedUpAtChange={setPickupDate}
-        onCancel={() => {
-          setPickupTarget(null);
-          setPickupDate("");
-        }}
-        onConfirm={() =>
-          pickupTarget &&
-          handleMarkPickedUp(
-            pickupTarget._id,
-            pickupDate ? new Date(pickupDate).toISOString() : undefined,
-          )
-        }
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => executeAction(confirmState.action, confirmState.loadId)}
+        title={confirmState.title}
+        description={confirmState.description}
+        variant={confirmState.variant}
+        isLoading={!!actionLoading}
       />
 
       <SubmitProofModal
@@ -594,8 +593,8 @@ function StatusTimeline({ load }: { load: Load }) {
   );
 }
 
-function LoadCard({ load, isRequest, acceptingId, pickingUpId, droppingId, startingId, onAccept, onMarkPickedUp, onDrop, onStartRoute, onSubmitProof }: {
-  load: Load; isRequest: boolean; acceptingId: string | null; pickingUpId: string | null; droppingId: string | null; startingId: string | null;
+function LoadCard({ load, isRequest, actionLoading, onAccept, onMarkPickedUp, onDrop, onStartRoute, onSubmitProof }: {
+  load: Load; isRequest: boolean; actionLoading: string | null;
   onAccept: (id: string) => void; onMarkPickedUp: (id: string) => void; onDrop: (l: Load) => void; onStartRoute: (id: string) => void; onSubmitProof: () => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
@@ -684,18 +683,18 @@ function LoadCard({ load, isRequest, acceptingId, pickingUpId, droppingId, start
               {!isRequest && (
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   {status === 'Assigned' && !load.driverAcceptedAt && isActive && (
-                    <Button size="sm" onClick={() => onAccept(load._id)} disabled={acceptingId === load._id} className="rounded-lg gap-1.5">
-                      {acceptingId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><CheckCircle2 className="size-4" />Accept</>}
+                    <Button size="sm" onClick={() => onAccept(load._id)} disabled={actionLoading === load._id} className="rounded-lg gap-1.5">
+                      {actionLoading === load._id ? <Loader2 className="size-4 animate-spin" /> : <><CheckCircle2 className="size-4" />Accept</>}
                     </Button>
                   )}
                   {status === 'Accepted' && (
-                    <Button size="sm" className="bg-orange-600 hover:bg-orange-700 rounded-lg gap-1.5" onClick={() => onMarkPickedUp(load._id)} disabled={pickingUpId === load._id}>
-                      {pickingUpId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Package className="size-4" />Mark Picked Up</>}
+                    <Button size="sm" className="bg-orange-600 hover:bg-orange-700 rounded-lg gap-1.5" onClick={() => onMarkPickedUp(load._id)} disabled={actionLoading === load._id}>
+                      {actionLoading === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Package className="size-4" />Mark Picked Up</>}
                     </Button>
                   )}
                   {status === 'Picked Up' && (
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg gap-1.5" onClick={() => onStartRoute(load._id)} disabled={startingId === load._id}>
-                      {startingId === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Navigation2 className="size-4" />Start Route</>}
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg gap-1.5" onClick={() => onStartRoute(load._id)} disabled={actionLoading === load._id}>
+                      {actionLoading === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Navigation2 className="size-4" />Start Route</>}
                     </Button>
                   )}
                   {(status === 'In-Transit') && (
@@ -725,9 +724,9 @@ function LoadCard({ load, isRequest, acceptingId, pickingUpId, droppingId, start
                       variant="ghost"
                       className="text-[10px] text-muted-foreground hover:text-red-500 h-6 px-2"
                       onClick={() => onDrop(load)}
-                      disabled={droppingId === load._id}
+                      disabled={actionLoading === load._id}
                     >
-                      {droppingId === load._id ? (
+                      {actionLoading === load._id ? (
                         <Loader2 className="size-3 animate-spin" />
                       ) : (
                         <>
@@ -857,130 +856,6 @@ function MoneyBlock({
         ${value.toLocaleString()}
       </p>
     </div>
-  );
-}
-
-function PickedUpDialog({ load, pickedUpAt, isSaving, onPickedUpAtChange, onConfirm, onCancel }: { 
-  load: Load | null; pickedUpAt: string; isSaving: boolean; onPickedUpAtChange: (v: string) => void; onConfirm: () => void; onCancel: () => void 
-}) {
-  if (!load) return null;
-
-  return (
-    <Dialog
-      open={!!load}
-      onOpenChange={(open) => {
-        if (!open) onCancel();
-      }}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="size-5 text-emerald-600" />
-            Set Picked Up Date
-          </DialogTitle>
-          <DialogDescription>
-            Enter the actual pick-up date/time for load{" "}
-            <span className="font-mono font-medium">
-              {load.loadNumber || load._id.slice(-8)}
-            </span>
-            .
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3">
-          <Label htmlFor="picked-up-date">Picked Up Date & Time</Label>
-          <Input
-            id="picked-up-date"
-            type="datetime-local"
-            value={pickedUpAt}
-            onChange={(e) => onPickedUpAtChange(e.target.value)}
-          />
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button onClick={onConfirm} disabled={isSaving || !pickedUpAt}>
-            {isSaving ? (
-              <>
-                <Loader2 className="size-4 mr-1.5 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Picked Up"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function DropConfirmDialog({
-  load,
-  dropping,
-  onConfirm,
-  onCancel,
-}: {
-  load: Load | null;
-  dropping: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  if (!load) return null;
-  return (
-    <Dialog
-      open={!!load}
-      onOpenChange={(open) => {
-        if (!open) onCancel();
-      }}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="size-5 text-destructive" />
-            Drop Load?
-          </DialogTitle>
-          <DialogDescription>
-            This will remove you from load{" "}
-            <span className="font-mono font-medium">
-              {load.loadNumber || load._id.slice(-8)}
-            </span>
-            . The load will go back to the available pool.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="rounded-xl border p-3 bg-muted/20 space-y-1">
-          <p className="text-sm font-semibold">{load.pickupLocation.city} → {load.deliveryLocation.city}</p>
-          {load.pricing?.carrierPayAmount != null && load.pricing.carrierPayAmount > 0 && <p className="text-xs text-muted-foreground">Carrier Pay: <span className="text-emerald-600 font-bold">${load.pricing.carrierPayAmount.toLocaleString()}</span></p>}
-        </div>
-        <div className="flex items-start gap-2 rounded-xl bg-amber-500/5 border border-amber-500/15 p-3">
-          <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 dark:text-amber-400">
-            Frequently dropping loads may affect your driver rating and future
-            load assignments.
-          </p>
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={dropping}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={dropping}>
-            {dropping ? (
-              <>
-                <Loader2 className="size-4 mr-1.5 animate-spin" />
-                Dropping...
-              </>
-            ) : (
-              <>
-                <Ban className="size-4 mr-1.5" />
-                Drop Load
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
