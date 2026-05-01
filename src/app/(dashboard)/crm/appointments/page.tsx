@@ -1,80 +1,102 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Calendar, Clock, Users, Plus, RefreshCw, Mail, ArrowLeft, Contact,
-} from "lucide-react"
-import { AppointmentCalendar } from "@/components/AppointmentCalendar"
-import { BookedTab } from "@/components/BookedTab"
-import { LeadsTab } from "@/components/LeadsTab"
-import { CreateAppointmentModal } from "@/components/CreateAppointmentModal"
-import { AppointmentDetailsModal } from "@/components/AppointmentDetailsModal"
-import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect"
-import { GoogleCalendarSyncButton } from "@/components/GoogleCalendarSyncButton"
+  Calendar,
+  Clock,
+  Users,
+  Plus,
+  RefreshCw,
+  Mail,
+  ArrowLeft,
+  Contact,
+} from "lucide-react";
+import { AppointmentCalendar } from "@/components/AppointmentCalendar";
+import { BookedTab } from "@/components/BookedTab";
+import { LeadsTab } from "@/components/LeadsTab";
+import { CreateAppointmentModal } from "@/components/CreateAppointmentModal";
+import { AppointmentDetailsModal } from "@/components/AppointmentDetailsModal";
+import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect";
+import { GoogleCalendarSyncButton } from "@/components/GoogleCalendarSyncButton";
 // ↓↓↓ NEW IMPORT ↓↓↓
-import { CustomerCredentialsTab } from "@/components/CustomerCredentialsTab"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiClient } from "@/lib/api-client"
-import { useAuth } from "@/providers/AuthProvider"
+import { CustomerCredentialsTab } from "@/components/CustomerCredentialsTab";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { useAuth } from "@/providers/AuthProvider";
 import {
   FullscreenProvider,
   useFullscreen,
   TabOption,
-} from "@/components/FullscreenProvider"
+} from "@/components/FullscreenProvider";
 import {
   PaneToolbar,
   MultiPaneContainer,
   FullscreenWrapper,
-} from "@/components/MultiPaneLayout"
-import { TooltipProvider } from "@/components/ui/tooltip"
+} from "@/components/MultiPaneLayout";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // ─── Available tabs ───────────────────────────────────────────────────────────
 
 const TAB_OPTIONS: TabOption[] = [
   { id: "leads", label: "Leads", icon: <Mail className="h-3.5 w-3.5" /> },
-  { id: "calendar", label: "Calendar View", icon: <Calendar className="h-3.5 w-3.5" /> },
-  { id: "upcoming", label: "Upcoming", icon: <Clock className="h-3.5 w-3.5" /> },
+  {
+    id: "calendar",
+    label: "Calendar View",
+    icon: <Calendar className="h-3.5 w-3.5" />,
+  },
+  {
+    id: "upcoming",
+    label: "Upcoming",
+    icon: <Clock className="h-3.5 w-3.5" />,
+  },
   { id: "booked", label: "Booked", icon: <Users className="h-3.5 w-3.5" /> },
   // ↓↓↓ NEW TAB ↓↓↓
-  { id: "customers", label: "Customer Credentials", icon: <Contact className="h-3.5 w-3.5" /> },
-]
+  {
+    id: "customers",
+    label: "Customer Credentials",
+    icon: <Contact className="h-3.5 w-3.5" />,
+  },
+];
 
 // ─── Inner Page ───────────────────────────────────────────────────────────────
 
 function AppointmentsPageInner() {
-  const router = useRouter()
-  const { getToken } = useAuth()
-  const queryClient = useQueryClient()
-  const { isFullscreen } = useFullscreen()
+  const router = useRouter();
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  const { isFullscreen } = useFullscreen();
 
-  const [activeTab, setActiveTab] = React.useState("leads")
-  const [createModalOpen, setCreateModalOpen] = React.useState(false)
-  const [detailsModalOpen, setDetailsModalOpen] = React.useState(false)
-  const [selectedAppointment, setSelectedAppointment] = React.useState<any>(null)
-  const [preselectedDate, setPreselectedDate] = React.useState<Date | undefined>()
+  const [activeTab, setActiveTab] = React.useState("leads");
+  const [createModalOpen, setCreateModalOpen] = React.useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = React.useState(false);
+  const [selectedAppointment, setSelectedAppointment] =
+    React.useState<any>(null);
+  const [preselectedDate, setPreselectedDate] = React.useState<
+    Date | undefined
+  >();
 
   React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
+    const params = new URLSearchParams(window.location.search);
     if (params.get("calendar_connected") === "true") {
-      window.history.replaceState({}, "", "/appointments")
+      window.history.replaceState({}, "", "/appointments");
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["appointments"] })
-      }, 1000)
+        queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      }, 1000);
     }
     if (params.get("calendar_error")) {
-      window.history.replaceState({}, "", "/appointments")
+      window.history.replaceState({}, "", "/appointments");
     }
-  }, [queryClient])
+  }, [queryClient]);
 
   const getAuthHeaders = async () => {
-    const token = await getToken()
-    return { headers: { Authorization: `Bearer ${token}` } }
-  }
+    const token = await getToken();
+    return { headers: { Authorization: `Bearer ${token}` } };
+  };
 
   const {
     data: appointments = [],
@@ -86,13 +108,16 @@ function AppointmentsPageInner() {
     queryKey: ["appointments"],
     queryFn: async () => {
       try {
-        const headers = await getAuthHeaders()
-        const response = await apiClient.get("/api/appointments", headers)
-        const data = response.data?.data || response.data
-        return data.appointments || []
+        const headers = await getAuthHeaders();
+        const response = await apiClient.get("/api/appointments", headers);
+        const data = response.data?.data || response.data;
+        return data.appointments || [];
       } catch (error: any) {
-        console.error("[AppointmentsPage] ❌ Error fetching appointments:", error)
-        throw error
+        console.error(
+          "[AppointmentsPage] ❌ Error fetching appointments:",
+          error,
+        );
+        throw error;
       }
     },
     retry: 2,
@@ -100,117 +125,118 @@ function AppointmentsPageInner() {
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
-  })
+  });
 
   const { data: customerBookingsCount = 0 } = useQuery({
     queryKey: ["customer-bookings-count"],
     queryFn: async () => {
       try {
-        const headers = await getAuthHeaders()
+        const headers = await getAuthHeaders();
         const response = await apiClient.get(
           "/api/appointments/customer-bookings/list",
-          headers
-        )
-        const data = response.data?.data || response.data
-        return data.appointments?.length || 0
+          headers,
+        );
+        const data = response.data?.data || response.data;
+        return data.appointments?.length || 0;
       } catch {
-        return 0
+        return 0;
       }
     },
-  })
+  });
 
   // ── NEW: customer count badge ─────────────────────────────────────────────
   const { data: customerCount = 0 } = useQuery({
     queryKey: ["customers-count"],
     queryFn: async () => {
       try {
-        const headers = await getAuthHeaders()
-        const res = await apiClient.get("/api/customers/stats", headers)
-        return res.data?.data?.total ?? 0
+        const headers = await getAuthHeaders();
+        const res = await apiClient.get("/api/customers/stats", headers);
+        return res.data?.data?.total ?? 0;
       } catch {
-        return 0
+        return 0;
       }
     },
     staleTime: 60_000,
-  })
+  });
 
   const stats = React.useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     return {
       total: appointments.length,
       upcoming: appointments.filter((apt: any) => {
-        const start = new Date(apt.startTime)
-        return start >= today && apt.status !== "cancelled"
+        const start = new Date(apt.startTime);
+        return start >= today && apt.status !== "cancelled";
       }).length,
       today: appointments.filter((apt: any) => {
-        const start = new Date(apt.startTime)
-        return start >= today && start < tomorrow && apt.status !== "cancelled"
+        const start = new Date(apt.startTime);
+        return start >= today && start < tomorrow && apt.status !== "cancelled";
       }).length,
-      cancelled: appointments.filter((apt: any) => apt.status === "cancelled").length,
-    }
-  }, [appointments])
+      cancelled: appointments.filter((apt: any) => apt.status === "cancelled")
+        .length,
+    };
+  }, [appointments]);
 
   const handleCreateAppointment = React.useCallback(() => {
-    setPreselectedDate(undefined)
-    setCreateModalOpen(true)
-  }, [])
+    setPreselectedDate(undefined);
+    setCreateModalOpen(true);
+  }, []);
 
   const handleDateClick = React.useCallback((date?: Date) => {
-    setPreselectedDate(date)
-    setCreateModalOpen(true)
-  }, [])
+    setPreselectedDate(date);
+    setCreateModalOpen(true);
+  }, []);
 
   const handleAppointmentClick = React.useCallback((appointment: any) => {
-    setSelectedAppointment(appointment)
-    setDetailsModalOpen(true)
-  }, [])
+    setSelectedAppointment(appointment);
+    setDetailsModalOpen(true);
+  }, []);
 
   const handleUpdateAppointment = async (id: string, data: any) => {
-    const headers = await getAuthHeaders()
-    await apiClient.patch(`/api/appointments/${id}`, data, headers)
+    const headers = await getAuthHeaders();
+    await apiClient.patch(`/api/appointments/${id}`, data, headers);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ])
-  }
+    ]);
+  };
 
   const handleCancelAppointment = async (id: string) => {
-    const headers = await getAuthHeaders()
-    await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers)
+    const headers = await getAuthHeaders();
+    await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ])
-  }
+    ]);
+  };
 
   const handleDeleteAppointment = async (id: string) => {
-    const headers = await getAuthHeaders()
-    await apiClient.delete(`/api/appointments/${id}`, headers)
-    setDetailsModalOpen(false)
+    const headers = await getAuthHeaders();
+    await apiClient.delete(`/api/appointments/${id}`, headers);
+    setDetailsModalOpen(false);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ])
-  }
+    ]);
+  };
 
   const handleSyncComplete = React.useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ])
-  }, [queryClient])
+    ]);
+  }, [queryClient]);
 
   const handleCreateAppointmentSubmit = async (data: any) => {
-    const headers = await getAuthHeaders()
-    await apiClient.post("/api/appointments", data, headers)
+    const headers = await getAuthHeaders();
+    await apiClient.post("/api/appointments", data, headers);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ])
-  }
+    ]);
+  };
 
   // ── Render any tab by id ──────────────────────────────────────────────────
 
@@ -222,7 +248,7 @@ function AppointmentsPageInner() {
             <div className="p-4">
               <LeadsTab />
             </div>
-          )
+          );
         case "calendar":
           return (
             <div className="p-4">
@@ -238,7 +264,7 @@ function AppointmentsPageInner() {
                 </div>
               )}
             </div>
-          )
+          );
         case "upcoming":
           return (
             <div className="p-4">
@@ -255,7 +281,12 @@ function AppointmentsPageInner() {
                     <div className="text-center py-8 text-muted-foreground">
                       <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
                       <p>No upcoming appointments</p>
-                      <Button type="button" variant="outline" className="mt-4" onClick={handleCreateAppointment}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-4"
+                        onClick={handleCreateAppointment}
+                      >
                         Create Appointment
                       </Button>
                     </div>
@@ -263,12 +294,16 @@ function AppointmentsPageInner() {
                     <div className="space-y-3">
                       {appointments
                         .filter((apt: any) => {
-                          const start = new Date(apt.startTime)
-                          const today = new Date()
-                          today.setHours(0, 0, 0, 0)
-                          return start >= today && apt.status !== "cancelled"
+                          const start = new Date(apt.startTime);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return start >= today && apt.status !== "cancelled";
                         })
-                        .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                        .sort(
+                          (a: any, b: any) =>
+                            new Date(a.startTime).getTime() -
+                            new Date(b.startTime).getTime(),
+                        )
                         .slice(0, 10)
                         .map((appointment: any) => (
                           <Card
@@ -280,28 +315,47 @@ function AppointmentsPageInner() {
                               <div className="flex items-start justify-between">
                                 <div className="space-y-1 flex-1">
                                   <div className="flex items-center gap-2">
-                                    <h4 className="font-semibold">{appointment.title}</h4>
+                                    <h4 className="font-semibold">
+                                      {appointment.title}
+                                    </h4>
                                     <Badge
                                       variant={
-                                        appointment.status === "confirmed" ? "default" :
-                                          appointment.status === "cancelled" ? "destructive" : "secondary"
+                                        appointment.status === "confirmed"
+                                          ? "default"
+                                          : appointment.status === "cancelled"
+                                            ? "destructive"
+                                            : "secondary"
                                       }
-                                      className={appointment.status === "confirmed" ? "bg-green-500" : ""}
+                                      className={
+                                        appointment.status === "confirmed"
+                                          ? "bg-green-500"
+                                          : ""
+                                      }
                                     >
                                       {appointment.status}
                                     </Badge>
                                   </div>
                                   <p className="text-sm text-muted-foreground">
-                                    {new Date(appointment.startTime).toLocaleDateString("en-US", {
-                                      weekday: "long", year: "numeric", month: "long", day: "numeric",
+                                    {new Date(
+                                      appointment.startTime,
+                                    ).toLocaleDateString("en-US", {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
                                     })}
                                     {" at "}
-                                    {new Date(appointment.startTime).toLocaleTimeString("en-US", {
-                                      hour: "numeric", minute: "2-digit",
+                                    {new Date(
+                                      appointment.startTime,
+                                    ).toLocaleTimeString("en-US", {
+                                      hour: "numeric",
+                                      minute: "2-digit",
                                     })}
                                   </p>
                                   {appointment.location && (
-                                    <p className="text-sm text-muted-foreground">Location: {appointment.location}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Location: {appointment.location}
+                                    </p>
                                   )}
                                 </div>
                               </div>
@@ -313,30 +367,37 @@ function AppointmentsPageInner() {
                 </CardContent>
               </Card>
             </div>
-          )
+          );
         case "booked":
           return (
             <div className="p-4">
               <BookedTab />
             </div>
-          )
+          );
         // ↓↓↓ NEW CASE ↓↓↓
         case "customers":
           return (
             <div className="p-4 h-full">
               <CustomerCredentialsTab />
             </div>
-          )
+          );
         default:
           return (
             <div className="flex items-center justify-center h-full text-xs text-muted-foreground/30 py-16">
               Unknown tab: {tabId}
             </div>
-          )
+          );
       }
     },
-    [appointments, isLoading, stats.upcoming, handleCreateAppointment, handleDateClick, handleAppointmentClick]
-  )
+    [
+      appointments,
+      isLoading,
+      stats.upcoming,
+      handleCreateAppointment,
+      handleDateClick,
+      handleAppointmentClick,
+    ],
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -344,15 +405,19 @@ function AppointmentsPageInner() {
     <>
       <FullscreenWrapper>
         <div
-          className={`${isFullscreen
+          className={`${
+            isFullscreen
               ? "flex flex-col h-full overflow-hidden"
               : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
-            }`}
+          }`}
         >
           {/* Header */}
           <div
-            className={`flex items-center justify-between ${isFullscreen ? "px-5 py-3 border-b border-border/50 bg-card shrink-0" : ""
-              }`}
+            className={`flex items-center justify-between ${
+              isFullscreen
+                ? "px-5 py-3 border-b border-border/50 bg-card shrink-0"
+                : ""
+            }`}
           >
             <div className="flex items-center gap-3">
               <Button
@@ -364,12 +429,15 @@ function AppointmentsPageInner() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className={`font-bold ${isFullscreen ? "text-xl" : "text-3xl"}`}>
+                <h1
+                  className={`font-bold ${isFullscreen ? "text-xl" : "text-3xl"}`}
+                >
                   Appointments
                 </h1>
                 {!isFullscreen && (
                   <p className="text-muted-foreground">
-                    Manage your leads, appointments, events, and customer records
+                    Manage your leads, appointments, events, and customer
+                    records
                   </p>
                 )}
               </div>
@@ -377,7 +445,11 @@ function AppointmentsPageInner() {
             <div className="flex items-center gap-2">
               <PaneToolbar tabOptions={TAB_OPTIONS} />
               <GoogleCalendarSyncButton onSyncComplete={handleSyncComplete} />
-              <Button type="button" onClick={handleCreateAppointment} size={isFullscreen ? "sm" : "default"}>
+              <Button
+                type="button"
+                onClick={handleCreateAppointment}
+                size={isFullscreen ? "sm" : "default"}
+              >
                 <Plus className="mr-2 h-4 w-4" /> New Appointment
               </Button>
             </div>
@@ -386,7 +458,10 @@ function AppointmentsPageInner() {
           {/* ═══ FULLSCREEN MODE ═══ */}
           {isFullscreen ? (
             <div className="flex-1 overflow-hidden">
-              <MultiPaneContainer tabOptions={TAB_OPTIONS} renderTab={renderTabContent} />
+              <MultiPaneContainer
+                tabOptions={TAB_OPTIONS}
+                renderTab={renderTabContent}
+              />
             </div>
           ) : (
             /* ═══ NORMAL MODE ═══ */
@@ -397,12 +472,18 @@ function AppointmentsPageInner() {
               <div className="grid gap-4 md:grid-cols-5">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Total Appointments
+                    </CardTitle>
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{stats.total}</div>
-                    {isFetching && <p className="text-xs text-muted-foreground mt-1">Updating...</p>}
+                    {isFetching && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Updating...
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
                 <Card>
@@ -416,7 +497,9 @@ function AppointmentsPageInner() {
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Upcoming
+                    </CardTitle>
                     <RefreshCw className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -425,17 +508,23 @@ function AppointmentsPageInner() {
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Customer Bookings</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Customer Bookings
+                    </CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{customerBookingsCount}</div>
+                    <div className="text-2xl font-bold">
+                      {customerBookingsCount}
+                    </div>
                   </CardContent>
                 </Card>
                 {/* ↓↓↓ NEW STAT ↓↓↓ */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Customers</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Customers
+                    </CardTitle>
                     <Contact className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -447,8 +536,15 @@ function AppointmentsPageInner() {
               {appointmentsError && (
                 <Card className="border-red-200 bg-red-50">
                   <CardContent className="pt-6">
-                    <p className="text-sm text-red-600">Failed to load appointments. Please try refreshing.</p>
-                    <Button variant="outline" size="sm" className="mt-2" onClick={() => refetchAppointments()}>
+                    <p className="text-sm text-red-600">
+                      Failed to load appointments. Please try refreshing.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => refetchAppointments()}
+                    >
                       <RefreshCw className="mr-2 h-4 w-4" /> Retry
                     </Button>
                   </CardContent>
@@ -456,31 +552,41 @@ function AppointmentsPageInner() {
               )}
 
               {/* Normal tab interface */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="leads">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="space-y-4"
+              >
+                <TabsList className="w-full">
+                  <TabsTrigger value="leads" className="flex-1">
                     <Mail className="mr-2 h-4 w-4" /> Leads
                   </TabsTrigger>
-                  <TabsTrigger value="calendar">
+                  <TabsTrigger value="calendar" className="flex-1">
                     <Calendar className="mr-2 h-4 w-4" /> Calendar View
                   </TabsTrigger>
-                  <TabsTrigger value="upcoming">
+                  <TabsTrigger value="upcoming" className="flex-1">
                     <Clock className="mr-2 h-4 w-4" /> Upcoming
                     {stats.upcoming > 0 && (
-                      <Badge className="ml-2" variant="secondary">{stats.upcoming}</Badge>
+                      <Badge className="ml-2" variant="secondary">
+                        {stats.upcoming}
+                      </Badge>
                     )}
                   </TabsTrigger>
-                  <TabsTrigger value="booked">
+                  <TabsTrigger value="booked" className="flex-1">
                     <Users className="mr-2 h-4 w-4" /> Booked
                     {customerBookingsCount > 0 && (
-                      <Badge className="ml-2" variant="secondary">{customerBookingsCount}</Badge>
+                      <Badge className="ml-2" variant="secondary">
+                        {customerBookingsCount}
+                      </Badge>
                     )}
                   </TabsTrigger>
                   {/* ↓↓↓ NEW TAB TRIGGER ↓↓↓ */}
-                  <TabsTrigger value="customers">
+                  <TabsTrigger value="customers" className="flex-1">
                     <Contact className="mr-2 h-4 w-4" /> Customer Credentials
                     {customerCount > 0 && (
-                      <Badge className="ml-2" variant="secondary">{customerCount}</Badge>
+                      <Badge className="ml-2" variant="secondary">
+                        {customerCount}
+                      </Badge>
                     )}
                   </TabsTrigger>
                 </TabsList>
@@ -501,14 +607,21 @@ function AppointmentsPageInner() {
 
                 <TabsContent value="upcoming" className="space-y-4">
                   <Card>
-                    <CardHeader><CardTitle>Upcoming Appointments</CardTitle></CardHeader>
+                    <CardHeader>
+                      <CardTitle>Upcoming Appointments</CardTitle>
+                    </CardHeader>
                     <CardContent>
                       {/* same upcoming list as before — omitted for brevity, copy from original */}
                       {stats.upcoming === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
                           <p>No upcoming appointments</p>
-                          <Button type="button" variant="outline" className="mt-4" onClick={handleCreateAppointment}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-4"
+                            onClick={handleCreateAppointment}
+                          >
                             Create Appointment
                           </Button>
                         </div>
@@ -516,23 +629,58 @@ function AppointmentsPageInner() {
                         <div className="space-y-3">
                           {appointments
                             .filter((apt: any) => {
-                              const start = new Date(apt.startTime)
-                              const today = new Date(); today.setHours(0, 0, 0, 0)
-                              return start >= today && apt.status !== "cancelled"
+                              const start = new Date(apt.startTime);
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              return (
+                                start >= today && apt.status !== "cancelled"
+                              );
                             })
-                            .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                            .sort(
+                              (a: any, b: any) =>
+                                new Date(a.startTime).getTime() -
+                                new Date(b.startTime).getTime(),
+                            )
                             .slice(0, 10)
                             .map((appointment: any) => (
-                              <Card key={appointment._id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
+                              <Card
+                                key={appointment._id}
+                                className="hover:shadow-md transition-shadow cursor-pointer"
+                                onClick={() =>
+                                  handleAppointmentClick(appointment)
+                                }
+                              >
                                 <CardContent className="p-4">
                                   <div className="flex items-center gap-2">
-                                    <h4 className="font-semibold">{appointment.title}</h4>
-                                    <Badge variant={appointment.status === "confirmed" ? "default" : "secondary"}>{appointment.status}</Badge>
+                                    <h4 className="font-semibold">
+                                      {appointment.title}
+                                    </h4>
+                                    <Badge
+                                      variant={
+                                        appointment.status === "confirmed"
+                                          ? "default"
+                                          : "secondary"
+                                      }
+                                    >
+                                      {appointment.status}
+                                    </Badge>
                                   </div>
                                   <p className="text-sm text-muted-foreground mt-1">
-                                    {new Date(appointment.startTime).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                                    {new Date(
+                                      appointment.startTime,
+                                    ).toLocaleDateString("en-US", {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                    })}
                                     {" at "}
-                                    {new Date(appointment.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                                    {new Date(
+                                      appointment.startTime,
+                                    ).toLocaleTimeString("en-US", {
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    })}
                                   </p>
                                 </CardContent>
                               </Card>
@@ -560,7 +708,10 @@ function AppointmentsPageInner() {
       {/* Modals */}
       <CreateAppointmentModal
         open={createModalOpen}
-        onOpenChange={(open) => { setCreateModalOpen(open); if (!open) setPreselectedDate(undefined) }}
+        onOpenChange={(open) => {
+          setCreateModalOpen(open);
+          if (!open) setPreselectedDate(undefined);
+        }}
         onCreateAppointment={handleCreateAppointmentSubmit}
         conversations={[]}
         preselectedDate={preselectedDate}
@@ -568,7 +719,10 @@ function AppointmentsPageInner() {
       {selectedAppointment && (
         <AppointmentDetailsModal
           open={detailsModalOpen}
-          onOpenChange={(open) => { setDetailsModalOpen(open); if (!open) setSelectedAppointment(null) }}
+          onOpenChange={(open) => {
+            setDetailsModalOpen(open);
+            if (!open) setSelectedAppointment(null);
+          }}
           appointment={selectedAppointment}
           onUpdate={handleUpdateAppointment}
           onDelete={handleDeleteAppointment}
@@ -576,7 +730,7 @@ function AppointmentsPageInner() {
         />
       )}
     </>
-  )
+  );
 }
 
 // ─── Exported Page ────────────────────────────────────────────────────────────
@@ -588,5 +742,5 @@ export default function AppointmentsPage() {
         <AppointmentsPageInner />
       </FullscreenProvider>
     </TooltipProvider>
-  )
+  );
 }
