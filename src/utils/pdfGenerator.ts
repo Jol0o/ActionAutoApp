@@ -3,9 +3,87 @@ import { Shipment } from "@/types/transportation";
 
 export type ShipmentPDFResult = "saved" | "cancelled" | "initiated";
 
+// ─── Font loader ─────────────────────────────────────────────────────────────
+async function loadFontBase64(url: string): Promise<string> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return "";
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let bin = "";
+    bytes.forEach((b) => (bin += String.fromCharCode(b)));
+    return btoa(bin);
+  } catch {
+    return "";
+  }
+}
+
+// ─── Logo loader (same pattern as reportPdfTemplate) ─────────────────────────
+async function loadLogoBase64(): Promise<string> {
+  try {
+    const res = await fetch("/icon-192x192.png");
+    if (!res.ok) return "";
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let bin = "";
+    bytes.forEach((b) => (bin += String.fromCharCode(b)));
+    return "data:image/png;base64," + btoa(bin);
+  } catch {
+    return "";
+  }
+}
+
+// Google Fonts GitHub — stable permanent TTF URLs
+const FONT_URLS = {
+  poppinsSemiBold:
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-SemiBold.ttf",
+  interRegular:
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/static/Inter-Regular.ttf",
+  interMedium:
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/static/Inter-Medium.ttf",
+};
+
+/**
+ * Embed custom fonts into a jsPDF instance.
+ * Falls back gracefully to helvetica if a font fails to load.
+ */
+async function embedFonts(pdf: jsPDF): Promise<{
+  heading: string;
+  body: string;
+  mono: string;
+}> {
+  const [poppins, interR, interM] = await Promise.all([
+    loadFontBase64(FONT_URLS.poppinsSemiBold),
+    loadFontBase64(FONT_URLS.interRegular),
+    loadFontBase64(FONT_URLS.interMedium),
+  ]);
+
+  let heading = "helvetica";
+  let body = "helvetica";
+  let mono = "courier";
+
+  if (poppins) {
+    pdf.addFileToVFS("Poppins-SemiBold.ttf", poppins);
+    pdf.addFont("Poppins-SemiBold.ttf", "Poppins", "bold");
+    heading = "Poppins";
+  }
+  if (interR) {
+    pdf.addFileToVFS("Inter-Regular.ttf", interR);
+    pdf.addFont("Inter-Regular.ttf", "Inter", "normal");
+    body = "Inter";
+  }
+  if (interM) {
+    pdf.addFileToVFS("Inter-Medium.ttf", interM);
+    pdf.addFont("Inter-Medium.ttf", "Inter", "medium");
+    mono = "Inter";
+  }
+
+  return { heading, body, mono };
+}
+
 /**
  * Generate and download a professional PDF of shipment details
- * Professional design by Action Auto Utah - Powered By Supra AI
+ * Action Auto Utah — Powered by Supra AI
  */
 export const generateShipmentPDF = async (
   shipment: Shipment,
@@ -74,6 +152,18 @@ export const generateShipmentPDF = async (
     year: "numeric",
   });
 
+  // Load logo + embed fonts in parallel
+  const [logoBase64, fonts] = await Promise.all([
+    loadLogoBase64(),
+    embedFonts(pdf),
+  ]);
+
+  // Font aliases for QA spec
+  // heading  → Poppins SemiBold (falls back to helvetica bold)
+  // body     → Inter Regular    (falls back to helvetica normal)
+  // mono     → Inter Medium     (falls back to courier normal)
+  const F = fonts;
+
   const drawPageBackground = () => {
     const bg = hexToRgb(colors.page);
     pdf.setFillColor(bg.r, bg.g, bg.b);
@@ -94,25 +184,34 @@ export const generateShipmentPDF = async (
     pdf.setFillColor(brand.r, brand.g, brand.b);
     pdf.rect(0, 0, 5, 34, "F");
 
-    pdf.setFillColor(brand.r, brand.g, brand.b);
-    pdf.roundedRect(marginX, 8, 10, 10, 2, 2, "F");
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(7);
-    pdf.text("AA", marginX + 5, 14.5, { align: "center" });
+    // Logo image (10×10 mm) or "AA" badge fallback
+    if (logoBase64) {
+      pdf.addImage(logoBase64, "PNG", marginX, 8, 10, 10);
+    } else {
+      pdf.setFillColor(brand.r, brand.g, brand.b);
+      pdf.roundedRect(marginX, 8, 10, 10, 2, 2, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(7);
+      pdf.text("AA", marginX + 5, 14.5, { align: "center" });
+    }
 
-    pdf.setFontSize(14);
+    // Company name — Poppins SemiBold (heading font)
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont(F.heading, "bold");
+    pdf.setFontSize(13);
     pdf.text("ACTION AUTO UTAH", marginX + 14, 13);
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont(F.body, "normal");
     pdf.setFontSize(7.5);
     pdf.text("Powered by Supra AI", marginX + 14, 17.5);
 
-    pdf.setFont("helvetica", "bold");
+    // Right side — Poppins SemiBold for title, Inter Regular for meta
+    pdf.setFont(F.heading, "bold");
     pdf.setFontSize(10.5);
     pdf.text("Shipment Documentation", pageWidth - marginX, 12.5, {
       align: "right",
     });
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont(F.body, "normal");
     pdf.setFontSize(7.5);
     pdf.text(`Issue Date: ${currentDate}`, pageWidth - marginX, 17, {
       align: "right",
@@ -127,7 +226,7 @@ export const generateShipmentPDF = async (
 
     if (isContinuation) {
       pdf.setTextColor(188, 199, 215);
-      pdf.setFont("helvetica", "normal");
+      pdf.setFont(F.body, "normal");
       pdf.setFontSize(7.2);
       pdf.text("Continued", pageWidth - marginX, 30.5, { align: "right" });
     }
@@ -143,7 +242,8 @@ export const generateShipmentPDF = async (
 
   const drawSectionTitle = (title: string) => {
     pdf.setTextColor(17, 24, 39);
-    pdf.setFont("helvetica", "bold");
+    // QA spec: Poppins SemiBold for section headings
+    pdf.setFont(F.heading, "bold");
     pdf.setFontSize(10.5);
     pdf.text(title, marginX, yPosition);
 
@@ -174,13 +274,14 @@ export const generateShipmentPDF = async (
         pdf.rect(marginX + 1.2, rowY - 4.8, contentWidth - 2.4, rowHeight, "F");
       }
 
+      // QA spec: labels = Inter Medium (uppercase), values = Inter Regular
       pdf.setTextColor(100, 116, 139);
-      pdf.setFont("helvetica", "bold");
+      pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
       pdf.setFontSize(7.8);
       pdf.text(row.label.toUpperCase(), marginX + 5, rowY);
 
       pdf.setTextColor(30, 41, 59);
-      pdf.setFont("helvetica", "normal");
+      pdf.setFont(F.body, "normal");
       pdf.setFontSize(8.7);
       pdf.text(row.value || "N/A", valueX, rowY);
     });
@@ -194,13 +295,14 @@ export const generateShipmentPDF = async (
   ensureSpace(27);
   drawCard(marginX, yPosition, contentWidth, 23);
 
+  // QA spec: label = Inter Medium, tracking number = Inter Medium, vehicle = Inter Regular
   pdf.setTextColor(100, 116, 139);
-  pdf.setFont("helvetica", "bold");
+  pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(8);
   pdf.text("Tracking Number", marginX + 5, yPosition + 7);
 
   pdf.setTextColor(17, 24, 39);
-  pdf.setFont("helvetica", "bold");
+  pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(13);
   pdf.text(
     shipment.trackingNumber || "Not Assigned",
@@ -209,18 +311,18 @@ export const generateShipmentPDF = async (
   );
 
   pdf.setTextColor(100, 116, 139);
-  pdf.setFont("helvetica", "bold");
+  pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(7.8);
   pdf.text("Vehicle", marginX + 5, yPosition + 19.5);
   pdf.setTextColor(36, 52, 76);
-  pdf.setFont("helvetica", "normal");
+  pdf.setFont(F.body, "normal");
   pdf.setFontSize(8.3);
   pdf.text(vehicleName, marginX + 25, yPosition + 19.5);
 
   const statusColor = getStatusColor(shipment.status);
   const statusRgb = hexToRgb(statusColor);
   const statusText = (shipment.status || "Unknown").toUpperCase();
-  pdf.setFont("helvetica", "bold");
+  pdf.setFont(F.heading, "bold");
   pdf.setFontSize(8);
   const statusWidth = Math.max(42, pdf.getTextWidth(statusText) + 16);
   const statusX = pageWidth - marginX - statusWidth;
@@ -281,22 +383,22 @@ export const generateShipmentPDF = async (
   pdf.setFillColor(34, 197, 94);
   pdf.circle(routeX, routeTop, 2.5, "F");
   pdf.setTextColor(100, 116, 139);
-  pdf.setFont("helvetica", "bold");
+  pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(7.6);
   pdf.text("ORIGIN", routeX + 6, routeTop - 0.8);
   pdf.setTextColor(30, 41, 59);
-  pdf.setFont("helvetica", "normal");
+  pdf.setFont(F.body, "normal");
   pdf.setFontSize(9);
   pdf.text(shipment.origin || "N/A", routeX + 6, routeTop + 3.8);
 
   pdf.setFillColor(239, 68, 68);
   pdf.circle(routeX, routeTop + 15.2, 2.5, "F");
   pdf.setTextColor(100, 116, 139);
-  pdf.setFont("helvetica", "bold");
+  pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(7.6);
   pdf.text("DESTINATION", routeX + 6, routeTop + 14.6);
   pdf.setTextColor(30, 41, 59);
-  pdf.setFont("helvetica", "normal");
+  pdf.setFont(F.body, "normal");
   pdf.setFontSize(9);
   pdf.text(shipment.destination || "N/A", routeX + 6, routeTop + 19);
 
@@ -333,17 +435,18 @@ export const generateShipmentPDF = async (
     pdf.setFillColor(stepColor[0], stepColor[1], stepColor[2]);
     pdf.circle(marginX + 7, rowY - 0.2, 2.3, "F");
     pdf.setTextColor(255, 255, 255);
-    pdf.setFont("helvetica", "bold");
+    pdf.setFont(F.heading, "bold");
     pdf.setFontSize(6.8);
     pdf.text(String(index + 1), marginX + 7, rowY + 0.9, { align: "center" });
 
+    // QA spec: label = Inter Medium, date = Inter Regular
     pdf.setTextColor(71, 85, 105);
-    pdf.setFont("helvetica", "bold");
+    pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
     pdf.setFontSize(8.1);
     pdf.text(item.label, marginX + 12, rowY);
 
     pdf.setTextColor(30, 41, 59);
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont(F.body, "normal");
     pdf.setFontSize(8.6);
     pdf.text(item.date, pageWidth - marginX - 4, rowY, { align: "right" });
   });
@@ -371,6 +474,8 @@ export const generateShipmentPDF = async (
   drawCard(marginX, yPosition - 1.2, contentWidth, detailsCardHeight);
   drawKeyValueRows(detailsRows, marginX + 60);
 
+  // ✅ rateBoxY captured AFTER drawKeyValueRows advances yPosition
+  ensureSpace(22);
   const rateBoxY = yPosition + 2;
   const brand = hexToRgb(colors.brandDark);
   const brandSoft = hexToRgb(colors.brand);
@@ -379,41 +484,66 @@ export const generateShipmentPDF = async (
   pdf.setFillColor(brandSoft.r, brandSoft.g, brandSoft.b);
   pdf.rect(marginX, rateBoxY, contentWidth * 0.28, 15, "F");
   pdf.setTextColor(255, 255, 255);
-  pdf.setFont("helvetica", "bold");
+  // QA spec: Poppins SemiBold for rate label, Inter Medium for amount
+  pdf.setFont(F.heading, "bold");
   pdf.setFontSize(8.5);
   pdf.text("TOTAL TRANSPORT RATE", marginX + 5, rateBoxY + 6.2);
+  pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(15);
   pdf.text(
     `$${quote?.rate?.toLocaleString() || "N/A"}`,
     marginX + 5,
     rateBoxY + 12.3,
   );
-  pdf.setFont("helvetica", "normal");
+  pdf.setFont(F.body, "normal");
   pdf.setFontSize(8.2);
   pdf.text("USD", pageWidth - marginX - 5, rateBoxY + 12.1, { align: "right" });
 
-  // Footer on all pages
+  // ── Footer on all pages (QA spec) ────────────────────────────────────────
+  // Line 1 (center): Document ID: TRK-xxx • Generated: Apr 30, 2026, 07:08 AM • Page X of Y
+  // Line 2 (center): Action Auto Utah • support@actionautoutah.com
   const totalPages = pdf.getNumberOfPages();
+  const genLabel = generatedAt.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const docIdLabel = shipment.trackingNumber || shipment._id;
+
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
-    const footerY = pageHeight - 12;
+    const footerY = pageHeight - 10;
     pdf.setDrawColor(220, 228, 239);
     pdf.setLineWidth(0.3);
-    pdf.line(marginX, footerY - 4.5, pageWidth - marginX, footerY - 4.5);
+    pdf.line(marginX, footerY - 6, pageWidth - marginX, footerY - 6);
 
+    // Line 1 — center: metadata  |  right: page number
+    pdf.setFont(F.body, "normal");
+    pdf.setFontSize(6.8);
     pdf.setTextColor(100, 116, 139);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(7);
-    pdf.text(`Document ID: ${shipment._id}`, marginX, footerY);
     pdf.text(
-      `Generated: ${generatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${generatedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
+      `Document ID: ${docIdLabel}  •  Generated: ${genLabel}`,
       pageWidth / 2,
-      footerY,
+      footerY - 2,
       { align: "center" },
     );
-    pdf.text(`Page ${i} of ${totalPages}`, pageWidth - marginX, footerY, {
+    pdf.setFont(F.heading, "bold");
+    pdf.text(`Page ${i} of ${totalPages}`, pageWidth - marginX, footerY - 2, {
       align: "right",
     });
+
+    // Line 2 — left: company  |  center: email
+    pdf.setFont(F.body, "normal");
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text(
+      "Action Auto Utah  •  support@actionautoutah.com",
+      pageWidth / 2,
+      footerY + 3,
+      { align: "center" },
+    );
   }
 
   // ============================================

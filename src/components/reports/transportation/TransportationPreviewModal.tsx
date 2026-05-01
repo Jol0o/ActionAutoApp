@@ -95,7 +95,7 @@ function StatCard({
 }) {
   return (
     <div
-      className={`flex-1 min-w-27.5unded-lg border bg-card px-4 py-3 ${accent}`}
+      className={`flex-1 min-w-27.5 rounded-lg border bg-card px-4 py-3 ${accent}`}
     >
       <div className="flex items-center justify-between mb-1.5">
         <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
@@ -502,10 +502,11 @@ export function TransportationPreviewModal({
     >
       <DialogContent
         showCloseButton={false}
-        className="max-w-7xl w-full p-0 gap-0 overflow-hidden max-h-[95vh] flex flex-col"
+        overlayClassName="bg-black/65 backdrop-blur-sm"
+        className="w-[96vw] max-w-300 sm:max-w-[min(96vw,1200px)] p-0 gap-0 overflow-hidden max-h-[92dvh] min-h-[62dvh] flex flex-col rounded-2xl border-border/60 bg-background/95 shadow-2xl"
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-border shrink-0">
+        <div className="flex items-start justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border shrink-0">
           <div className="flex items-start gap-3">
             <div
               className={`size-10 rounded-lg flex items-center justify-center border ${
@@ -558,7 +559,7 @@ export function TransportationPreviewModal({
           </div>
         </div>
 
-        <div className="overflow-y-auto px-6 py-5 flex-1">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar [scrollbar-gutter:stable] px-5 sm:px-6 py-5 sm:py-6 pr-2 sm:pr-3">
           {isShipment ? (
             <ShipmentPreview shipments={shipments} />
           ) : (

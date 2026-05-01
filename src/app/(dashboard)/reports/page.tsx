@@ -46,6 +46,23 @@ import {
   saveGeneratedReportFile,
   type ReportFileCategory,
 } from "@/lib/report-files";
+import {
+  loadLogoBase64,
+  generateDocId,
+  formatGeneratedAt,
+  embedFonts,
+  drawReportPageHeader,
+  drawContinuedLabel,
+  drawSectionTitle,
+  drawEmptyState,
+  drawSummaryCards,
+  applyFootersToAllPages,
+  TABLE_BODY_STYLES,
+  TABLE_HEAD_STYLES_PRIMARY,
+  TABLE_HEAD_STYLES_SECONDARY,
+  TABLE_ALTERNATE_ROW,
+  TABLE_BODY_ROW,
+} from "@/utils/reportPdfTemplate";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -142,7 +159,6 @@ async function generateDriverReportPdf(
   const doc = new jsPDF({ orientation: "landscape" });
 
   const assigned = data.shipments.filter((s) => s.assignedDriverId != null);
-
   const driverMap = new Map<string, { name: string; loads: Shipment[] }>();
   assigned.forEach((s) => {
     const d =
@@ -161,14 +177,10 @@ async function generateDriverReportPdf(
     (s) => s.proofOfDelivery?.submittedAt && !s.proofOfDelivery?.confirmedAt,
   ).length;
 
+  const logoBase64 = await loadLogoBase64();
+  const docId = generateDocId("DRV");
   const generatedAt = new Date();
-  const generatedAtLabel = generatedAt.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const generatedAtLabel = formatGeneratedAt(generatedAt);
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -176,118 +188,63 @@ async function generateDriverReportPdf(
   const right = pageWidth - 14;
   const contentWidth = right - left;
 
-  // ── Shared: compact branded header ───────────────────────────────────────
-  const drawPageHeader = (subtitle?: string) => {
-    // logo mark
-    doc.setFillColor(16, 185, 129);
-    doc.roundedRect(left, 10, 8, 8, 1.5, 1.5, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("AA", left + 4, 15.4, { align: "center" });
-
-    // org name
-    doc.setTextColor(20, 26, 38);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Action Auto Utah", left + 12, 14);
-
-    // sub-label
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(95, 107, 122);
-    doc.text(subtitle || "Driver Reports", left + 12, 18.5);
-
-    // right: report name + period
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(33, 41, 54);
-    doc.text("Driver Reports", right, 13.8, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(95, 107, 122);
-    doc.text(`Period: ${monthLabel}`, right, 17.8, { align: "right" });
-
-    // divider
-    doc.setDrawColor(218, 225, 235);
-    doc.setLineWidth(0.2);
-    doc.line(left, 22.5, right, 22.5);
+  const hOpts = (sub?: string) => ({
+    reportTitle: "Driver Reports",
+    periodLabel: monthLabel,
+    subtitle: sub,
+    logoBase64,
+    pageWidth,
+    left,
+    right,
+  });
+  const sOpts = (title: string, y: number) => ({ title, y, left, right });
+  const eOpts = (y: number, msg: string, sub: string) => ({
+    y,
+    message: msg,
+    sub,
+    left,
+    right,
+    contentWidth,
+    pageWidth,
+  });
+  const footerOpts = {
+    docId,
+    generatedAtLabel,
+    reportTitle: "Driver Reports",
+    pageWidth,
+    pageHeight,
+    left,
+    right,
   };
 
-  // ── Shared: styled section title with trailing divider line ───────────────
-  const drawSectionTitle = (title: string, y: number) => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(31, 41, 55);
-    doc.text(title, left, y);
-    const lineStart = left + doc.getTextWidth(title) + 3;
-    doc.setDrawColor(224, 230, 238);
-    doc.setLineWidth(0.18);
-    doc.line(lineStart, y - 0.8, right, y - 0.8);
-  };
+  // ── Page 1: Summary + Assigned Loads ──────────────────────────────────────
+  drawReportPageHeader(doc, hOpts());
+  drawSectionTitle(doc, sOpts("Summary", 31));
 
-  // ── Shared: styled empty-state block ──────────────────────────────────────
-  const drawEmptyState = (y: number, message: string, sub: string) => {
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(223, 231, 241);
-    doc.setLineWidth(0.15);
-    doc.roundedRect(left, y, contentWidth, 36, 2, 2, "FD");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(140, 152, 168);
-    doc.text("—", pageWidth / 2, y + 16, { align: "center" });
-    doc.setFontSize(8.5);
-    doc.setTextColor(87, 96, 110);
-    doc.text(message, pageWidth / 2, y + 23, { align: "center" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(126, 137, 154);
-    doc.text(sub, pageWidth / 2, y + 29, { align: "center" });
-  };
-
-  // ── Page 1 ────────────────────────────────────────────────────────────────
-  drawPageHeader();
-
-  // Summary cards
-  const stats = [
-    { label: "Total Drivers", value: String(driverMap.size) },
-    { label: "Assigned Loads", value: String(assigned.length) },
-    { label: "Delivered", value: String(delivered) },
-    { label: "Pending Approval", value: String(pendingApproval) },
-    { label: "Dealer Approved", value: String(approved) },
-  ];
-
-  drawSectionTitle("Summary", 31);
-
-  const cardGap = 4;
-  const cardW = (contentWidth - cardGap * (stats.length - 1)) / stats.length;
-  const cardY = 34;
-  const cardH = 16;
-  stats.forEach((stat, i) => {
-    const x = left + i * (cardW + cardGap);
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(223, 231, 241);
-    doc.setLineWidth(0.15);
-    doc.roundedRect(x, cardY, cardW, cardH, 1.8, 1.8, "FD");
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.8);
-    doc.setTextColor(107, 114, 128);
-    doc.text(stat.label, x + 3, cardY + 5);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(16, 132, 96);
-    doc.text(stat.value, x + 3, cardY + 12);
+  const cardBottomY = drawSummaryCards(doc, {
+    cards: [
+      { label: "Total Drivers", value: String(driverMap.size) },
+      { label: "Assigned Loads", value: String(assigned.length) },
+      { label: "Delivered", value: String(delivered) },
+      { label: "Pending Approval", value: String(pendingApproval) },
+      { label: "Dealer Approved", value: String(approved) },
+    ],
+    y: 34,
+    left,
+    contentWidth,
   });
 
-  // ── Section 1: Assigned Loads table ──────────────────────────────────────
-  const s1TitleY = cardY + cardH + 10;
-  drawSectionTitle("Assigned Loads", s1TitleY);
+  const s1TitleY = cardBottomY + 10;
+  drawSectionTitle(doc, sOpts("Assigned Loads", s1TitleY));
 
   if (assigned.length === 0) {
     drawEmptyState(
-      s1TitleY + 4,
-      "No loads assigned this period.",
-      "Loads will appear here once drivers are assigned.",
+      doc,
+      eOpts(
+        s1TitleY + 4,
+        "No loads assigned this period.",
+        "Loads will appear here once drivers are assigned.",
+      ),
     );
   } else {
     autoTable(doc, {
@@ -322,37 +279,29 @@ async function generateDriverReportPdf(
             ? "Pending"
             : "—",
       ]),
-      margin: { left, right: 14, bottom: 16 },
-      styles: {
-        fontSize: 7.2,
-        cellPadding: { top: 2.8, right: 2.8, bottom: 2.8, left: 2.8 },
-        minCellHeight: 7.5,
-        textColor: [36, 44, 56],
-        lineColor: [226, 232, 240],
-        lineWidth: 0.12,
-      },
-      headStyles: {
-        fillColor: [16, 132, 96],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        halign: "left",
-      },
-      alternateRowStyles: { fillColor: [247, 250, 248] },
-      bodyStyles: { fillColor: [255, 255, 255] },
+      margin: { left, right: 14, bottom: 20, top: 30 },
+      styles: TABLE_BODY_STYLES,
+      headStyles: TABLE_HEAD_STYLES_PRIMARY,
+      alternateRowStyles: TABLE_ALTERNATE_ROW,
+      bodyStyles: TABLE_BODY_ROW,
       columnStyles: {
         5: { halign: "right" },
         6: { halign: "right" },
         7: { halign: "right" },
       },
+      didDrawPage: (data: any) => {
+        if (data.pageNumber > 1) {
+          drawReportPageHeader(doc, hOpts("Driver Reports (continued)"));
+          drawContinuedLabel(doc, right);
+        }
+      },
     });
   }
 
-  // ── Page 2 ────────────────────────────────────────────────────────────────
+  // ── Page 2: Analytics ─────────────────────────────────────────────────────
   doc.addPage();
-  drawPageHeader("Driver Reports • Analytics");
-
-  // ── Section 2: Per-Driver Summary ─────────────────────────────────────────
-  drawSectionTitle("Per-Driver Summary", 31);
+  drawReportPageHeader(doc, hOpts("Driver Reports • Analytics"));
+  drawSectionTitle(doc, sOpts("Per-Driver Summary", 31));
 
   const driverRows = Array.from(driverMap.values()).map(({ name, loads }) => {
     const dDelivered = loads.filter((x) => x.status === "Delivered").length;
@@ -391,9 +340,12 @@ async function generateDriverReportPdf(
 
   if (driverRows.length === 0) {
     drawEmptyState(
-      34,
-      "No drivers assigned this period.",
-      "Per-driver breakdown will appear once drivers have loads.",
+      doc,
+      eOpts(
+        34,
+        "No drivers assigned this period.",
+        "Per-driver breakdown will appear once drivers have loads.",
+      ),
     );
   } else {
     autoTable(doc, {
@@ -412,23 +364,11 @@ async function generateDriverReportPdf(
         ],
       ],
       body: driverRows,
-      margin: { left, right: 14, bottom: 16 },
-      styles: {
-        fontSize: 7.4,
-        cellPadding: { top: 2.8, right: 3, bottom: 2.8, left: 3 },
-        minCellHeight: 7.5,
-        textColor: [36, 44, 56],
-        lineColor: [226, 232, 240],
-        lineWidth: 0.12,
-      },
-      headStyles: {
-        fillColor: [16, 132, 96],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        halign: "left",
-      },
-      alternateRowStyles: { fillColor: [247, 250, 248] },
-      bodyStyles: { fillColor: [255, 255, 255] },
+      margin: { left, right: 14, bottom: 20 },
+      styles: TABLE_BODY_STYLES,
+      headStyles: TABLE_HEAD_STYLES_PRIMARY,
+      alternateRowStyles: TABLE_ALTERNATE_ROW,
+      bodyStyles: TABLE_BODY_ROW,
       columnStyles: {
         1: { halign: "right" },
         2: { halign: "right" },
@@ -441,11 +381,11 @@ async function generateDriverReportPdf(
     });
   }
 
-  // ── Section 3: Pending Dealer Approvals ───────────────────────────────────
+  // ── Section: Pending Dealer Approvals ─────────────────────────────────────
   const lastY2 = (doc as any).lastAutoTable?.finalY ?? 80;
   const s3TitleY = lastY2 + 12;
   if (s3TitleY < 170) {
-    drawSectionTitle("Pending Dealer Approvals", s3TitleY);
+    drawSectionTitle(doc, sOpts("Pending Dealer Approvals", s3TitleY));
 
     const pendingRows = assigned
       .filter(
@@ -463,9 +403,12 @@ async function generateDriverReportPdf(
 
     if (pendingRows.length === 0) {
       drawEmptyState(
-        s3TitleY + 4,
-        "No pending approvals.",
-        "All submitted proofs have been reviewed.",
+        doc,
+        eOpts(
+          s3TitleY + 4,
+          "No pending approvals.",
+          "All submitted proofs have been reviewed.",
+        ),
       );
     } else {
       autoTable(doc, {
@@ -481,48 +424,17 @@ async function generateDriverReportPdf(
           ],
         ],
         body: pendingRows,
-        margin: { left, right: 14, bottom: 16 },
-        styles: {
-          fontSize: 7.4,
-          cellPadding: { top: 2.8, right: 3, bottom: 2.8, left: 3 },
-          minCellHeight: 7.5,
-          textColor: [36, 44, 56],
-          lineColor: [226, 232, 240],
-          lineWidth: 0.12,
-        },
-        headStyles: {
-          fillColor: [11, 116, 84],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          halign: "left",
-        },
-        alternateRowStyles: { fillColor: [247, 250, 248] },
-        bodyStyles: { fillColor: [255, 255, 255] },
-        columnStyles: {
-          4: { halign: "right" },
-        },
+        margin: { left, right: 14, bottom: 20 },
+        styles: TABLE_BODY_STYLES,
+        headStyles: TABLE_HEAD_STYLES_SECONDARY,
+        alternateRowStyles: TABLE_ALTERNATE_ROW,
+        bodyStyles: TABLE_BODY_ROW,
+        columnStyles: { 4: { halign: "right" } },
       });
     }
   }
 
-  // ── Footer on all pages ───────────────────────────────────────────────────
-  const totalPages = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    const footerY = pageHeight - 8.5;
-    doc.setDrawColor(224, 230, 238);
-    doc.setLineWidth(0.2);
-    doc.line(left, footerY - 3.7, right, footerY - 3.7);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(115, 125, 141);
-    doc.text("Action Auto Utah · Driver Reports", left, footerY);
-    doc.text(`Generated ${generatedAtLabel}`, pageWidth / 2, footerY, {
-      align: "center",
-    });
-    doc.text(`Page ${i} of ${totalPages}`, right, footerY, { align: "right" });
-  }
-
+  applyFootersToAllPages(doc, footerOpts);
   return doc.output("blob");
 }
 
@@ -547,161 +459,173 @@ async function generateBillingReportPdf(
     .filter((p) => p.status === "pending")
     .reduce((s, p) => s + p.amount, 0);
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  doc.setFillColor(100, 40, 180);
-  doc.rect(0, 0, 297, 22, "F");
-  doc.setTextColor(255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("ACTION AUTO UTAH", 14, 10);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text("Billing Report", 14, 17);
-  doc.setTextColor(0);
+  const logoBase64 = await loadLogoBase64();
+  const docId = generateDocId("BIL");
+  const generatedAt = new Date();
+  const generatedAtLabel = formatGeneratedAt(generatedAt);
 
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text(`Period: ${monthLabel}`, 14, 29);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(100);
-  doc.text(
-    `Generated: ${new Date().toLocaleDateString("en-US", { dateStyle: "long" })}`,
-    14,
-    35,
-  );
-  doc.setTextColor(0);
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const left = 14;
+  const right = pageWidth - 14;
+  const contentWidth = right - left;
 
-  // ── Summary stats ─────────────────────────────────────────────────────────
-  const stats = [
-    { label: "Total Revenue", value: formatCurrency(totalRevenue) },
-    { label: "Pending Payments", value: formatCurrency(totalPending) },
-    { label: "Driver Payouts Sent", value: formatCurrency(totalPaidOut) },
-    { label: "Pending Payouts", value: formatCurrency(totalPendingOut) },
-    {
-      label: "Total Transactions",
-      value: String(data.payments.length + data.payouts.length),
-    },
-  ];
-  const boxW = 50,
-    boxH = 14,
-    startX = 14,
-    startY = 41;
-  stats.forEach((stat, i) => {
-    const x = startX + i * (boxW + 4);
-    doc.setFillColor(248, 245, 255);
-    doc.roundedRect(x, startY, boxW, boxH, 2, 2, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 40, 180);
-    doc.text(stat.value, x + boxW / 2, startY + 7, { align: "center" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.5);
-    doc.setTextColor(100);
-    doc.text(stat.label, x + boxW / 2, startY + 12, { align: "center" });
+  const hOpts = (sub?: string) => ({
+    reportTitle: "Billing Report",
+    periodLabel: monthLabel,
+    subtitle: sub,
+    logoBase64,
+    pageWidth,
+    left,
+    right,
   });
-  doc.setTextColor(0);
+  const sOpts = (title: string, y: number) => ({ title, y, left, right });
+  const eOpts = (y: number, msg: string, sub: string) => ({
+    y,
+    message: msg,
+    sub,
+    left,
+    right,
+    contentWidth,
+    pageWidth,
+  });
+  const footerOpts = {
+    docId,
+    generatedAtLabel,
+    reportTitle: "Billing Report",
+    pageWidth,
+    pageHeight,
+    left,
+    right,
+  };
 
-  // ── Customer Payments ──────────────────────────────────────────
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("Customer Payments to Dealer", 14, 63);
+  // ── Page 1: Summary + Customer Payments ───────────────────────────────────
+  drawReportPageHeader(doc, hOpts());
+  drawSectionTitle(doc, sOpts("Summary", 31));
 
-  autoTable(doc, {
-    startY: 66,
-    head: [
-      [
-        "Invoice #",
-        "Customer",
-        "Email",
-        "Description",
-        "Amount",
-        "Status",
-        "Date",
-      ],
+  const cardBottomY = drawSummaryCards(doc, {
+    cards: [
+      { label: "Total Revenue", value: formatCurrency(totalRevenue) },
+      { label: "Pending Payments", value: formatCurrency(totalPending) },
+      { label: "Driver Payouts Sent", value: formatCurrency(totalPaidOut) },
+      { label: "Pending Payouts", value: formatCurrency(totalPendingOut) },
+      {
+        label: "Total Transactions",
+        value: String(data.payments.length + data.payouts.length),
+      },
     ],
-    body:
-      data.payments.length > 0
-        ? data.payments.map((p) => [
-            p.invoiceNumber || "—",
-            p.customerName,
-            p.customerEmail,
-            p.description,
-            formatCurrency(p.amount),
-            p.status,
-            fmtDate(p.paidAt || p.createdAt),
-          ])
-        : [["No payments this period", "", "", "", "", "", ""]],
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: {
-      fillColor: [100, 40, 180],
-      textColor: 255,
-      fontStyle: "bold",
-    },
-    alternateRowStyles: { fillColor: [252, 250, 255] },
-    margin: { left: 14, right: 14 },
+    y: 34,
+    left,
+    contentWidth,
   });
 
-  // ── Driver Payouts ─────────────────────────────────────────────
+  const paymentsTitleY = cardBottomY + 10;
+  drawSectionTitle(doc, sOpts("Customer Payments to Dealer", paymentsTitleY));
+
+  if (data.payments.length === 0) {
+    drawEmptyState(
+      doc,
+      eOpts(
+        paymentsTitleY + 4,
+        "No customer payments for this period.",
+        "Payments will appear here once recorded.",
+      ),
+    );
+  } else {
+    autoTable(doc, {
+      startY: paymentsTitleY + 3,
+      head: [
+        [
+          "Invoice #",
+          "Customer",
+          "Email",
+          "Description",
+          "Amount",
+          "Status",
+          "Date",
+        ],
+      ],
+      body: data.payments.map((p) => [
+        p.invoiceNumber || "—",
+        p.customerName,
+        p.customerEmail,
+        p.description,
+        formatCurrency(p.amount),
+        p.status,
+        fmtDate(p.paidAt || p.createdAt),
+      ]),
+      margin: { left, right: 14, bottom: 20, top: 30 },
+      styles: TABLE_BODY_STYLES,
+      headStyles: TABLE_HEAD_STYLES_PRIMARY,
+      alternateRowStyles: TABLE_ALTERNATE_ROW,
+      bodyStyles: TABLE_BODY_ROW,
+      columnStyles: {
+        4: { halign: "right" },
+        6: { halign: "right" },
+      },
+      didDrawPage: (data: any) => {
+        if (data.pageNumber > 1) {
+          drawReportPageHeader(doc, hOpts("Billing Report (continued)"));
+          drawContinuedLabel(doc, right);
+        }
+      },
+    });
+  }
+
+  // ── Page 2: Driver Payouts + Analytics ────────────────────────────────────
   doc.addPage();
+  drawReportPageHeader(doc, hOpts("Billing Report • Analytics"));
+  drawSectionTitle(doc, sOpts("Driver Payouts from Dealer", 31));
 
-  doc.setFillColor(100, 40, 180);
-  doc.rect(0, 0, 297, 10, "F");
-  doc.setTextColor(255);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text(
-    `ACTION AUTO UTAH  —  Billing Report  —  ${monthLabel}  (continued)`,
-    14,
-    7,
-  );
-  doc.setTextColor(0);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("Driver Payouts from Dealer", 14, 20);
-
-  autoTable(doc, {
-    startY: 23,
-    head: [
-      [
-        "Payout #",
-        "Driver",
-        "Driver Email",
-        "Amount",
-        "Status",
-        "Description",
-        "Paid Date",
+  if (data.payouts.length === 0) {
+    drawEmptyState(
+      doc,
+      eOpts(
+        35,
+        "No driver payouts for this period.",
+        "Payouts will appear here once processed.",
+      ),
+    );
+  } else {
+    autoTable(doc, {
+      startY: 34,
+      head: [
+        [
+          "Payout #",
+          "Driver",
+          "Driver Email",
+          "Amount",
+          "Status",
+          "Description",
+          "Paid Date",
+        ],
       ],
-    ],
-    body:
-      data.payouts.length > 0
-        ? data.payouts.map((p) => [
-            p.payoutNumber || "—",
-            p.driverName,
-            p.driverEmail,
-            formatCurrency(p.amount),
-            p.status,
-            p.description || "—",
-            fmtDate(p.paidAt || p.createdAt),
-          ])
-        : [["No driver payouts this period", "", "", "", "", "", ""]],
-    styles: { fontSize: 7.5, cellPadding: 2.5 },
-    headStyles: {
-      fillColor: [100, 40, 180],
-      textColor: 255,
-      fontStyle: "bold",
-    },
-    alternateRowStyles: { fillColor: [252, 250, 255] },
-    margin: { left: 14, right: 14 },
-  });
+      body: data.payouts.map((p) => [
+        p.payoutNumber || "—",
+        p.driverName,
+        p.driverEmail,
+        formatCurrency(p.amount),
+        p.status,
+        p.description || "—",
+        fmtDate(p.paidAt || p.createdAt),
+      ]),
+      margin: { left, right: 14, bottom: 20 },
+      styles: TABLE_BODY_STYLES,
+      headStyles: TABLE_HEAD_STYLES_PRIMARY,
+      alternateRowStyles: TABLE_ALTERNATE_ROW,
+      bodyStyles: TABLE_BODY_ROW,
+      columnStyles: {
+        3: { halign: "right" },
+        6: { halign: "right" },
+      },
+    });
+  }
 
-  // ── Billing Summary by Status ──────────────────────────────────
-  const lastY = (doc as any).lastAutoTable?.finalY ?? 80;
+  // ── Payment status breakdown ───────────────────────────────────────────────
+  const lastY = (doc as any).lastAutoTable?.finalY ?? 76;
   if (lastY < 170) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("Payment Summary by Status", 14, lastY + 12);
+    const statusTitleY = lastY + 12;
+    drawSectionTitle(doc, sOpts("Payment Summary by Status", statusTitleY));
 
     const byStatus: Record<string, { count: number; total: number }> = {};
     data.payments.forEach((p) => {
@@ -710,28 +634,41 @@ async function generateBillingReportPdf(
       byStatus[p.status].total += p.amount;
     });
 
-    autoTable(doc, {
-      startY: lastY + 15,
-      head: [["Status", "No. of Payments", "Total Amount"]],
-      body:
-        Object.entries(byStatus).length > 0
-          ? Object.entries(byStatus).map(([status, { count, total }]) => [
-              status.charAt(0).toUpperCase() + status.slice(1),
-              String(count),
-              formatCurrency(total),
-            ])
-          : [["No data", "", ""]],
-      styles: { fontSize: 8, cellPadding: 3 },
-      headStyles: {
-        fillColor: [100, 40, 180],
-        textColor: 255,
-        fontStyle: "bold",
-      },
-      alternateRowStyles: { fillColor: [252, 250, 255] },
-      margin: { left: 14, right: 110 },
-    });
+    const statusRows = Object.entries(byStatus).map(
+      ([status, { count, total }]) => [
+        status.charAt(0).toUpperCase() + status.slice(1),
+        String(count),
+        formatCurrency(total),
+      ],
+    );
+
+    if (statusRows.length === 0) {
+      drawEmptyState(
+        doc,
+        eOpts(
+          statusTitleY + 4,
+          "No payment status data.",
+          "Status analytics will appear once payments are recorded.",
+        ),
+      );
+    } else {
+      autoTable(doc, {
+        startY: statusTitleY + 3,
+        head: [["Status", "No. of Payments", "Total Amount"]],
+        body: statusRows,
+        margin: { left, right: 110, bottom: 20 },
+        styles: TABLE_BODY_STYLES,
+        headStyles: TABLE_HEAD_STYLES_SECONDARY,
+        alternateRowStyles: TABLE_ALTERNATE_ROW,
+        columnStyles: {
+          1: { halign: "right" },
+          2: { halign: "right" },
+        },
+      });
+    }
   }
 
+  applyFootersToAllPages(doc, footerOpts);
   return doc.output("blob");
 }
 
