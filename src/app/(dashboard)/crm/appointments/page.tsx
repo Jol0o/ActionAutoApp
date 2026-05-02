@@ -7,22 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Calendar,
-  Clock,
-  Users,
-  Plus,
-  RefreshCw,
-  Mail,
-  ArrowLeft,
-  Contact,
-} from "lucide-react";
-import { AppointmentCalendar } from "@/components/AppointmentCalendar";
-import { BookedTab } from "@/components/BookedTab";
-import { LeadsTab } from "@/components/LeadsTab";
-import { CreateAppointmentModal } from "@/components/CreateAppointmentModal";
-import { AppointmentDetailsModal } from "@/components/AppointmentDetailsModal";
-import { GoogleCalendarConnect } from "@/components/GoogleCalendarConnect";
-import { GoogleCalendarSyncButton } from "@/components/GoogleCalendarSyncButton";
+  Calendar, Clock, Users, Plus, RefreshCw, Mail, ArrowLeft, Contact,
+} from "lucide-react"
+import { AppointmentCalendar } from "@/components/AppointmentCalendar"
+import { BookedTab } from "@/components/BookedTab"
+import { LeadsTab } from "@/components/LeadsTab"
+import { CreateAppointmentModal } from "@/components/CreateAppointmentModal"
+import { AppointmentDetailsModal } from "@/components/AppointmentDetailsModal"
+import { CrmCalendarConnect } from "@/components/CrmCalendarConnect"
+import { CrmCalendarSyncButton } from "@/components/CrmCalendarSyncButton"
 // ↓↓↓ NEW IMPORT ↓↓↓
 import { CustomerCredentialsTab } from "@/components/CustomerCredentialsTab";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -71,61 +64,91 @@ function AppointmentsPageInner() {
   const queryClient = useQueryClient();
   const { isFullscreen } = useFullscreen();
 
-  const [activeTab, setActiveTab] = React.useState("leads");
-  const [createModalOpen, setCreateModalOpen] = React.useState(false);
-  const [detailsModalOpen, setDetailsModalOpen] = React.useState(false);
-  const [selectedAppointment, setSelectedAppointment] =
-    React.useState<any>(null);
-  const [preselectedDate, setPreselectedDate] = React.useState<
-    Date | undefined
-  >();
+  const [activeTab, setActiveTab] = React.useState("leads")
+  const [createModalOpen, setCreateModalOpen] = React.useState(false)
+  const [detailsModalOpen, setDetailsModalOpen] = React.useState(false)
+  const [selectedAppointment, setSelectedAppointment] = React.useState<any>(null)
+  const [preselectedDate, setPreselectedDate] = React.useState<Date | undefined>()
+  const [currentMonth, setCurrentMonth] = React.useState(new Date())
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("calendar_connected") === "true") {
-      window.history.replaceState({}, "", "/appointments");
+      window.history.replaceState({}, "", "/crm/appointments")
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      }, 1000);
+        queryClient.invalidateQueries({ queryKey: ["appointments"] })
+      }, 1000)
+    }
+    if (params.get("calendar") === "connected") {
+      window.history.replaceState({}, "", "/crm/appointments")
     }
     if (params.get("calendar_error")) {
-      window.history.replaceState({}, "", "/appointments");
+      window.history.replaceState({}, "", "/crm/appointments")
     }
   }, [queryClient]);
 
   const getAuthHeaders = async () => {
-    const token = await getToken();
-    return { headers: { Authorization: `Bearer ${token}` } };
-  };
+    const token = await getToken()
+    return { headers: { Authorization: `Bearer ${token}` } }
+  }
 
+  // 1. Global Query: Fetches a larger batch for stats and upcoming list
   const {
-    data: appointments = [],
-    isLoading,
-    refetch: refetchAppointments,
-    error: appointmentsError,
-    isFetching,
+    data: globalAppointments = [],
+    isLoading: isGlobalLoading,
+    refetch: refetchGlobal,
   } = useQuery({
-    queryKey: ["appointments"],
+    queryKey: ["appointments", "global"],
     queryFn: async () => {
       try {
-        const headers = await getAuthHeaders();
-        const response = await apiClient.get("/api/appointments", headers);
-        const data = response.data?.data || response.data;
-        return data.appointments || [];
+        const headers = await getAuthHeaders()
+        // We request a higher limit for global stats (e.g., 500)
+        const response = await apiClient.get("/api/crm/calendar/appointments", {
+          ...headers,
+          params: { limit: 500 }
+        })
+        const data = response.data?.data || response.data
+        if (Array.isArray(data)) return data;
+        return data.appointments || []
       } catch (error: any) {
-        console.error(
-          "[AppointmentsPage] ❌ Error fetching appointments:",
-          error,
-        );
-        throw error;
+        console.error("[AppointmentsPage] ❌ Error fetching global appointments:", error)
+        return []
       }
     },
-    retry: 2,
-    retryDelay: 1000,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: false,
-  });
+    staleTime: 30_000,
+  })
+
+  // 2. Calendar Query: Fetches specifically for the visible month
+  const {
+    data: calendarAppointments = [],
+    isLoading: isCalendarLoading,
+    refetch: refetchCalendar,
+  } = useQuery({
+    queryKey: ["appointments", "calendar", currentMonth.getFullYear(), currentMonth.getMonth()],
+    queryFn: async () => {
+      try {
+        const headers = await getAuthHeaders()
+        const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+        const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
+        
+        const response = await apiClient.get("/api/crm/calendar/appointments", {
+          ...headers,
+          params: { 
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+            limit: 200 // Plenty for a single month
+          }
+        })
+        const data = response.data?.data || response.data
+        if (Array.isArray(data)) return data;
+        return data.appointments || []
+      } catch (error: any) {
+        console.error("[AppointmentsPage] ❌ Error fetching calendar appointments:", error)
+        return []
+      }
+    },
+    staleTime: 60_000,
+  })
 
   const { data: customerBookingsCount = 0 } = useQuery({
     queryKey: ["customer-bookings-count"],
@@ -165,19 +188,18 @@ function AppointmentsPageInner() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     return {
-      total: appointments.length,
-      upcoming: appointments.filter((apt: any) => {
-        const start = new Date(apt.startTime);
-        return start >= today && apt.status !== "cancelled";
+      total: globalAppointments.length,
+      upcoming: globalAppointments.filter((apt: any) => {
+        const start = new Date(apt.startTime)
+        return start >= today && apt.status !== "cancelled"
       }).length,
-      today: appointments.filter((apt: any) => {
-        const start = new Date(apt.startTime);
-        return start >= today && start < tomorrow && apt.status !== "cancelled";
+      today: globalAppointments.filter((apt: any) => {
+        const start = new Date(apt.startTime)
+        return start >= today && start < tomorrow && apt.status !== "cancelled"
       }).length,
-      cancelled: appointments.filter((apt: any) => apt.status === "cancelled")
-        .length,
-    };
-  }, [appointments]);
+      cancelled: globalAppointments.filter((apt: any) => apt.status === "cancelled").length,
+    }
+  }, [globalAppointments])
 
   const handleCreateAppointment = React.useCallback(() => {
     setPreselectedDate(undefined);
@@ -185,60 +207,72 @@ function AppointmentsPageInner() {
   }, []);
 
   const handleDateClick = React.useCallback((date?: Date) => {
-    setPreselectedDate(date);
-    setCreateModalOpen(true);
-  }, []);
+    setPreselectedDate(date)
+    setCreateModalOpen(true)
+  }, [])
+
+  const handleSyncComplete = React.useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+      queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
+      refetchGlobal(),
+      refetchCalendar(),
+    ])
+  }, [refetchGlobal, refetchCalendar, queryClient])
 
   const handleAppointmentClick = React.useCallback((appointment: any) => {
     setSelectedAppointment(appointment);
     setDetailsModalOpen(true);
   }, []);
 
-  const handleUpdateAppointment = async (id: string, data: any) => {
-    const headers = await getAuthHeaders();
-    await apiClient.patch(`/api/appointments/${id}`, data, headers);
+  const handleUpdateAppointment = React.useCallback(async (id: string, data: any) => {
+    const headers = await getAuthHeaders()
+    await apiClient.put(`/api/crm/calendar/appointments/${id}`, data, headers)
+
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ]);
-  };
+      refetchGlobal(),
+      refetchCalendar(),
+    ])
+  }, [refetchGlobal, refetchCalendar, queryClient])
 
-  const handleCancelAppointment = async (id: string) => {
-    const headers = await getAuthHeaders();
-    await apiClient.post(`/api/appointments/${id}/cancel`, {}, headers);
+  const handleCancelAppointment = React.useCallback(async (id: string) => {
+    const headers = await getAuthHeaders()
+    await apiClient.post(`/api/crm/calendar/appointments/${id}/cancel`, {}, headers)
+
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ]);
-  };
+      refetchGlobal(),
+      refetchCalendar(),
+    ])
+  }, [refetchGlobal, refetchCalendar, queryClient])
 
-  const handleDeleteAppointment = async (id: string) => {
-    const headers = await getAuthHeaders();
-    await apiClient.delete(`/api/appointments/${id}`, headers);
-    setDetailsModalOpen(false);
+  const handleDeleteAppointment = React.useCallback(async (id: string) => {
+    const headers = await getAuthHeaders()
+    await apiClient.delete(`/api/crm/calendar/appointments/${id}`, headers)
+
+    setDetailsModalOpen(false)
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ]);
-  };
+      refetchGlobal(),
+      refetchCalendar(),
+    ])
+  }, [refetchGlobal, refetchCalendar, queryClient])
 
-  const handleSyncComplete = React.useCallback(async () => {
+  // Removed duplicate handleAppointmentClick
+
+  const handleCreateAppointmentSubmit = React.useCallback(async (data: any) => {
+    const headers = await getAuthHeaders()
+    await apiClient.post("/api/crm/calendar/appointments", data, headers)
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+      refetchGlobal(),
+      refetchCalendar(),
       queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ]);
-  }, [queryClient]);
-
-  const handleCreateAppointmentSubmit = async (data: any) => {
-    const headers = await getAuthHeaders();
-    await apiClient.post("/api/appointments", data, headers);
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
-      queryClient.invalidateQueries({ queryKey: ["customer-bookings-count"] }),
-    ]);
-  };
-
-  // ── Render any tab by id ──────────────────────────────────────────────────
+    ])
+  }, [refetchGlobal, refetchCalendar, queryClient])
 
   const renderTabContent = React.useCallback(
     (tabId: string) => {
@@ -252,9 +286,11 @@ function AppointmentsPageInner() {
         case "calendar":
           return (
             <div className="p-4">
-              {!isLoading ? (
+              {!isCalendarLoading ? (
                 <AppointmentCalendar
-                  appointments={appointments}
+                  appointments={calendarAppointments}
+                  viewDate={currentMonth}
+                  onViewDateChange={setCurrentMonth}
                   onCreateAppointment={handleDateClick}
                   onSelectAppointment={handleAppointmentClick}
                 />
@@ -273,7 +309,7 @@ function AppointmentsPageInner() {
                   <CardTitle>Upcoming Appointments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {isLoading ? (
+                  {isGlobalLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
@@ -292,19 +328,15 @@ function AppointmentsPageInner() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {appointments
+                      {globalAppointments
                         .filter((apt: any) => {
                           const start = new Date(apt.startTime);
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
                           return start >= today && apt.status !== "cancelled";
                         })
-                        .sort(
-                          (a: any, b: any) =>
-                            new Date(a.startTime).getTime() -
-                            new Date(b.startTime).getTime(),
-                        )
-                        .slice(0, 10)
+                        .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                        .slice(0, 20)
                         .map((appointment: any) => (
                           <Card
                             key={appointment._id}
@@ -373,8 +405,7 @@ function AppointmentsPageInner() {
             <div className="p-4">
               <BookedTab />
             </div>
-          );
-        // ↓↓↓ NEW CASE ↓↓↓
+          )
         case "customers":
           return (
             <div className="p-4 h-full">
@@ -389,29 +420,18 @@ function AppointmentsPageInner() {
           );
       }
     },
-    [
-      appointments,
-      isLoading,
-      stats.upcoming,
-      handleCreateAppointment,
-      handleDateClick,
-      handleAppointmentClick,
-    ],
-  );
-
-  // ── Render ────────────────────────────────────────────────────────────────
+    [calendarAppointments, isCalendarLoading, globalAppointments, isGlobalLoading, stats.upcoming, handleCreateAppointment, handleDateClick, handleAppointmentClick, currentMonth]
+  )
 
   return (
     <>
       <FullscreenWrapper>
         <div
-          className={`${
-            isFullscreen
-              ? "flex flex-col h-full overflow-hidden"
-              : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
-          }`}
+          className={`${isFullscreen
+            ? "flex flex-col h-full overflow-hidden"
+            : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6"
+            }`}
         >
-          {/* Header */}
           <div
             className={`flex items-center justify-between ${
               isFullscreen
@@ -444,18 +464,13 @@ function AppointmentsPageInner() {
             </div>
             <div className="flex items-center gap-2">
               <PaneToolbar tabOptions={TAB_OPTIONS} />
-              <GoogleCalendarSyncButton onSyncComplete={handleSyncComplete} />
-              <Button
-                type="button"
-                onClick={handleCreateAppointment}
-                size={isFullscreen ? "sm" : "default"}
-              >
+              <CrmCalendarSyncButton onSyncComplete={handleSyncComplete} />
+              <Button type="button" onClick={handleCreateAppointment} size={isFullscreen ? "sm" : "default"}>
                 <Plus className="mr-2 h-4 w-4" /> New Appointment
               </Button>
             </div>
           </div>
 
-          {/* ═══ FULLSCREEN MODE ═══ */}
           {isFullscreen ? (
             <div className="flex-1 overflow-hidden">
               <MultiPaneContainer
@@ -464,11 +479,9 @@ function AppointmentsPageInner() {
               />
             </div>
           ) : (
-            /* ═══ NORMAL MODE ═══ */
             <div className="space-y-6">
-              <GoogleCalendarConnect />
+              <CrmCalendarConnect />
 
-              {/* Statistics */}
               <div className="grid gap-4 md:grid-cols-5">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -479,11 +492,6 @@ function AppointmentsPageInner() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{stats.total}</div>
-                    {isFetching && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Updating...
-                      </p>
-                    )}
                   </CardContent>
                 </Card>
                 <Card>
@@ -519,7 +527,6 @@ function AppointmentsPageInner() {
                     </div>
                   </CardContent>
                 </Card>
-                {/* ↓↓↓ NEW STAT ↓↓↓ */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
@@ -533,32 +540,16 @@ function AppointmentsPageInner() {
                 </Card>
               </div>
 
-              {appointmentsError && (
-                <Card className="border-red-200 bg-red-50">
-                  <CardContent className="pt-6">
-                    <p className="text-sm text-red-600">
-                      Failed to load appointments. Please try refreshing.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => refetchAppointments()}
-                    >
-                      <RefreshCw className="mr-2 h-4 w-4" /> Retry
-                    </Button>
-                  </CardContent>
-                </Card>
+              {(isGlobalLoading || isCalendarLoading) && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Refreshing data...</span>
+                </div>
               )}
 
-              {/* Normal tab interface */}
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="space-y-4"
-              >
-                <TabsList className="w-full">
-                  <TabsTrigger value="leads" className="flex-1">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="leads">
                     <Mail className="mr-2 h-4 w-4" /> Leads
                   </TabsTrigger>
                   <TabsTrigger value="calendar" className="flex-1">
@@ -580,8 +571,7 @@ function AppointmentsPageInner() {
                       </Badge>
                     )}
                   </TabsTrigger>
-                  {/* ↓↓↓ NEW TAB TRIGGER ↓↓↓ */}
-                  <TabsTrigger value="customers" className="flex-1">
+                  <TabsTrigger value="customers">
                     <Contact className="mr-2 h-4 w-4" /> Customer Credentials
                     {customerCount > 0 && (
                       <Badge className="ml-2" variant="secondary">
@@ -596,12 +586,18 @@ function AppointmentsPageInner() {
                 </TabsContent>
 
                 <TabsContent value="calendar" className="space-y-4">
-                  {!isLoading && (
+                  {!isCalendarLoading ? (
                     <AppointmentCalendar
-                      appointments={appointments}
+                      appointments={calendarAppointments}
+                      viewDate={currentMonth}
+                      onViewDateChange={setCurrentMonth}
                       onCreateAppointment={handleDateClick}
                       onSelectAppointment={handleAppointmentClick}
                     />
+                  ) : (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
                   )}
                 </TabsContent>
 
@@ -627,7 +623,7 @@ function AppointmentsPageInner() {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {appointments
+                          {globalAppointments
                             .filter((apt: any) => {
                               const start = new Date(apt.startTime);
                               const today = new Date();

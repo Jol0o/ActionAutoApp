@@ -1,4 +1,5 @@
-import { Shipment, Quote } from "@/types/transportation";
+import { Quote } from "@/types/transportation";
+import { Load } from "@/types/load";
 import {
   buildShipmentSummary,
   buildQuoteSummary,
@@ -47,7 +48,7 @@ function triggerDownload(blob: Blob, filename: string) {
 export { triggerDownload };
 
 export async function generateShipmentReportPdf(
-  shipments: Shipment[],
+  shipments: Load[],
   monthLabel: string,
 ): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
@@ -161,13 +162,13 @@ export async function generateShipmentReportPdf(
         ],
       ],
       body: shipments.map((s) => [
-        s.trackingNumber || "—",
+        s.loadNumber || "—",
         s.status,
         shipmentCustomer(s),
         shipmentVehicle(s),
         shipmentVin(s),
-        s.origin || "—",
-        s.destination || "—",
+        s.pickupLocation ? `${s.pickupLocation.city}, ${s.pickupLocation.state}` : "—",
+        s.deliveryLocation ? `${s.deliveryLocation.city}, ${s.deliveryLocation.state}` : "—",
         shipmentTransportType(s),
         fmtCurrency(shipmentRate(s)),
         driverName(s),
@@ -205,7 +206,7 @@ export async function generateShipmentReportPdf(
   // Status breakdown
   drawSectionTitle(doc, sectionOpts("Status Breakdown", 31));
 
-  const statusGroups: Record<string, Shipment[]> = {};
+  const statusGroups: Record<string, Load[]> = {};
   shipments.forEach((s) => {
     if (!statusGroups[s.status]) statusGroups[s.status] = [];
     statusGroups[s.status].push(s);
@@ -215,7 +216,7 @@ export async function generateShipmentReportPdf(
     .sort((a, b) => b[1].length - a[1].length)
     .map(([status, items]) => {
       const totalRate = items.reduce(
-        (sum, s) => sum + ((s.quoteId || s.preservedQuoteData)?.rate || 0),
+        (sum, s) => sum + (s.pricing?.estimatedRate ?? s.pricing?.carrierPayAmount ?? 0),
         0,
       );
       const avgRate = items.length > 0 ? totalRate / items.length : 0;
@@ -277,11 +278,11 @@ export async function generateShipmentReportPdf(
     { count: number; totalRate: number; totalMiles: number }
   >();
   shipments.forEach((s) => {
-    const key = `${s.origin || "?"} → ${s.destination || "?"}`;
+    const key = `${s.pickupLocation ? `${s.pickupLocation.city}, ${s.pickupLocation.state}` : "?"} → ${s.deliveryLocation ? `${s.deliveryLocation.city}, ${s.deliveryLocation.state}` : "?"}`;
     const ex = routeMap.get(key) || { count: 0, totalRate: 0, totalMiles: 0 };
     ex.count++;
-    ex.totalRate += (s.quoteId || s.preservedQuoteData)?.rate || 0;
-    ex.totalMiles += (s.quoteId || s.preservedQuoteData)?.miles || 0;
+    ex.totalRate += s.pricing?.estimatedRate ?? s.pricing?.carrierPayAmount ?? 0;
+    ex.totalMiles += s.pricing?.miles ?? 0;
     routeMap.set(key, ex);
   });
 

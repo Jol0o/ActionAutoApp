@@ -14,6 +14,7 @@ interface PremiumVehicleCardProps {
     onVideo?: (vehicle: Vehicle) => void
     onGetQuote?: (vehicle: Vehicle) => void
     onVehicleClick?: (vehicle: Vehicle) => void
+    onCreateLoad?: (vehicle: Vehicle) => void
 }
 
 export function PremiumVehicleCard({
@@ -24,14 +25,15 @@ export function PremiumVehicleCard({
     onCallUs,
     onVideo,
     onGetQuote,
-    onVehicleClick
+    onVehicleClick,
+    onCreateLoad
 }: PremiumVehicleCardProps) {
     // Mocking "Retail Price" vs "One Time Payment" for the UI showcase
     const retailPrice = vehicle.price + 0; // Mock markup
     const memberPrice = vehicle.price;
 
     return (
-        <Card 
+        <Card
             className="group relative overflow-hidden rounded-2xl py-0 bg-white dark:bg-zinc-950 border border-border/40 hover:border-green-500/50 shadow-sm hover:shadow-2xl hover:shadow-green-500/10 transition-all duration-500 flex flex-col h-full cursor-pointer"
             onClick={() => onVehicleClick?.(vehicle)}
         >
@@ -148,10 +150,10 @@ export function PremiumVehicleCard({
                     </div>
 
                     <Button
-                        onClick={() => onGetQuote?.(vehicle)}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-11 shadow-lg active:scale-[0.98] transition-all"
+                        onClick={() => (onCreateLoad || onGetQuote)?.(vehicle)}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-[0.99] transition-all"
                     >
-                        <TruckIcon className="w-4 h-4 mr-2" /> Home Shipping Quote
+                        <TruckIcon className="w-4 h-4 mr-2" /> Create Managed Load
                     </Button>
                 </div>
             </div>

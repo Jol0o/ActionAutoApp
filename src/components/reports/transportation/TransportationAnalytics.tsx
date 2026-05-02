@@ -22,22 +22,25 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Shipment, Quote } from "@/types/transportation";
+import { Quote } from "@/types/transportation";
+import { Load } from "@/types/load";
 
 interface Props {
-  shipments: Shipment[];
+  loads: Load[];
   quotes: Quote[];
-  rawShipments: Shipment[];
+  rawLoads: Load[];
   rawQuotes: Quote[];
   monthLabel: string;
 }
 
 const STATUS_FILL: Record<string, string> = {
   Delivered: "var(--chart-1)",
-  "In-Route": "var(--chart-2)",
-  Dispatched: "var(--chart-3)",
+  "In-Transit": "var(--chart-2)",
+  "Picked Up": "var(--chart-3)",
+  Posted: "var(--chart-4)",
   Cancelled: "var(--chart-5)",
-  "Available for Pickup": "var(--chart-4)",
+  Assigned: "var(--chart-3)",
+  Accepted: "var(--chart-3)",
 };
 
 const QUOTE_STATUS_FILL: Record<string, string> = {
@@ -47,10 +50,10 @@ const QUOTE_STATUS_FILL: Record<string, string> = {
   booked: "var(--chart-2)",
 };
 
-function buildShipmentStatusData(shipments: Shipment[]) {
+function buildLoadStatusData(loads: Load[]) {
   const counts: Record<string, number> = {};
-  shipments.forEach((s) => {
-    counts[s.status] = (counts[s.status] || 0) + 1;
+  loads.forEach((l) => {
+    counts[l.status] = (counts[l.status] || 0) + 1;
   });
   return Object.entries(counts).map(([name, value]) => ({ name, value }));
 }
@@ -68,7 +71,7 @@ function buildQuoteStatusData(quotes: Quote[]) {
   }));
 }
 
-function buildMonthlyShipmentTrend(rawShipments: Shipment[]) {
+function buildMonthlyLoadTrend(rawLoads: Load[]) {
   const now = new Date();
   const months: { key: string; label: string }[] = [];
   for (let i = 5; i >= 0; i--) {
@@ -80,19 +83,12 @@ function buildMonthlyShipmentTrend(rawShipments: Shipment[]) {
     months.push({ key, label });
   }
   return months.map(({ key, label }) => {
-    const monthShipments = rawShipments.filter((s) =>
-      s.createdAt?.startsWith(key),
-    );
-    const total = monthShipments.length;
-    const delivered = monthShipments.filter(
-      (s) => s.status === "Delivered",
-    ).length;
-    const revenue = monthShipments.reduce(
-      (sum, s) => sum + ((s.quoteId || s.preservedQuoteData)?.rate || 0),
-      0,
-    );
-    return { month: label, total, delivered, revenue };
-  });
+    const monthLoads = rawLoads.filter(l => l.createdAt?.startsWith(key))
+    const total = monthLoads.length
+    const delivered = monthLoads.filter(l => l.status === "Delivered").length
+    const revenue = monthLoads.reduce((sum, l) => sum + (l.pricing?.carrierPayAmount || l.pricing?.estimatedRate || 0), 0)
+    return { month: label, total, delivered, revenue }
+  })
 }
 
 function buildMonthlyQuoteTrend(rawQuotes: Quote[]) {
@@ -140,7 +136,7 @@ function ChartTooltip({ active, payload, label }: TrendTooltipProps) {
         <p key={i} style={{ color: entry.color }} className="font-medium">
           {entry.name}:{" "}
           {typeof entry.value === "number" &&
-          entry.name?.toLowerCase().includes("revenue")
+            entry.name?.toLowerCase().includes("revenue")
             ? `$${entry.value.toLocaleString()}`
             : entry.value}
         </p>
@@ -167,34 +163,34 @@ function PieTooltip({ active, payload }: PieTooltipProps) {
 }
 
 export function TransportationAnalytics({
-  shipments,
+  loads,
   quotes,
-  rawShipments,
+  rawLoads,
   rawQuotes,
   monthLabel,
 }: Props) {
-  const shipmentStatusData = React.useMemo(
-    () => buildShipmentStatusData(shipments),
-    [shipments],
+  const loadStatusData = React.useMemo(
+    () => buildLoadStatusData(loads),
+    [loads],
   );
   const quoteStatusData = React.useMemo(
     () => buildQuoteStatusData(quotes),
     [quotes],
   );
-  const shipmentTrend = React.useMemo(
-    () => buildMonthlyShipmentTrend(rawShipments),
-    [rawShipments],
+  const loadTrend = React.useMemo(
+    () => buildMonthlyLoadTrend(rawLoads),
+    [rawLoads],
   );
   const quoteTrend = React.useMemo(
     () => buildMonthlyQuoteTrend(rawQuotes),
     [rawQuotes],
   );
-  const shipmentTrendData = React.useMemo(
+  const loadTrendData = React.useMemo(
     () =>
-      shipmentTrend.filter(
+      loadTrend.filter(
         (point) => point.total > 0 || point.delivered > 0 || point.revenue > 0,
       ),
-    [shipmentTrend],
+    [loadTrend],
   );
   const quoteTrendData = React.useMemo(
     () =>
@@ -203,19 +199,19 @@ export function TransportationAnalytics({
       ),
     [quoteTrend],
   );
-  const hasShipmentTrendData = React.useMemo(
-    () => shipmentTrendData.length > 0,
-    [shipmentTrendData],
+  const hasLoadTrendData = React.useMemo(
+    () => loadTrendData.length > 0,
+    [loadTrendData],
   );
   const hasQuoteTrendData = React.useMemo(
     () => quoteTrendData.length > 0,
     [quoteTrendData],
   );
 
-  const totalShipments = shipments.length;
-  const delivered = shipments.filter((s) => s.status === "Delivered").length;
+  const totalLoads = loads.length;
+  const delivered = loads.filter((l) => l.status === "Delivered").length;
   const successRate =
-    totalShipments > 0 ? Math.round((delivered / totalShipments) * 100) : 0;
+    totalLoads > 0 ? Math.round((delivered / totalLoads) * 100) : 0;
 
   const totalQuotes = quotes.length;
   const booked = quotes.filter((q) => q.status === "booked").length;
@@ -227,16 +223,16 @@ export function TransportationAnalytics({
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-1">
           <CardTitle className="text-sm font-semibold">
-            Shipment Status
+            Load Distribution
           </CardTitle>
           <CardDescription className="text-xs">
-            {monthLabel} — shipments by status
+            {monthLabel} — loads by status
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center gap-6 pt-2">
-          {totalShipments === 0 ? (
+          {totalLoads === 0 ? (
             <p className="text-sm text-muted-foreground py-8 w-full text-center">
-              No shipments for this period.
+              No load data for this period.
             </p>
           ) : (
             <>
@@ -245,7 +241,7 @@ export function TransportationAnalytics({
                   <PieChart>
                     <Tooltip content={<PieTooltip />} />
                     <Pie
-                      data={shipmentStatusData}
+                      data={loadStatusData}
                       dataKey="value"
                       nameKey="name"
                       innerRadius={48}
@@ -253,7 +249,7 @@ export function TransportationAnalytics({
                       paddingAngle={2}
                       strokeWidth={0}
                     >
-                      {shipmentStatusData.map((entry, i) => (
+                      {loadStatusData.map((entry, i) => (
                         <Cell
                           key={i}
                           fill={STATUS_FILL[entry.name] ?? "var(--chart-3)"}
@@ -275,7 +271,7 @@ export function TransportationAnalytics({
                   ) : (
                     <>
                       <span className="text-2xl font-bold text-foreground leading-none">
-                        {totalShipments}
+                        {totalLoads}
                       </span>
                       <span className="text-[10px] text-muted-foreground mt-0.5">
                         total
@@ -285,7 +281,7 @@ export function TransportationAnalytics({
                 </div>
               </div>
               <div className="flex flex-col gap-2 min-w-0 flex-1">
-                {shipmentStatusData.map((entry) => (
+                {loadStatusData.map((entry) => (
                   <div
                     key={entry.name}
                     className="flex items-center justify-between gap-2"
@@ -316,10 +312,10 @@ export function TransportationAnalytics({
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-1">
           <CardTitle className="text-sm font-semibold">
-            Quote Conversion
+            Quote Performance
           </CardTitle>
           <CardDescription className="text-xs">
-            {monthLabel} — quotes by status
+            {monthLabel} — conversion metrics
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center gap-6 pt-2">
@@ -407,20 +403,20 @@ export function TransportationAnalytics({
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-1">
           <CardTitle className="text-sm font-semibold">
-            Shipment Trend
+            Operational Velocity
           </CardTitle>
           <CardDescription className="text-xs">
-            Last 6 months — deliveries & revenue
+            Last 6 months — throughput & volume
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
-          {!hasShipmentTrendData ? (
+          {!hasLoadTrendData ? (
             <p className="text-sm text-muted-foreground py-8 w-full text-center">
-              No data available.
+              No trend data available.
             </p>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={shipmentTrendData} barSize={20}>
+              <BarChart data={loadTrendData} barSize={20}>
                 <CartesianGrid
                   vertical={false}
                   strokeDasharray="3 3"
@@ -446,13 +442,13 @@ export function TransportationAnalytics({
                   dataKey="total"
                   fill="var(--chart-3)"
                   radius={[4, 4, 0, 0]}
-                  name="Total"
+                  name="Total Loads"
                 />
                 <Bar
                   dataKey="delivered"
                   fill="var(--chart-1)"
                   radius={[4, 4, 0, 0]}
-                  name="Delivered"
+                  name="Completed"
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -462,15 +458,15 @@ export function TransportationAnalytics({
 
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-1">
-          <CardTitle className="text-sm font-semibold">Quote Volume</CardTitle>
+          <CardTitle className="text-sm font-semibold">Demand Analysis</CardTitle>
           <CardDescription className="text-xs">
-            Last 6 months — quotes & conversions
+            Last 6 months — market engagement
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
           {!hasQuoteTrendData ? (
             <p className="text-sm text-muted-foreground py-8 w-full text-center">
-              No data available.
+              No engagement data.
             </p>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
@@ -525,7 +521,7 @@ export function TransportationAnalytics({
                   stroke="var(--chart-4)"
                   fill="url(#quoteGrad)"
                   strokeWidth={2}
-                  name="Total Quotes"
+                  name="Inquiries"
                 />
                 <Area
                   type="monotone"
@@ -533,7 +529,7 @@ export function TransportationAnalytics({
                   stroke="var(--chart-2)"
                   fill="url(#bookedGrad)"
                   strokeWidth={2}
-                  name="Booked"
+                  name="Conversions"
                 />
               </AreaChart>
             </ResponsiveContainer>

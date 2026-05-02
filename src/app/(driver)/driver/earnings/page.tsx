@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
-import { Shipment } from "@/types/transportation";
 import { DriverPayout } from "@/types/driver-payout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +20,7 @@ import {
 
 type TransactionRow =
   | { kind: "payout"; data: DriverPayout; sortDate: string }
-  | { kind: "load"; data: Shipment; sortDate: string };
+  | { kind: "load"; data: any; sortDate: string };
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
@@ -61,7 +60,7 @@ function PayoutStatusBadge({ status }: { status: DriverPayout["status"] }) {
 
 export default function DriverEarningsPage() {
   const { getToken } = useAuth();
-  const [loads, setLoads] = React.useState<Shipment[]>([]);
+  const [loads, setLoads] = React.useState<any[]>([]);
   const [payouts, setPayouts] = React.useState<DriverPayout[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -95,22 +94,22 @@ export default function DriverEarningsPage() {
 
   const completedLoads = loads.filter((l) => l.status === "Delivered");
 
-  const paidShipmentIds = React.useMemo(() => {
+  const paidLoadIds = React.useMemo(() => {
     const ids = new Set<string>();
     payouts
       .filter((p) => p.status === "paid" || p.status === "processing")
       .forEach((p) => {
         const id =
-          typeof p.shipmentId === "object"
-            ? (p.shipmentId as any)._id
-            : p.shipmentId;
+          typeof p.loadId === "object"
+            ? (p.loadId as any)._id
+            : p.loadId;
         if (id) ids.add(id);
       });
     return ids;
   }, [payouts]);
 
   const unpaidCompletedLoads = completedLoads.filter(
-    (l) => !paidShipmentIds.has(l._id)
+    (l) => !paidLoadIds.has(l._id)
   );
 
   // Combined and sorted transaction list
@@ -124,7 +123,7 @@ export default function DriverEarningsPage() {
       ...unpaidCompletedLoads.map((l) => ({
         kind: "load" as const,
         data: l,
-        sortDate: l.delivered || l.createdAt,
+        sortDate: l.dates?.deliveryDeadline || l.deliveredAt || l.delivered || l.createdAt,
       })),
     ];
     return rows.sort(
@@ -216,8 +215,8 @@ export default function DriverEarningsPage() {
                   {transactions.map((row) => {
                     if (row.kind === "payout") {
                       const p = row.data;
-                      const shipment =
-                        typeof p.shipmentId === "object" ? p.shipmentId : null;
+                      const load =
+                        typeof p.loadId === "object" ? (p.loadId as any) : null;
                       return (
                         <div
                           key={`payout-${p._id}`}
@@ -227,20 +226,20 @@ export default function DriverEarningsPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-mono font-medium">
                                 {p.payoutNumber ||
-                                  (shipment as any)?.trackingNumber ||
+                                  load?.loadNumber ||
                                   "—"}
                               </span>
                               <PayoutStatusBadge status={p.status} />
                             </div>
-                            {shipment && (
+                            {load && (
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <MapPin className="size-3 shrink-0" />
                                 <span className="truncate">
-                                  {(shipment as any).origin}
+                                  {load.pickupLocation?.city || load.origin || "Unknown"}
                                 </span>
                                 <ArrowRight className="size-3 shrink-0" />
                                 <span className="truncate">
-                                  {(shipment as any).destination}
+                                  {load.deliveryLocation?.city || load.destination || "Unknown"}
                                 </span>
                               </div>
                             )}
@@ -248,8 +247,8 @@ export default function DriverEarningsPage() {
                           <div className="text-right shrink-0 ml-4">
                             <p
                               className={`font-bold ${p.status === "paid"
-                                  ? "text-emerald-700 dark:text-emerald-400"
-                                  : "text-foreground"
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : "text-foreground"
                                 }`}
                             >
                               {formatCurrency(p.amount)}
@@ -272,7 +271,7 @@ export default function DriverEarningsPage() {
                         <div className="min-w-0 space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-mono font-medium">
-                              {l.trackingNumber || "—"}
+                              {l.loadNumber || l.trackingNumber || "—"}
                             </span>
                             <Badge
                               variant="outline"
@@ -284,20 +283,24 @@ export default function DriverEarningsPage() {
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <MapPin className="size-3 shrink-0" />
-                            <span className="truncate">{l.origin}</span>
+                            <span className="truncate">
+                              {l.pickupLocation?.city || l.origin || "Unknown"}
+                            </span>
                             <ArrowRight className="size-3 shrink-0" />
-                            <span className="truncate">{l.destination}</span>
+                            <span className="truncate">
+                              {l.deliveryLocation?.city || l.destination || "Unknown"}
+                            </span>
                           </div>
                         </div>
                         <div className="text-right shrink-0 ml-4">
-                          {(l.preservedQuoteData as any)?.rate != null && (
+                          {(l.pricing?.carrierPayAmount ?? l.carrierPayAmount) != null && (
                             <p className="font-bold text-foreground">
-                              {formatCurrency((l.preservedQuoteData as any).rate)}
+                              {formatCurrency(l.pricing?.carrierPayAmount ?? l.carrierPayAmount)}
                             </p>
                           )}
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {l.delivered
-                              ? new Date(l.delivered).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })
+                            {(l.dates?.deliveryDeadline || l.deliveredAt || l.delivered)
+                              ? new Date(l.dates?.deliveryDeadline || l.deliveredAt || l.delivered).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })
                               : new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Denver" })}
                           </p>
                         </div>

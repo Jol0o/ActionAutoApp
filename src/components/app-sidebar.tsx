@@ -18,6 +18,7 @@ import {
   Gift,
   Wallet,
   LayoutGrid,
+  PlusSquare,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 

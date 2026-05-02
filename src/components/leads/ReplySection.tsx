@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Send, Circle, ChevronDown, Calendar, XCircle, Lock, LockOpen } from "lucide-react"
+import { Send, Circle, ChevronDown, Calendar, XCircle, Lock, LockOpen, Truck } from "lucide-react"
 import {
   DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuTrigger,
@@ -15,6 +15,7 @@ interface ReplySectionProps {
   onStatusChange: (status: string) => void
   onApptOpen: () => void
   onReopen: () => void
+  onQuoteShipping: () => void
   selectedLeadStatus: string
 }
 
@@ -27,6 +28,7 @@ export const ReplySection = React.memo(({
   onStatusChange,
   onApptOpen,
   onReopen,
+  onQuoteShipping,
   selectedLeadStatus
 }: ReplySectionProps) => {
   
@@ -80,6 +82,10 @@ export const ReplySection = React.memo(({
             <button onClick={onApptOpen}
               className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium text-slate-600 hover:text-slate-200 hover:bg-[#0d1f15] transition-all">
               <Calendar className="h-3 w-3" /> Schedule
+            </button>
+            <button onClick={onQuoteShipping}
+              className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium text-slate-600 hover:text-slate-200 hover:bg-[#0d1f15] transition-all">
+              <Truck className="h-3 w-3" /> Quote Shipping
             </button>
             <button onClick={() => onStatusChange('Closed')}
               className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium text-rose-700/70 hover:text-rose-400 hover:bg-rose-500/5 transition-all">

@@ -14,7 +14,6 @@ export interface LocationBlock {
 
 export interface LoadVehicle {
   id: string;
-  trailerType: string;
   year: string;
   make: string;
   model: string;
@@ -46,7 +45,6 @@ export const emptyLocation = (): LocationBlock => ({
 
 export const emptyVehicle = (): LoadVehicle => ({
   id: crypto.randomUUID(),
-  trailerType: "",
   year: "",
   make: "",
   model: "",

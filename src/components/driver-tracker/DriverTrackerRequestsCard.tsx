@@ -37,8 +37,8 @@ interface LoadRequest {
 interface DriverTrackerRequestsCardProps {
   requests: LoadRequest[];
   isLoading: boolean;
-  onApprove: (shipmentId: string | undefined, driverId: string, loadId?: string) => void;
-  onReject: (shipmentId: string | undefined, driverId: string, loadId?: string) => void;
+  onApprove: (loadId: string, driverId: string) => void;
+  onReject: (loadId: string, driverId: string) => void;
   approvingId: string | null;
   rejectingId: string | null;
 }
@@ -161,7 +161,7 @@ export function DriverTrackerRequestsCard({
                 <Button
                   size="sm"
                   className="h-8 px-3 text-xs font-bold gap-1.5"
-                  onClick={() => onApprove(req.shipmentId, req.driverId, req.loadId)}
+                  onClick={() => onApprove(req.loadId!, req.driverId)}
                   disabled={isApproving || isRejecting}
                 >
                   {isApproving ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
@@ -171,7 +171,7 @@ export function DriverTrackerRequestsCard({
                   size="sm"
                   variant="outline"
                   className="h-8 px-3 text-xs font-bold gap-1.5 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                  onClick={() => onReject(req.shipmentId, req.driverId, req.loadId)}
+                  onClick={() => onReject(req.loadId!, req.driverId)}
                   disabled={isApproving || isRejecting}
                 >
                   {isRejecting ? <Loader2 className="size-3.5 animate-spin" /> : <XCircle className="size-3.5" />}

@@ -14,7 +14,7 @@ interface QuoteResultModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   quote: Quote | null
-  onCreateShipment: () => void
+  onConvertToLoad: () => void
   onViewQuote: () => void
 }
 
@@ -22,7 +22,7 @@ export function QuoteResultModal({
   open,
   onOpenChange,
   quote,
-  onCreateShipment,
+  onConvertToLoad,
   onViewQuote
 }: QuoteResultModalProps) {
   if (!quote) return null
@@ -189,11 +189,11 @@ export function QuoteResultModal({
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4 border-t border-gray-200">
             <Button
-              onClick={onCreateShipment}
-              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg h-12 text-base font-semibold"
+              onClick={onConvertToLoad}
+              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg h-12 text-base font-semibold"
             >
               <Truck className="w-5 h-5 mr-2" />
-              Create Shipment
+              Convert to Load
             </Button>
             <Button
               onClick={onViewQuote}

@@ -1,7 +1,8 @@
 import { jsPDF } from "jspdf";
-import { Shipment } from "@/types/transportation";
+import { Load, LoadStatus } from "@/types/load";
 
 export type ShipmentPDFResult = "saved" | "cancelled" | "initiated";
+export type LoadPDFResult = ShipmentPDFResult;
 
 // ─── Font loader ─────────────────────────────────────────────────────────────
 async function loadFontBase64(url: string): Promise<string> {
@@ -85,19 +86,18 @@ async function embedFonts(pdf: jsPDF): Promise<{
  * Generate and download a professional PDF of shipment details
  * Action Auto Utah — Powered by Supra AI
  */
-export const generateShipmentPDF = async (
-  shipment: Shipment,
-): Promise<ShipmentPDFResult> => {
+export const generateLoadPDF = async (
+  load: Load,
+): Promise<LoadPDFResult> => {
   const pdf = new jsPDF("p", "mm", "a4");
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  // Get quote data
-  const quote = shipment.quoteId || shipment.preservedQuoteData;
-  const vehicle = quote?.vehicleId;
+  // Get data
+  const vehicle = load.vehicles?.[0];
   const vehicleName = vehicle
-    ? `${vehicle.year} ${vehicle.make} ${vehicle.modelName}`
-    : quote?.vehicleName || "N/A";
+    ? `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim()
+    : "N/A";
 
   // Updated color system aligned with dashboard
   const colors = {
@@ -124,18 +124,20 @@ export const generateShipmentPDF = async (
   };
 
   // Helper function to get status color
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: LoadStatus) => {
     switch (status) {
-      case "Available for Pickup":
+      case "Posted":
         return "#f59e0b";
       case "Delivered":
         return "#10b981";
       case "Cancelled":
         return "#ef4444";
-      case "In-Route":
+      case "In-Transit":
         return "#3b82f6";
-      case "Dispatched":
+      case "Accepted":
         return "#8b5cf6";
+      case "Picked Up":
+        return "#f97316";
       default:
         return "#6b7280";
     }
@@ -208,7 +210,7 @@ export const generateShipmentPDF = async (
     // Right side — Poppins SemiBold for title, Inter Regular for meta
     pdf.setFont(F.heading, "bold");
     pdf.setFontSize(10.5);
-    pdf.text("Shipment Documentation", pageWidth - marginX, 12.5, {
+    pdf.text("Load Documentation", pageWidth - marginX, 12.5, {
       align: "right",
     });
     pdf.setFont(F.body, "normal");
@@ -216,7 +218,7 @@ export const generateShipmentPDF = async (
     pdf.text(`Issue Date: ${currentDate}`, pageWidth - marginX, 17, {
       align: "right",
     });
-    pdf.text(`Report Type: Shipment Document`, pageWidth - marginX, 21, {
+    pdf.text(`Report Type: Load Manifest`, pageWidth - marginX, 21, {
       align: "right",
     });
 
@@ -291,7 +293,7 @@ export const generateShipmentPDF = async (
 
   drawHeader(false);
 
-  // Hero: Tracking / Vehicle / Status
+  // Hero: Load Number / Vehicle / Status
   ensureSpace(27);
   drawCard(marginX, yPosition, contentWidth, 23);
 
@@ -299,13 +301,13 @@ export const generateShipmentPDF = async (
   pdf.setTextColor(100, 116, 139);
   pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(8);
-  pdf.text("Tracking Number", marginX + 5, yPosition + 7);
+  pdf.text("Load Number", marginX + 5, yPosition + 7);
 
   pdf.setTextColor(17, 24, 39);
   pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(13);
   pdf.text(
-    shipment.trackingNumber || "Not Assigned",
+    load.loadNumber || "Not Assigned",
     marginX + 5,
     yPosition + 14.5,
   );
@@ -313,15 +315,15 @@ export const generateShipmentPDF = async (
   pdf.setTextColor(100, 116, 139);
   pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(7.8);
-  pdf.text("Vehicle", marginX + 5, yPosition + 19.5);
+  pdf.text("Primary Vehicle", marginX + 5, yPosition + 19.5);
   pdf.setTextColor(36, 52, 76);
   pdf.setFont(F.body, "normal");
   pdf.setFontSize(8.3);
-  pdf.text(vehicleName, marginX + 25, yPosition + 19.5);
+  pdf.text(vehicleName, marginX + 30, yPosition + 19.5);
 
-  const statusColor = getStatusColor(shipment.status);
+  const statusColor = getStatusColor(load.status);
   const statusRgb = hexToRgb(statusColor);
-  const statusText = (shipment.status || "Unknown").toUpperCase();
+  const statusText = (load.status || "Unknown").toUpperCase();
   pdf.setFont(F.heading, "bold");
   pdf.setFontSize(8);
   const statusWidth = Math.max(42, pdf.getTextWidth(statusText) + 16);
@@ -335,34 +337,33 @@ export const generateShipmentPDF = async (
 
   yPosition += 30;
 
-  // Customer Information
+  // Customer Information (if available in load.customer)
   ensureSpace(40);
   drawSectionTitle("Customer Information");
   const customerRows = [
     {
-      label: "Full Name",
-      value:
-        `${quote?.firstName || ""} ${quote?.lastName || ""}`.trim() || "N/A",
+      label: "Customer Name",
+      value: load.pickupLocation?.contactName || "N/A",
     },
-    { label: "Email Address", value: quote?.email || "N/A" },
-    { label: "Phone Number", value: quote?.phone || "N/A" },
+    { label: "Contact Phone", value: load.pickupLocation?.phone || "N/A" },
+    { label: "Contact Email", value: load.pickupLocation?.email || "N/A" },
   ];
   const customerCardHeight = customerRows.length * 8.5 + 4;
   drawCard(marginX, yPosition - 1.2, contentWidth, customerCardHeight);
   drawKeyValueRows(customerRows, marginX + 60);
   yPosition += 3;
 
-  // Vehicle Information
+  // Vehicle Information (Iterate through all vehicles if needed, but here we show primary)
   ensureSpace(48);
   drawSectionTitle("Vehicle Information");
   const vehicleRows = [
     { label: "Vehicle", value: vehicleName },
-    { label: "VIN Number", value: vehicle?.vin || quote?.vin || "N/A" },
+    { label: "VIN Number", value: vehicle?.vin || "N/A" },
     {
       label: "Stock Number",
-      value: vehicle?.stockNumber || quote?.stockNumber || "N/A",
+      value: vehicle?.lotNumber || "N/A",
     },
-    { label: "Location", value: quote?.vehicleLocation || "N/A" },
+    { label: "Condition", value: vehicle?.condition || "Operable" },
   ];
   const vehicleCardHeight = vehicleRows.length * 8.5 + 4;
   drawCard(marginX, yPosition - 1.2, contentWidth, vehicleCardHeight);
@@ -389,7 +390,7 @@ export const generateShipmentPDF = async (
   pdf.setTextColor(30, 41, 59);
   pdf.setFont(F.body, "normal");
   pdf.setFontSize(9);
-  pdf.text(shipment.origin || "N/A", routeX + 6, routeTop + 3.8);
+  pdf.text(`${load.pickupLocation.city}, ${load.pickupLocation.state} ${load.pickupLocation.zip || ''}`, routeX + 6, routeTop + 3.8);
 
   pdf.setFillColor(239, 68, 68);
   pdf.circle(routeX, routeTop + 15.2, 2.5, "F");
@@ -400,27 +401,26 @@ export const generateShipmentPDF = async (
   pdf.setTextColor(30, 41, 59);
   pdf.setFont(F.body, "normal");
   pdf.setFontSize(9);
-  pdf.text(shipment.destination || "N/A", routeX + 6, routeTop + 19);
+  pdf.text(`${load.deliveryLocation.city}, ${load.deliveryLocation.state} ${load.deliveryLocation.zip || ""}`.trim(), routeX + 6, routeTop + 19);
 
   yPosition += 34;
 
-  // Shipment Timeline
+  // Load Timeline
   const timelineData = [
     {
-      label: "Requested Pickup",
-      date: formatDate(shipment.requestedPickupDate),
+      label: "Pickup Deadline",
+      date: formatDate(load.dates?.pickupDeadline),
     },
-    { label: "Scheduled Pickup", date: formatDate(shipment.scheduledPickup) },
-    { label: "Actual Pickup", date: formatDate(shipment.pickedUp) },
+    { label: "Actual Pickup", date: formatDate(load.pickedUpAt) },
     {
-      label: "Scheduled Delivery",
-      date: formatDate(shipment.scheduledDelivery),
+      label: "Delivery Deadline",
+      date: formatDate(load.dates?.deliveryDeadline),
     },
-    { label: "Actual Delivery", date: formatDate(shipment.delivered) },
+    { label: "Actual Delivery", date: formatDate(load.deliveredAt) },
   ];
 
   ensureSpace(58);
-  drawSectionTitle("Shipment Timeline");
+  drawSectionTitle("Load Timeline");
   const timelineCardHeight = timelineData.length * 9 + 5;
   drawCard(marginX, yPosition - 1.2, contentWidth, timelineCardHeight);
 
@@ -453,26 +453,25 @@ export const generateShipmentPDF = async (
 
   yPosition += timelineData.length * 9 + 8;
 
-  // Transport Details + Rate block
+  // Pricing & Financials
   ensureSpace(56);
-  drawSectionTitle("Transport Details");
+  drawSectionTitle("Financial Details");
 
-  const detailsRows = [
+  const pricingRows = [
     {
-      label: "Transport Type",
-      value: quote?.enclosedTrailer ? "Enclosed Trailer" : "Open Trailer",
+      label: "Carrier Pay",
+      value: load.pricing?.carrierPayAmount != null ? `$${load.pricing.carrierPayAmount.toLocaleString()}` : "N/A",
     },
     {
-      label: "Vehicle Condition",
-      value: quote?.vehicleInoperable ? "Inoperable" : "Operable",
+      label: "COP/COD Amount",
+      value: load.pricing?.copCodAmount != null ? `$${load.pricing.copCodAmount.toLocaleString()}` : "None",
     },
-    { label: "Distance", value: `${quote?.miles || "N/A"} miles` },
-    { label: "Units", value: `${quote?.units || "N/A"}` },
+    { label: "Payment Method", value: "Direct Deposit" },
   ];
 
-  const detailsCardHeight = detailsRows.length * 8.5 + 4;
-  drawCard(marginX, yPosition - 1.2, contentWidth, detailsCardHeight);
-  drawKeyValueRows(detailsRows, marginX + 60);
+  const pricingCardHeight = pricingRows.length * 8.5 + 4;
+  drawCard(marginX, yPosition - 1.2, contentWidth, pricingCardHeight);
+  drawKeyValueRows(pricingRows, marginX + 60);
 
   // ✅ rateBoxY captured AFTER drawKeyValueRows advances yPosition
   ensureSpace(22);
@@ -491,7 +490,7 @@ export const generateShipmentPDF = async (
   pdf.setFont(F.mono, F.mono === "Inter" ? "medium" : "bold");
   pdf.setFontSize(15);
   pdf.text(
-    `$${quote?.rate?.toLocaleString() || "N/A"}`,
+    `$${load.pricing?.carrierPayAmount?.toLocaleString() || "N/A"}`,
     marginX + 5,
     rateBoxY + 12.3,
   );
@@ -510,7 +509,7 @@ export const generateShipmentPDF = async (
     hour: "numeric",
     minute: "2-digit",
   });
-  const docIdLabel = shipment.trackingNumber || shipment._id;
+  const docIdLabel = load.loadNumber || load._id;
 
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
@@ -549,7 +548,7 @@ export const generateShipmentPDF = async (
   // ============================================
   // SAVE PDF
   // ============================================
-  const fileName = `ActionAutoUtah_Shipment_${shipment.trackingNumber || shipment._id}.pdf`;
+  const fileName = `ActionAutoUtah_Load_${load.loadNumber || load._id}.pdf`;
   const pdfBlob = pdf.output("blob");
 
   if (typeof window !== "undefined" && "showSaveFilePicker" in window) {
@@ -585,69 +584,9 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : { r: 0, g: 0, b: 0 };
-}
-
-// Helper function to load image as base64
-async function loadImageAsBase64(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Could not get canvas context"));
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0);
-      const dataURL = canvas.toDataURL("image/jpeg", 0.8);
-      resolve(dataURL);
-    };
-
-    img.onerror = () => {
-      reject(new Error("Failed to load image"));
-    };
-
-    img.src = url;
-  });
-}
-
-function canAttemptImageForPdf(url: string): boolean {
-  if (!url) return false;
-  if (url.startsWith("data:") || url.startsWith("blob:")) return true;
-
-  if (url.startsWith("/")) return true;
-
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    return true;
-  }
-
-  if (typeof window === "undefined") return false;
-
-  try {
-    const targetUrl = new URL(url, window.location.origin);
-    const currentOrigin = window.location.origin;
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-    if (targetUrl.origin === currentOrigin) return true;
-
-    if (apiBaseUrl) {
-      const apiOrigin = new URL(apiBaseUrl).origin;
-      if (targetUrl.origin === apiOrigin) return true;
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
     }
-
-    return false;
-  } catch {
-    return false;
-  }
+    : { r: 0, g: 0, b: 0 };
 }

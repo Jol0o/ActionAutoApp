@@ -139,7 +139,7 @@ export function useAppointments() {
       };
 
       const authHeaders = await getAuthHeaders();
-      const response = await apiClient.patch(`/api/appointments/${id}`, sanitizedData, authHeaders);
+      const response = await apiClient.put(`/api/appointments/${id}`, sanitizedData, authHeaders);
       const updated = response.data?.data || response.data;
 
       setAppointments(prev =>

@@ -1,7 +1,7 @@
 export interface DriverPayout {
   _id: string;
   organizationId: string;
-  shipmentId: string | { _id: string; trackingNumber?: string; origin?: string; destination?: string };
+  loadId: string | { _id: string; loadNumber?: string; trackingNumber?: string; origin?: string; destination?: string };
   driverId: string | { _id: string; name: string; email: string; avatar?: string };
   driverName: string;
   driverEmail: string;
@@ -18,8 +18,9 @@ export interface DriverPayout {
   updatedAt: string;
 }
 
-export interface DeliverableShipment {
+export interface DeliverableLoad {
   _id: string;
+  loadNumber?: string;
   trackingNumber?: string;
   origin: string;
   destination: string;
@@ -56,7 +57,7 @@ export interface DriverPayoutStats {
 }
 
 export interface CreatePayoutData {
-  shipmentId: string;
+  loadId: string;
   driverId: string;
   amount: number;
   description?: string;

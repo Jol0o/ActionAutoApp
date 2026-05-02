@@ -5,7 +5,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Clock, CheckCircle2, Loader2, RefreshCw, Send, Wallet, UserCheck, AlertTriangle, X,
 } from "lucide-react";
-import { DriverPayout, DeliverableShipment, DriverPayoutStats } from "@/types/driver-payout";
+import { DriverPayout, DeliverableLoad, DriverPayoutStats } from "@/types/driver-payout";
 import { formatCurrency } from "@/utils/format";
 import { StatCard, PayoutStatusBadge } from "@/components/billing/StatusBadges";
 import { resolveImageUrl } from "@/lib/utils";
@@ -196,30 +196,30 @@ function TableShell({ headers, children, loading, loadingCols, emptyMsg }: {
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 export interface DriverPayoutsTabProps {
-  deliverableShipments: DeliverableShipment[]; payouts: DriverPayout[];
+  deliverableLoads: DeliverableLoad[]; payouts: DriverPayout[];
   payoutStats: DriverPayoutStats | null; payoutsLoading: boolean;
-  confirmingId: string | null; createPayoutTarget: DeliverableShipment | null;
+  confirmingId: string | null; createPayoutTarget: DeliverableLoad | null;
   createPayoutAmount: number; createPayoutNotes: string;
   payoutError: string | null; isCreatingPayout: boolean;
   onRefresh: () => void; onConfirmDelivery: (id: string) => void;
-  onSetPayoutTarget: (s: DeliverableShipment) => void;
+  onSetPayoutTarget: (s: DeliverableLoad) => void;
   onPayoutAmountChange: (v: number) => void; onPayoutNotesChange: (v: string) => void;
   onPayoutClose: () => void; onCreatePayout: () => void;
 }
 
 // ─── DriverPayoutsTab ──────────────────────────────────────────────────────────
 export function DriverPayoutsTab({
-  deliverableShipments, payouts, payoutStats, payoutsLoading, confirmingId,
+  deliverableLoads, payouts, payoutStats, payoutsLoading, confirmingId,
   createPayoutTarget, createPayoutAmount, createPayoutNotes, payoutError,
   isCreatingPayout, onRefresh, onConfirmDelivery, onSetPayoutTarget,
   onPayoutAmountChange, onPayoutNotesChange, onPayoutClose, onCreatePayout,
 }: DriverPayoutsTabProps) {
   const [refreshHover, setRefreshHover] = React.useState(false);
 
-  const readyToPay = deliverableShipments.filter(
+  const readyToPay = deliverableLoads.filter(
     s => !s.pendingConfirmation && (!s.existingPayout || s.existingPayout.status === "failed")
   );
-  const pendingConf = deliverableShipments.filter(s => s.pendingConfirmation);
+  const pendingConf = deliverableLoads.filter(s => s.pendingConfirmation);
 
   const statCards = [
     { label: "Total Paid Out", value: formatCurrency(payoutStats?.totalPaid ?? 0), icon: <Wallet style={{ width: 15, height: 15, color: "#6EE7B7" }} /> },
@@ -278,7 +278,7 @@ export function DriverPayoutsTab({
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 480 }}>
                 <thead>
                   <tr style={{ background: "rgba(251,191,36,0.07)" }}>
-                    {["Tracking #", "Driver", "Vehicle", "Route", "Proof", "Action"].map(h => (
+                    {["Load #", "Driver", "Vehicle", "Route", "Proof", "Action"].map(h => (
                       <th key={h} style={{ ...thStyle, borderBottomColor: "rgba(251,191,36,0.14)" }}>{h}</th>
                     ))}
                   </tr>
@@ -303,7 +303,7 @@ export function DriverPayoutsTab({
                           onMouseEnter={e => rowHover(e, true)} onMouseLeave={e => rowHover(e, false)}
                         >
                           <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>
-                            {s.trackingNumber || "—"}
+                            {s.loadNumber || s.trackingNumber || "—"}
                           </td>
                           <td style={{ ...tdBase }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -349,7 +349,7 @@ export function DriverPayoutsTab({
       {/* ── Ready to Pay ── */}
       <div>
         <SectionHead title="Delivered loads — ready to pay" />
-        <TableShell headers={["Driver", "Shipment", "Route", "Vehicle", "Rate", "Action"]} loading={payoutsLoading}>
+        <TableShell headers={["Driver", "Load", "Route", "Vehicle", "Rate", "Action"]} loading={payoutsLoading}>
           {readyToPay.length === 0
             ? (
               <tr>
@@ -372,7 +372,7 @@ export function DriverPayoutsTab({
                     </div>
                   </div>
                 </td>
-                <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{s.trackingNumber || "—"}</td>
+                <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{s.loadNumber || s.trackingNumber || "—"}</td>
                 <td style={{ ...tdBase, maxWidth: 160 }}>
                   <span style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {s.origin} → {s.destination}
@@ -407,7 +407,7 @@ export function DriverPayoutsTab({
       {/* ── Payout History ── */}
       <div>
         <SectionHead title="Payout history" />
-        <TableShell headers={["Payout #", "Driver", "Shipment", "Amount", "Status", "Date"]} loading={payoutsLoading}>
+        <TableShell headers={["Payout #", "Driver", "Load", "Amount", "Status", "Date"]} loading={payoutsLoading}>
           {payouts.length === 0
             ? (
               <tr>
@@ -418,7 +418,7 @@ export function DriverPayoutsTab({
             )
             : payouts.map(p => {
               const driver = typeof p.driverId === "object" ? p.driverId : null;
-              const shipment = typeof p.shipmentId === "object" ? p.shipmentId : null;
+              const load = typeof p.loadId === "object" ? p.loadId : null;
               return (
                 <tr key={p._id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", transition: "background 0.12s" }}
                   onMouseEnter={e => rowHover(e, true)} onMouseLeave={e => rowHover(e, false)}
@@ -433,7 +433,7 @@ export function DriverPayoutsTab({
                       </div>
                     </div>
                   </td>
-                  <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{shipment?.trackingNumber || "—"}</td>
+                  <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(229,90,0,0.65)" }}>{load?.loadNumber || load?.trackingNumber || "—"}</td>
                   <td style={{ ...tdBase, fontFamily: DISPLAY, fontSize: 13, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{formatCurrency(p.amount)}</td>
                   <td style={{ ...tdBase }}><PayoutStatusBadge status={p.status} /></td>
                   <td style={{ ...tdBase, fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.30)", whiteSpace: "nowrap" }}>
@@ -456,7 +456,7 @@ export function DriverPayoutsTab({
                   Pay Driver
                 </p>
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.30)", marginTop: 3 }}>
-                  Stripe payout to {createPayoutTarget.assignedDriverId.name} · {createPayoutTarget.trackingNumber || createPayoutTarget._id.slice(-6)}
+                  Stripe payout to {createPayoutTarget.assignedDriverId.name} · {createPayoutTarget.loadNumber || createPayoutTarget.trackingNumber || createPayoutTarget._id.slice(-6)}
                 </p>
               </div>
 
@@ -478,10 +478,10 @@ export function DriverPayoutsTab({
                   </span>
                 </div>
 
-                {/* Shipment info */}
+                {/* Load info */}
                 <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "10px 13px" }}>
                   <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.28)", marginBottom: 5, fontFamily: DISPLAY }}>
-                    Shipment
+                    Load Details
                   </p>
                   <p style={{ fontFamily: DISPLAY, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.82)", margin: 0 }}>
                     {createPayoutTarget.preservedQuoteData?.vehicleName || "Vehicle"}

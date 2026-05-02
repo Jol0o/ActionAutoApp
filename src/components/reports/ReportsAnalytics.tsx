@@ -23,34 +23,33 @@ import {
 import { TrendingUp, PackageCheck, BarChart2 } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import { Payment } from "@/types/billing";
-
-interface Shipment {
-  _id: string;
-  status: string;
-}
+import { Load } from "@/types/load";
 
 interface Props {
-  shipments: Shipment[];
-  rawPayments: Payment[];
-  monthLabel: string;
+  loads: Load[]
+  rawPayments: Payment[]
+  monthLabel: string
 }
 
 // ── Data builders ─────────────────────────────────────────────────────────────
 
 const STATUS_FILL: Record<string, string> = {
   Delivered: "var(--chart-1)",
-  "In-Route": "var(--chart-2)",
-  Dispatched: "var(--chart-3)",
-  "Available for Pickup": "var(--chart-4)",
+  "In-Transit": "var(--chart-2)",
+  "Picked Up": "var(--chart-2)",
+  Assigned: "var(--chart-3)",
+  Accepted: "var(--chart-3)",
+  Posted: "var(--chart-4)",
   Cancelled: "var(--chart-5)",
 };
 
-function buildDeliveryData(shipments: Shipment[]) {
-  const counts: Record<string, number> = {};
-  shipments.forEach((s) => {
-    counts[s.status] = (counts[s.status] || 0) + 1;
-  });
-  return Object.entries(counts).map(([name, value]) => ({ name, value }));
+
+function buildDeliveryData(loads: Load[]) {
+  const counts: Record<string, number> = {}
+  loads.forEach(s => {
+    counts[s.status] = (counts[s.status] || 0) + 1
+  })
+  return Object.entries(counts).map(([name, value]) => ({ name, value }))
 }
 
 function buildRevenueData(rawPayments: Payment[]) {
@@ -91,9 +90,7 @@ function DeliveryTooltip({ active, payload }: any) {
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg text-xs">
       <p className="font-semibold text-foreground">{payload[0].name}</p>
-      <p className="text-muted-foreground">
-        {count} shipment{count !== 1 ? "s" : ""}
-      </p>
+      <p className="text-muted-foreground">{count} load{count !== 1 ? "s" : ""}</p>
     </div>
   );
 }
@@ -132,19 +129,9 @@ function QuickStat({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ReportsAnalytics({
-  shipments,
-  rawPayments,
-  monthLabel,
-}: Props) {
-  const deliveryData = React.useMemo(
-    () => buildDeliveryData(shipments),
-    [shipments],
-  );
-  const revenueData = React.useMemo(
-    () => buildRevenueData(rawPayments),
-    [rawPayments],
-  );
+export function ReportsAnalytics({ loads, rawPayments, monthLabel }: Props) {
+  const deliveryData = React.useMemo(() => buildDeliveryData(loads), [loads])
+  const revenueData = React.useMemo(() => buildRevenueData(rawPayments), [rawPayments])
 
   const [tickColor, setTickColor] = React.useState("#6b7280");
   React.useEffect(() => {
@@ -161,12 +148,11 @@ export function ReportsAnalytics({
     return () => observer.disconnect();
   }, []);
 
-  const totalShipments = shipments.length;
-  const delivered = shipments.filter((s) => s.status === "Delivered").length;
-  const successRate =
-    totalShipments > 0 ? Math.round((delivered / totalShipments) * 100) : 0;
-  const totalSixMoRev = revenueData.reduce((s, d) => s + d.revenue, 0);
-  const hasRevenueData = revenueData.some((d) => d.revenue > 0);
+  const totalLoads = loads.length
+  const delivered = loads.filter(s => s.status === "Delivered").length
+  const successRate = totalLoads > 0 ? Math.round((delivered / totalLoads) * 100) : 0
+  const totalSixMoRev = revenueData.reduce((s, d) => s + d.revenue, 0)
+  const hasRevenueData = revenueData.some(d => d.revenue > 0)
 
   return (
     <div className="space-y-4">
@@ -182,8 +168,8 @@ export function ReportsAnalytics({
       {/* Quick stats strip */}
       <div className="flex flex-wrap items-center gap-4 bg-card rounded-xl border border-border px-5 py-3.5">
         <QuickStat
-          label={`Total Shipments — ${monthLabel}`}
-          value={totalShipments}
+          label={`Total Managed Loads — ${monthLabel}`}
+          value={totalLoads}
           icon={<PackageCheck className="size-4" />}
           color="bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400"
         />
@@ -212,14 +198,13 @@ export function ReportsAnalytics({
               Delivery Breakdown
             </CardTitle>
             <CardDescription className="text-xs">
-              {monthLabel} — {totalShipments} total shipment
-              {totalShipments !== 1 ? "s" : ""}
+              {monthLabel} — {totalLoads} total load{totalLoads !== 1 ? "s" : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {totalShipments === 0 ? (
+            {totalLoads === 0 ? (
               <div className="flex items-center justify-center h-[160px] text-sm text-muted-foreground">
-                No shipment data for this period.
+                No load data for this period.
               </div>
             ) : (
               <div className="flex items-center gap-6">
@@ -259,10 +244,8 @@ export function ReportsAnalytics({
 
                 {/* Legend */}
                 <div className="flex flex-col gap-2.5 flex-1 min-w-0">
-                  {deliveryData.map((entry) => {
-                    const pct = Math.round(
-                      (entry.value / totalShipments) * 100,
-                    );
+                  {deliveryData.map(entry => {
+                    const pct = Math.round((entry.value / totalLoads) * 100)
                     return (
                       <div key={entry.name} className="flex items-center gap-2">
                         <span

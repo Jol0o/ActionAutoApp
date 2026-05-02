@@ -21,6 +21,8 @@ import {
 
 interface AppointmentCalendarProps {
   appointments: Appointment[]
+  viewDate: Date
+  onViewDateChange: (date: Date) => void
   onCreateAppointment: (date?: Date) => void
   onSelectAppointment: (appointment: Appointment) => void
 }
@@ -81,11 +83,12 @@ function deriveTargetMonth(appointments: Appointment[], todayDate: Date): Date |
 // ─── Component ────────────────────────────────────────────────────────────────
 export function AppointmentCalendar({
   appointments,
+  viewDate,
+  onViewDateChange,
   onCreateAppointment,
   onSelectAppointment,
 }: AppointmentCalendarProps) {
   const todayDate = React.useRef(new Date()).current
-  const [currentMonth, setCurrentMonth] = React.useState(startOfMonth(todayDate))
 
   // FIX: Track the appointments length we last auto-navigated for, so that when
   // the list goes from [] → populated we jump correctly, but we don't keep
@@ -106,15 +109,16 @@ export function AppointmentCalendar({
     if (!wasEmpty) return // don't jump again once data is live
 
     const target = deriveTargetMonth(appointments, todayDate)
-    if (target) setCurrentMonth(target)
-  }, [appointments, todayDate])
+    if (target) onViewDateChange(target)
+  }, [appointments, todayDate, onViewDateChange])
 
   // ── Calendar grid ───────────────────────────────────────────────────────────
-  const monthStart    = startOfMonth(currentMonth)
-  const monthEnd      = endOfMonth(currentMonth)
+  const monthStart    = startOfMonth(viewDate)
+  const monthEnd      = endOfMonth(viewDate)
   const calendarStart = startOfWeek(monthStart)
   const calendarEnd   = endOfWeek(monthEnd)
   const days          = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
+  const currentMonth  = viewDate // for backward compatibility in the rest of the render logic
 
   const monthlyCount = React.useMemo(() => countInMonth(appointments, currentMonth), [appointments, currentMonth])
   const prevCount    = React.useMemo(() => countInMonth(appointments, subMonths(currentMonth, 1)), [appointments, currentMonth])
@@ -155,7 +159,7 @@ export function AppointmentCalendar({
               variant="outline"
               size="sm"
               className="relative"
-              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              onClick={() => onViewDateChange(subMonths(currentMonth, 1))}
               title={
                 prevCount > 0
                   ? `${format(subMonths(currentMonth, 1), "MMMM yyyy")} has ${prevCount} event${prevCount !== 1 ? "s" : ""}`
@@ -173,7 +177,7 @@ export function AppointmentCalendar({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentMonth(startOfMonth(todayDate))}
+              onClick={() => onViewDateChange(startOfMonth(todayDate))}
             >
               Today
             </Button>
@@ -182,7 +186,7 @@ export function AppointmentCalendar({
               variant="outline"
               size="sm"
               className="relative"
-              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              onClick={() => onViewDateChange(addMonths(currentMonth, 1))}
               title={
                 nextCount > 0
                   ? `${format(addMonths(currentMonth, 1), "MMMM yyyy")} has ${nextCount} event${nextCount !== 1 ? "s" : ""}`
@@ -290,7 +294,7 @@ export function AppointmentCalendar({
                 Blue dots on the arrows indicate months with events.
               </p>
             </div>
-            <JumpToNearestButton appointments={appointments} onNavigate={setCurrentMonth} />
+            <JumpToNearestButton appointments={appointments} onNavigate={onViewDateChange} />
           </div>
         )}
       </CardContent>

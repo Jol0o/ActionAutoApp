@@ -2,7 +2,9 @@ import * as React from "react";
 import { apiClient } from "@/lib/api-client";
 import { AxiosError } from "axios";
 import { Vehicle, ShippingQuoteFormData } from "@/types/inventory";
-import { Shipment, Quote, ShipmentStats } from "@/types/transportation";
+import { Load } from "@/types/load";
+import { Quote } from "@/types/transportation";
+import { LoadStats } from "@/lib/api/loads";
 import { useAuth } from "@/providers/AuthProvider";
 import { initializeSocket } from "@/lib/socket.client";
 
@@ -21,7 +23,7 @@ interface TransportationFilters {
   shipmentStatus?: string;
 }
 
-const SHIPMENTS_LIMIT_STORAGE_KEY = "transportation:shipments:limit";
+const LOADS_LIMIT_STORAGE_KEY = "transportation:loads:limit";
 const QUOTES_LIMIT_STORAGE_KEY = "transportation:quotes:limit";
 
 function getPersistedLimit(
@@ -51,8 +53,8 @@ function extractPaginatedItems<T>(
     const limit = Number(rawPagination.limit ?? items.length ?? 0);
     const totalPages = Number(
       rawPagination.totalPages ??
-        rawPagination.pages ??
-        (limit > 0 ? Math.ceil(total / limit) : 1),
+      rawPagination.pages ??
+      (limit > 0 ? Math.ceil(total / limit) : 1),
     );
     const hasMore =
       typeof rawPagination.hasMore === "boolean"
@@ -84,12 +86,12 @@ export function useTransportationData(filters: TransportationFilters = {}) {
   const [isSilentRefreshing, setIsSilentRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const [shipments, setShipments] = React.useState<Shipment[]>([]);
-  const [shipmentsPagination, setShipmentsPagination] =
+  const [loads, setLoads] = React.useState<Load[]>([]);
+  const [loadsPagination, setLoadsPagination] =
     React.useState<TransportationPagination | null>(null);
-  const [shipmentsPage, setShipmentsPage] = React.useState(1);
-  const [shipmentsLimit, setShipmentsLimit] = React.useState<PerPageOption>(
-    () => getPersistedLimit(SHIPMENTS_LIMIT_STORAGE_KEY, 5),
+  const [loadsPage, setLoadsPage] = React.useState(1);
+  const [loadsLimit, setLoadsLimit] = React.useState<PerPageOption>(
+    () => getPersistedLimit(LOADS_LIMIT_STORAGE_KEY, 5),
   );
 
   const [quotes, setQuotes] = React.useState<Quote[]>([]);
@@ -101,13 +103,13 @@ export function useTransportationData(filters: TransportationFilters = {}) {
   );
 
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
-  const [stats, setStats] = React.useState<ShipmentStats>({
+  const [stats, setStats] = React.useState<LoadStats>({
     all: 0,
-    "Available for Pickup": 0,
-    Cancelled: 0,
+    Posted: 0,
+    Assigned: 0,
+    "In-Transit": 0,
     Delivered: 0,
-    Dispatched: 0,
-    "In-Route": 0,
+    Cancelled: 0,
   });
   const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
   const [hasNewEntries, setHasNewEntries] = React.useState(false);
@@ -115,26 +117,26 @@ export function useTransportationData(filters: TransportationFilters = {}) {
   const { getToken, isLoaded, isSignedIn } = useAuth();
 
   // Keep current page/limit in refs so socket handler always sees latest values
-  const shipmentsPageRef = React.useRef(shipmentsPage);
-  const shipmentsLimitRef = React.useRef(shipmentsLimit);
+  const loadsPageRef = React.useRef(loadsPage);
+  const loadsLimitRef = React.useRef(loadsLimit);
   const shipmentStatusRef = React.useRef(shipmentStatus);
   const quotesPageRef = React.useRef(quotesPage);
   const quotesLimitRef = React.useRef(quotesLimit);
 
   React.useEffect(() => {
-    shipmentsPageRef.current = shipmentsPage;
-  }, [shipmentsPage]);
+    loadsPageRef.current = loadsPage;
+  }, [loadsPage]);
   React.useEffect(() => {
-    shipmentsLimitRef.current = shipmentsLimit;
-  }, [shipmentsLimit]);
+    loadsLimitRef.current = loadsLimit;
+  }, [loadsLimit]);
   React.useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
-        SHIPMENTS_LIMIT_STORAGE_KEY,
-        String(shipmentsLimit),
+        LOADS_LIMIT_STORAGE_KEY,
+        String(loadsLimit),
       );
     }
-  }, [shipmentsLimit]);
+  }, [loadsLimit]);
   React.useEffect(() => {
     shipmentStatusRef.current = shipmentStatus;
   }, [shipmentStatus]);
@@ -200,7 +202,7 @@ export function useTransportationData(filters: TransportationFilters = {}) {
 
   // ── Fetch shipments (specific page+limit, no loading state) ───────────────
 
-  const fetchShipments = React.useCallback(
+  const fetchLoads = React.useCallback(
     async (
       page: number,
       limit: number,
@@ -212,14 +214,14 @@ export function useTransportationData(filters: TransportationFilters = {}) {
       if (status && status !== "all") {
         params.status = status;
       }
-      const res = await apiClient.get("/api/shipments", { ...config, params });
+      const res = await apiClient.get("/api/loads", { ...config, params });
       const raw = res.data?.data ?? res.data;
-      const { items, pagination } = extractPaginatedItems<Shipment>(
+      const { items, pagination } = extractPaginatedItems<Load>(
         raw,
-        "shipments",
+        "loads",
       );
-      setShipments(items);
-      setShipmentsPagination(pagination);
+      setLoads(items);
+      setLoadsPagination(pagination);
     },
     [getAuthConfig],
   );
@@ -257,13 +259,13 @@ export function useTransportationData(filters: TransportationFilters = {}) {
         const config = await getAuthConfig();
         if (!config) return;
 
-        const [shipmentsRes, quotesRes, vehiclesRes, statsRes] =
+        const [loadsRes, quotesRes, vehiclesRes, statsRes] =
           await Promise.all([
-            apiClient.get("/api/shipments", {
+            apiClient.get("/api/loads", {
               ...config,
               params: {
-                page: shipmentsPageRef.current,
-                limit: shipmentsLimitRef.current,
+                page: loadsPageRef.current,
+                limit: loadsLimitRef.current,
                 ...(shipmentStatusRef.current !== "all"
                   ? { status: shipmentStatusRef.current }
                   : {}),
@@ -280,19 +282,19 @@ export function useTransportationData(filters: TransportationFilters = {}) {
               ...config,
               params: { status: "all", page: 1, limit: 1000 },
             }),
-            apiClient.get("/api/shipments/stats", config),
+            apiClient.get("/api/loads/stats", config),
           ]);
 
-        const rawShipments = shipmentsRes.data?.data ?? shipmentsRes.data;
+        const rawLoads = loadsRes.data?.data ?? loadsRes.data;
         const rawQuotes = quotesRes.data?.data ?? quotesRes.data;
 
-        const { items: shipmentsData, pagination: shipsPag } =
-          extractPaginatedItems<Shipment>(rawShipments, "shipments");
+        const { items: loadsData, pagination: loadsPag } =
+          extractPaginatedItems<Load>(rawLoads, "loads");
         const { items: quotesData, pagination: quotesPag } =
           extractPaginatedItems<Quote>(rawQuotes, "quotes");
 
-        setShipments(shipmentsData);
-        setShipmentsPagination(shipsPag);
+        setLoads(loadsData);
+        setLoadsPagination(loadsPag);
         setQuotes(quotesData);
         setQuotesPagination(quotesPag);
 
@@ -314,7 +316,7 @@ export function useTransportationData(filters: TransportationFilters = {}) {
           "Failed to load data";
         setError(msg);
         if (!silent) {
-          setShipments([]);
+          setLoads([]);
           setQuotes([]);
           setVehicles([]);
         }
@@ -336,11 +338,11 @@ export function useTransportationData(filters: TransportationFilters = {}) {
 
   React.useEffect(() => {
     if (!isLoaded || !isSignedIn || !isInitializedRef.current) return;
-    setShipmentsPage(1);
-    fetchShipments(1, shipmentsLimitRef.current, shipmentStatus).catch(
-      () => {},
+    setLoadsPage(1);
+    fetchLoads(1, loadsLimitRef.current, shipmentStatus).catch(
+      () => { },
     );
-  }, [shipmentStatus, isLoaded, isSignedIn, fetchShipments]);
+  }, [shipmentStatus, isLoaded, isSignedIn, fetchLoads]);
 
   // ── Socket realtime ────────────────────────────────────────────────────────
 
@@ -354,26 +356,26 @@ export function useTransportationData(filters: TransportationFilters = {}) {
         if (cancelled || !token) return;
         const sock = initializeSocket(token);
 
-        sock.on("shipment:change", () => {
+        sock.on("load:change", () => {
           if (cancelled) return;
           setIsSilentRefreshing(true);
           Promise.all([
-            fetchShipments(
-              shipmentsPageRef.current,
-              shipmentsLimitRef.current,
+            fetchLoads(
+              loadsPageRef.current,
+              loadsLimitRef.current,
               shipmentStatusRef.current,
             ),
             // also refresh stats
             getAuthConfig().then((cfg) =>
               cfg
-                ? apiClient.get("/api/shipments/stats", cfg).then((r) => {
-                    const d = r.data?.data ?? r.data;
-                    if (d && typeof d === "object") setStats(d);
-                  })
+                ? apiClient.get("/api/loads/stats", cfg).then((r) => {
+                  const d = r.data?.data ?? r.data;
+                  if (d && typeof d === "object") setStats(d);
+                })
                 : null,
             ),
           ])
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => {
               if (!cancelled) setIsSilentRefreshing(false);
               setLastUpdated(new Date());
@@ -385,14 +387,14 @@ export function useTransportationData(filters: TransportationFilters = {}) {
           if (cancelled) return;
           setIsSilentRefreshing(true);
           fetchQuotes(quotesPageRef.current, quotesLimitRef.current)
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => {
               if (!cancelled) setIsSilentRefreshing(false);
               setLastUpdated(new Date());
               setHasNewEntries(true);
             });
         });
-      } catch {}
+      } catch { }
     };
 
     connectSocket();
@@ -416,26 +418,26 @@ export function useTransportationData(filters: TransportationFilters = {}) {
 
   // ── Pagination setters — call fetch DIRECTLY (no extra render cycle) ───────
 
-  const changeShipmentsPage = React.useCallback(
+  const changeLoadsPage = React.useCallback(
     async (page: number) => {
-      setShipmentsPage(page);
+      setLoadsPage(page);
       try {
-        await fetchShipments(page, shipmentsLimitRef.current);
-      } catch {}
+        await fetchLoads(page, loadsLimitRef.current);
+      } catch { }
     },
-    [fetchShipments],
+    [fetchLoads],
   );
 
-  const changeShipmentsLimit = React.useCallback(
+  const changeLoadsLimit = React.useCallback(
     async (limit: PerPageOption) => {
-      setShipmentsPage(1);
-      setShipmentsLimit(limit);
-      shipmentsLimitRef.current = limit;
+      setLoadsPage(1);
+      setLoadsLimit(limit);
+      loadsLimitRef.current = limit;
       try {
-        await fetchShipments(1, limit);
-      } catch {}
+        await fetchLoads(1, limit);
+      } catch { }
     },
-    [fetchShipments],
+    [fetchLoads],
   );
 
   const changeQuotesPage = React.useCallback(
@@ -443,7 +445,7 @@ export function useTransportationData(filters: TransportationFilters = {}) {
       setQuotesPage(page);
       try {
         await fetchQuotes(page, quotesLimitRef.current);
-      } catch {}
+      } catch { }
     },
     [fetchQuotes],
   );
@@ -455,7 +457,7 @@ export function useTransportationData(filters: TransportationFilters = {}) {
       quotesLimitRef.current = limit;
       try {
         await fetchQuotes(1, limit);
-      } catch {}
+      } catch { }
     },
     [fetchQuotes],
   );
@@ -503,33 +505,29 @@ export function useTransportationData(filters: TransportationFilters = {}) {
         const axiosError = err as AxiosError;
         throw new Error(
           "Failed to create quote: " +
-            ((axiosError.response?.data as any)?.message ||
-              axiosError.message ||
-              "Unknown error"),
+          ((axiosError.response?.data as any)?.message ||
+            axiosError.message ||
+            "Unknown error"),
         );
       }
     },
     [vehicles, getAuthConfig],
   );
 
-  const handleCreateShipment = React.useCallback(
+  const handleConvertToLoad = React.useCallback(
     async (quoteId: string) => {
       try {
         const config = await getAuthConfig();
-        await apiClient.post(
-          "/api/shipments",
-          { quoteId, requestedPickupDate: new Date(), autoDeleteQuote: true },
-          config ?? undefined,
-        );
+        await apiClient.post(`/api/quotes/${quoteId}/convert-to-load`, {}, config ?? undefined);
         setQuotes((prev) => prev.filter((q) => q._id !== quoteId));
         return true;
       } catch (err) {
         const axiosError = err as AxiosError;
         throw new Error(
-          "Failed to create shipment: " +
-            ((axiosError.response?.data as any)?.message ||
-              axiosError.message ||
-              "Unknown error"),
+          "Failed to convert quote to load: " +
+          ((axiosError.response?.data as any)?.message ||
+            axiosError.message ||
+            "Unknown error"),
         );
       }
     },
@@ -546,32 +544,32 @@ export function useTransportationData(filters: TransportationFilters = {}) {
         const axiosError = err as AxiosError;
         throw new Error(
           "Failed to delete quote: " +
-            ((axiosError.response?.data as any)?.message ||
-              axiosError.message ||
-              "Unknown error"),
+          ((axiosError.response?.data as any)?.message ||
+            axiosError.message ||
+            "Unknown error"),
         );
       }
     },
     [getAuthConfig],
   );
 
-  const handleDeleteShipment = React.useCallback(
-    async (shipmentId: string) => {
+  const handleDeleteLoad = React.useCallback(
+    async (loadId: string) => {
       try {
         const config = await getAuthConfig();
         await apiClient.delete(
-          `/api/shipments/${shipmentId}`,
+          `/api/loads/${loadId}`,
           config ?? undefined,
         );
-        setShipments((prev) => prev.filter((s) => s._id !== shipmentId));
+        setLoads((prev) => prev.filter((s) => s._id !== loadId));
         setStats((prev) => ({ ...prev, all: Math.max(0, prev.all - 1) }));
       } catch (err) {
         const axiosError = err as AxiosError;
         throw new Error(
-          "Failed to delete shipment: " +
-            ((axiosError.response?.data as any)?.message ||
-              axiosError.message ||
-              "Unknown error"),
+          "Failed to delete load: " +
+          ((axiosError.response?.data as any)?.message ||
+            axiosError.message ||
+            "Unknown error"),
         );
       }
     },
@@ -596,36 +594,36 @@ export function useTransportationData(filters: TransportationFilters = {}) {
         const axiosError = err as AxiosError;
         throw new Error(
           "Failed to update quote: " +
-            ((axiosError.response?.data as any)?.message ||
-              axiosError.message ||
-              "Unknown error"),
+          ((axiosError.response?.data as any)?.message ||
+            axiosError.message ||
+            "Unknown error"),
         );
       }
     },
     [getAuthConfig],
   );
 
-  const handleUpdateShipment = React.useCallback(
-    async (shipmentId: string, updatedShipment: Partial<Shipment>) => {
+  const handleUpdateLoad = React.useCallback(
+    async (loadId: string, updatedLoad: Partial<Load>) => {
       try {
         const config = await getAuthConfig();
         const response = await apiClient.put(
-          `/api/shipments/${shipmentId}`,
-          updatedShipment,
+          `/api/loads/${loadId}`,
+          updatedLoad,
           config ?? undefined,
         );
         const data = response.data?.data ?? response.data;
-        setShipments((prev) =>
-          prev.map((s) => (s._id === shipmentId ? { ...s, ...data } : s)),
+        setLoads((prev) =>
+          prev.map((s) => (s._id === loadId ? { ...s, ...data } : s)),
         );
         return data;
       } catch (err) {
         const axiosError = err as AxiosError;
         throw new Error(
-          "Failed to update shipment: " +
-            ((axiosError.response?.data as any)?.message ||
-              axiosError.message ||
-              "Unknown error"),
+          "Failed to update load: " +
+          ((axiosError.response?.data as any)?.message ||
+            axiosError.message ||
+            "Unknown error"),
         );
       }
     },
@@ -638,12 +636,12 @@ export function useTransportationData(filters: TransportationFilters = {}) {
     isLoading,
     isSilentRefreshing,
     error,
-    shipments,
-    shipmentsPagination,
-    shipmentsPage,
-    shipmentsLimit,
-    changeShipmentsPage,
-    changeShipmentsLimit,
+    loads,
+    loadsPagination,
+    loadsPage,
+    loadsLimit,
+    changeLoadsPage,
+    changeLoadsLimit,
     quotes,
     quotesPagination,
     quotesPage,
@@ -657,10 +655,10 @@ export function useTransportationData(filters: TransportationFilters = {}) {
     dismissNewEntries,
     fetchData,
     handleCalculateQuote,
-    handleCreateShipment,
+    handleConvertToLoad,
     handleDeleteQuote,
-    handleDeleteShipment,
+    handleDeleteLoad,
     handleUpdateQuote,
-    handleUpdateShipment,
+    handleUpdateLoad,
   };
 }

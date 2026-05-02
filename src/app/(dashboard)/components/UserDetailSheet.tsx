@@ -54,7 +54,7 @@ export function UserDetailSheet({
       bg: "bg-emerald-500/10",
     },
     {
-      label: "Shipments",
+      label: "Managed Loads",
       value: user.shipments,
       icon: Package,
       color: "text-amber-500",

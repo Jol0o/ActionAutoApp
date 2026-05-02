@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
 import { Field } from "./FormField"
-import { LoadVehicle, TRAILER_TYPES, VEHICLE_CONDITIONS, MAX_VEHICLES, emptyVehicle } from "./types"
+import { FieldError } from "./FieldError"
+import { LoadVehicle, VEHICLE_CONDITIONS, emptyVehicle } from "./types"
+import { TRAILER_CAPACITY } from "./trailer-capacity"
 import { lookupVin, getInventoryVehicles, InventoryVehicle } from "@/lib/api/loads"
 
 // ─── VIN Picker (Manual | From Inventory) ────────────────────────────────────
@@ -51,7 +53,7 @@ function VinPicker({ value, onChange }: VinPickerProps) {
       })
       .catch(() => { if (!cancelled) setVinStatus("not-found") })
     return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.vin, mode])
 
   // Inventory mode — fetch on open + debounced search
@@ -70,11 +72,11 @@ function VinPicker({ value, onChange }: VinPickerProps) {
   const applyInventoryVehicle = (v: InventoryVehicle) => {
     onChange({
       ...valueRef.current,
-      vin:       v.vin,
-      year:      String(v.year),
-      make:      v.make,
-      model:     v.model,
-      color:     v.color,
+      vin: v.vin,
+      year: String(v.year),
+      make: v.make,
+      model: v.model,
+      color: v.color,
       condition: v.condition,
     })
     setVinStatus("found")
@@ -93,18 +95,17 @@ function VinPicker({ value, onChange }: VinPickerProps) {
       {/* Mode toggle */}
       <div className="flex gap-1 mb-1.5">
         {([
-          { id: "manual"    as VinMode, icon: PenLine,  label: "Manual" },
+          { id: "manual" as VinMode, icon: PenLine, label: "Manual" },
           { id: "inventory" as VinMode, icon: BookOpen, label: "From Inventory" },
         ]).map(({ id, icon: Icon, label }) => (
           <button
             key={id}
             type="button"
             onClick={() => switchMode(id)}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
-              mode === id
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${mode === id
                 ? "bg-green-500 text-white border-green-500"
                 : "bg-muted text-muted-foreground border-border hover:text-foreground"
-            }`}
+              }`}
           >
             <Icon className="size-2.5" />
             {label}
@@ -123,9 +124,9 @@ function VinPicker({ value, onChange }: VinPickerProps) {
             className="h-9 text-sm font-mono pr-8"
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-            {vinStatus === "loading"   && <Loader2      className="size-3.5 animate-spin text-muted-foreground" />}
-            {vinStatus === "found"     && <CheckCircle2 className="size-3.5 text-green-500" />}
-            {vinStatus === "not-found" && <AlertCircle  className="size-3.5 text-destructive" />}
+            {vinStatus === "loading" && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
+            {vinStatus === "found" && <CheckCircle2 className="size-3.5 text-green-500" />}
+            {vinStatus === "not-found" && <AlertCircle className="size-3.5 text-destructive" />}
           </div>
         </div>
       )}
@@ -202,9 +203,10 @@ function VinPicker({ value, onChange }: VinPickerProps) {
 interface VehicleFormProps {
   value: LoadVehicle
   onChange: (updated: LoadVehicle) => void
+  errors?: Record<string, string>
 }
 
-function VehicleForm({ value, onChange }: VehicleFormProps) {
+function VehicleForm({ value, onChange, errors = {} }: VehicleFormProps) {
   const set = (key: keyof LoadVehicle) => (
     e: React.ChangeEvent<HTMLInputElement>
   ) => onChange({ ...value, [key]: e.target.value })
@@ -215,22 +217,10 @@ function VehicleForm({ value, onChange }: VehicleFormProps) {
   return (
     <div className="space-y-3 pt-3">
       {/* Trailer Type + Condition */}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Trailer Type" required>
-          <Select value={value.trailerType} onValueChange={setSelect("trailerType")}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Select…" />
-            </SelectTrigger>
-            <SelectContent>
-              {TRAILER_TYPES.map((t) => (
-                <SelectItem key={t.value} value={t.value} className="text-sm">{t.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+      <div className="grid grid-cols-1 gap-3">
         <Field label="Condition" required>
           <Select value={value.condition} onValueChange={setSelect("condition")}>
-            <SelectTrigger className="h-9 text-sm">
+            <SelectTrigger className={`h-9 text-sm ${errors.condition ? "border-destructive focus:ring-destructive/20" : ""}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -239,6 +229,7 @@ function VehicleForm({ value, onChange }: VehicleFormProps) {
               ))}
             </SelectContent>
           </Select>
+          <FieldError error={errors.condition} />
         </Field>
       </div>
 
@@ -254,14 +245,29 @@ function VehicleForm({ value, onChange }: VehicleFormProps) {
             }}
             inputMode="numeric"
             maxLength={4}
-            className="h-9 text-sm"
+            className={`h-9 text-sm ${errors.year ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
           />
+          <FieldError error={errors.year} />
         </Field>
         <Field label="Make" required>
-          <Input placeholder="Toyota" value={value.make} onChange={set("make")} maxLength={15} className="h-9 text-sm" />
+          <Input 
+            placeholder="Toyota" 
+            value={value.make} 
+            onChange={set("make")} 
+            maxLength={20} 
+            className={`h-9 text-sm ${errors.make ? "border-destructive focus-visible:ring-destructive/20" : ""}`} 
+          />
+          <FieldError error={errors.make} />
         </Field>
         <Field label="Model" required>
-          <Input placeholder="Camry" value={value.model} onChange={set("model")} maxLength={15} className="h-9 text-sm" />
+          <Input 
+            placeholder="Camry" 
+            value={value.model} 
+            onChange={set("model")} 
+            maxLength={20} 
+            className={`h-9 text-sm ${errors.model ? "border-destructive focus-visible:ring-destructive/20" : ""}`} 
+          />
+          <FieldError error={errors.model} />
         </Field>
       </div>
 
@@ -269,9 +275,17 @@ function VehicleForm({ value, onChange }: VehicleFormProps) {
       <div className="grid grid-cols-2 gap-3">
         <VinPicker value={value} onChange={onChange} />
         <Field label="Color">
-          <Input placeholder="Silver" value={value.color} onChange={set("color")} maxLength={15} className="h-9 text-sm" />
+          <Input 
+            placeholder="Silver" 
+            value={value.color} 
+            onChange={set("color")} 
+            maxLength={20} 
+            className={`h-9 text-sm ${errors.color ? "border-destructive focus-visible:ring-destructive/20" : ""}`} 
+          />
+          <FieldError error={errors.color} />
         </Field>
       </div>
+      {value.vin && errors.vin && <FieldError error={errors.vin} />}
     </div>
   )
 }
@@ -291,13 +305,29 @@ function tabLabel(v: LoadVehicle, index: number): string {
 interface VehicleSectionProps {
   vehicles: LoadVehicle[]
   onChange: (vehicles: LoadVehicle[]) => void
+  trailerType?: string
+  errors?: import("zod").ZodIssue[]
 }
 
-export function VehicleSection({ vehicles, onChange }: VehicleSectionProps) {
+export function VehicleSection({ vehicles, onChange, trailerType = "open_3car_wedge", errors = [] }: VehicleSectionProps) {
   const [activeIndex, setActiveIndex] = React.useState(0)
 
+  // Calculate capacity constraints
+  const maxCapacity = TRAILER_CAPACITY[trailerType] || 1;
+  const canAddMore = vehicles.length < maxCapacity;
+  
+  // Check for duplicate VINs
+  const usedVins = vehicles
+    .map(v => v.vin)
+    .filter(Boolean);
+  const vinCounts = new Map<string, number>();
+  usedVins.forEach(vin => {
+    vinCounts.set(vin, (vinCounts.get(vin) || 0) + 1);
+  });
+  const duplicateVins = new Set([...vinCounts.entries()].filter(([, count]) => count > 1).map(([vin]) => vin));
+
   const addVehicle = () => {
-    if (vehicles.length >= MAX_VEHICLES) return
+    if (vehicles.length >= maxCapacity) return
     const next = [...vehicles, emptyVehicle()]
     onChange(next)
     setActiveIndex(next.length - 1)
@@ -305,7 +335,7 @@ export function VehicleSection({ vehicles, onChange }: VehicleSectionProps) {
 
   const removeVehicle = (index: number) => {
     if (vehicles.length <= 1) return
-    const next = vehicles.filter((_, i) => i !== index)
+    const next = vehicles.filter((__, i) => i !== index)
     onChange(next)
     setActiveIndex(Math.min(activeIndex, next.length - 1))
   }
@@ -325,23 +355,24 @@ export function VehicleSection({ vehicles, onChange }: VehicleSectionProps) {
         {vehicles.map((v, i) => (
           <div
             key={v.id}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium cursor-pointer border transition-colors ${
-              i === activeIndex
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium cursor-pointer border transition-colors ${i === activeIndex
                 ? "bg-green-500 text-white border-green-500"
                 : "bg-muted text-muted-foreground border-border hover:text-foreground"
-            }`}
+              } ${v.vin && duplicateVins.has(v.vin) ? "border-destructive ring-1 ring-destructive/20" : ""}`}
             onClick={() => setActiveIndex(i)}
           >
             <span>{tabLabel(v, i)}</span>
+            {v.vin && duplicateVins.has(v.vin) && (
+              <AlertCircle className="size-3 text-destructive animate-pulse" />
+            )}
             {vehicles.length > 1 && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); removeVehicle(i) }}
-                className={`ml-0.5 rounded-full p-0.5 transition-colors ${
-                  i === activeIndex
+                className={`ml-0.5 rounded-full p-0.5 transition-colors ${i === activeIndex
                     ? "hover:bg-green-600"
                     : "hover:bg-muted-foreground/20"
-                }`}
+                  }`}
                 aria-label={`Remove vehicle ${i + 1}`}
               >
                 <X className="size-3" />
@@ -350,7 +381,7 @@ export function VehicleSection({ vehicles, onChange }: VehicleSectionProps) {
           </div>
         ))}
 
-        {vehicles.length < MAX_VEHICLES && (
+        {canAddMore && (
           <button
             type="button"
             onClick={addVehicle}
@@ -361,16 +392,33 @@ export function VehicleSection({ vehicles, onChange }: VehicleSectionProps) {
           </button>
         )}
 
+        {!canAddMore && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-muted-foreground border border-dashed border-border bg-muted/50">
+            <span>Max {maxCapacity} vehicles</span>
+          </div>
+        )}
+
         <span className="ml-auto text-[10px] text-muted-foreground">
-          {vehicles.length} / {MAX_VEHICLES}
+          {vehicles.length} / {maxCapacity}
         </span>
       </div>
+
+      {/* ── Duplicate VIN Warning ────────────────────────────────────────── */}
+      {active.vin && duplicateVins.has(active.vin) && (
+        <div className="mt-3 p-2 rounded bg-destructive/10 border border-destructive/20 flex items-center gap-2">
+          <AlertCircle className="size-4 text-destructive" />
+          <p className="text-xs text-destructive font-medium">
+            This VIN is already used by another vehicle in this load.
+          </p>
+        </div>
+      )}
 
       {/* ── Active vehicle form ──────────────────────────────────────────── */}
       <VehicleForm
         key={active.id}
         value={active}
         onChange={(updated) => updateVehicle(activeIndex, updated)}
+        errors={errors.filter(e => e.path?.[0] === "vehicles" && e.path?.[1] === activeIndex).reduce((acc: Record<string, string>, curr) => ({ ...acc, [String(curr.path[2])]: curr.message }), {})}
       />
     </div>
   )

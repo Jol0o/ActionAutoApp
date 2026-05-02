@@ -34,27 +34,27 @@ interface AvailableItem {
 }
 
 interface DriverTrackerAvailableLoadsCardProps {
-  shipments: AvailableItem[];
+  loads: AvailableItem[];
   isLoading: boolean;
   activeDrivers: DriverTrackingItem[];
   onAssign: (item: AvailableItem, driverId: string) => Promise<void>;
 }
 
 export function DriverTrackerAvailableLoadsCard({
-  shipments,
+  loads,
   isLoading,
   activeDrivers,
   onAssign,
 }: DriverTrackerAvailableLoadsCardProps) {
   const [assigning, setAssigning] = React.useState<string | null>(null);
-  const [assignShipment, setAssignShipment] = React.useState<AvailableItem | null>(null);
+  const [assignLoad, setAssignLoad] = React.useState<AvailableItem | null>(null);
   const [driverSearch, setDriverSearch] = React.useState("");
 
   const handleAssign = async (item: AvailableItem, driverId: string) => {
     setAssigning(item._id);
     try {
       await onAssign(item, driverId);
-      setAssignShipment(null);
+      setAssignLoad(null);
     } finally {
       setAssigning(null);
     }
@@ -79,14 +79,14 @@ export function DriverTrackerAvailableLoadsCard({
     );
   }
 
-  if (shipments.length === 0) {
+  if (loads.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <div className="size-14 rounded-2xl bg-muted/40 flex items-center justify-center">
           <Package className="size-7 text-muted-foreground/40" />
         </div>
         <p className="text-sm text-muted-foreground font-medium">No available loads</p>
-        <p className="text-[11px] text-muted-foreground/60">Create a shipment or post to the load board</p>
+        <p className="text-[11px] text-muted-foreground/60">Create a load or post to the load board</p>
       </div>
     );
   }
@@ -94,8 +94,8 @@ export function DriverTrackerAvailableLoadsCard({
   return (
     <>
       <div className="divide-y divide-border/30">
-        {shipments.map((shipment) => (
-          <div key={shipment._id} className="p-4 hover:bg-accent/30 transition-colors">
+        {loads.map((load) => (
+          <div key={load._id} className="p-4 hover:bg-accent/30 transition-colors">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3 min-w-0 flex-1">
                 <div className="size-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
@@ -104,50 +104,45 @@ export function DriverTrackerAvailableLoadsCard({
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-bold text-foreground">
-                      {shipment.trackingNumber || shipment._id.slice(-8)}
+                      {load.trackingNumber || load._id.slice(-8)}
                     </p>
                     <div className="flex gap-1 flex-wrap">
-                      {shipment.__docType === "load" && (
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-5 border-green-300 text-green-600 gap-0.5">
-                          <Truck className="size-2.5" />TMS Load
-                        </Badge>
-                      )}
-                      {shipment.__docType === "shipment" && shipment.isPostedToBoard && (
+                      {load.isPostedToBoard && (
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-5 border-blue-300 text-blue-600 gap-0.5">
                           <Megaphone className="size-2.5" />Board
                         </Badge>
                       )}
-                      {shipment.trailerTypeRequired && (
+                      {load.trailerTypeRequired && (
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-5 border-purple-300 text-purple-600 gap-0.5">
-                          <Truck className="size-2.5" />{trailerLabel(shipment.trailerTypeRequired)}
+                          <Truck className="size-2.5" />{trailerLabel(load.trailerTypeRequired)}
                         </Badge>
                       )}
-                      {shipment.vehicleCount && shipment.vehicleCount > 0 && (
+                      {load.vehicleCount && load.vehicleCount > 0 && (
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-5 border-indigo-300 text-indigo-600">
-                          {shipment.vehicleCount} vehicle{shipment.vehicleCount !== 1 ? "s" : ""}
+                          {load.vehicleCount} vehicle{load.vehicleCount !== 1 ? "s" : ""}
                         </Badge>
                       )}
                     </div>
                   </div>
-                  {(shipment.origin || shipment.destination) && (
+                  {(load.origin || load.destination) && (
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                       <MapPin className="size-3 shrink-0" />
-                      <span className="truncate">{shipment.origin}</span>
+                      <span className="truncate">{load.origin}</span>
                       <ArrowRight className="size-3 shrink-0 text-muted-foreground/40" />
-                      <span className="truncate">{shipment.destination}</span>
+                      <span className="truncate">{load.destination}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
-                    {shipment.requestedPickupDate && (
+                    {load.requestedPickupDate && (
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="size-2.5" />
-                        Pickup: {new Date(shipment.requestedPickupDate).toLocaleDateString()}
+                        Pickup: {new Date(load.requestedPickupDate).toLocaleDateString()}
                       </span>
                     )}
-                    {shipment.carrierPayAmount != null && shipment.carrierPayAmount > 0 && (
+                    {load.carrierPayAmount != null && load.carrierPayAmount > 0 && (
                       <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
                         <DollarSign className="size-2.5" />
-                        {shipment.carrierPayAmount.toLocaleString()}
+                        {load.carrierPayAmount.toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -157,10 +152,10 @@ export function DriverTrackerAvailableLoadsCard({
               <Button
                 size="sm"
                 className="h-8 px-3 text-xs font-bold gap-1.5 shrink-0 shadow-sm"
-                disabled={assigning === shipment._id || activeDrivers.length === 0}
-                onClick={() => { setAssignShipment(shipment); setDriverSearch(""); }}
+                disabled={assigning === load._id || activeDrivers.length === 0}
+                onClick={() => { setAssignLoad(load); setDriverSearch(""); }}
               >
-                {assigning === shipment._id ? (
+                {assigning === load._id ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <>
@@ -174,37 +169,37 @@ export function DriverTrackerAvailableLoadsCard({
         ))}
       </div>
 
-      <Dialog open={assignShipment !== null} onOpenChange={(open) => { if (!open) setAssignShipment(null); }}>
+      <Dialog open={assignLoad !== null} onOpenChange={(open) => { if (!open) setAssignLoad(null); }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <UserPlus className="size-4 text-primary" />
               Assign Driver
             </DialogTitle>
-            {assignShipment && (
+            {assignLoad && (
               <div className="mt-2 rounded-lg border border-border/40 p-3 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <Package className="size-4 text-blue-600 shrink-0" />
-                  <p className="text-sm font-bold">{assignShipment.trackingNumber || assignShipment._id.slice(-8)}</p>
+                  <p className="text-sm font-bold">{assignLoad.trackingNumber || assignLoad._id.slice(-8)}</p>
                   <div className="flex gap-1 flex-wrap">
-                    {assignShipment.trailerTypeRequired && (
+                    {assignLoad.trailerTypeRequired && (
                       <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-5 border-purple-300 text-purple-600 gap-0.5">
-                        <Truck className="size-2.5" />{trailerLabel(assignShipment.trailerTypeRequired)}
+                        <Truck className="size-2.5" />{trailerLabel(assignLoad.trailerTypeRequired)}
                       </Badge>
                     )}
-                    {assignShipment.vehicleCount && assignShipment.vehicleCount > 0 && (
+                    {assignLoad.vehicleCount && assignLoad.vehicleCount > 0 && (
                       <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-5 border-indigo-300 text-indigo-600">
-                        {assignShipment.vehicleCount} vehicle{assignShipment.vehicleCount !== 1 ? "s" : ""}
+                        {assignLoad.vehicleCount} vehicle{assignLoad.vehicleCount !== 1 ? "s" : ""}
                       </Badge>
                     )}
                   </div>
                 </div>
-                {(assignShipment.origin || assignShipment.destination) && (
+                {(assignLoad.origin || assignLoad.destination) && (
                   <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                     <MapPin className="size-3 shrink-0" />
-                    <span className="truncate">{assignShipment.origin}</span>
+                    <span className="truncate">{assignLoad.origin}</span>
                     <ArrowRight className="size-3 shrink-0" />
-                    <span className="truncate">{assignShipment.destination}</span>
+                    <span className="truncate">{assignLoad.destination}</span>
                   </div>
                 )}
               </div>
@@ -229,10 +224,10 @@ export function DriverTrackerAvailableLoadsCard({
             )}
             {filteredDrivers.map((driver) => {
               const eq = driver.equipment;
-              const trailerMatch = eq?.trailerType && assignShipment?.trailerTypeRequired
-                ? eq.trailerType === assignShipment.trailerTypeRequired : null;
-              const capacityMatch = eq?.maxVehicleCapacity && assignShipment?.vehicleCount
-                ? eq.maxVehicleCapacity >= assignShipment.vehicleCount : null;
+              const trailerMatch = eq?.trailerType && assignLoad?.trailerTypeRequired
+                ? eq.trailerType === assignLoad.trailerTypeRequired : null;
+              const capacityMatch = eq?.maxVehicleCapacity && assignLoad?.vehicleCount
+                ? eq.maxVehicleCapacity >= assignLoad.vehicleCount : null;
 
               return (
                 <div
@@ -292,9 +287,9 @@ export function DriverTrackerAvailableLoadsCard({
                     size="sm"
                     className="h-8 px-3 text-xs font-bold shrink-0 shadow-sm"
                     disabled={assigning !== null}
-                    onClick={() => driver.driver?.id && assignShipment && handleAssign(assignShipment, driver.driver.id)}
+                    onClick={() => driver.driver?.id && assignLoad && handleAssign(assignLoad, driver.driver.id)}
                   >
-                    {assigning === assignShipment?._id ? (
+                    {assigning === assignLoad?._id ? (
                       <Loader2 className="size-3.5 animate-spin" />
                     ) : (
                       "Assign"

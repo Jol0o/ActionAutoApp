@@ -30,12 +30,18 @@ export interface CreateLoadPayload {
   dates: LoadDates;
   additionalInfo: LoadAdditionalInfo;
   contract: LoadContract;
+  trailerType: string;
 }
 
 export interface CreatedLoad {
   _id: string;
   loadNumber: string;
   status: string;
+}
+
+export interface CreateLoadResponse {
+  load: CreatedLoad;
+  warning?: string;
 }
 
 export interface InventoryVehicle {
@@ -61,11 +67,13 @@ export async function lookupVin(vin: string): Promise<VinLookupResult> {
 export async function calculateLoadRate(
   pickupZip: string,
   deliveryZip: string,
-  vehicles: Array<{ trailerType: string; condition: string }>
+  trailerType: string,
+  vehicles: Array<{ condition: string }>
 ): Promise<RateResult> {
   const res = await apiClient.post<{ data: RateResult }>("/api/loads/calculate-rate", {
     pickupZip,
     deliveryZip,
+    trailerType,
     vehicles,
   });
   return res.data.data;
@@ -103,11 +111,11 @@ export interface LoadStats {
 
 export async function getLoads(query?: LoadsQuery): Promise<LoadsResult> {
   const params = new URLSearchParams()
-  if (query?.status)   params.set("status",   query.status)
-  if (query?.postType) params.set("postType",  query.postType)
-  if (query?.q)        params.set("q",         query.q)
-  if (query?.page)     params.set("page",      String(query.page))
-  if (query?.limit)    params.set("limit",     String(query.limit))
+  if (query?.status) params.set("status", query.status)
+  if (query?.postType) params.set("postType", query.postType)
+  if (query?.q) params.set("q", query.q)
+  if (query?.page) params.set("page", String(query.page))
+  if (query?.limit) params.set("limit", String(query.limit))
   const qs = params.toString()
   const res = await apiClient.get<{ data: LoadsResult }>(`/api/loads${qs ? `?${qs}` : ""}`)
   return res.data.data
@@ -118,21 +126,44 @@ export async function getLoadStats(): Promise<LoadStats> {
   return res.data.data
 }
 
-export async function createLoad(payload: CreateLoadPayload): Promise<CreatedLoad> {
-  const body = {
-    postType:         payload.postType,
-    pickupLocation:   payload.pickup,
-    deliveryLocation: payload.delivery,
-    vehicles: payload.vehicles.map(({ id: _id, ...v }) => ({
-      ...v,
-      year: v.year ? Number(v.year) : undefined,
-    })),
-    dates:          payload.dates,
-    additionalInfo: payload.additionalInfo,
-    contract:       payload.contract,
-  };
-  const res = await apiClient.post<{ data: CreatedLoad }>("/api/loads", body);
-  return res.data.data;
+export async function createLoad(payload: CreateLoadPayload): Promise<CreateLoadResponse> {
+  try {
+    const body = {
+      postType: payload.postType,
+      pickupLocation: {
+        ...payload.pickup,
+        locationType: payload.pickup.locationType || undefined,
+      },
+      deliveryLocation: {
+        ...payload.delivery,
+        locationType: payload.delivery.locationType || undefined,
+      },
+      vehicles: payload.vehicles.map(({ id: _unused, ...v }) => ({
+        ...v,
+        year: v.year ? Number(v.year) : undefined,
+        vin: v.vin || undefined,
+      })),
+      dates: payload.dates ? {
+        ...payload.dates,
+        firstAvailable: payload.dates.firstAvailable || undefined,
+        pickupDeadline: payload.dates.pickupDeadline || undefined,
+        deliveryDeadline: payload.dates.deliveryDeadline || undefined,
+      } : undefined,
+      additionalInfo: payload.additionalInfo,
+      contract: payload.contract,
+      trailerType: payload.trailerType,
+    };
+    const res = await apiClient.post<{ data: { load: CreatedLoad; warning?: string } }>("/api/loads", body);
+    return { load: res.data.data.load, warning: res.data.data.warning };
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      if (axiosError.response?.data?.message) {
+        throw new Error(axiosError.response.data.message);
+      }
+    }
+    throw error;
+  }
 }
 
 export async function deleteLoad(loadId: string): Promise<void> {
@@ -140,5 +171,91 @@ export async function deleteLoad(loadId: string): Promise<void> {
 }
 
 export async function assignDriverToLoad(loadId: string, driverId: string): Promise<void> {
-  await apiClient.post("/api/driver-tracking/assign-load", { shipmentId: loadId, driverId });
+  await apiClient.post("/api/driver-tracking/assign-load", { loadId, driverId });
+}
+
+export async function updateLoad(
+  loadId: string,
+  payload: Partial<{
+    status: string
+    pickupLocation: LocationBlock
+    deliveryLocation: LocationBlock
+    dates: LoadDates
+    additionalInfo: LoadAdditionalInfo
+    pricing: unknown
+  }>
+): Promise<Load> {
+  const res = await apiClient.patch<{ data: Load }>(`/api/loads/${loadId}`, payload);
+  return res.data.data;
+}
+
+export interface LoadNote {
+  _id: string;
+  text: string;
+  createdAt: string;
+  createdBy?: string;
+}
+
+export async function addLoadNote(loadId: string, text: string): Promise<LoadNote> {
+  const res = await apiClient.post<{ data: LoadNote }>(`/api/loads/${loadId}/notes`, { text });
+  return res.data.data;
+}
+
+export interface SendEmailResult {
+  success: boolean;
+  message: string;
+}
+
+export async function sendLoadEmail(
+  loadId: string,
+  recipientEmail?: string
+): Promise<SendEmailResult> {
+  const res = await apiClient.post<{ data: SendEmailResult }>(
+    `/api/loads/${loadId}/send-email`,
+    recipientEmail ? { recipientEmail } : {}
+  );
+  return res.data.data;
+}
+
+export async function getLoadById(loadId: string): Promise<Load> {
+  const res = await apiClient.get<{ data: Load }>(`/api/loads/${loadId}`);
+  return res.data.data;
+}
+
+export async function confirmLoadDelivery(loadId: string): Promise<Load> {
+  const res = await apiClient.post<{ data: Load }>(`/api/loads/${loadId}/confirm-delivery`, {});
+  return res.data.data;
+}
+
+export interface ActiveDriver {
+  id: string;
+  status: "on-route" | "idle" | "on-break" | "waiting" | "offline";
+  coords: { lat: number; lng: number };
+  lastSeenAt: string;
+  driver: {
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  equipment: {
+    trailerType: string;
+    maxVehicleCapacity: number;
+    operationalStatus: string;
+    truckMake?: string;
+    truckModel?: string;
+    isComplianceExpired: boolean;
+  } | null;
+  shipments: Array<{
+    id: string;
+    trackingNumber: string;
+    status: string;
+    origin: string;
+    destination: string;
+  }>;
+}
+
+export async function getActiveDrivers(): Promise<ActiveDriver[]> {
+  const res = await apiClient.get<{ data: ActiveDriver[] }>("/api/driver-tracking/active-drivers");
+  return res.data.data;
 }

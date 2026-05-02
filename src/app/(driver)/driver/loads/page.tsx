@@ -1,15 +1,14 @@
 "use client";
 
-import * as React from "react";
-import { useAuth } from "@/providers/AuthProvider";
-import { apiClient } from "@/lib/api-client";
-import { Shipment } from "@/types/transportation";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import * as React from 'react';
+import { useAuth } from '@/providers/AuthProvider';
+import { apiClient } from '@/lib/api-client';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -51,88 +50,107 @@ import { motion, AnimatePresence } from "framer-motion";
 import { initializeSocket, getSocket } from "@/lib/socket.client";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import Link from "next/link";
+import { Load, LoadStatus } from '@/types/load';
+import { ConfirmationModal, ConfirmationVariant } from '@/components/ui/confirmation-modal';
 
-const STATUS_THEME: Record<string, string> = {
-  "Available for Pickup": "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  Dispatched: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  "In-Route": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  Delivered: "bg-green-500/10 text-green-700 border-green-500/20",
-  Cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
+const STATUS_THEME: Record<LoadStatus, string> = {
+  Draft: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
+  Posted: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  Assigned: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  Accepted: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+  'Picked Up': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+  'In-Transit': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+  Delivered: 'bg-green-500/10 text-green-700 border-green-500/20',
+  Cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
 const STEPS = [
-  { key: "assigned", label: "Assigned" },
-  { key: "scheduled-pickup", label: "Scheduled Pickup" },
-  { key: "picked-up", label: "Picked Up" },
-  { key: "est-delivery", label: "Est. Delivery" },
-  { key: "delivered", label: "Delivered" },
+  { key: 'assigned', label: 'Assigned' },
+  { key: 'accepted', label: 'Accepted' },
+  { key: 'picked-up', label: 'Picked Up' },
+  { key: 'in-transit', label: 'In Transit' },
+  { key: 'delivered', label: 'Delivered' },
 ] as const;
 
-const fmtDate = (d?: string) =>
-  d
-    ? new Date(d).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "America/Denver",
-      })
-    : "";
-const extractErr = (e: any, fb: string) =>
-  e?.response?.data?.message || e?.message || fb;
+const getStepIdx = (load: Load) => {
+  const status = load.status;
+  if (status === 'Delivered') return 4;
+  if (status === 'In-Transit') return 3;
+  if (status === 'Picked Up') return 2;
+  if (status === 'Accepted' || load.driverAcceptedAt) return 1;
+  return 0;
+};
 
-const getScheduledPickup = (load: Shipment) => load.scheduledPickup;
-const getEstimatedDelivery = (load: Shipment) => load.scheduledDelivery;
-const getDeliveredDate = (load: Shipment) =>
-  load.delivered || load.proofOfDelivery?.confirmedAt;
-const canAcceptBySchedule = (load: Shipment) =>
-  Boolean(getScheduledPickup(load) && getEstimatedDelivery(load));
+const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Denver' }) : '';
+const extractErr = (e: any, fb: string) => e?.response?.data?.message || e?.message || fb;
 
 type Tab = "active" | "requests" | "completed" | "all";
 
 export default function DriverLoadsPage() {
   const { getToken } = useAuth();
-  const [loads, setLoads] = React.useState<Shipment[]>([]);
-  const [requests, setRequests] = React.useState<Shipment[]>([]);
+  const [loads, setLoads] = React.useState<Load[]>([]);
+  const [requests, setRequests] = React.useState<Load[]>([]);
+  const [pagination, setPagination] = React.useState<{ hasMore: boolean; page: number; totalPages: number } | null>(null);
+  const [page, setPage] = React.useState(1);
   const [loading, setLoading] = React.useState(true);
-  const [tab, setTab] = React.useState<Tab>("active");
-  const [search, setSearch] = React.useState("");
-  const [acceptingId, setAcceptingId] = React.useState<string | null>(null);
-  const [droppingId, setDroppingId] = React.useState<string | null>(null);
-  const [markingPickedId, setMarkingPickedId] = React.useState<string | null>(
-    null,
-  );
-  const [startingId, setStartingId] = React.useState<string | null>(null);
-  const [proofTarget, setProofTarget] = React.useState<Shipment | null>(null);
-  const [dropTarget, setDropTarget] = React.useState<Shipment | null>(null);
-  const [pickupTarget, setPickupTarget] = React.useState<Shipment | null>(null);
-  const [pickupDate, setPickupDate] = React.useState("");
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [tab, setTab] = React.useState<Tab>('active');
+  const [search, setSearch] = React.useState('');
+  
+  // Action States
+  const [actionLoading, setActionLoading] = React.useState<string | null>(null);
+  const [confirmState, setConfirmState] = React.useState<{
+    isOpen: boolean;
+    action: string;
+    loadId: string;
+    title: string;
+    description: string;
+    variant: ConfirmationVariant;
+  }>({
+    isOpen: false,
+    action: '',
+    loadId: '',
+    title: '',
+    description: '',
+    variant: 'primary',
+  });
+  
+  // Dialog Targets
+  const [proofTarget, setProofTarget] = React.useState<Load | null>(null);
+  
   const [refreshing, setRefreshing] = React.useState(false);
   const [maxLoadCapacity, setMaxLoadCapacity] = React.useState(12);
 
-  const fetchLoads = React.useCallback(async () => {
+  const fetchLoads = React.useCallback(async (pageNum = 1, append = false) => {
     try {
       const token = await getToken();
       const [loadsRes, reqRes] = await Promise.all([
-        apiClient.get("/api/driver-tracking/my-loads", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        apiClient.get("/api/driver-tracking/my-requests", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        apiClient.get(`/api/driver-tracking/my-loads?page=${pageNum}`, { headers: { Authorization: `Bearer ${token}` } }),
+        apiClient.get('/api/driver-tracking/my-requests', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      const data = loadsRes.data?.data;
-      if (data?.loads) {
-        setLoads(data.loads);
-        setMaxLoadCapacity(data.maxLoadCapacity || 12);
+      
+      const loadsData = loadsRes.data?.data;
+      const newLoads = loadsData?.loads || loadsData || [];
+      const newPagination = loadsData?.pagination || null;
+      const newCapacity = loadsData?.maxLoadCapacity || 12;
+
+      if (append) {
+        setLoads(prev => [...prev, ...newLoads]);
       } else {
-        setLoads(data || []);
+        setLoads(newLoads);
       }
+      setPagination(newPagination);
+      setMaxLoadCapacity(newCapacity);
+      if (!append) setPage(1);
+      else setPage(pageNum);
+
       setRequests(reqRes.data?.data || []);
-    } catch (err: any) {
-      toast.error(extractErr(err, "Failed to fetch loads"));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    } catch (err: any) { 
+      toast.error(extractErr(err, 'Failed to fetch loads')); 
+    } finally { 
+      setLoading(false); 
+      setRefreshing(false); 
+      setLoadingMore(false); 
     }
   }, [getToken]);
 
@@ -167,96 +185,81 @@ export default function DriverLoadsPage() {
     };
   }, [getToken, fetchLoads]);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchLoads();
+  const handleRefresh = () => { setRefreshing(true); fetchLoads(1, false); };
+
+  const handleLoadMore = async () => {
+    if (!pagination || !pagination.hasMore || loadingMore) return;
+    setLoadingMore(true);
+    await fetchLoads(page + 1, true);
   };
 
-  const handleAccept = async (id: string, load: Shipment) => {
-    setAcceptingId(id);
+  const executeAction = async (action: string, id: string) => {
+    if (!id) {
+      toast.error(`Cannot ${action}: Load ID is missing`);
+      return;
+    }
+    setActionLoading(id);
     try {
       const token = await getToken();
-      const body =
-        (load as any).__docType === "load"
-          ? { loadId: id }
-          : { shipmentId: id };
-      await apiClient.post("/api/driver-tracking/accept-load", body, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      toast.success("Load accepted — you are now dispatched");
+      await apiClient.post(`/api/driver-tracking/${action}`, { loadId: id }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(
+        action === 'accept-load' ? 'Load accepted' : 
+        action === 'start-route' ? 'Route started' : 
+        action === 'drop-load' ? 'Load dropped' : 
+        action === 'mark-picked-up' ? 'Load picked up' : 
+        'Done'
+      );
       await fetchLoads();
+      setConfirmState(prev => ({ ...prev, isOpen: false }));
     } catch (err: any) {
-      toast.error(extractErr(err, "Failed to accept load"));
+      toast.error(extractErr(err, `Failed to ${action}`));
     } finally {
-      setAcceptingId(null);
+      setActionLoading(null);
     }
   };
 
-  const handleDrop = async (id: string) => {
-    setDroppingId(id);
-    try {
-      const token = await getToken();
-      const target = loads.find((l) => l._id === id);
-      const body =
-        (target as any)?.__docType === "load"
-          ? { loadId: id }
-          : { shipmentId: id };
-      await apiClient.post("/api/driver-tracking/drop-load", body, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      toast.success("Load dropped successfully");
-      setDropTarget(null);
-      await fetchLoads();
-    } catch (err: any) {
-      toast.error(extractErr(err, "Failed to drop load"));
-    } finally {
-      setDroppingId(null);
-    }
-  };
+  const handleAction = (action: string, loadOrId: Load | string) => {
+    let title = '';
+    let description = '';
+    let variant: ConfirmationVariant = 'primary';
+    
+    // Safety check: loadOrId might be a string (the ID) or the full Load object
+    const actualLoadId = typeof loadOrId === 'string' ? loadOrId : loadOrId._id;
 
-  const handleMarkPickedUp = async (id: string, pickedUpAt?: string) => {
-    setMarkingPickedId(id);
-    try {
-      const token = await getToken();
-      const target = loads.find((l) => l._id === id);
-      const base =
-        (target as any)?.__docType === "load"
-          ? { loadId: id }
-          : { shipmentId: id };
-      const body = pickedUpAt ? { ...base, pickedUpAt } : base;
-      await apiClient.post("/api/driver-tracking/mark-picked-up", body, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      toast.success("Picked-up date recorded");
-      setPickupTarget(null);
-      setPickupDate("");
-      await fetchLoads();
-    } catch (err: any) {
-      toast.error(extractErr(err, "Failed to set picked-up date"));
-    } finally {
-      setMarkingPickedId(null);
+    switch (action) {
+      case 'accept-load':
+        title = 'Accept This Load?';
+        description = 'Are you sure you want to accept this load assignment? This will be added to your active schedule.';
+        variant = 'primary';
+        break;
+      case 'mark-picked-up':
+        title = 'Confirm Pickup?';
+        description = 'Are you sure you have picked up all vehicles for this load? The current time will be recorded as the pickup time.';
+        variant = 'success';
+        break;
+      case 'start-route':
+        title = 'Start Route?';
+        description = 'Are you ready to begin the delivery route? This will notify the organization that you are in transit.';
+        variant = 'success';
+        break;
+      case 'drop-load':
+        title = 'Drop This Load?';
+        description = 'Warning: You are about to drop this load. This action should only be taken if you cannot complete the delivery.';
+        variant = 'danger';
+        break;
+      default:
+        executeAction(action, actualLoadId);
+        return;
     }
-  };
 
-  const handleStartRoute = async (id: string) => {
-    setStartingId(id);
-    try {
-      const token = await getToken();
-      const target = loads.find((l) => l._id === id);
-      const body =
-        (target as any)?.__docType === "load"
-          ? { loadId: id }
-          : { shipmentId: id };
-      await apiClient.post("/api/driver-tracking/start-route", body, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      toast.success("Route started — status updated to In-Route");
-      await fetchLoads();
-    } catch (err: any) {
-      toast.error(extractErr(err, "Failed to start route"));
-    } finally {
-      setStartingId(null);
-    }
+    setConfirmState({
+      isOpen: true,
+      action,
+      loadId: actualLoadId,
+      title,
+      description,
+      variant,
+    });
   };
 
   const pending = requests.filter((r) => r.myRequestStatus === "pending");
@@ -265,25 +268,22 @@ export default function DriverLoadsPage() {
     (l) => l.status !== "Delivered" && l.status !== "Cancelled",
   ).length;
   const completedCount = loads.filter((l) => l.status === "Delivered").length;
-  const atCapacity = activeCount >= maxLoadCapacity;
 
   const filtered = React.useMemo(() => {
-    let result: Shipment[] = [];
-    if (tab === "active")
-      result = loads.filter(
-        (l) => l.status !== "Delivered" && l.status !== "Cancelled",
-      );
-    else if (tab === "requests") result = [...pending, ...rejected];
-    else if (tab === "completed")
-      result = loads.filter((l) => l.status === "Delivered");
+    let result: Load[] = [];
+    if (tab === 'active') result = loads.filter(l => l.status !== 'Delivered' && l.status !== 'Cancelled');
+    else if (tab === 'requests') result = [...pending, ...rejected];
+    else if (tab === 'completed') result = loads.filter(l => l.status === 'Delivered');
     else result = loads;
+    
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
         (l) =>
-          l.trackingNumber?.toLowerCase().includes(q) ||
-          l.origin?.toLowerCase().includes(q) ||
-          l.destination?.toLowerCase().includes(q),
+          l.loadNumber?.toLowerCase().includes(q) ||
+          l.pickupLocation?.city?.toLowerCase().includes(q) ||
+          l.deliveryLocation?.city?.toLowerCase().includes(q) ||
+          l.vehicles?.[0]?.make?.toLowerCase().includes(q)
       );
     }
     return result;
@@ -295,31 +295,31 @@ export default function DriverLoadsPage() {
     count?: number;
     icon: React.ElementType;
   }[] = [
-    {
-      key: "active",
-      label: `Active (${activeCount}/${maxLoadCapacity})`,
-      count: undefined,
-      icon: Navigation2,
-    },
-    {
-      key: "requests",
-      label: "Requests",
-      count: pending.length || undefined,
-      icon: Timer,
-    },
-    {
-      key: "completed",
-      label: "Completed",
-      count: completedCount || undefined,
-      icon: CheckCircle2,
-    },
-    {
-      key: "all",
-      label: "All",
-      count: loads.length || undefined,
-      icon: Package,
-    },
-  ];
+      {
+        key: "active",
+        label: `Active (${activeCount}/${maxLoadCapacity})`,
+        count: undefined,
+        icon: Navigation2,
+      },
+      {
+        key: "requests",
+        label: "Requests",
+        count: pending.length || undefined,
+        icon: Timer,
+      },
+      {
+        key: "completed",
+        label: "Completed",
+        count: completedCount || undefined,
+        icon: CheckCircle2,
+      },
+      {
+        key: "all",
+        label: "All",
+        count: loads.length || undefined,
+        icon: Package,
+      },
+    ];
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
@@ -420,7 +420,7 @@ export default function DriverLoadsPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
-            placeholder="Search by tracking #, city..."
+            placeholder="Search by load #, city, vehicle..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-10 rounded-xl bg-muted/30 border-border/20"
@@ -471,66 +471,51 @@ export default function DriverLoadsPage() {
             </CardContent>
           </Card>
         ) : (
-          <AnimatePresence mode="popLayout">
-            <div className="space-y-3">
-              {filtered.map((load, i) => (
-                <motion.div
-                  key={load._id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: i * 0.03 }}
-                >
-                  <LoadCard
-                    load={load}
-                    isRequest={tab === "requests"}
-                    acceptingId={acceptingId}
-                    droppingId={droppingId}
-                    startingId={startingId}
-                    onAccept={(id, l) => handleAccept(id, l)}
-                    onDrop={(l) => setDropTarget(l)}
-                    onMarkPickedUp={(l) => {
-                      setPickupTarget(l);
-                      const baseDate = l.pickedUp || new Date().toISOString();
-                      setPickupDate(
-                        new Date(baseDate).toISOString().slice(0, 16),
-                      );
-                    }}
-                    onStartRoute={handleStartRoute}
-                    onSubmitProof={() => setProofTarget(load)}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          </AnimatePresence>
+          <>
+            <AnimatePresence mode="popLayout">
+              <div className="space-y-3">
+                {filtered.map((load, i) => (
+                  <motion.div key={load._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i * 0.03 }}>
+                    <LoadCard 
+                      load={load} 
+                      isRequest={tab === 'requests'} 
+                      actionLoading={actionLoading}
+                      onAccept={(l) => handleAction('accept-load', l)} 
+                      onMarkPickedUp={(l) => handleAction('mark-picked-up', l)} 
+                      onDrop={(l) => handleAction('drop-load', l)} 
+                      onStartRoute={(l) => handleAction('start-route', l)} 
+                      onSubmitProof={() => setProofTarget(load)} 
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </AnimatePresence>
+            {loadingMore && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/30" />
+              </div>
+            )}
+            {pagination?.hasMore && !loadingMore && (
+              <Button variant="outline" className="w-full rounded-xl h-10 text-xs gap-2 border-border/30 hover:border-primary/30" onClick={handleLoadMore}>
+                <ChevronDown className="h-4 w-4" /> Load more loads
+              </Button>
+            )}
+          </>
         )}
       </motion.div>
 
-      <DropConfirmDialog
-        shipment={dropTarget}
-        dropping={droppingId === dropTarget?._id}
-        onConfirm={() => dropTarget && handleDrop(dropTarget._id)}
-        onCancel={() => setDropTarget(null)}
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => executeAction(confirmState.action, confirmState.loadId)}
+        title={confirmState.title}
+        description={confirmState.description}
+        variant={confirmState.variant}
+        isLoading={!!actionLoading}
       />
-      <PickedUpDialog
-        shipment={pickupTarget}
-        pickedUpAt={pickupDate}
-        isSaving={markingPickedId === pickupTarget?._id}
-        onPickedUpAtChange={setPickupDate}
-        onCancel={() => {
-          setPickupTarget(null);
-          setPickupDate("");
-        }}
-        onConfirm={() =>
-          pickupTarget &&
-          handleMarkPickedUp(
-            pickupTarget._id,
-            pickupDate ? new Date(pickupDate).toISOString() : undefined,
-          )
-        }
-      />
+
       <SubmitProofModal
-        shipment={proofTarget}
+        load={proofTarget}
         getToken={getToken}
         onClose={() => setProofTarget(null)}
         onSuccess={() => {
@@ -543,34 +528,22 @@ export default function DriverLoadsPage() {
   );
 }
 
-function StatusTimeline({ load }: { load: Shipment }) {
-  const hasScheduledPickup = Boolean(getScheduledPickup(load));
-  const hasPickedUp =
-    Boolean(load.pickedUp) ||
-    load.status === "In-Route" ||
-    load.status === "Delivered";
-  const hasEstimatedDelivery = Boolean(getEstimatedDelivery(load));
-  const hasDelivered =
-    Boolean(getDeliveredDate(load)) || load.status === "Delivered";
-
-  const state = [
-    { done: true, date: load.assignedAt || load.createdAt },
-    { done: hasScheduledPickup, date: getScheduledPickup(load) },
-    { done: hasPickedUp, date: load.pickedUp },
-    { done: hasEstimatedDelivery, date: getEstimatedDelivery(load) },
-    { done: hasDelivered, date: getDeliveredDate(load) },
+function StatusTimeline({ load }: { load: Load }) {
+  const cur = getStepIdx(load);
+  
+  const timelineDates = [
+    load.assignedAt,
+    load.driverAcceptedAt,
+    load.pickedUpAt,
+    load.pickedUpAt, 
+    load.deliveredAt
   ];
 
-  const cur = Math.max(
-    0,
-    state.map((s, i) => (s.done ? i : -1)).reduce((a, b) => Math.max(a, b), 0),
-  );
-
   return (
-    <div className="flex items-center gap-0 w-full mt-2">
+    <div className="flex items-center gap-0 w-full mt-2 overflow-x-auto pb-2 scrollbar-hide">
       {STEPS.map((step, i) => (
         <React.Fragment key={step.key}>
-          <div className="flex flex-col items-center gap-1 min-w-0">
+          <div className="flex flex-col items-center gap-1 min-w-[70px] shrink-0">
             <div
               className={cn(
                 "size-5.5 sm:size-6 rounded-full flex items-center justify-center border-2 transition-colors",
@@ -599,19 +572,17 @@ function StatusTimeline({ load }: { load: Shipment }) {
             </span>
             <span
               className={cn(
-                "text-[10px] sm:text-[11px] whitespace-nowrap leading-none",
-                state[i].done
-                  ? "text-emerald-500/80"
-                  : "text-muted-foreground/35",
+                "text-[9px] whitespace-nowrap leading-none mt-0.5",
+                i <= cur && timelineDates[i] ? "text-emerald-500/80" : "text-muted-foreground/35",
               )}
             >
-              {state[i].done && state[i].date ? fmtDate(state[i].date) : "N/A"}
+              {i <= cur && timelineDates[i] ? fmtDate(timelineDates[i]) : "N/A"}
             </span>
           </div>
           {i < STEPS.length - 1 && (
             <div
               className={cn(
-                "flex-1 h-0.5 -mt-3 mx-0.5 rounded-full",
+                "flex-1 h-0.5 -mt-6 mx-0.5 rounded-full min-w-[20px]",
                 i < cur ? "bg-emerald-500" : "bg-border",
               )}
             />
@@ -622,76 +593,34 @@ function StatusTimeline({ load }: { load: Shipment }) {
   );
 }
 
-function LoadCard({
-  load,
-  isRequest,
-  acceptingId,
-  droppingId,
-  startingId,
-  onAccept,
-  onDrop,
-  onMarkPickedUp,
-  onStartRoute,
-  onSubmitProof,
-}: {
-  load: Shipment;
-  isRequest: boolean;
-  acceptingId: string | null;
-  droppingId: string | null;
-  startingId: string | null;
-  onAccept: (id: string, load: Shipment) => void;
-  onDrop: (l: Shipment) => void;
-  onMarkPickedUp: (l: Shipment) => void;
-  onStartRoute: (id: string) => void;
-  onSubmitProof: () => void;
+function LoadCard({ load, isRequest, actionLoading, onAccept, onMarkPickedUp, onDrop, onStartRoute, onSubmitProof }: {
+  load: Load; isRequest: boolean; actionLoading: string | null;
+  onAccept: (id: string) => void; onMarkPickedUp: (id: string) => void; onDrop: (l: Load) => void; onStartRoute: (id: string) => void; onSubmitProof: () => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
-  const isDispatched =
-    load.status === "Dispatched" || load.status === "In-Route";
-  const isDelivered = load.status === "Delivered";
-  const isActive = load.status !== "Delivered" && load.status !== "Cancelled";
-  const isPending = load.myRequestStatus === "pending";
-  const isRejected = load.myRequestStatus === "rejected";
-  const quote = (load as any).preservedQuoteData;
-  const vehicleName = quote?.vehicleName;
-  const vehicleImg = quote?.vehicleImage;
-  const missingSchedule = !canAcceptBySchedule(load);
-  const canMarkPickedUp =
-    Boolean(load.driverAcceptedAt) &&
-    load.status === "Dispatched" &&
-    !load.pickedUp;
-  const canStartInRoute =
-    Boolean(load.driverAcceptedAt) &&
-    load.status === "Dispatched" &&
-    Boolean(load.pickedUp);
-  const canSubmitProof =
-    load.status === "In-Route" &&
-    Boolean(load.pickedUp) &&
-    !load.proofOfDelivery?.imageUrl;
+  const status = load.status;
+  const isDispatched = ['Assigned', 'Accepted', 'Picked Up', 'In-Transit'].includes(status);
+  const isActive = status !== 'Delivered' && status !== 'Cancelled';
+  const isDelivered = status === 'Delivered';
+  const isPending = load.myRequestStatus === 'pending';
+  const isRejected = load.myRequestStatus === 'rejected';
+  
+  const vehicle = load.vehicles?.[0];
+  const vehicleName = vehicle ? `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim() : "Unknown Vehicle";
+  const vehicleImg = vehicle?.imageUrl ? resolveImageUrl(vehicle.imageUrl) : null;
 
   return (
-    <Card
-      className={cn(
-        "overflow-hidden border-border/20 hover:shadow-lg transition-all duration-200 rounded-2xl group",
-        isPending
-          ? "border-amber-500/30 bg-amber-500/3"
-          : isRejected
-            ? "border-red-500/20 opacity-75"
-            : load.status === "In-Route"
-              ? "border-emerald-500/30 bg-emerald-500/3"
-              : "hover:border-primary/20",
-      )}
-    >
+    <Card className={cn('overflow-hidden border-border/20 hover:shadow-lg transition-all duration-200 rounded-2xl group',
+      isPending ? 'border-amber-500/30 bg-amber-500/3' : isRejected ? 'border-red-500/20 opacity-75' :
+        (status === 'In-Transit') ? 'border-emerald-500/30 bg-emerald-500/3' :
+          status === 'Picked Up' ? 'border-orange-500/30 bg-orange-500/3' :
+            status === 'Accepted' ? 'border-amber-500/30 bg-amber-500/3' : 'hover:border-primary/20')}>
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
           {vehicleImg && (
-            <div className="relative w-full sm:w-44 h-36 sm:h-auto shrink-0 overflow-hidden">
-              <img
-                src={vehicleImg}
-                alt={vehicleName || "Vehicle"}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-linear-to-r from-transparent to-black/10 sm:bg-linear-to-t sm:from-black/20 sm:to-transparent" />
+            <div className="w-full sm:w-40 h-32 sm:h-auto relative shrink-0">
+               <img src={vehicleImg} alt={vehicleName} className="absolute inset-0 w-full h-full object-cover" />
+               <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
             </div>
           )}
           <div className="flex-1 p-4 space-y-3">
@@ -702,7 +631,7 @@ function LoadCard({
                     href={`/driver/loads/${load._id}`}
                     className="text-sm font-mono font-bold hover:text-primary transition-colors"
                   >
-                    {load.trackingNumber || "No tracking #"}
+                    {load.loadNumber || "No load #"}
                   </Link>
                   {isRequest ? (
                     isPending ? (
@@ -724,113 +653,55 @@ function LoadCard({
                       {load.status}
                     </Badge>
                   )}
-                  {load.carrierPayAmount != null &&
-                    load.carrierPayAmount > 0 && (
-                      <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-0.5">
-                        <DollarSign className="size-2.5" />
-                        {load.carrierPayAmount.toLocaleString()}
-                      </Badge>
-                    )}
+                  {load.pricing?.carrierPayAmount != null && load.pricing.carrierPayAmount > 0 && (
+                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-0.5"><DollarSign className="size-2.5" />{load.pricing.carrierPayAmount.toLocaleString()}</Badge>
+                  )}
                 </div>
-                {vehicleName && (
-                  <p className="text-sm font-bold text-foreground/80">
-                    {vehicleName}
-                  </p>
-                )}
+                <p className="text-sm font-bold text-foreground/80">
+                  {vehicleName}
+                </p>
                 <div className="flex items-center gap-2 text-sm">
                   <div className="flex items-center gap-1 text-emerald-600">
                     <div className="size-1.5 rounded-full bg-emerald-500" />
-                    <span className="truncate font-medium">{load.origin}</span>
+                    <span className="truncate font-medium">{load.pickupLocation.city}, {load.pickupLocation.state}</span>
                   </div>
                   <ArrowRight className="size-3 text-muted-foreground shrink-0" />
                   <div className="flex items-center gap-1 text-rose-600">
                     <div className="size-1.5 rounded-full bg-rose-500" />
                     <span className="truncate font-medium">
-                      {load.destination}
+                      {load.deliveryLocation.city}, {load.deliveryLocation.state}
                     </span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                  {load.scheduledPickup && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="size-3" />
-                      Pickup: {fmtDate(load.scheduledPickup)}
-                    </span>
-                  )}
-                  {load.scheduledDelivery && (
-                    <span className="flex items-center gap-1">
-                      <Truck className="size-3" />
-                      Delivery: {fmtDate(load.scheduledDelivery)}
-                    </span>
-                  )}
-                  {isRequest && load.myRequestedAt && (
-                    <span>Requested: {fmtDate(load.myRequestedAt)}</span>
-                  )}
+                  {load.dates?.pickupDeadline && <span className="flex items-center gap-1"><Clock className="size-3" />Pickup: {fmtDate(load.dates.pickupDeadline)}</span>}
+                  {load.dates?.deliveryDeadline && <span className="flex items-center gap-1"><Truck className="size-3" />Delivery: {fmtDate(load.dates.deliveryDeadline)}</span>}
+                  {isRequest && load.myRequestedAt && <span>Requested: {fmtDate(load.myRequestedAt)}</span>}
                 </div>
               </div>
 
               {!isRequest && (
                 <div className="flex flex-col items-end gap-2 shrink-0">
-                  {!load.driverAcceptedAt && isActive && (
-                    <Button
-                      size="sm"
-                      onClick={() => onAccept(load._id, load)}
-                      disabled={acceptingId === load._id || missingSchedule}
-                      className="rounded-lg gap-1.5"
-                    >
-                      {acceptingId === load._id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <>
-                          <CheckCircle2 className="size-4" />
-                          Accept
-                        </>
-                      )}
+                  {status === 'Assigned' && !load.driverAcceptedAt && isActive && (
+                    <Button size="sm" onClick={() => onAccept(load._id)} disabled={actionLoading === load._id} className="rounded-lg gap-1.5">
+                      {actionLoading === load._id ? <Loader2 className="size-4 animate-spin" /> : <><CheckCircle2 className="size-4" />Accept</>}
                     </Button>
                   )}
-                  {canMarkPickedUp && (
-                    <Button
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 rounded-lg gap-1.5"
-                      onClick={() => onMarkPickedUp(load)}
-                    >
-                      <Clock className="size-4" />
-                      Set Picked Up Date
+                  {status === 'Accepted' && (
+                    <Button size="sm" className="bg-orange-600 hover:bg-orange-700 rounded-lg gap-1.5" onClick={() => onMarkPickedUp(load._id)} disabled={actionLoading === load._id}>
+                      {actionLoading === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Package className="size-4" />Mark Picked Up</>}
                     </Button>
                   )}
-                  {canStartInRoute && (
-                    <Button
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700 rounded-lg gap-1.5"
-                      onClick={() => onStartRoute(load._id)}
-                      disabled={startingId === load._id}
-                    >
-                      {startingId === load._id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Navigation2 className="size-4" />
-                          Start In-Route
-                        </>
-                      )}
+                  {status === 'Picked Up' && (
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg gap-1.5" onClick={() => onStartRoute(load._id)} disabled={actionLoading === load._id}>
+                      {actionLoading === load._id ? <Loader2 className="size-4 animate-spin" /> : <><Navigation2 className="size-4" />Start Route</>}
                     </Button>
                   )}
-                  {load.status === "In-Route" && (
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 animate-pulse">
-                      <Navigation2 className="size-3" />
-                      In Route
-                    </Badge>
+                  {(status === 'In-Transit') && (
+                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 animate-pulse"><Navigation2 className="size-3" />In Transit</Badge>
                   )}
-                  {canSubmitProof && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={onSubmitProof}
-                      className="rounded-lg gap-1.5"
-                    >
-                      <Camera className="size-4" />
-                      Submit Proof
-                    </Button>
+                  {(status === 'In-Transit') && !load.proofOfDelivery?.imageUrl && (
+                    <Button size="sm" variant="outline" onClick={onSubmitProof} className="rounded-lg gap-1.5"><Camera className="size-4" />Submit Proof</Button>
                   )}
                   {load.proofOfDelivery?.imageUrl && (
                     <Badge
@@ -853,9 +724,9 @@ function LoadCard({
                       variant="ghost"
                       className="text-[10px] text-muted-foreground hover:text-red-500 h-6 px-2"
                       onClick={() => onDrop(load)}
-                      disabled={droppingId === load._id}
+                      disabled={actionLoading === load._id}
                     >
-                      {droppingId === load._id ? (
+                      {actionLoading === load._id ? (
                         <Loader2 className="size-3 animate-spin" />
                       ) : (
                         <>
@@ -870,19 +741,6 @@ function LoadCard({
             </div>
 
             {!isRequest && isActive && <StatusTimeline load={load} />}
-
-            {!isRequest &&
-              !load.driverAcceptedAt &&
-              isActive &&
-              missingSchedule && (
-                <div className="flex items-start gap-2 rounded-xl bg-amber-500/5 border border-amber-500/15 p-2.5">
-                  <AlertCircle className="size-3.5 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                    Accept is disabled until both Scheduled Pickup and Est.
-                    Delivery are set by dispatch.
-                  </p>
-                </div>
-              )}
 
             {isRejected && load.rejectionReason && (
               <div className="flex items-start gap-2 rounded-xl bg-red-500/5 border border-red-500/15 p-2.5">
@@ -912,112 +770,16 @@ function LoadCard({
 
             {expanded && (isDispatched || isDelivered) && (
               <div className="rounded-xl border border-border/20 bg-muted/20 p-3 space-y-3">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Load Summary
-                  </p>
-                  <p className="text-xs font-medium">
-                    {load.trackingNumber || "No tracking #"} • {load.origin} →{" "}
-                    {load.destination}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Timeline
-                  </p>
-                  <StatusTimeline load={load} />
-                </div>
-
-                {isDispatched && load.preDispatchNotes && (
-                  <DetailBlock
-                    label="Dispatch Notes"
-                    text={load.preDispatchNotes}
-                  />
-                )}
-                {isDispatched && load.specialInstructions && (
-                  <DetailBlock
-                    label="Special Instructions"
-                    text={load.specialInstructions}
-                  />
-                )}
-                {isDispatched && load.loadSpecificTerms && (
-                  <DetailBlock
-                    label="Load Terms"
-                    text={load.loadSpecificTerms}
-                  />
-                )}
-                {isDispatched &&
-                  (load.originContact?.contactName ||
-                    load.originContact?.phone) && (
-                    <ContactBlock
-                      label="Pick-Up Contact"
-                      contact={load.originContact}
-                    />
-                  )}
-                {isDispatched &&
-                  (load.destinationContact?.contactName ||
-                    load.destinationContact?.phone) && (
-                    <ContactBlock
-                      label="Delivery Contact"
-                      contact={load.destinationContact}
-                    />
-                  )}
-
-                {isDelivered && (
-                  <div className="space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-                    <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                      Submitted Proof
-                    </p>
-                    <div className="flex flex-wrap items-center gap-3 text-xs">
-                      <span className="text-muted-foreground">
-                        Submitted:{" "}
-                        <span className="font-medium text-foreground">
-                          {load.proofOfDelivery?.submittedAt
-                            ? fmtDate(load.proofOfDelivery.submittedAt)
-                            : "N/A"}
-                        </span>
-                      </span>
-                      <span className="text-muted-foreground">
-                        Approved:{" "}
-                        <span className="font-medium text-foreground">
-                          {load.proofOfDelivery?.confirmedAt
-                            ? fmtDate(load.proofOfDelivery.confirmedAt)
-                            : "Pending"}
-                        </span>
-                      </span>
-                    </div>
-                    {load.proofOfDelivery?.imageUrl ? (
-                      <a
-                        href={resolveImageUrl(load.proofOfDelivery.imageUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-xs font-semibold text-primary hover:underline"
-                      >
-                        <ImageIcon className="size-3.5" />
-                        View attached proof
-                      </a>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        No proof attachment found.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {load.carrierPayAmount != null && load.carrierPayAmount > 0 && (
+                {load.additionalInfo?.notes && <DetailBlock label="Dispatch Notes" text={load.additionalInfo.notes} />}
+                {load.additionalInfo?.instructions && <DetailBlock label="Special Instructions" text={load.additionalInfo.instructions} />}
+                {load.contract?.signatureName && <DetailBlock label="Signed By" text={load.contract.signatureName} />}
+                {load.pickupLocation?.contactName && <ContactBlock label="Pick-Up Contact" contact={load.pickupLocation} />}
+                {load.deliveryLocation?.contactName && <ContactBlock label="Delivery Contact" contact={load.deliveryLocation} />}
+                {load.pricing?.carrierPayAmount != null && load.pricing.carrierPayAmount > 0 && (
                   <div className="flex items-center gap-4 pt-1 border-t border-border/15">
-                    <MoneyBlock
-                      label="Carrier Pay"
-                      value={load.carrierPayAmount}
-                      highlight
-                    />
-                    {load.copCodAmount != null && load.copCodAmount > 0 && (
-                      <MoneyBlock label="COD" value={load.copCodAmount} />
-                    )}
-                    {load.balanceAmount != null && (
-                      <MoneyBlock label="Balance" value={load.balanceAmount} />
-                    )}
+                    <MoneyBlock label="Carrier Pay" value={load.pricing.carrierPayAmount} highlight />
+                    {load.pricing.copCodAmount != null && load.pricing.copCodAmount > 0 && <MoneyBlock label="COD" value={load.pricing.copCodAmount} />}
+                    {load.pricing.balanceAmount != null && <MoneyBlock label="Balance" value={load.pricing.balanceAmount} />}
                   </div>
                 )}
               </div>
@@ -1097,163 +859,7 @@ function MoneyBlock({
   );
 }
 
-function PickedUpDialog({
-  shipment,
-  pickedUpAt,
-  isSaving,
-  onPickedUpAtChange,
-  onConfirm,
-  onCancel,
-}: {
-  shipment: Shipment | null;
-  pickedUpAt: string;
-  isSaving: boolean;
-  onPickedUpAtChange: (value: string) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  if (!shipment) return null;
-
-  return (
-    <Dialog
-      open={!!shipment}
-      onOpenChange={(open) => {
-        if (!open) onCancel();
-      }}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="size-5 text-emerald-600" />
-            Set Picked Up Date
-          </DialogTitle>
-          <DialogDescription>
-            Enter the actual pick-up date/time for{" "}
-            <span className="font-mono font-medium">
-              {shipment.trackingNumber || shipment._id.slice(-8)}
-            </span>
-            .
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3">
-          <Label htmlFor="picked-up-date">Picked Up Date & Time</Label>
-          <Input
-            id="picked-up-date"
-            type="datetime-local"
-            value={pickedUpAt}
-            onChange={(e) => onPickedUpAtChange(e.target.value)}
-          />
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button onClick={onConfirm} disabled={isSaving || !pickedUpAt}>
-            {isSaving ? (
-              <>
-                <Loader2 className="size-4 mr-1.5 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Picked Up"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function DropConfirmDialog({
-  shipment,
-  dropping,
-  onConfirm,
-  onCancel,
-}: {
-  shipment: Shipment | null;
-  dropping: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  if (!shipment) return null;
-  return (
-    <Dialog
-      open={!!shipment}
-      onOpenChange={(open) => {
-        if (!open) onCancel();
-      }}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="size-5 text-destructive" />
-            Drop Load?
-          </DialogTitle>
-          <DialogDescription>
-            This will remove you from load{" "}
-            <span className="font-mono font-medium">
-              {shipment.trackingNumber || shipment._id.slice(-8)}
-            </span>
-            . The load will go back to the available pool.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="rounded-xl border p-3 bg-muted/20 space-y-1">
-          <p className="text-sm font-semibold">
-            {shipment.origin} → {shipment.destination}
-          </p>
-          {shipment.carrierPayAmount != null &&
-            shipment.carrierPayAmount > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Carrier Pay:{" "}
-                <span className="text-emerald-600 font-bold">
-                  ${shipment.carrierPayAmount.toLocaleString()}
-                </span>
-              </p>
-            )}
-        </div>
-        <div className="flex items-start gap-2 rounded-xl bg-amber-500/5 border border-amber-500/15 p-3">
-          <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 dark:text-amber-400">
-            Frequently dropping loads may affect your driver rating and future
-            load assignments.
-          </p>
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={dropping}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={dropping}>
-            {dropping ? (
-              <>
-                <Loader2 className="size-4 mr-1.5 animate-spin" />
-                Dropping...
-              </>
-            ) : (
-              <>
-                <Ban className="size-4 mr-1.5" />
-                Drop Load
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function SubmitProofModal({
-  shipment,
-  getToken,
-  onClose,
-  onSuccess,
-}: {
-  shipment: Shipment | null;
-  getToken: () => Promise<string | null>;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
+function SubmitProofModal({ load, getToken, onClose, onSuccess }: { load: Load | null; getToken: () => Promise<string | null>; onClose: () => void; onSuccess: () => void }) {
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
   const [note, setNote] = React.useState("");
@@ -1263,7 +869,7 @@ function SubmitProofModal({
   const galRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    if (!shipment) {
+    if (!load) {
       setFile(null);
       if (preview) URL.revokeObjectURL(preview);
       setPreview(null);
@@ -1271,7 +877,8 @@ function SubmitProofModal({
       setError(null);
       return;
     }
-  }, [shipment]);
+  }, [load]);
+
   React.useEffect(
     () => () => {
       if (preview) URL.revokeObjectURL(preview);
@@ -1290,24 +897,23 @@ function SubmitProofModal({
   };
 
   const handleSubmit = async () => {
-    if (!shipment || !file) return;
+    if (!load || !file) return;
     setSubmitting(true);
     setError(null);
     try {
       const token = await getToken();
       const fd = new FormData();
-      fd.append("proof", file);
-      if (note.trim()) fd.append("note", note.trim());
-      const proofEndpoint =
-        (shipment as any)._type === "load"
-          ? `/api/loads/${shipment._id}/submit-proof`
-          : `/api/shipments/${shipment._id}/submit-proof`;
-      await apiClient.post(proofEndpoint, fd, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
+      fd.append('proof', file);
+      if (note.trim()) fd.append('note', note.trim());
+      
+      const proofEndpoint = `/api/loads/${load._id}/submit-proof`;
+      await apiClient.post(proofEndpoint, fd, { 
+        headers: { 
+          Authorization: `Bearer ${token}`, 
+          'Content-Type': 'multipart/form-data' 
+        } 
       });
+      
       onSuccess();
     } catch (err: any) {
       setError(extractErr(err, "Failed to submit proof."));
@@ -1316,10 +922,10 @@ function SubmitProofModal({
     }
   };
 
-  if (!shipment) return null;
+  if (!load) return null;
   return (
     <Dialog
-      open={!!shipment}
+      open={!!load}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
@@ -1331,9 +937,9 @@ function SubmitProofModal({
             Submit Proof of Delivery
           </DialogTitle>
           <DialogDescription>
-            Photo proof for{" "}
+            Photo proof for load{" "}
             <span className="font-mono font-medium">
-              {shipment.trackingNumber || "this shipment"}
+              {load.loadNumber || "this load"}
             </span>
             .
           </DialogDescription>

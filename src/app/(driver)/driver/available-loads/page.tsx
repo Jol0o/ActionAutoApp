@@ -28,18 +28,23 @@ import Link from 'next/link';
 
 interface AvailableLoad {
   _id: string;
-  __docType?: 'shipment' | 'load';
   origin: string;
   destination: string;
   trackingNumber?: string;
   status: string;
-  requestedPickupDate?: string;
-  scheduledPickup?: string;
-  scheduledDelivery?: string;
-  desiredDeliveryDate?: string;
+  dates?: {
+    pickupDeadline?: string;
+    deliveryDeadline?: string;
+    firstAvailable?: string;
+  };
+  pricing?: {
+    carrierPayAmount?: number;
+    copCodAmount?: number;
+    balanceAmount?: number;
+  };
   trailerTypeRequired?: string;
   vehicleCount?: number;
-  carrierPayAmount?: number;
+  carrierPayAmount?: number; // legacy fallback
   myRequestStatus?: 'pending' | 'approved' | 'rejected' | null;
   myRequestedAt?: string | null;
   vehicles?: { trailerType: string; year: string; make: string; model: string; vin: string; color: string; condition: string }[];
@@ -54,14 +59,17 @@ const trailerLabel = (val?: string) => trailerTypeOptions.find(t => t.value === 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Denver' }) : 'TBD';
 const timeAgo = (d: string) => { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 1) return 'just now'; if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`; return `${Math.floor(h / 24)}d ago`; };
 const extractErr = (e: any, fb: string) => e?.response?.data?.message || e?.message || fb;
-const getPay = (l: AvailableLoad) => l.carrierPayAmount || l.preservedQuoteData?.rate || 0;
+const getPay = (l: AvailableLoad) => l.pricing?.carrierPayAmount || l.carrierPayAmount || l.preservedQuoteData?.rate || 0;
 
 type SortMode = 'newest' | 'pay-high' | 'pay-low' | 'pickup-soon';
 
 export default function AvailableLoadsPage() {
   const { getToken } = useAuth();
   const [loads, setLoads] = React.useState<AvailableLoad[]>([]);
+  const [pagination, setPagination] = React.useState<{ hasMore: boolean; page: number; totalPages: number } | null>(null);
+  const [page, setPage] = React.useState(1);
   const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [trailerFilter, setTrailerFilter] = React.useState('all');
   const [driverTrailerType, setDriverTrailerType] = React.useState<string | null>(null);
@@ -105,13 +113,24 @@ export default function AvailableLoadsPage() {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [fetchDriverProfile]);
 
-  const fetchLoads = React.useCallback(async () => {
+  const fetchLoads = React.useCallback(async (pageNum = 1, append = false) => {
     try {
       const token = await getToken();
-      const res = await apiClient.get('/api/driver-tracking/available-loads', { headers: { Authorization: `Bearer ${token}` } });
-      setLoads(res.data?.data || []);
+      const res = await apiClient.get(`/api/driver-tracking/available-loads?page=${pageNum}`, { headers: { Authorization: `Bearer ${token}` } });
+      const responseData = res.data?.data;
+      const newLoads = responseData?.loads || responseData || [];
+      const newPagination = responseData?.pagination || null;
+      
+      if (append) {
+        setLoads(prev => [...prev, ...newLoads]);
+      } else {
+        setLoads(newLoads);
+      }
+      setPagination(newPagination);
+      if (!append) setPage(1);
+      else setPage(pageNum);
     } catch (err: any) { toast.error(extractErr(err, 'Failed to load available loads')); }
-    finally { setLoading(false); setRefreshing(false); }
+    finally { setLoading(false); setRefreshing(false); setLoadingMore(false); }
   }, [getToken]);
 
   React.useEffect(() => {
@@ -131,7 +150,6 @@ export default function AvailableLoadsPage() {
       sock.on('driver:load_requested', refresh);
       sock.on('driver:load_request_updated', refresh);
       sock.on('load:change', refresh);
-      sock.on('shipment:change', refresh);
     };
     setup();
     return () => {
@@ -142,12 +160,17 @@ export default function AvailableLoadsPage() {
         s.off('driver:load_requested');
         s.off('driver:load_request_updated');
         s.off('load:change');
-        s.off('shipment:change');
       }
     };
   }, [getToken, fetchLoads]);
 
-  const handleRefresh = () => { setRefreshing(true); fetchLoads(); };
+  const handleLoadMore = async () => {
+    if (!pagination || !pagination.hasMore || loadingMore) return;
+    setLoadingMore(true);
+    await fetchLoads(page + 1, true);
+  };
+
+  const handleRefresh = () => { setRefreshing(true); fetchLoads(1, false); };
 
   const handleRequest = async () => {
     if (!requestTarget) return;
@@ -155,7 +178,7 @@ export default function AvailableLoadsPage() {
     try {
       const token = await getToken();
       await apiClient.post('/api/driver-tracking/request-load',
-        requestTarget.__docType === 'load' ? { loadId: requestTarget._id } : { shipmentId: requestTarget._id },
+        { loadId: requestTarget._id },
         { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Load request submitted — pending dispatcher approval');
       setRequestTarget(null);
@@ -175,7 +198,11 @@ export default function AvailableLoadsPage() {
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase().trim();
     let result = loads.filter(l => {
-      if (trailerFilter !== 'all' && l.trailerTypeRequired !== trailerFilter) return false;
+      if (trailerFilter !== 'all') {
+        const loadTrailer = (l.trailerTypeRequired || '').toLowerCase().replace(/[\s-]/g, '_');
+        const activeFilter = trailerFilter.toLowerCase().replace(/[\s-]/g, '_');
+        if (loadTrailer !== activeFilter) return false;
+      }
       if (!q) return true;
       return l.origin?.toLowerCase().includes(q) || l.destination?.toLowerCase().includes(q) || l.trackingNumber?.toLowerCase().includes(q) || l.preservedQuoteData?.vehicleName?.toLowerCase().includes(q);
     });
@@ -183,7 +210,7 @@ export default function AvailableLoadsPage() {
       switch (sortBy) {
         case 'pay-high': return getPay(b) - getPay(a);
         case 'pay-low': return getPay(a) - getPay(b);
-        case 'pickup-soon': return new Date(a.scheduledPickup || a.requestedPickupDate || a.createdAt).getTime() - new Date(b.scheduledPickup || b.requestedPickupDate || b.createdAt).getTime();
+        case 'pickup-soon': return new Date(a.dates?.pickupDeadline || a.createdAt).getTime() - new Date(b.dates?.pickupDeadline || b.createdAt).getTime();
         default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
     });
@@ -309,15 +336,27 @@ export default function AvailableLoadsPage() {
             </CardContent>
           </Card>
         ) : (
-          <AnimatePresence mode="popLayout">
-            <div className="grid gap-3">
-              {filtered.map((load, i) => (
-                <motion.div key={load._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i * 0.03 }}>
-                  <LoadCard load={load} onRequest={() => setRequestTarget(load)} />
-                </motion.div>
-              ))}
-            </div>
-          </AnimatePresence>
+          <>
+            <AnimatePresence mode="popLayout">
+              <div className="grid gap-3">
+                {filtered.map((load, i) => (
+                  <motion.div key={load._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i * 0.03 }}>
+                    <LoadCard load={load} onRequest={() => setRequestTarget(load)} />
+                  </motion.div>
+                ))}
+              </div>
+            </AnimatePresence>
+            {loadingMore && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/30" />
+              </div>
+            )}
+            {pagination?.hasMore && !loadingMore && (
+              <Button variant="outline" className="w-full rounded-xl h-10 text-xs gap-2 border-border/30 hover:border-primary/30" onClick={handleLoadMore}>
+                <ChevronDown className="h-4 w-4" /> Load more loads
+              </Button>
+            )}
+          </>
         )}
       </motion.div>
 
@@ -334,7 +373,7 @@ export default function AvailableLoadsPage() {
                   <Badge variant="outline" className="text-[10px]">{requestTarget.trackingNumber || requestTarget._id.slice(-8)}</Badge>
                   {requestTarget.trailerTypeRequired && <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">{trailerLabel(requestTarget.trailerTypeRequired)}</Badge>}
                 </div>
-                {requestTarget.carrierPayAmount != null && requestTarget.carrierPayAmount > 0 && <span className="text-sm font-black text-emerald-600">${requestTarget.carrierPayAmount.toLocaleString()}</span>}
+                {getPay(requestTarget) > 0 && <span className="text-sm font-black text-emerald-600">${getPay(requestTarget).toLocaleString()}</span>}
               </div>
               <p className="text-sm font-semibold">{requestTarget.origin} → {requestTarget.destination}</p>
               {requestTarget.preservedQuoteData?.vehicleName && <p className="text-xs text-muted-foreground font-medium">{requestTarget.preservedQuoteData.vehicleName}</p>}
@@ -438,7 +477,7 @@ function LoadCard({ load, onRequest }: { load: AvailableLoad; onRequest: () => v
 
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><Calendar className="size-3" />{fmtDate(load.scheduledPickup || load.requestedPickupDate)}</span>
+                  <span className="flex items-center gap-1"><Calendar className="size-3" />{fmtDate(load.dates?.pickupDeadline)}</span>
                   {quote?.miles && <span className="flex items-center gap-1"><Navigation className="size-3" />{quote.miles.toLocaleString()} mi</span>}
                   <span className="flex items-center gap-1"><Clock className="size-3" />{timeAgo(load.createdAt)}</span>
                 </div>

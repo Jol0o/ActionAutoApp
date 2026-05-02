@@ -53,7 +53,12 @@ export function useInventoryActions() {
     }
 
     const handleGetQuote = (vehicle: Vehicle) => {
-        toggleModal("shipping", true, vehicle)
+        const isDashboard = pathname.includes('/inventory')
+        if (isDashboard) {
+            router.push(`/transportation?tab=create-load&vin=${vehicle.vin}`)
+        } else {
+            toggleModal("shipping", true, vehicle)
+        }
     }
 
     return {

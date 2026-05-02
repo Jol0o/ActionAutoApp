@@ -8,7 +8,7 @@ export interface QuoteMetrics {
     conversionRate: number;
 }
 
-export interface ShipmentMetrics {
+export interface LoadMetrics {
     total: number;
     active: number;
     pending: number;
@@ -42,7 +42,7 @@ export interface RecentActivity {
 
 export interface DashboardData {
     quotes: QuoteMetrics;
-    shipments: ShipmentMetrics;
+    loads: LoadMetrics;
     inventory: InventoryMetrics;
     recentActivity: RecentActivity[];
 }

@@ -16,6 +16,7 @@ import { InventoryPagination } from "@/components/inventory-pagination"
 import { useAuth } from "@/providers/AuthProvider"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useInventoryActions } from "@/hooks/useInventoryActions"
+import { useOrg } from "@/hooks/useOrg"
 import { LayoutGrid, Table as TableIcon } from "lucide-react"
 
 type SortOption =
@@ -70,8 +71,9 @@ function InventoryContent() {
         handleApplyNow,
         handleCallUs,
         handleVideo,
-        handleGetQuote
+        handleGetQuote,
     } = useInventoryActions()
+    const { isCustomer } = useOrg()
 
     // Pagination State
     const [page, setPage] = React.useState(Number(searchParams.get("page")) || 1)
@@ -254,6 +256,18 @@ function InventoryContent() {
         }
     }
 
+    const handleCreateLoad = (vehicle: Vehicle) => {
+        const params = new URLSearchParams();
+        params.set("vin", vehicle.vin || "");
+        params.set("make", vehicle.make || "");
+        params.set("model", vehicle.model || "");
+        params.set("year", vehicle.year?.toString() || "");
+        params.set("location", vehicle.location || "");
+        params.set("stockNumber", vehicle.stockNumber || "");
+        
+        router.push(`/transportation/create-load?${params.toString()}`);
+    }
+
     if (error) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center p-8">
@@ -340,6 +354,7 @@ function InventoryContent() {
                                         onApplyNow={handleApplyNow}
                                         onCallUs={handleCallUs}
                                         onVideo={handleVideo}
+                                        onCreateLoad={!isCustomer ? handleCreateLoad : undefined}
                                     />
                                 ) : (
                                     <CarInventoryCard
@@ -352,6 +367,7 @@ function InventoryContent() {
                                         onApplyNow={handleApplyNow}
                                         onCallUs={handleCallUs}
                                         onVideo={handleVideo}
+                                        onCreateLoad={!isCustomer ? handleCreateLoad : undefined}
                                     />
                                 )
                             ))}

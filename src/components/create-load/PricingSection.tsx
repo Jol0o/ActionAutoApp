@@ -9,9 +9,10 @@ interface PricingSectionProps {
   pickupZip: string
   deliveryZip: string
   vehicles: LoadVehicle[]
+  trailerType: string
 }
 
-export function PricingSection({ pickupZip, deliveryZip, vehicles }: PricingSectionProps) {
+export function PricingSection({ pickupZip, deliveryZip, vehicles, trailerType }: PricingSectionProps) {
   const [result, setResult] = React.useState<{
     miles: number
     estimatedRate: number
@@ -20,7 +21,7 @@ export function PricingSection({ pickupZip, deliveryZip, vehicles }: PricingSect
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  const vehicleKey = vehicles.map((v) => `${v.trailerType}:${v.condition}`).join(",")
+  const vehicleKey = vehicles.map((v) => `${trailerType}:${v.condition}`).join(",")
 
   React.useEffect(() => {
     if (pickupZip.length < 5 || deliveryZip.length < 5) {
@@ -35,14 +36,15 @@ export function PricingSection({ pickupZip, deliveryZip, vehicles }: PricingSect
       calculateLoadRate(
         pickupZip,
         deliveryZip,
-        vehicles.map((v) => ({ trailerType: v.trailerType, condition: v.condition }))
+        trailerType,
+        vehicles.map((v) => ({ condition: v.condition }))
       )
         .then((data) => { if (!cancelled) { setResult(data); setLoading(false) } })
         .catch(() => { if (!cancelled) { setError("Could not calculate rate for these ZIPs"); setLoading(false) } })
     }, 600)
     return () => { cancelled = true; clearTimeout(timeout) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickupZip, deliveryZip, vehicleKey])
+  }, [pickupZip, deliveryZip, vehicleKey, trailerType])
 
   return (
     <div className="space-y-4">

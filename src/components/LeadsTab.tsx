@@ -6,6 +6,8 @@ import { useLeads, Lead } from "@/hooks/useLeads"
 import { initializeSocket } from "@/lib/socket.client"
 import { useAuth } from "@/providers/AuthProvider"
 import { apiClient } from "@/lib/api-client"
+import { ShippingQuoteModal } from "@/components/shipping-quote-modal"
+import { Vehicle } from "@/types/inventory"
 
 // Atomic & Modular Components
 import { SyncStatus } from "./leads/atomic/SyncStatus"
@@ -77,6 +79,7 @@ export function LeadsTab() {
   const [isClosed, setIsClosed] = React.useState(false)
   const [threads, setThreads] = React.useState<Record<string, any[]>>({})
   const [highlightedLeadIds, setHighlightedLeadIds] = React.useState<Set<string>>(new Set())
+  const [shippingOpen, setShippingOpen] = React.useState(false)
 
   // 1. Reliability Sync: Keep selectedLead in sync with master leads list
   React.useEffect(() => {
@@ -267,6 +270,23 @@ export function LeadsTab() {
     } catch { addToast('error', 'Failed to save appointment') }
   }
 
+  const handleCalculateQuote = async (formData: any) => {
+    try {
+      const token = await getToken()
+      await apiClient.post('/api/quotes', {
+        ...formData,
+        toZip: formData.zipCode,
+        toAddress: formData.fullAddress,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      addToast('success', 'Shipping Quote Calculated & Saved')
+      setShippingOpen(false)
+    } catch {
+      addToast('error', 'Failed to calculate quote')
+    }
+  }
+
   return (
     <div className="flex flex-col bg-background text-foreground" style={{ height: '100vh', minHeight: 860 }}>
       <ToastStack toasts={toasts} dismiss={id => setToasts(p => p.filter(t => t.id !== id))} />
@@ -355,6 +375,7 @@ export function LeadsTab() {
                   isSending={isSending}
                   onStatusChange={handleStatus}
                   onApptOpen={() => setApptOpen(true)}
+                  onQuoteShipping={() => setShippingOpen(true)}
                   onReopen={() => handleStatus('Pending')}
                   selectedLeadStatus={selectedLead.status}
                 />
@@ -381,6 +402,24 @@ export function LeadsTab() {
         apptForm={apptForm}
         setApptForm={setApptForm}
         onSave={handleAppt}
+      />
+
+      <ShippingQuoteModal
+        open={shippingOpen}
+        onOpenChange={setShippingOpen}
+        vehicles={[]}
+        onCalculate={handleCalculateQuote}
+        defaultVehicle={selectedLead?.vehicle ? {
+          make: selectedLead.vehicle.make,
+          model: selectedLead.vehicle.model,
+          year: parseInt(selectedLead.vehicle.year)
+        } as any : undefined}
+        initialData={selectedLead ? {
+          firstName: selectedLead.firstName,
+          lastName: selectedLead.lastName,
+          email: selectedLead.email,
+          phone: selectedLead.phone,
+        } : undefined}
       />
     </div>
   )

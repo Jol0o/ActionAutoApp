@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShippingQuoteModal } from "@/components/shipping-quote-modal";
 import { QuoteResultModal } from "@/components/QuoteResultModal";
 import { TransportationSidebar } from "@/components/TransportationSidebar";
-import { ShipmentCard } from "@/components/ShipmentCard";
 import { QuoteCard } from "@/components/QuoteCard";
 import { useRouter } from "next/navigation";
 import {
@@ -23,6 +22,7 @@ import { useAlert, AlertDialog } from "@/components/AlertDialog";
 import { Quote } from "@/types/transportation";
 import { LoadCard } from "@/components/LoadCard";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { ShippingQuoteFormData } from "@/types/inventory";
 
 // ── Pagination UI ──────────────────────────────────────────────────────────────
 
@@ -136,11 +136,10 @@ function PaginationBar({
             <button
               key={p}
               onClick={() => goToPage(p as number)}
-              className={`h-7 w-7 rounded text-xs font-medium transition-colors ${
-                page === p
-                  ? "bg-green-500 text-white"
-                  : "border border-border text-muted-foreground hover:bg-muted"
-              }`}
+              className={`h-7 w-7 rounded text-xs font-medium transition-colors ${page === p
+                ? "bg-green-500 text-white"
+                : "border border-border text-muted-foreground hover:bg-muted"
+                }`}
             >
               {p}
             </button>
@@ -169,7 +168,9 @@ export default function TransportationPage() {
 function TransportationPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = React.useState("shipments");
+  const [activeTab, setActiveTab] = React.useState(
+    searchParams.get("tab") === "market-board" ? "market-board" : "managed-loads"
+  );
   const [searchQuery, setSearchQuery] = React.useState(
     searchParams.get("search") || "",
   );
@@ -188,12 +189,12 @@ function TransportationPageInner() {
     isLoading,
     isSilentRefreshing,
     error,
-    shipments,
-    shipmentsPagination,
-    shipmentsPage,
-    shipmentsLimit,
-    changeShipmentsPage,
-    changeShipmentsLimit,
+    loads,
+    loadsPagination,
+    loadsPage,
+    loadsLimit,
+    changeLoadsPage,
+    changeLoadsLimit,
     quotes,
     quotesPagination,
     quotesPage,
@@ -206,28 +207,28 @@ function TransportationPageInner() {
     dismissNewEntries,
     fetchData,
     handleCalculateQuote,
-    handleCreateShipment,
+    handleConvertToLoad,
     handleDeleteQuote,
-    handleDeleteShipment,
+    handleDeleteLoad,
     handleUpdateQuote,
-    handleUpdateShipment,
+    handleUpdateLoad,
   } = useTransportationData({
     shipmentStatus: activeTab === "shipments" ? selectedStatus : "all",
   });
 
   const {
-    loads,
-    pagination: loadsPagination,
-    page: loadsPage,
-    limit: loadsLimit,
-    changePage: changeLoadsPage,
-    changeLimit: changeLoadsLimit,
-    stats: loadStats,
-    isLoading: isLoadsLoading,
-    error: loadsError,
-    fetchLoads,
-    handleDeleteLoad,
-    deletingId,
+    loads: boardLoads,
+    pagination: boardPagination,
+    page: boardPage,
+    limit: boardLimit,
+    changePage: changeBoardPage,
+    changeLimit: changeBoardLimit,
+    stats: boardStats,
+    isLoading: isBoardLoading,
+    error: boardError,
+    fetchLoads: fetchBoardLoads,
+    handleDeleteLoad: handleDeleteBoardLoad,
+    deletingId: boardDeletingId,
   } = useLoadsData(
     activeTab === "load-board" ? searchQuery : undefined,
     activeTab === "load-board" ? selectedStatus : undefined,
@@ -239,13 +240,25 @@ function TransportationPageInner() {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         fetchData({ silent: true });
-        fetchLoads();
+        fetchBoardLoads();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibility);
-  }, [fetchData, fetchLoads]);
+  }, [fetchData, fetchBoardLoads]);
+
+  // Handle create-load from sidebar
+  React.useEffect(() => {
+    if (searchParams.get("tab") === "create-load") {
+      setIsQuoteModalOpen(true);
+      // Clean up the URL to prevent re-opening on refresh
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("tab");
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [searchParams]);
 
   // Auto-dismiss new entries banner after 8 seconds
   React.useEffect(() => {
@@ -254,7 +267,7 @@ function TransportationPageInner() {
     return () => clearTimeout(timer);
   }, [hasNewEntries, dismissNewEntries]);
 
-  const handleCalculateQuoteWrapper = async (formData: any) => {
+  const handleCalculateQuoteWrapper = async (formData: ShippingQuoteFormData) => {
     try {
       const quote = await handleCalculateQuote(formData);
       setCalculatedQuote(quote);
@@ -272,28 +285,23 @@ function TransportationPageInner() {
     }
   };
 
-  const handleCreateShipmentFromQuote = async () => {
+  const handleConvertToLoadFromQuote = async () => {
     if (!calculatedQuote) return;
-
     try {
-      await handleCreateShipment(calculatedQuote._id);
+      await handleConvertToLoad(calculatedQuote._id);
       setIsQuoteResultModalOpen(false);
       setCalculatedQuote(null);
-      setActiveTab("shipments");
+      setActiveTab("loads");
       showAlert({
         type: "success",
-        title: "Shipment Created",
-        message:
-          "The shipment has been created successfully and is now available in the shipments list.",
+        title: "Load Created",
+        message: "The quote has been converted to a load and is now ready for dispatch.",
       });
     } catch (error) {
       showAlert({
         type: "error",
-        title: "Error Creating Shipment",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to create shipment. Please try again.",
+        title: "Error Converting Quote",
+        message: error instanceof Error ? error.message : "Failed to convert quote to load. Please try again.",
       });
     }
   };
@@ -304,8 +312,8 @@ function TransportationPageInner() {
     setActiveTab("drafts");
   };
 
-  const filteredShipments = React.useMemo(() => {
-    let filtered = shipments;
+  const filteredLoads = React.useMemo(() => {
+    let filtered = loads;
 
     if (selectedStatus !== "all") {
       filtered = filtered.filter((s) => s.status === selectedStatus);
@@ -314,24 +322,29 @@ function TransportationPageInner() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((s) => {
-        const quote = s.quoteId;
-        const preserved = s.preservedQuoteData;
+        const pickup = s.pickupLocation;
+        const delivery = s.deliveryLocation;
+        const vehicles = s.vehicles || [];
+        
         return (
-          quote?.firstName?.toLowerCase().includes(query) ||
-          quote?.lastName?.toLowerCase().includes(query) ||
-          quote?.vin?.toLowerCase().includes(query) ||
-          quote?.stockNumber?.toLowerCase().includes(query) ||
-          preserved?.firstName?.toLowerCase().includes(query) ||
-          preserved?.lastName?.toLowerCase().includes(query) ||
-          preserved?.vin?.toLowerCase().includes(query) ||
-          preserved?.stockNumber?.toLowerCase().includes(query) ||
-          s.trackingNumber?.toLowerCase().includes(query)
+          s.loadNumber?.toLowerCase().includes(query) ||
+          pickup.city.toLowerCase().includes(query) ||
+          pickup.state.toLowerCase().includes(query) ||
+          pickup.contactName?.toLowerCase().includes(query) ||
+          delivery.city.toLowerCase().includes(query) ||
+          delivery.state.toLowerCase().includes(query) ||
+          delivery.contactName?.toLowerCase().includes(query) ||
+          vehicles.some(v => 
+            v.make?.toLowerCase().includes(query) || 
+            v.model?.toLowerCase().includes(query) || 
+            v.vin?.toLowerCase().includes(query)
+          )
         );
       });
     }
 
     return filtered;
-  }, [shipments, selectedStatus, searchQuery]);
+  }, [loads, selectedStatus, searchQuery]);
 
   const filteredQuotes = React.useMemo(() => {
     if (!searchQuery) return quotes;
@@ -346,7 +359,7 @@ function TransportationPageInner() {
     );
   }, [quotes, searchQuery]);
 
-  if (error && !isLoading && shipments.length === 0 && quotes.length === 0) {
+  if (error && !isLoading && loads.length === 0 && quotes.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full border-border">
@@ -499,19 +512,18 @@ function TransportationPageInner() {
         <div className="flex">
           {(
             [
-              { key: "shipments", label: "SHIPS" },
-              { key: "drafts", label: "DRAFTS" },
-              { key: "load-board", label: "LOADS" },
+              { key: "shipments", label: "My Loads" },
+              { key: "drafts", label: "Quotes" },
+              { key: "load-board", label: "Board" },
             ] as const
           ).map((t) => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`flex-1 py-2.5 text-[11px] font-semibold tracking-wide transition-colors border-b-2 ${
-                activeTab === t.key
-                  ? "border-green-500 text-green-600 dark:text-green-400"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex-1 py-2.5 text-[11px] font-semibold tracking-wide transition-colors border-b-2 ${activeTab === t.key
+                ? "border-green-500 text-green-600 dark:text-green-400"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
             >
               {t.label}
             </button>
@@ -534,7 +546,7 @@ function TransportationPageInner() {
           selectedStatus={selectedStatus}
           setSelectedStatus={setSelectedStatus}
           stats={stats}
-          loadStats={loadStats}
+          loadStats={boardStats}
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
         />
@@ -542,7 +554,7 @@ function TransportationPageInner() {
         {/* Main Content */}
         <div className="flex-1 p-3 sm:p-4 md:p-6 bg-background">
           {activeTab === "load-board" ? (
-            loadsError && !isLoadsLoading && loads.length === 0 ? (
+            boardError && !isBoardLoading && boardLoads.length === 0 ? (
               <Card className="border-border">
                 <CardContent className="p-6 sm:p-8 md:p-12 text-center">
                   <Truck className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
@@ -550,17 +562,17 @@ function TransportationPageInner() {
                     Failed to Load Loads
                   </h3>
                   <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 px-2 sm:px-4">
-                    {loadsError}
+                    {boardError}
                   </p>
                   <Button
                     className="bg-green-500 hover:bg-green-600 text-white text-xs sm:text-sm h-8 sm:h-9"
-                    onClick={fetchLoads}
+                    onClick={fetchBoardLoads}
                   >
                     Retry
                   </Button>
                 </CardContent>
               </Card>
-            ) : isLoadsLoading ? (
+            ) : isBoardLoading ? (
               <div className="space-y-3 sm:space-y-4">
                 {[...Array(3)].map((_, i) => (
                   <Card key={i} className="border-border overflow-hidden">
@@ -589,7 +601,7 @@ function TransportationPageInner() {
                   </Card>
                 ))}
               </div>
-            ) : loads.length === 0 ? (
+            ) : boardLoads.length === 0 ? (
               <Card className="border-border">
                 <CardContent className="p-6 sm:p-8 md:p-12 text-center">
                   <Truck className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
@@ -611,7 +623,7 @@ function TransportationPageInner() {
                     <Button
                       variant="outline"
                       className="text-xs sm:text-sm h-8 sm:h-9"
-                      onClick={fetchLoads}
+                      onClick={fetchBoardLoads}
                     >
                       Refresh
                     </Button>
@@ -621,22 +633,22 @@ function TransportationPageInner() {
             ) : (
               <div className="space-y-3 sm:space-y-4">
                 <PerPageSelector
-                  limit={loadsLimit}
-                  total={loadsPagination?.total ?? 0}
-                  onLimitChange={changeLoadsLimit}
+                  limit={boardLimit}
+                  total={boardPagination?.total ?? 0}
+                  onLimitChange={changeBoardLimit}
                 />
-                {loads.map((load) => (
+                {boardLoads.map((load) => (
                   <LoadCard
                     key={load._id}
                     load={load}
-                    onDelete={handleDeleteLoad}
-                    isDeleting={deletingId === load._id}
+                    onDelete={handleDeleteBoardLoad}
+                    isDeleting={boardDeletingId === load._id}
                   />
                 ))}
                 <PaginationBar
-                  page={loadsPage}
-                  pagination={loadsPagination}
-                  onPageChange={changeLoadsPage}
+                  page={boardPage}
+                  pagination={boardPagination}
+                  onPageChange={changeBoardPage}
                 />
               </div>
             )
@@ -668,7 +680,7 @@ function TransportationPageInner() {
                   </Card>
                 ))}
               </div>
-            ) : filteredShipments.length === 0 ? (
+            ) : filteredLoads.length === 0 ? (
               <Card className="border-border">
                 <CardContent className="p-6 sm:p-8 md:p-12 text-center">
                   <Truck className="size-10 sm:size-12 md:size-16 text-muted-foreground/50 mx-auto mb-3 sm:mb-4" />
@@ -691,22 +703,22 @@ function TransportationPageInner() {
             ) : (
               <div className="space-y-3 sm:space-y-4">
                 <PerPageSelector
-                  limit={shipmentsLimit}
-                  total={shipmentsPagination?.total ?? 0}
-                  onLimitChange={changeShipmentsLimit}
+                  limit={loadsLimit}
+                  total={loadsPagination?.total ?? 0}
+                  onLimitChange={changeLoadsLimit}
                 />
-                {filteredShipments.map((shipment) => (
-                  <ShipmentCard
-                    key={shipment._id}
-                    shipment={shipment}
-                    onDelete={handleDeleteShipment}
-                    onUpdate={handleUpdateShipment}
+                {filteredLoads.map((load) => (
+                  <LoadCard
+                    key={load._id}
+                    load={load}
+                    onDelete={handleDeleteLoad}
+                    onUpdate={handleUpdateLoad}
                   />
                 ))}
                 <PaginationBar
-                  page={shipmentsPage}
-                  pagination={shipmentsPagination}
-                  onPageChange={changeShipmentsPage}
+                  page={loadsPage}
+                  pagination={loadsPagination}
+                  onPageChange={changeLoadsPage}
                 />
               </div>
             )
@@ -768,7 +780,7 @@ function TransportationPageInner() {
                 <QuoteCard
                   key={quote._id}
                   quote={quote}
-                  onCreateShipment={handleCreateShipment}
+                  onConvertToLoad={handleConvertToLoad}
                   onDelete={handleDeleteQuote}
                   onUpdate={handleUpdateQuote}
                 />
@@ -794,7 +806,7 @@ function TransportationPageInner() {
         open={isQuoteResultModalOpen}
         onOpenChange={setIsQuoteResultModalOpen}
         quote={calculatedQuote}
-        onCreateShipment={handleCreateShipmentFromQuote}
+        onConvertToLoad={handleConvertToLoadFromQuote}
         onViewQuote={handleViewQuoteDetails}
       />
     </div>
