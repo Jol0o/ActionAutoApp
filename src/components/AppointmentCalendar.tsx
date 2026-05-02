@@ -294,7 +294,7 @@ export function AppointmentCalendar({
                 Blue dots on the arrows indicate months with events.
               </p>
             </div>
-            <JumpToNearestButton appointments={appointments} onNavigate={setCurrentMonth} />
+            <JumpToNearestButton appointments={appointments} onNavigate={onViewDateChange} />
           </div>
         )}
       </CardContent>
