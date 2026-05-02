@@ -86,7 +86,10 @@ export function DriverAssignLoadModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent
+        className="sm:max-w-xl"
+        overlayClassName="bg-black/80 backdrop-blur-md"
+      >
         <DialogHeader>
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <Package className="size-4 text-primary" />
@@ -144,7 +147,7 @@ export function DriverAssignLoadModal({
           />
         </div>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto modal-scrollbar [scrollbar-gutter:stable] pr-2">
+        <div className="space-y-4 max-h-96 overflow-y-auto modal-scrollbar [scrollbar-gutter:stable] pr-2">
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-8 gap-3">
               <Loader2 className="size-6 text-primary animate-spin" />
@@ -235,27 +238,27 @@ export function DriverAssignLoadModal({
                 </div>
 
                 {(trailerMatch !== null || capacityMatch !== null) && (
-                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/20">
+                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/20">
                     {trailerMatch !== null && (
                       <span
-                        className={`flex items-center gap-1 text-[10px] font-semibold ${trailerMatch ? "text-emerald-600" : "text-red-500"}`}
+                        className={`flex items-center gap-1.5 text-xs font-semibold ${trailerMatch ? "text-emerald-600" : "text-red-500"}`}
                       >
                         {trailerMatch ? (
-                          <CheckCircle2 className="size-3" />
+                          <CheckCircle2 className="size-3.5" />
                         ) : (
-                          <XCircle className="size-3" />
+                          <XCircle className="size-3.5" />
                         )}
                         Trailer {trailerMatch ? "Match" : "Mismatch"}
                       </span>
                     )}
                     {capacityMatch !== null && (
                       <span
-                        className={`flex items-center gap-1 text-[10px] font-semibold ${capacityMatch ? "text-emerald-600" : "text-red-500"}`}
+                        className={`flex items-center gap-1.5 text-xs font-semibold ${capacityMatch ? "text-emerald-600" : "text-red-500"}`}
                       >
                         {capacityMatch ? (
-                          <CheckCircle2 className="size-3" />
+                          <CheckCircle2 className="size-3.5" />
                         ) : (
-                          <XCircle className="size-3" />
+                          <XCircle className="size-3.5" />
                         )}
                         Capacity {capacityMatch ? "OK" : "Exceeded"}
                       </span>

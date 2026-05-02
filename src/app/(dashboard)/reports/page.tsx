@@ -46,6 +46,23 @@ import {
   saveGeneratedReportFile,
   type ReportFileCategory,
 } from "@/lib/report-files";
+import {
+  loadLogoBase64,
+  generateDocId,
+  formatGeneratedAt,
+  embedFonts,
+  drawReportPageHeader,
+  drawContinuedLabel,
+  drawSectionTitle,
+  drawEmptyState,
+  drawSummaryCards,
+  applyFootersToAllPages,
+  TABLE_BODY_STYLES,
+  TABLE_HEAD_STYLES_PRIMARY,
+  TABLE_HEAD_STYLES_SECONDARY,
+  TABLE_ALTERNATE_ROW,
+  TABLE_BODY_ROW,
+} from "@/utils/reportPdfTemplate";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
